@@ -56,9 +56,8 @@ func wheelAndDealResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		if os == nil || os.Lost {
 			continue
 		}
-		for len(gs.Seats[opp].Hand) > 0 {
-			gameengine.DiscardCard(gs, gs.Seats[opp].Hand[0], opp)
-		}
+		// r88: snapshot, do not drain (hand_discard_snapshot_r88.go).
+		discardHandSnapshot(gs, opp)
 		for j := 0; j < 7 && len(gs.Seats[opp].Library) > 0; j++ {
 			top := gs.Seats[opp].Library[0]
 			gameengine.MoveCard(gs, top, opp, "library", "hand", "draw")

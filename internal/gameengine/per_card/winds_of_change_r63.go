@@ -52,10 +52,16 @@ func windsOfChangeResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 			continue
 		}
 		// "shuffles the cards from their hand into their library"
-		count := len(s.Hand)
-		for len(gs.Seats[i].Hand) > 0 {
-			c := gs.Seats[i].Hand[0]
+		// r88: snapshot, do not drain — a zone-change trigger on the
+		// hand-to-library move can put a card back in this hand
+		// (hand_discard_snapshot_r88.go).
+		count := 0
+		for _, c := range handSnapshot(gs, i) {
+			if !cardStillInHand(gs, i, c) {
+				continue
+			}
 			gameengine.MoveCard(gs, c, i, "hand", "library", "winds_of_change")
+			count++
 		}
 		if gs.Rng != nil {
 			lib := gs.Seats[i].Library

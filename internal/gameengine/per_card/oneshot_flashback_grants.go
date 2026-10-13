@@ -151,9 +151,8 @@ func willOfTheJeskaiDiscardDrawFive(gs *gameengine.GameState, controller int) {
 		if i != controller && len(s.Hand) >= 5 {
 			continue
 		}
-		for len(s.Hand) > 0 {
-			gameengine.DiscardCard(gs, s.Hand[0], i)
-		}
+		// r88: snapshot, do not drain (hand_discard_snapshot_r88.go).
+		discardHandSnapshot(gs, i)
 		for j := 0; j < 5 && len(s.Library) > 0; j++ {
 			card := s.Library[0]
 			gameengine.MoveCard(gs, card, i, "library", "hand", "draw")

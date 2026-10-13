@@ -266,23 +266,18 @@ func windfallResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	if gs == nil || item == nil {
 		return
 	}
-	// Determine the greatest hand size before discard.
+	// Each player discards their hand; CR "the greatest number of cards
+	// a player discarded this way" is the greatest count ACTUALLY
+	// discarded, not the greatest hand size beforehand — those differ
+	// when a discard trigger takes a card out of a later player's hand.
 	maxDiscarded := 0
-	for _, s := range gs.Seats {
-		if s == nil || s.Lost {
-			continue
-		}
-		if len(s.Hand) > maxDiscarded {
-			maxDiscarded = len(s.Hand)
-		}
-	}
-	// Each player discards their hand.
 	for i, s := range gs.Seats {
 		if s == nil || s.Lost {
 			continue
 		}
-		for len(s.Hand) > 0 {
-			gameengine.DiscardCard(gs, s.Hand[0], i)
+		// r88: snapshot, do not drain (hand_discard_snapshot_r88.go).
+		if discarded := discardHandSnapshot(gs, i); discarded > maxDiscarded {
+			maxDiscarded = discarded
 		}
 	}
 	// Each player draws cards equal to the max.
@@ -324,9 +319,8 @@ func wheelOfFortuneResolve(gs *gameengine.GameState, item *gameengine.StackItem)
 		if s == nil || s.Lost {
 			continue
 		}
-		for len(s.Hand) > 0 {
-			gameengine.DiscardCard(gs, s.Hand[0], i)
-		}
+		// r88: snapshot, do not drain (hand_discard_snapshot_r88.go).
+		discardHandSnapshot(gs, i)
 	}
 	// Each player draws 7.
 	for i, s := range gs.Seats {
@@ -716,11 +710,8 @@ func lionsEyeDiamondActivate(gs *gameengine.GameState, src *gameengine.Permanent
 
 	// Cost: sacrifice LED + discard entire hand.
 	gameengine.SacrificePermanent(gs, src, "lions_eye_diamond_cost")
-	discarded := 0
-	for len(s.Hand) > 0 {
-		gameengine.DiscardCard(gs, s.Hand[0], seat)
-		discarded++
-	}
+	// r88: snapshot, do not drain (hand_discard_snapshot_r88.go).
+	discarded := discardHandSnapshot(gs, seat)
 
 	// Effect: add 3 mana of any color (generic in MVP).
 	s.ManaPool += 3

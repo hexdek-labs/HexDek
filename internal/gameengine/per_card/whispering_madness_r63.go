@@ -51,10 +51,9 @@ func whisperingMadnessResolve(gs *gameengine.GameState, item *gameengine.StackIt
 		if s == nil || s.Lost {
 			continue
 		}
-		discarded := len(s.Hand)
-		for len(gs.Seats[i].Hand) > 0 {
-			gameengine.DiscardCard(gs, gs.Seats[i].Hand[0], i)
-		}
+		// r88: snapshot, do not drain — the card_discarded trigger can
+		// put a card back in this hand (see hand_discard_snapshot_r88.go).
+		discarded := discardHandSnapshot(gs, i)
 		if discarded > maxDiscarded {
 			maxDiscarded = discarded
 		}
