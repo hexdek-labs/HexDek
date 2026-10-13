@@ -1459,7 +1459,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	// blocked by that player's creatures. Requires game state for land
 	// checks — skipped when gs is nil (legacy CanBlock path).
 	if gs != nil && blocker.Controller >= 0 {
-		lt := LandwalkType(attacker)
+		lt := LandwalkType(gs, attacker)
 		if lt != "" && DefenderControlsLandType(gs, blocker.Controller, lt) {
 			return false
 		}
@@ -2245,7 +2245,7 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 	}
 	// §702.90 — Infect: damage dealt to players is dealt in the form
 	// of poison counters instead of life loss.
-	if HasInfect(src) {
+	if HasInfect(gs, src) {
 		gs.Seats[seatIdx].PoisonCounters += amount
 		gs.LogEvent(Event{
 			Kind: "poison", Seat: src.Controller, Target: seatIdx,
@@ -2408,7 +2408,7 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 	}
 	// §702.90 — Infect: damage dealt to creatures is dealt in the form
 	// of -1/-1 counters instead of marked damage.
-	if HasInfect(src) {
+	if HasInfect(gs, src) {
 		target.AddCounter("-1/-1", amount)
 		gs.InvalidateCharacteristicsCache() // -1/-1 counters change P/T
 		gs.LogEvent(Event{

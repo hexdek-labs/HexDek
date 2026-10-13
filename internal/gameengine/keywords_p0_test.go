@@ -973,7 +973,7 @@ func TestLandwalk_Islandwalk(t *testing.T) {
 
 func TestLandwalkType_Detection(t *testing.T) {
 	p := &Permanent{
-		Card: &Card{Name: "Filth"},
+		Card:  &Card{Name: "Filth"},
 		Flags: map[string]int{},
 	}
 	p.Card.AST = &gameast.CardAST{
@@ -982,7 +982,8 @@ func TestLandwalkType_Detection(t *testing.T) {
 		},
 	}
 
-	lt := LandwalkType(p)
+	gs := newFixtureGame(t)
+	lt := LandwalkType(gs, p)
 	if lt != "swamp" {
 		t.Errorf("should detect swampwalk land type 'swamp', got '%s'", lt)
 	}
@@ -992,7 +993,8 @@ func TestLandwalkType_NoLandwalk(t *testing.T) {
 	p := &Permanent{
 		Card: &Card{Name: "Bear"},
 	}
-	lt := LandwalkType(p)
+	gs := newFixtureGame(t)
+	lt := LandwalkType(gs, p)
 	if lt != "" {
 		t.Errorf("should return empty for non-landwalk, got '%s'", lt)
 	}

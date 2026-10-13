@@ -23,7 +23,7 @@ func TestPhyresisCounter_GrantsInfectInCombat(t *testing.T) {
 	// Phyresis counter as the generic counter path would store it.
 	attacker.AddCounter("phyresis", 1)
 
-	if !HasInfect(attacker) {
+	if !HasInfect(gs, attacker) {
 		t.Fatal("a phyresis counter must grant infect (CR §122.1c / §702.91)")
 	}
 

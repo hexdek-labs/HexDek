@@ -549,11 +549,11 @@ func ConvokeCostReduction(gs *GameState, seatIdx int) int {
 // and applyCombatDamageToCreature functions. See the modifications there.
 
 // HasInfect returns true if the permanent has the infect keyword.
-func HasInfect(p *Permanent) bool {
+func HasInfect(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	return p.HasKeyword("infect")
+	return keywordActive(gs, p, "infect")
 }
 
 // ---------------------------------------------------------------------------
@@ -709,7 +709,7 @@ func CountExalted(gs *GameState, seatIdx int) int {
 		if p == nil {
 			continue
 		}
-		if p.HasKeyword("exalted") {
+		if keywordActive(gs, p, "exalted") {
 			count++
 		}
 	}
@@ -756,12 +756,18 @@ func ApplyExalted(gs *GameState, seatIdx int, attacker *Permanent) {
 
 // LandwalkType returns the land type if this permanent has a landwalk
 // keyword, or "" if none.
-func LandwalkType(p *Permanent) string {
+// r81 — layer-aware. The five reads below are one characteristics-cache
+// MISS plus four hits, not five misses, and canBlockGS already performs
+// a layer query immediately afterwards (attackerHasProtectionFromGS ->
+// ColorsOf), so the cache is warm on this path either way. Checked
+// deliberately: r80 was a layer guard placed ahead of a cheap check
+// inside a hot scan, which cost 55% of grinder throughput.
+func LandwalkType(gs *GameState, p *Permanent) string {
 	if p == nil {
 		return ""
 	}
 	for _, kw := range landwalkKeywords {
-		if p.HasKeyword(kw.keyword) {
+		if keywordActive(gs, p, kw.keyword) {
 			return kw.landType
 		}
 	}
