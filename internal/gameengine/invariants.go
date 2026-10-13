@@ -1178,24 +1178,29 @@ func checkCombatLegality(gs *GameState) error {
 			}
 			// Creatures with defender can't attack — UNLESS placed onto
 			// the battlefield attacking by a §508.1g effect.
-			// NOTE: this stays on the raw p.HasKeyword. Unlike types, the
-			// keyword authority is split: Flags["kw:defender"] and keyword
-			// counters are real positive sources that BaseCharacteristics
-			// does NOT fold into chars.Keywords, so gs.HasKeywordOf would
-			// MISS them (false-negative). The Humility-strip phantom (a
-			// defender stripped by a layer-6 effect that p.HasKeyword still
-			// reports) is real but requires unifying the keyword sources
-			// into the layer base first — see the r63 report recommendation.
-			if attacking && p.HasKeyword("defender") && !enteredAttacking {
+			// r83 — this comment used to say the raw query had to stay,
+			// because Flags["kw:defender"] and keyword counters were
+			// positive sources BaseCharacteristics did not fold into
+			// chars.Keywords, so the layer query would MISS them. That was
+			// true when it was written and has been STALE since r65/r66,
+			// which did exactly the unification "see the r63 report
+			// recommendation" was waiting on. Re-probed before changing it:
+			// AST, GrantedAbilities, Flags["kw:"] and keyword counters all
+			// reach gs.HasKeywordOf, for defender specifically.
+			//
+			// The Humility-strip phantom the old note called "real but
+			// blocked" is now simply fixed: a defender stripped by a layer-6
+			// effect no longer gets flagged as an illegal attacker.
+			if attacking && gs.HasKeywordOf(p, "defender") && !enteredAttacking {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking but has defender",
 					name, s.Idx)
 			}
 			// Summoning-sick creatures without haste can't attack —
-			// same §508.1g carve-out. Haste is recognized via the UNION of
-			// p.HasKeyword (AST + granted + Flags["kw:haste"] + counters) and
-			// gs.HasKeywordOf (adds pure layer-6 grants — e.g. Toph cards
-			// grant haste via RegisterGrantKeyword with no Flags), so a
-			// legitimately-hasty attacker is never phantom-flagged.
+			// same §508.1g carve-out. r83 — haste was recognized via the
+			// UNION of p.HasKeyword and gs.HasKeywordOf so a legitimately-
+			// hasty attacker was never phantom-flagged; post-r65/r66 the
+			// layer query alone covers every raw source, so the union only
+			// re-admitted keywords a layer-6 strip had removed.
 			//
 			// declaredThisCombat carve-out (r63): CR §508.1a is a ONE-TIME
 			// declaration-time gate, not a continuous requirement. A creature
@@ -1217,7 +1222,7 @@ func checkCombatLegality(gs *GameState) error {
 			// non-entered case — a true illegal-attacker bug — is still
 			// flagged.)
 			declaredThisCombat := permFlag(p, flagDeclaredAttacker)
-			hasHaste := p.HasKeyword("haste") || gs.HasKeywordOf(p, "haste")
+			hasHaste := gs.HasKeywordOf(p, "haste")
 			if attacking && p.SummoningSick && !hasHaste && !enteredAttacking && !declaredThisCombat {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking with summoning sickness and no haste",
 					name, s.Idx)

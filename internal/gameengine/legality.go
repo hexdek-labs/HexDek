@@ -864,9 +864,20 @@ func checkLegalityAttackDecl(gs *GameState, obs *LegalityObservation) []Legality
 	if p.Tapped {
 		add("508.1c", "declared attacker is already tapped")
 	}
-	// Haste detection is deliberately permissive (printed/granted OR
-	// layer-granted) so an anthem-haste creature never false-positives.
-	if p.SummoningSick && !(p.HasKeyword("haste") || gs.HasKeywordOf(p, "haste")) {
+	// r83 — was the UNION `p.HasKeyword || gs.HasKeywordOf`, written when
+	// neither query was a superset of the other, to keep an anthem-haste
+	// creature from false-positiving. r65/r66 folded every positive raw
+	// source into the layer base, so the layer query alone already satisfies
+	// that intent — re-probed here across all four raw surfaces (AST,
+	// GrantedAbilities, Flags["kw:"], keyword counters): no raw-true /
+	// layer-false cell exists.
+	//
+	// With the superset established the raw arm is not merely redundant but
+	// WRONG, and in a detector that is worse than in the engine: the only
+	// case it can still contribute is one where a layer-6 strip said NO, so
+	// it makes this check silently blind to a Humbled creature attacking on
+	// a stamped haste — a real §302.6 break the detector was built to catch.
+	if p.SummoningSick && !gs.HasKeywordOf(p, "haste") {
 		add("302.6", "declared attacker is summoning-sick without haste")
 	}
 	// Defender via the layer-aware query so a strip effect (Humility)
@@ -1077,7 +1088,9 @@ func checkLegalityBlockDecl(gs *GameState, obs *LegalityObservation) []LegalityV
 		}
 	}
 	// §702.110b — menace: can't be blocked except by two or more.
-	if live == 1 && (obs.Attacker.HasKeyword("menace") || gs.HasKeywordOf(obs.Attacker, "menace")) {
+	// r83 — union dropped, same reasoning as the haste check above: a
+	// menace stripped by Humility must stop demanding two blockers.
+	if live == 1 && gs.HasKeywordOf(obs.Attacker, "menace") {
 		add("702.110b", "menace attacker blocked by exactly one creature")
 	}
 	return out
