@@ -210,6 +210,9 @@ const (
 //   - Register / Unregister continuous effects
 //   - Counter add / remove / move
 //   - Modification append / expire
+//   - Flags["kw:<name>"] keyword-stamp set / delete (r65 — the stamp is
+//     folded into the layer base by BaseCharacteristics, so it is a
+//     characteristics mutation like any other)
 //   - Face-down toggle
 //   - Attachment change (Ensoul Artifact scoping)
 func (gs *GameState) InvalidateCharacteristicsCache() {
@@ -356,6 +359,11 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 				c.Keywords = append(c.Keywords, g)
 			}
 		}
+		// r65 — same fold for the runtime keyword surfaces (Flags
+		// stamp + keyword counters). A keyword counter grants its
+		// keyword regardless of card type (CR §122.6), so it survives
+		// the §707.2 face-down wipe exactly as a runtime grant does.
+		foldRuntimeKeywordSources(p, c)
 		return c
 	}
 
@@ -417,6 +425,12 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 			c.Keywords = append(c.Keywords, g)
 		}
 	}
+	// r65 — fold the remaining runtime keyword surfaces (the
+	// Flags["kw:<name>"] stamp and keyword counters) into the layer
+	// BASE, so gs.HasKeywordOf is a true superset of p.HasKeyword and
+	// a layer-6 ability strip reaches them. See
+	// keyword_source_unification_r65.go.
+	foldRuntimeKeywordSources(p, c)
 	// §707.2 — mana value is a copiable value.
 	c.CMC = p.Card.CMC
 	return c

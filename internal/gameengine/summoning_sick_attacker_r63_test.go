@@ -102,6 +102,11 @@ func TestCombatLegality_DeclaredAttackerLosesHasteMidCombat(t *testing.T) {
 	// Brudiclad leaves combat: its LTB strips the granted haste. The token
 	// is still SummoningSick (entered this turn) and still attacking.
 	delete(tok.Flags, "kw:haste")
+	// r65: the Flags["kw:<name>"] stamp is now folded into the layer
+	// base, so dropping it is a characteristics mutation and must
+	// invalidate the cache — exactly as the real Brudiclad LTB strip
+	// does (brudiclad_telchor_engineer.go calls this after the sweep).
+	gs.InvalidateCharacteristicsCache()
 	if tok.HasKeyword("haste") || gs.HasKeywordOf(tok, "haste") {
 		t.Fatalf("haste should be stripped for the test setup")
 	}

@@ -14,7 +14,7 @@ import (
 func registerKolodinTriumphCasterCustom(r *Registry) {
 	r.OnETB("Kolodin, Triumph Caster", kolodinRefreshAnthemOnETB)
 	r.OnTrigger("Kolodin, Triumph Caster", "permanent_etb", kolodinRefreshAnthemOnEvent)
-	r.OnTrigger("Kolodin, Triumph Caster", "permanent_ltb", kolodinRefreshAnthemOnEvent)
+	r.OnTrigger("Kolodin, Triumph Caster", "permanent_ltb", kolodinOwnLTB)
 }
 
 func kolodinRefreshAnthemOnETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -58,4 +58,64 @@ func kolodinRefreshMountVehicleHaste(gs *gameengine.GameState, perm *gameengine.
 			"stamped": stamped,
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// r65 — static anthem stamps outlived their own source.
+//
+// The anthem is applied by stamping Flags["kw:<name>"] onto each
+// matching creature, with a provenance marker recording who stamped it.
+// The refresh function was registered for permanent_etb AND
+// permanent_ltb, so when the ANTHEM SOURCE ITSELF left the battlefield
+// the handler re-ran and RE-STAMPED instead of stripping: the buff
+// survived its source for the rest of the game.
+//
+// The provenance marker existed precisely to make the strip possible;
+// nothing ever performed it. Fixed by following the in-repo canonical
+// shape (brudiclad_telchor_engineer.go): a dedicated own-LTB handler
+// that compares ctx["perm"] against the source and strips the grants it
+// owns, falling through to the ordinary recompute when some OTHER
+// permanent is the one leaving.
+// ---------------------------------------------------------------------------
+
+func kolodinOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	if leaving, _ := ctx["perm"].(*gameengine.Permanent); leaving == perm {
+		kolodinStripMountVehicleHaste(gs, perm)
+		return
+	}
+	kolodinRefreshMountVehicleHaste(gs, perm)
+}
+
+// kolodinStripMountVehicleHaste drops only the haste grants this
+// Kolodin stamped.
+func kolodinStripMountVehicleHaste(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "kolodin_mount_vehicle_haste_strip"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	stripped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Flags == nil {
+			continue
+		}
+		if p.Flags["kw:haste_from_kolodin"] != 1 {
+			continue
+		}
+		delete(p.Flags, "kw:haste_from_kolodin")
+		delete(p.Flags, "kw:haste")
+		stripped++
+	}
+	if stripped > 0 {
+		gs.InvalidateCharacteristicsCache()
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller, "stripped": stripped,
+	})
 }
