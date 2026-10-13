@@ -275,8 +275,8 @@ func captainAmericaOnAnotherHeroETB(gs *gameengine.GameState, perm *gameengine.P
 	if entering.Flags == nil {
 		entering.Flags = map[string]int{}
 	}
-	entering.Flags["kw:vigilance"] = 1
-	entering.Flags["kw:haste"] = 1
+	grantKeywordUntilEOT(gs, entering, "vigilance")
+	grantKeywordUntilEOT(gs, entering, "haste")
 	entering.Flags["kw_vigilance_until_eot"] = 1
 	entering.Flags["kw_haste_until_eot"] = 1
 	entering.AddCounter("+1/+1", 1)

@@ -73,10 +73,7 @@ func baylenActivated(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 		})
 	case 2:
 		src.AddCounter("+1/+1", 3)
-		if src.Flags == nil {
-			src.Flags = map[string]int{}
-		}
-		src.Flags["kw:trample"] = 1
+		grantKeywordUntilEOT(gs, src, "trample")
 		src.Flags["trample_until_eot"] = 1
 		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 			"seat":           src.Controller,

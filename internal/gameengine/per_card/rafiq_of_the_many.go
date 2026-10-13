@@ -58,12 +58,10 @@ func rafiqAttacksAlone(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if count != 1 || lone == nil {
 		return
 	}
-	if lone.Flags == nil {
-		lone.Flags = map[string]int{}
-	}
+	grantKeywordUntilEOT(gs, lone, "double strike")
 	lone.Flags["kw:double_strike"] = 1
+	lone.Flags["kw_eot:double_strike"] = 1
 	lone.Flags["double_strike_eot"] = 1
-	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"target": lone.Card.DisplayName(),

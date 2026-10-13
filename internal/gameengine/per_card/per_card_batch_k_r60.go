@@ -120,7 +120,9 @@ func reyavMasterSmithOnAttack(gs *gameengine.GameState, perm *gameengine.Permane
 	if atk.Flags == nil {
 		atk.Flags = map[string]int{}
 	}
+	grantKeywordUntilEOT(gs, atk, "double strike")
 	atk.Flags["kw:double_strike"] = 1
+	atk.Flags["kw_eot:double_strike"] = 1
 	atk.Flags["kw_double_strike_until_eot"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":         perm.Controller,

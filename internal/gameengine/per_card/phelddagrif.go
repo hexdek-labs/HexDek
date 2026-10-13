@@ -60,13 +60,8 @@ func pickPhelddagrifOpponent(gs *gameengine.GameState, src *gameengine.Permanent
 
 func phelddagrifTrampleAndHippo(gs *gameengine.GameState, src *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "phelddagrif_trample_and_hippo"
-	src.GrantedAbilities = append(src.GrantedAbilities, "trample")
-	if src.Flags == nil {
-		src.Flags = map[string]int{}
-	}
-	src.Flags["kw:trample"] = 1
+	grantKeywordUntilEOT(gs, src, "trample")
 	src.Flags["trample_eot"] = 1
-	gs.InvalidateCharacteristicsCache()
 	oppSeat := pickPhelddagrifOpponent(gs, src, ctx)
 	if oppSeat >= 0 {
 		gameengine.CreateCreatureToken(gs, oppSeat, "Hippo Token",
@@ -81,13 +76,8 @@ func phelddagrifTrampleAndHippo(gs *gameengine.GameState, src *gameengine.Perman
 
 func phelddagrifFlyingAndLife(gs *gameengine.GameState, src *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "phelddagrif_flying_and_life"
-	src.GrantedAbilities = append(src.GrantedAbilities, "flying")
-	if src.Flags == nil {
-		src.Flags = map[string]int{}
-	}
-	src.Flags["kw:flying"] = 1
+	grantKeywordUntilEOT(gs, src, "flying")
 	src.Flags["flying_eot"] = 1
-	gs.InvalidateCharacteristicsCache()
 	oppSeat := pickPhelddagrifOpponent(gs, src, ctx)
 	if oppSeat >= 0 {
 		gameengine.GainLife(gs, oppSeat, 2, src.Card.DisplayName())

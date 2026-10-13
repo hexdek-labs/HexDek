@@ -52,12 +52,8 @@ func rosaCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 		return
 	}
 	best.AddCounter("+1/+1", 1)
-	if best.Flags == nil {
-		best.Flags = map[string]int{}
-	}
-	best.Flags["kw:lifelink"] = 1
+	grantKeywordUntilEOT(gs, best, "lifelink")
 	best.Flags["lifelink_eot"] = 1
-	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"target": best.Card.DisplayName(),

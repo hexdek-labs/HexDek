@@ -57,14 +57,15 @@ func striderLandfall(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	if pick.Flags == nil {
 		pick.Flags = map[string]int{}
 	}
+	pumpUntilEOT(gs, pick, 1, 1)
 	pick.Flags["plus_power_until_eot"]++
 	pick.Flags["plus_toughness_until_eot"]++
-	gs.InvalidateCharacteristicsCache()
 
-	postPower := pick.Power()
+	postPower := gs.PowerOf(pick)
 	if postPower >= 4 {
+		grantKeywordUntilEOT(gs, pick, "first strike")
 		pick.Flags["kw:first_strike"] = 1
-		pick.Flags["kw:first_strike_until_eot"] = 1
+		pick.Flags["kw_eot:first_strike"] = 1
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":         perm.Controller,

@@ -69,6 +69,7 @@ func tajicBladeOfTheLegionAttacks(gs *gameengine.GameState, perm *gameengine.Per
 	if attacking < 3 {
 		return
 	}
+	pumpUntilEOT(gs, perm, 5, 5)
 	perm.Flags["plus_power_until_eot"] += 5
 	perm.Flags["plus_toughness_until_eot"] += 5
 	perm.Flags["tajic_battalion_pumped_this_turn"] = 1

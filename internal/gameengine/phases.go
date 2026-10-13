@@ -476,6 +476,11 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 			}
 		}
 
+		// CR §514.2 — until-EOT keyword grants recorded on Permanent.Flags
+		// (the other surface HasKeyword reads) expire here. The sweep above
+		// only clears GrantedAbilities and Modifications, so before this
+		// call a temporary keyword granted through the flag was permanent.
+		ExpireKeywordGrantsEOT(gs)
 		ExpireZoneCastGrants(gs)
 		ExpireEOTGraveyardFlashbackGrants(gs)
 		ExpireOrphanedGraveyardFlashbackGrants(gs)

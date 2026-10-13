@@ -113,3 +113,34 @@ func grantUntilEOT(p *gameengine.Permanent, keyword string) {
 	}
 	p.GrantedAbilities = append(p.GrantedAbilities, keyword)
 }
+
+// grantKeywordUntilEOT grants a keyword that is both visible to the
+// engine NOW and actually gone at end of turn.
+//
+// A second family of handlers granted "until end of turn" keywords by
+// writing Permanent.Flags["kw:<keyword>"] = 1, usually beside a marker
+// flag named for the duration ("double_strike_eot",
+// "kw_vigilance_until_eot", "trample_until_eot", …). The grant half
+// works — HasKeyword reads Flags["kw:<name>"] — but the marker flags are
+// read by nothing, and the §514.2 cleanup sweep in phases.go clears
+// GrantedAbilities, never the Flags map. So the keyword was granted
+// PERMANENTLY: Rafiq's exalted double strike, Strider's first strike and
+// Rosa's lifelink all stayed on the creature for the rest of the game.
+//
+// This writes the keyword to both surfaces the engine reads, plus a
+// "kw_eot:<keyword>" expiry declaration that ExpireKeywordGrantsEOT
+// consumes at cleanup.
+func grantKeywordUntilEOT(gs *gameengine.GameState, p *gameengine.Permanent, keyword string) {
+	if p == nil || keyword == "" {
+		return
+	}
+	grantUntilEOT(p, keyword)
+	if p.Flags == nil {
+		p.Flags = map[string]int{}
+	}
+	p.Flags["kw:"+keyword] = 1
+	p.Flags["kw_eot:"+keyword] = 1
+	if gs != nil {
+		gs.InvalidateCharacteristicsCache()
+	}
+}
