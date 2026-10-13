@@ -946,6 +946,7 @@ func (sm *Showmatch) runGrinder() {
 	debug.SetMemoryLimit(8 * 1024 * 1024 * 1024) // 8 GB hard cap
 
 	var totalGames atomic.Int64
+	var totalTurns atomic.Int64
 	t0 := time.Now()
 
 	log.Printf("grinder: starting %d parallel workers (GOGC=50, memlimit=8GB)", workers)
@@ -960,7 +961,7 @@ func (sm *Showmatch) runGrinder() {
 					time.Sleep(2 * time.Second)
 					continue
 				}
-				sm.runOneGameFast(rng)
+				totalTurns.Add(int64(sm.runOneGameFast(rng)))
 				totalGames.Add(1)
 			}
 		}(w)
@@ -969,15 +970,38 @@ func (sm *Showmatch) runGrinder() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	var lastLogged int64
+	// The cumulative g/min below is an AVERAGE OVER THE WHOLE RUN, so it
+	// decays as a run ages even when throughput is perfectly steady.
+	// Comparing two runs by it at equal game counts compares unequal
+	// elapsed times and is meaningless. The interval figures are the ones
+	// to compare; they are what this window actually did.
+	prevGames, prevTurns, prevGC := int64(0), int64(0), uint32(0)
+	prevAt := t0
 	for range ticker.C {
 		n := totalGames.Load()
+		tn := totalTurns.Load()
 		elapsed := time.Since(t0)
 		gpm := float64(n) / elapsed.Minutes()
 
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		log.Printf("grinder: %d games (%.1f g/min), ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d",
-			n, gpm, sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC)
+
+		win := time.Since(prevAt).Minutes()
+		dG, dT, dGC := n-prevGames, tn-prevTurns, m.NumGC-prevGC
+		intervalGPM, turnsPerGame, gcPerGame := 0.0, 0.0, 0.0
+		if win > 0 {
+			intervalGPM = float64(dG) / win
+		}
+		if dG > 0 {
+			turnsPerGame = float64(dT) / float64(dG)
+			gcPerGame = float64(dGC) / float64(dG)
+		}
+		prevGames, prevTurns, prevGC, prevAt = n, tn, m.NumGC, time.Now()
+
+		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
+			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d",
+			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
+			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC)
 
 		if n-lastLogged >= 50 {
 			sm.flushELO()
@@ -1673,7 +1697,12 @@ func (sm *Showmatch) getOrCreateCursePool(deckKey string, rng *rand.Rand) *hat.C
 	return &p
 }
 
-func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
+// runOneGameFast returns the number of turns the game ran, or 0 if no
+// game was played (empty pool, maintenance, crash). The grinder uses it
+// to report turns-per-game, which is what separates "games are getting
+// longer" from "the engine is getting slower" — two very different
+// causes behind the same falling games-per-minute.
+func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	var deckKeys []string // declared here so crash recovery can access it
 	defer func() {
 		if r := recover(); r != nil {
@@ -1913,6 +1942,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 		go hat.SavePool(sm.curseDir, pool)
 	}
 
+	turnsPlayed = gs.Turn
 	sm.mu.Lock()
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
@@ -1965,6 +1995,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	}
 	jr.Finish(gs, bracketOracle.Violations, pickedDecks)
 	sm.muninnSink.EndGame()
+	return turnsPlayed
 }
 
 func (sm *Showmatch) runOneGame(rng *rand.Rand) {
