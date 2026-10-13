@@ -75,6 +75,7 @@ func TestStateIntegrityR67_SoleSurvivorAtNegativeLifeIsIdentifiable(t *testing.T
 		"has_winner":       true,
 		"alive_seats":      1,
 		"sole_survivor":    true,
+		"turn_capped":      false,
 		"cant_lose_shield": false,
 		"life":             -9,
 	} {
@@ -140,11 +141,34 @@ func TestStateIntegrityR67_EvidenceSurvivesStringRendering(t *testing.T) {
 		t.Fatal("expected a 704.5a violation")
 	}
 	for _, want := range []string{
-		"ended=true", "winner=true", "alive=1",
+		"ended=true", "winner=true", "turn_capped=false", "alive=1",
 		"sole_survivor=true", "shield=false", "sba_emitted=false",
 	} {
 		if !strings.Contains(line, want) {
 			t.Errorf("rendered log line is missing %q — it reads: %s", want, line)
 		}
+	}
+}
+
+// r67c — the turn-cap adjudicator (tournament/outcome_canon.go
+// AdjudicateGameEnd) ends a capped game by crowning the living seat
+// with the HIGHEST life, and never checks that life is above 0. It is
+// the prime suspect for a recorded winner at <=0 life, so the
+// violation must say outright which path produced the state rather
+// than leaving it to be inferred from the absence of an unrelated
+// showmatch log line.
+func TestStateIntegrityR67c_TurnCappedIsReportedInTheLogLine(t *testing.T) {
+	g := GameSnapshot{TotalSeats: 4, Ended: true, HasWinner: true, TurnCapped: true, Seats: []SeatSnapshot{
+		seat704(0, -44, false),
+		seat704(1, 0, true), seat704(2, 0, true), seat704(3, 0, true),
+	}}
+	var line string
+	for _, v := range CheckStateIntegrity(g) {
+		if v.Name == "704.5a" {
+			line = v.String()
+		}
+	}
+	if !strings.Contains(line, "turn_capped=true") {
+		t.Errorf("turn-cap origin missing from the rendered line: %s", line)
 	}
 }

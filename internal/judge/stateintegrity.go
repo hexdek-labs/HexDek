@@ -69,6 +69,15 @@ type GameSnapshot struct {
 	Ended bool
 	// HasWinner is true when a winner was recorded.
 	HasWinner bool
+	// TurnCapped is true when the game was ended by the driver's
+	// turn-cap adjudicator rather than by the engine's own end
+	// condition. r67c: that adjudicator picks the living seat with the
+	// HIGHEST life and never checks that it is above 0
+	// (tournament/outcome_canon.go AdjudicateGameEnd), so it is the
+	// prime suspect for a recorded winner sitting at <=0 life. Carried
+	// so the §704.5a violation can say which path produced the state
+	// instead of leaving it to inference.
+	TurnCapped bool
 }
 
 // ---------------------------------------------------------------------------
@@ -158,8 +167,8 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 				// which was the whole point of the change.
 				Message: fmt.Sprintf(
 					"seat %d has %d life but is not marked lost "+
-						"(ended=%t winner=%t alive=%d sole_survivor=%t shield=%t sba_emitted=%t)",
-					s.Seat, s.Life, g.Ended, g.HasWinner, totalAlive,
+						"(ended=%t winner=%t turn_capped=%t alive=%d sole_survivor=%t shield=%t sba_emitted=%t)",
+					s.Seat, s.Life, g.Ended, g.HasWinner, g.TurnCapped, totalAlive,
 					totalAlive == 1, s.CantLoseShield, s.SBALossEmitted),
 				Seat:     s.Seat,
 				Severity: severity,
@@ -167,6 +176,7 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 					"life":             s.Life,
 					"ended":            g.Ended,
 					"has_winner":       g.HasWinner,
+					"turn_capped":      g.TurnCapped,
 					"alive_seats":      totalAlive,
 					"cant_lose_shield": s.CantLoseShield,
 					"sba_loss_emitted": s.SBALossEmitted,

@@ -78,6 +78,7 @@ func judgeStateIntegrity(gs *gameengine.GameState, r *OracleResult) {
 	}
 	if gs.Flags != nil {
 		_, snap.HasWinner = gs.Flags["winner"]
+		snap.TurnCapped = gs.Flags["turn_capped"] == 1
 	}
 	for i, s := range gs.Seats {
 		if s == nil {
