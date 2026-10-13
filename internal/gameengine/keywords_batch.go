@@ -140,7 +140,15 @@ func CheckPersist(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !perm.HasKeyword("persist") {
+	// r82 — layer-aware. CR §613.1f: a creature stripped of its abilities
+	// (Humility, Lignify, Darksteel Mutation) has no persist and must stay
+	// dead; the layer-blind read saw the printed keyword and returned it
+	// anyway, handing the controller a free body off a wipe. The LKI object
+	// is still visible to the layer system at this point — probed, both with
+	// a pointer-identity grant and with an anthem-shaped
+	// controller+type predicate — so a §613-granted persist is now honoured
+	// too (CR §603.10 wants the state immediately before the death).
+	if !keywordActive(gs, perm, "persist") {
 		return
 	}
 	// LKI: a creature that died WITH a -1/-1 counter does not return (the
@@ -158,7 +166,8 @@ func CheckUndying(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !perm.HasKeyword("undying") {
+	// r82 — layer-aware, same reasoning as CheckPersist above.
+	if !keywordActive(gs, perm, "undying") {
 		return
 	}
 	if perm.Counters != nil && perm.Counters["+1/+1"] > 0 {
@@ -558,7 +567,13 @@ func CheckSoulshift(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	if !perm.HasKeyword("soulshift") {
+	// r82 — layer-aware. The STRIP direction is the live one: a Humbled
+	// permanent has no soulshift and must not return a Spirit. A bare layer
+	// GRANT of the word is inert by construction, because soulshiftN reads
+	// the printed Card.AST for the number and a granted keyword carries no
+	// N — so the grant arm gates function while the printed text supplies
+	// the magnitude. Noted rather than asserted in the regressions.
+	if !keywordActive(gs, perm, "soulshift") {
 		return
 	}
 	n := soulshiftN(perm)
