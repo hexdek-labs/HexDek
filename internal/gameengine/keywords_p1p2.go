@@ -345,11 +345,11 @@ func ApplyWitherDamageToCreature(gs *GameState, src *Permanent, target *Permanen
 }
 
 // HasWither returns true if the permanent has the wither keyword.
-func HasWither(p *Permanent) bool {
+func HasWither(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	return p.HasKeyword("wither")
+	return keywordActive(gs, p, "wither")
 }
 
 // ---------------------------------------------------------------------------
@@ -485,7 +485,7 @@ func ApplyBushido(gs *GameState, perm *Permanent, bushidoN int) {
 // GetBushidoN returns the bushido N value for a permanent.
 // Checks (in priority order): Flags["bushido_n"], AST keyword Args, default 1.
 // Returns 0 if no bushido.
-func GetBushidoN(p *Permanent) int {
+func GetBushidoN(gs *GameState, p *Permanent) int {
 	if p == nil {
 		return 0
 	}
@@ -496,7 +496,7 @@ func GetBushidoN(p *Permanent) int {
 		}
 	}
 	// Check keyword flag.
-	if !p.HasKeyword("bushido") {
+	if !keywordActive(gs, p, "bushido") {
 		return 0
 	}
 	// Extract N from AST keyword args (e.g. "bushido 2" → Args[0] = 2).
@@ -527,7 +527,7 @@ func FireBushidoTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*
 		}
 		// Attacker became blocked — one event regardless of blocker count.
 		if !fired[atk] {
-			if n := GetBushidoN(atk); n > 0 {
+			if n := GetBushidoN(gs, atk); n > 0 {
 				ApplyBushido(gs, atk, n)
 			}
 			fired[atk] = true
@@ -538,7 +538,7 @@ func FireBushidoTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*
 			if fired[blk] {
 				continue
 			}
-			if bn := GetBushidoN(blk); bn > 0 {
+			if bn := GetBushidoN(gs, blk); bn > 0 {
 				ApplyBushido(gs, blk, bn)
 			}
 			fired[blk] = true
@@ -586,12 +586,12 @@ func FireFlankingTriggers(gs *GameState, attackers []*Permanent, blockerMap map[
 		return
 	}
 	for _, atk := range attackers {
-		if !atk.HasKeyword("flanking") {
+		if !keywordActive(gs, atk, "flanking") {
 			continue
 		}
 		blockers := blockerMap[atk]
 		for _, blk := range blockers {
-			if blk.HasKeyword("flanking") {
+			if keywordActive(gs, blk, "flanking") {
 				continue // Creatures with flanking are immune.
 			}
 			ApplyFlanking(gs, blk)
@@ -611,14 +611,14 @@ func FireFlankingTriggers(gs *GameState, attackers []*Permanent, blockerMap map[
 // with horsemanship. CR §702.30a.
 //
 // This is wired into canBlock in combat.go.
-func CanBlockHorsemanship(attacker, blocker *Permanent) bool {
+func CanBlockHorsemanship(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	if !attacker.HasKeyword("horsemanship") {
+	if !keywordActive(gs, attacker, "horsemanship") {
 		return true // No horsemanship on attacker, no restriction.
 	}
-	return blocker.HasKeyword("horsemanship")
+	return keywordActive(gs, blocker, "horsemanship")
 }
 
 // ---------------------------------------------------------------------------
@@ -664,6 +664,9 @@ func RegisterDevoidEffect(gs *GameState, perm *Permanent) {
 }
 
 // HasDevoid returns true if the permanent has the devoid keyword.
+// r77 — DELIBERATELY NOT MIGRATED. Zero production callers; the live
+// path is CardHasDevoid (card-level, pre-battlefield). Migrating a
+// dead function would only make the file look more correct.
 func HasDevoid(p *Permanent) bool {
 	if p == nil {
 		return false
@@ -679,19 +682,19 @@ func HasDevoid(p *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // HasShroud returns true if the permanent has the shroud keyword.
-func HasShroud(p *Permanent) bool {
+func HasShroud(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	return p.HasKeyword("shroud")
+	return keywordActive(gs, p, "shroud")
 }
 
 // HasHexproof returns true if the permanent has the hexproof keyword.
-func HasHexproof(p *Permanent) bool {
+func HasHexproof(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	return p.HasKeyword("hexproof")
+	return keywordActive(gs, p, "hexproof")
 }
 
 // CanBeTargetedBy checks if a permanent can be targeted by a spell or
@@ -702,14 +705,14 @@ func HasHexproof(p *Permanent) bool {
 //   - Hexproof: can't be targeted by OPPONENTS (controller can target).
 //
 // Returns true if targeting is legal.
-func CanBeTargetedBy(perm *Permanent, seatIdx int) bool {
+func CanBeTargetedBy(gs *GameState, perm *Permanent, seatIdx int) bool {
 	if perm == nil {
 		return false
 	}
-	if HasShroud(perm) {
+	if HasShroud(gs, perm) {
 		return false // No one can target.
 	}
-	if HasHexproof(perm) && perm.Controller != seatIdx {
+	if HasHexproof(gs, perm) && perm.Controller != seatIdx {
 		return false // Opponents can't target.
 	}
 	return true
@@ -770,9 +773,9 @@ func CheckCombatKeywordsP1P2(gs *GameState, attackers []*Permanent, blockerMap m
 // CanBlockP1P2 performs P1P2-specific blocking legality checks.
 // Returns false if the block is illegal due to horsemanship.
 // This is called from canBlock in combat.go.
-func CanBlockP1P2(attacker, blocker *Permanent) bool {
+func CanBlockP1P2(gs *GameState, attacker, blocker *Permanent) bool {
 	// Horsemanship evasion.
-	if !CanBlockHorsemanship(attacker, blocker) {
+	if !CanBlockHorsemanship(gs, attacker, blocker) {
 		return false
 	}
 	return true
@@ -785,11 +788,14 @@ func CanBlockP1P2(attacker, blocker *Permanent) bool {
 // ShouldApplyWitherDamage returns true if the source has wither and the
 // target is a creature. Used by combat damage code to decide whether to
 // route damage through ApplyWitherDamageToCreature.
-func ShouldApplyWitherDamage(src *Permanent, target *Permanent) bool {
+// r77 — DEAD: zero production callers. combat.go calls HasWither
+// directly. Threaded only so it still compiles; filed for
+// deletion-or-wiring as its own change.
+func ShouldApplyWitherDamage(gs *GameState, src *Permanent, target *Permanent) bool {
 	if src == nil || target == nil {
 		return false
 	}
-	if !HasWither(src) {
+	if !HasWither(gs, src) {
 		return false
 	}
 	return target.IsCreature()
@@ -858,6 +864,8 @@ func AllP1P2Keywords() []string {
 
 // HasP1P2Keyword returns true if the permanent has any of the P1P2
 // keywords. Used for fast-path checks.
+// r77 — DELIBERATELY NOT MIGRATED. Zero callers anywhere; the
+// "fast-path checks" the comment claims do not exist.
 func HasP1P2Keyword(p *Permanent) bool {
 	if p == nil {
 		return false

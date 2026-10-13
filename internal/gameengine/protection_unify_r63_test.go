@@ -70,13 +70,13 @@ func TestProtection_ProtRVocabBlocksTargeting(t *testing.T) {
 	blackKill := &Card{Name: "Doom Blade", Types: []string{"instant"}, Colors: []string{"B"}}
 	blueDraw := &Card{Name: "Brainstorm", Types: []string{"instant"}, Colors: []string{"U"}}
 
-	if CanBeTargetedByCombat(akroma, 0, redBolt) {
+	if CanBeTargetedByCombat(gs, akroma, 0, redBolt) {
 		t.Error("Akroma (prot:R) must not be targetable by a red spell")
 	}
-	if CanBeTargetedByCombat(akroma, 0, blackKill) {
+	if CanBeTargetedByCombat(gs, akroma, 0, blackKill) {
 		t.Error("Akroma (prot:B) must not be targetable by a black spell")
 	}
-	if !CanBeTargetedByCombat(akroma, 0, blueDraw) {
+	if !CanBeTargetedByCombat(gs, akroma, 0, blueDraw) {
 		t.Error("Akroma must remain targetable by a blue spell")
 	}
 }
@@ -89,11 +89,11 @@ func TestProtection_ASTRawBlocksTargeting(t *testing.T) {
 	p.Card.AST = &gameast.CardAST{Name: "Progenitus",
 		Abilities: []gameast.Ability{&gameast.Keyword{Name: "protection", Raw: "Protection from everything"}}}
 	anySrc := &Card{Name: "Swords to Plowshares", Types: []string{"instant"}, Colors: []string{"W"}}
-	if CanBeTargetedByCombat(p, 0, anySrc) {
+	if CanBeTargetedByCombat(gs, p, 0, anySrc) {
 		t.Error("protection from everything must block all targeting")
 	}
 	colorless := &Card{Name: "Spatial Contortion", Types: []string{"instant"}}
-	if CanBeTargetedByCombat(p, 0, colorless) {
+	if CanBeTargetedByCombat(gs, p, 0, colorless) {
 		t.Error("protection from everything must block even a colorless source")
 	}
 }

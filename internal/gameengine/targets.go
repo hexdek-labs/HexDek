@@ -337,7 +337,7 @@ func legalSinglePermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, s
 			// from [color]) — targeting check. Only applies when the filter
 			// is "targeted" (i.e. "target creature"). Untargeted effects
 			// ("each creature") bypass shroud/hexproof.
-			if f.Targeted && !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+			if f.Targeted && !CanBeTargetedByCombat(gs, p, srcSeat, srcCard) {
 				continue
 			}
 			out = append(out, Target{Kind: TargetKindPermanent, Permanent: p, Seat: p.Controller})
@@ -435,7 +435,7 @@ func consumeAnnouncedTargets(gs *GameState, srcSeat int, src *Permanent, f gamea
 					continue
 				}
 			}
-			if !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+			if !CanBeTargetedByCombat(gs, p, srcSeat, srcCard) {
 				continue
 			}
 			out = append(out, t)
@@ -517,7 +517,7 @@ func pickNPermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, src *Pe
 			if !matchesPermanent(f, p) {
 				continue
 			}
-			if f.Targeted && !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+			if f.Targeted && !CanBeTargetedByCombat(gs, p, srcSeat, srcCard) {
 				continue
 			}
 			score := p.Power()

@@ -107,7 +107,7 @@ func buildTargetingIllegality() []negTest {
 			hex := makePerm(gs, 0, "Hexproof Bear", []string{"creature"}, 2, 2)
 			hex.Flags["kw:hexproof"] = 1
 			// Opponent (seat 1) attempts to target.
-			if gameengine.CanBeTargetedBy(hex, 1) {
+			if gameengine.CanBeTargetedBy(gs, hex, 1) {
 				return negFail(cat, "hexproof", "opponent should NOT be able to target hexproof creature")
 			}
 			return nil
@@ -118,11 +118,11 @@ func buildTargetingIllegality() []negTest {
 			shrouded := makePerm(gs, 0, "Shrouded Bear", []string{"creature"}, 2, 2)
 			shrouded.Flags["kw:shroud"] = 1
 			// Even controller should not be able to target.
-			if gameengine.CanBeTargetedBy(shrouded, 0) {
+			if gameengine.CanBeTargetedBy(gs, shrouded, 0) {
 				return negFail(cat, "shroud", "controller should NOT be able to target shrouded creature")
 			}
 			// Opponent also can't target.
-			if gameengine.CanBeTargetedBy(shrouded, 1) {
+			if gameengine.CanBeTargetedBy(gs, shrouded, 1) {
 				return negFail(cat, "shroud", "opponent should NOT be able to target shrouded creature")
 			}
 			return nil
@@ -139,7 +139,7 @@ func buildTargetingIllegality() []negTest {
 				Types: []string{"instant"}, Colors: []string{"R"},
 			}
 			// CanBeTargetedByCombat checks protection.
-			if gameengine.CanBeTargetedByCombat(protected, 0, redCard) {
+			if gameengine.CanBeTargetedByCombat(gs, protected, 0, redCard) {
 				return negFail(cat, "protection", "protection from red should block red spell targeting")
 			}
 			return nil

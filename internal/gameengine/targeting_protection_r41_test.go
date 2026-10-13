@@ -179,11 +179,11 @@ func TestTargetingProtectionSweepR41_ProtectionFromColor(t *testing.T) {
 
 			// Direct CanBeTargetedByCombat assertions — this is what
 			// pickPermanentTarget gates on at targets.go:268.
-			if CanBeTargetedByCombat(perm, 0, tc.blockedSource) {
+			if CanBeTargetedByCombat(gs, perm, 0, tc.blockedSource) {
 				t.Fatalf("%s: protection from %v should reject source %s (%v)",
 					tc.name, tc.protections, tc.blockedSource.Name, tc.blockedSource.Colors)
 			}
-			if !CanBeTargetedByCombat(perm, 0, tc.allowedSource) {
+			if !CanBeTargetedByCombat(gs, perm, 0, tc.allowedSource) {
 				t.Fatalf("%s: non-matching colored source %s (%v) should still be legal",
 					tc.name, tc.allowedSource.Name, tc.allowedSource.Colors)
 			}

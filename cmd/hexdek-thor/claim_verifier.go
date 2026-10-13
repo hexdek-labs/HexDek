@@ -760,11 +760,11 @@ func buildCombatClaimTests() []claimTest {
 			hex := makePerm(gs, 0, "Gladecover Scout", []string{"creature"}, 1, 1)
 			hex.Flags["kw:hexproof"] = 1
 			// Opponent (seat 1) should not be able to target.
-			if gameengine.CanBeTargetedBy(hex, 1) {
+			if gameengine.CanBeTargetedBy(gs, hex, 1) {
 				return claimFail(cat, "hexproof", "hexproof should prevent opponent targeting")
 			}
 			// Controller (seat 0) should be able to target.
-			if !gameengine.CanBeTargetedBy(hex, 0) {
+			if !gameengine.CanBeTargetedBy(gs, hex, 0) {
 				return claimFail(cat, "hexproof", "hexproof should allow controller targeting")
 			}
 			return nil

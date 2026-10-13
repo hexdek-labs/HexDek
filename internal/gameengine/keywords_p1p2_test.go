@@ -356,12 +356,12 @@ func TestHasWither(t *testing.T) {
 	p := addP1P2Battlefield(gs, 0, "Boggart Ram-Gang", 3, 3, "creature")
 	p.Flags["kw:wither"] = 1
 
-	if !HasWither(p) {
+	if !HasWither(gs, p) {
 		t.Fatal("creature with kw:wither flag should have wither")
 	}
 
 	p2 := addP1P2Battlefield(gs, 0, "Grizzly Bears", 2, 2, "creature")
-	if HasWither(p2) {
+	if HasWither(gs, p2) {
 		t.Fatal("creature without wither should not have wither")
 	}
 }
@@ -372,13 +372,13 @@ func TestShouldApplyWitherDamage(t *testing.T) {
 	src.Flags["kw:wither"] = 1
 	target := addP1P2Battlefield(gs, 1, "Grizzly Bears", 2, 2, "creature")
 
-	if !ShouldApplyWitherDamage(src, target) {
+	if !ShouldApplyWitherDamage(gs, src, target) {
 		t.Fatal("should apply wither damage from wither creature to creature")
 	}
 
 	// Non-wither source.
 	src2 := addP1P2Battlefield(gs, 0, "Lightning Bolt", 3, 3, "creature")
-	if ShouldApplyWitherDamage(src2, target) {
+	if ShouldApplyWitherDamage(gs, src2, target) {
 		t.Fatal("should NOT apply wither from non-wither creature")
 	}
 }
@@ -491,21 +491,21 @@ func TestGetBushidoN(t *testing.T) {
 	p1 := addP1P2Battlefield(gs, 0, "Test Bushido 3", 2, 2, "creature")
 	p1.Flags["kw:bushido"] = 1
 	p1.Flags["bushido_n"] = 3
-	if GetBushidoN(p1) != 3 {
-		t.Fatalf("expected bushido 3, got %d", GetBushidoN(p1))
+	if GetBushidoN(gs, p1) != 3 {
+		t.Fatalf("expected bushido 3, got %d", GetBushidoN(gs, p1))
 	}
 
 	// With just kw:bushido flag (default 1).
 	p2 := addP1P2Battlefield(gs, 0, "Test Bushido Default", 2, 2, "creature")
 	p2.Flags["kw:bushido"] = 1
-	if GetBushidoN(p2) != 1 {
-		t.Fatalf("expected bushido 1 (default), got %d", GetBushidoN(p2))
+	if GetBushidoN(gs, p2) != 1 {
+		t.Fatalf("expected bushido 1 (default), got %d", GetBushidoN(gs, p2))
 	}
 
 	// Without bushido.
 	p3 := addP1P2Battlefield(gs, 0, "No Bushido", 2, 2, "creature")
-	if GetBushidoN(p3) != 0 {
-		t.Fatalf("expected bushido 0, got %d", GetBushidoN(p3))
+	if GetBushidoN(gs, p3) != 0 {
+		t.Fatalf("expected bushido 0, got %d", GetBushidoN(gs, p3))
 	}
 }
 
@@ -519,7 +519,7 @@ func TestGetBushidoN_FromAST(t *testing.T) {
 		},
 	}
 	// No Flags set — should extract N=2 from AST Args.
-	if got := GetBushidoN(p); got != 2 {
+	if got := GetBushidoN(gs, p); got != 2 {
 		t.Fatalf("expected bushido 2 from AST, got %d", got)
 	}
 }
@@ -632,7 +632,7 @@ func TestCanBlockHorsemanship_BlockerWithout(t *testing.T) {
 
 	blk := addP1P2Battlefield(gs, 1, "Grizzly Bears", 2, 2, "creature")
 
-	if CanBlockHorsemanship(atk, blk) {
+	if CanBlockHorsemanship(gs, atk, blk) {
 		t.Fatal("creature without horsemanship should NOT be able to block a creature with horsemanship")
 	}
 }
@@ -646,7 +646,7 @@ func TestCanBlockHorsemanship_BlockerWith(t *testing.T) {
 	blk := addP1P2Battlefield(gs, 1, "Riding Tiger", 3, 3, "creature")
 	blk.Flags["kw:horsemanship"] = 1
 
-	if !CanBlockHorsemanship(atk, blk) {
+	if !CanBlockHorsemanship(gs, atk, blk) {
 		t.Fatal("creature with horsemanship SHOULD be able to block a creature with horsemanship")
 	}
 }
@@ -657,7 +657,7 @@ func TestCanBlockHorsemanship_AttackerWithout(t *testing.T) {
 	atk := addP1P2Battlefield(gs, 0, "Grizzly Bears", 2, 2, "creature")
 	blk := addP1P2Battlefield(gs, 1, "Wall of Stone", 0, 5, "creature")
 
-	if !CanBlockHorsemanship(atk, blk) {
+	if !CanBlockHorsemanship(gs, atk, blk) {
 		t.Fatal("when attacker has no horsemanship, any blocker should work")
 	}
 }
@@ -670,7 +670,7 @@ func TestCanBlockP1P2_Integration(t *testing.T) {
 
 	blk := addP1P2Battlefield(gs, 1, "Grizzly Bears", 2, 2, "creature")
 
-	if CanBlockP1P2(atk, blk) {
+	if CanBlockP1P2(gs, atk, blk) {
 		t.Fatal("CanBlockP1P2 should return false for non-horsemanship blocker")
 	}
 }
@@ -800,7 +800,7 @@ func TestHasShroud(t *testing.T) {
 	p := addP1P2Battlefield(gs, 0, "Blastoderm", 5, 5, "creature")
 	p.Flags["kw:shroud"] = 1
 
-	if !HasShroud(p) {
+	if !HasShroud(gs, p) {
 		t.Fatal("creature with kw:shroud should have shroud")
 	}
 }
@@ -811,10 +811,10 @@ func TestCanBeTargetedBy_Shroud(t *testing.T) {
 	p.Flags["kw:shroud"] = 1
 
 	// Shroud prevents targeting by ANYONE, including controller.
-	if CanBeTargetedBy(p, 0) {
+	if CanBeTargetedBy(gs, p, 0) {
 		t.Fatal("shroud should prevent targeting by controller")
 	}
-	if CanBeTargetedBy(p, 1) {
+	if CanBeTargetedBy(gs, p, 1) {
 		t.Fatal("shroud should prevent targeting by opponent")
 	}
 }
@@ -825,10 +825,10 @@ func TestCanBeTargetedBy_Hexproof(t *testing.T) {
 	p.Flags["kw:hexproof"] = 1
 
 	// Hexproof allows controller targeting but blocks opponents.
-	if !CanBeTargetedBy(p, 0) {
+	if !CanBeTargetedBy(gs, p, 0) {
 		t.Fatal("hexproof should allow targeting by controller")
 	}
-	if CanBeTargetedBy(p, 1) {
+	if CanBeTargetedBy(gs, p, 1) {
 		t.Fatal("hexproof should prevent targeting by opponent")
 	}
 }
@@ -837,10 +837,10 @@ func TestCanBeTargetedBy_Normal(t *testing.T) {
 	gs := newP1P2Game(t)
 	p := addP1P2Battlefield(gs, 0, "Grizzly Bears", 2, 2, "creature")
 
-	if !CanBeTargetedBy(p, 0) {
+	if !CanBeTargetedBy(gs, p, 0) {
 		t.Fatal("normal creature should be targetable by controller")
 	}
-	if !CanBeTargetedBy(p, 1) {
+	if !CanBeTargetedBy(gs, p, 1) {
 		t.Fatal("normal creature should be targetable by opponent")
 	}
 }
@@ -997,17 +997,17 @@ func TestNilSafety_AllFunctions(t *testing.T) {
 	PayEntwineCost(nil, 0, nil, 0)
 	ShouldEntwine(nil, 0, 0, 0)
 	ApplyWitherDamageToCreature(nil, nil, nil, 0)
-	HasWither(nil)
+	HasWither(nil, nil)
 	HasDevoid(nil)
-	HasShroud(nil)
-	HasHexproof(nil)
-	CanBeTargetedBy(nil, 0)
+	HasShroud(nil, nil)
+	HasHexproof(nil, nil)
+	CanBeTargetedBy(nil, nil, 0)
 	ApplyBushido(nil, nil, 0)
-	GetBushidoN(nil)
+	GetBushidoN(nil, nil)
 	ApplyFlanking(nil, nil)
-	CanBlockHorsemanship(nil, nil)
-	CanBlockP1P2(nil, nil)
-	ShouldApplyWitherDamage(nil, nil)
+	CanBlockHorsemanship(nil, nil, nil)
+	CanBlockP1P2(nil, nil, nil)
+	ShouldApplyWitherDamage(nil, nil, nil)
 	CardHasDevoid(nil)
 	GetDevoidColors(nil)
 	HasP1P2Keyword(nil)

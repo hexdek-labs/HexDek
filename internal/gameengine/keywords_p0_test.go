@@ -733,12 +733,12 @@ func TestHexproof_OppCantTarget_ControllerCan(t *testing.T) {
 	hexproofed := addP0BattlefieldWithKeyword(gs, 0, "Geist of Saint Traft", 2, 2, "hexproof", "creature")
 
 	// Opponent can't target.
-	if CanBeTargetedBy(hexproofed, 1) {
+	if CanBeTargetedBy(gs, hexproofed, 1) {
 		t.Error("hexproof creature should not be targetable by opponent")
 	}
 
 	// Controller CAN target.
-	if !CanBeTargetedBy(hexproofed, 0) {
+	if !CanBeTargetedBy(gs, hexproofed, 0) {
 		t.Error("hexproof creature should be targetable by controller")
 	}
 }

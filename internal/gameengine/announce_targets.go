@@ -246,7 +246,7 @@ func legalAnyTargets(gs *GameState, controller int, src *Permanent) []Target {
 			if !p.IsCreature() && !p.IsPlaneswalker() {
 				continue
 			}
-			if !CanBeTargetedByCombat(p, controller, srcCard) {
+			if !CanBeTargetedByCombat(gs, p, controller, srcCard) {
 				continue
 			}
 			out = append(out, Target{Kind: TargetKindPermanent, Permanent: p, Seat: p.Controller})

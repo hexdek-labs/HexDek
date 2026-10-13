@@ -1159,7 +1159,7 @@ func TestHexproofFromColor_BlocksOpponentTargeting(t *testing.T) {
 	}
 
 	// Opponent (seat 1) tries to target with a black spell.
-	if CanBeTargetedByCombat(p, 1, blackSpell) {
+	if CanBeTargetedByCombat(gs, p, 1, blackSpell) {
 		t.Error("hexproof from black should prevent black spell targeting by opponent")
 	}
 }
@@ -1176,7 +1176,7 @@ func TestHexproofFromColor_AllowsControllerTargeting(t *testing.T) {
 	}
 
 	// Controller (seat 0) can still target own creatures.
-	if !CanBeTargetedByCombat(p, 0, blackSpell) {
+	if !CanBeTargetedByCombat(gs, p, 0, blackSpell) {
 		t.Error("hexproof from black should allow controller to target")
 	}
 }
@@ -1193,7 +1193,7 @@ func TestHexproofFromColor_AllowsOtherColorTargeting(t *testing.T) {
 	}
 
 	// Opponent with a red spell should be able to target.
-	if !CanBeTargetedByCombat(p, 1, redSpell) {
+	if !CanBeTargetedByCombat(gs, p, 1, redSpell) {
 		t.Error("hexproof from black should allow red spell targeting by opponent")
 	}
 }

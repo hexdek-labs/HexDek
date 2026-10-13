@@ -481,6 +481,15 @@ func AddCountersToPermanent(
 		if err != nil {
 			return 0, nil
 		}
+		// r77 — a counter is a characteristics mutation. The CounterStacks
+		// store feeds the layer base (r66 folded keyword counters into
+		// runtimeKeywordSources), so without this the layer query keeps
+		// serving the pre-counter answer. The legacy AddCounter path has
+		// always invalidated; this one never did, which stayed latent only
+		// while every consumer read the layer-BLIND query.
+		if placed > 0 {
+			gs.InvalidateCharacteristicsCache()
+		}
 		return placed, nil
 	}
 
@@ -501,6 +510,10 @@ func AddCountersToPermanent(
 	placed, err := counters.AddCounters(perm.AsCounterTarget(), canonical, final, sourceInstanceID, gs.EffectTimestamp)
 	if err != nil {
 		return 0, ev.AppliedChain
+	}
+	// r77 — see the note on the non-doubling arm above.
+	if placed > 0 {
+		gs.InvalidateCharacteristicsCache()
 	}
 	return placed, ev.AppliedChain
 }

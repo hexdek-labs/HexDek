@@ -17,14 +17,17 @@ import (
 // drives the new CounterStacks path — distinct from the legacy
 // Permanent.Counters map so we're confident the keyword grant flows
 // through the §122.1c API, not the map fallback.
-func placeKeywordCounter(t *testing.T, p *Permanent, kind string, count int) {
+// r77 — this used to call counters.AddCounters directly, bypassing the
+// production entry point. That hid a real bug: AddCountersToPermanent
+// never invalidated the characteristics cache after writing the
+// CounterStacks store, so the layer-aware query kept serving the
+// pre-counter answer. Routing through the canonical path means these
+// tests exercise what production actually does.
+func placeKeywordCounter(t *testing.T, gs *GameState, p *Permanent, kind string, count int) {
 	t.Helper()
-	placed, err := counters.AddCounters(p.AsCounterTarget(), kind, count, "h-test", 0)
-	if err != nil {
-		t.Fatalf("counters.AddCounters(%s, %d): %v", kind, count, err)
-	}
+	placed, _ := AddCountersToPermanent(gs, p, kind, count, "h-test", false)
 	if placed != count {
-		t.Fatalf("counters.AddCounters(%s, %d): placed %d", kind, count, placed)
+		t.Fatalf("AddCountersToPermanent(%s, %d): placed %d", kind, count, placed)
 	}
 }
 
@@ -37,7 +40,7 @@ func TestHasKeywordViaCounterStack(t *testing.T) {
 	if p.HasKeyword("flying") {
 		t.Fatal("baseline HasKeyword(flying) = true, want false")
 	}
-	placeKeywordCounter(t, p, "flying", 1)
+	placeKeywordCounter(t, gs, p, "flying", 1)
 	if !p.HasKeyword("flying") {
 		t.Errorf("post-placement HasKeyword(flying) = false, want true")
 	}
@@ -60,7 +63,7 @@ func TestHasKeywordEveryKeywordCounterFamily(t *testing.T) {
 			t.Errorf("%s: baseline HasKeyword = true, want false", kw)
 			continue
 		}
-		placeKeywordCounter(t, p, kw, 1)
+		placeKeywordCounter(t, gs, p, kw, 1)
 		if !p.HasKeyword(kw) {
 			t.Errorf("%s: HasKeyword after counter placement = false, want true", kw)
 		}
@@ -77,7 +80,7 @@ func TestIsIndestructibleViaCounterStack(t *testing.T) {
 	if p.IsIndestructible() {
 		t.Fatal("baseline IsIndestructible = true, want false")
 	}
-	placeKeywordCounter(t, p, "indestructible", 1)
+	placeKeywordCounter(t, gs, p, "indestructible", 1)
 	if !p.IsIndestructible() {
 		t.Errorf("IsIndestructible after counter placement = false, want true")
 	}
@@ -88,14 +91,14 @@ func TestIsIndestructibleViaCounterStack(t *testing.T) {
 func TestHexproofViaCounterStack(t *testing.T) {
 	gs := newCombatGame(t)
 	p := addCreature(gs, 0, "Test Druid", 2, 2)
-	if !CanBeTargetedBy(p, 1) {
+	if !CanBeTargetedBy(gs, p, 1) {
 		t.Fatal("baseline opponent-target = false, want true")
 	}
-	placeKeywordCounter(t, p, "hexproof", 1)
-	if CanBeTargetedBy(p, 1) {
+	placeKeywordCounter(t, gs, p, "hexproof", 1)
+	if CanBeTargetedBy(gs, p, 1) {
 		t.Errorf("opponent-target with hexproof counter = true, want false (§702.11)")
 	}
-	if !CanBeTargetedBy(p, 0) {
+	if !CanBeTargetedBy(gs, p, 0) {
 		t.Errorf("controller-target with hexproof counter = false, want true")
 	}
 }
@@ -110,14 +113,14 @@ func TestFlyingCounterBlocksAsFlier(t *testing.T) {
 	if !CanBlock(atk, blk) {
 		t.Fatal("baseline ground vs ground block = false, want true")
 	}
-	placeKeywordCounter(t, atk, "flying", 1)
+	placeKeywordCounter(t, gs, atk, "flying", 1)
 	if CanBlock(atk, blk) {
 		t.Errorf("ground blocker vs flying-counter attacker: CanBlock = true, want false")
 	}
 
 	// A reach-counter blocker should be able to block the flying attacker.
 	reachBlk := addCreature(gs, 1, "Test Spider", 1, 3)
-	placeKeywordCounter(t, reachBlk, "reach", 1)
+	placeKeywordCounter(t, gs, reachBlk, "reach", 1)
 	if !CanBlock(atk, reachBlk) {
 		t.Errorf("reach-counter blocker vs flying-counter attacker: CanBlock = false, want true")
 	}
@@ -130,7 +133,7 @@ func TestFlyingCounterBlocksAsFlier(t *testing.T) {
 func TestLifelinkCounterGainsLifeOnDamage(t *testing.T) {
 	gs := newCombatGame(t)
 	atk := addCreature(gs, 0, "Test Cleric", 3, 3)
-	placeKeywordCounter(t, atk, "lifelink", 1)
+	placeKeywordCounter(t, gs, atk, "lifelink", 1)
 
 	startLife := gs.Seats[0].Life
 	CombatPhase(gs)
@@ -146,7 +149,7 @@ func TestLifelinkCounterGainsLifeOnDamage(t *testing.T) {
 func TestVigilanceCounterSkipsTap(t *testing.T) {
 	gs := newCombatGame(t)
 	atk := addCreature(gs, 0, "Test Knight", 2, 2)
-	placeKeywordCounter(t, atk, "vigilance", 1)
+	placeKeywordCounter(t, gs, atk, "vigilance", 1)
 
 	CombatPhase(gs)
 	if atk.Tapped {
@@ -161,7 +164,7 @@ func TestVigilanceCounterSkipsTap(t *testing.T) {
 func TestKeywordCounterPersistsThroughTypeStripPermanent(t *testing.T) {
 	gs := newCombatGame(t)
 	p := addCreature(gs, 0, "Test Beast", 2, 2)
-	placeKeywordCounter(t, p, "lifelink", 1)
+	placeKeywordCounter(t, gs, p, "lifelink", 1)
 	if !p.HasKeyword("lifelink") {
 		t.Fatal("baseline HasKeyword(lifelink) = false")
 	}

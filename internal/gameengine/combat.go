@@ -1423,7 +1423,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 		}
 	}
 	// §702.30 — Horsemanship: blocked only by creatures with horsemanship.
-	if !CanBlockP1P2(attacker, blocker) {
+	if !CanBlockP1P2(gs, attacker, blocker) {
 		return false
 	}
 	// Combat-file evasion keywords: intimidate, fear, shadow, skulk, daunt.
@@ -2430,7 +2430,7 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 	// §702.80 — Wither: damage dealt to creatures is dealt in the form
 	// of -1/-1 counters instead of marked damage. Unlike infect, damage
 	// to players is normal (handled in applyCombatDamageToPlayer).
-	if HasWither(src) {
+	if HasWither(gs, src) {
 		ApplyWitherDamageToCreature(gs, src, target, amount)
 		gs.InvalidateCharacteristicsCache() // -1/-1 counters change P/T
 		if keywordActive(gs, src, "lifelink") {

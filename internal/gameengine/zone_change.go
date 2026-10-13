@@ -1087,7 +1087,7 @@ func isTargetStillLegal(gs *GameState, item *StackItem, t Target) bool {
 		}
 		if item != nil {
 			src := stackItemSourceCard(item)
-			if src != nil && !CanBeTargetedByCombat(t.Permanent, item.Controller, src) {
+			if src != nil && !CanBeTargetedByCombat(gs, t.Permanent, item.Controller, src) {
 				return false
 			}
 			// CR §608.2b — re-validate against the spell/ability's target
@@ -1171,7 +1171,7 @@ func ValidateTargetsAtAnnouncement(gs *GameState, controller int, sourceCard *Ca
 			if t.Permanent == nil || !permanentOnBattlefield(gs, t.Permanent) {
 				return &CastError{Reason: "target_illegal_permanent"}
 			}
-			if !CanBeTargetedByCombat(t.Permanent, controller, sourceCard) {
+			if !CanBeTargetedByCombat(gs, t.Permanent, controller, sourceCard) {
 				return &CastError{Reason: "target_protected"}
 			}
 		case TargetKindStackItem:

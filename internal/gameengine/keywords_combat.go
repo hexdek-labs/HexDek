@@ -1950,12 +1950,12 @@ func HexproofFromColors(p *Permanent) map[string]struct{} {
 
 // CanBeTargetedByCombat extends CanBeTargetedBy with hexproof-from-color
 // and protection-from-type checks. Returns true if targeting is legal.
-func CanBeTargetedByCombat(perm *Permanent, seatIdx int, sourceCard *Card) bool {
+func CanBeTargetedByCombat(gs *GameState, perm *Permanent, seatIdx int, sourceCard *Card) bool {
 	if perm == nil {
 		return false
 	}
 	// Base targeting check (shroud + hexproof).
-	if !CanBeTargetedBy(perm, seatIdx) {
+	if !CanBeTargetedBy(gs, perm, seatIdx) {
 		return false
 	}
 	// Hexproof from [color] — only blocks opponents.
