@@ -59,6 +59,14 @@ func TestSummoningSick_TokenThisTurnCannotAttackWithoutHaste(t *testing.T) {
 		tok.Flags = map[string]int{}
 	}
 	tok.Flags["kw:haste"] = 1
+	// r66: combat now asks the layer-aware query, so the stamp is a
+	// characteristics input and granting it must invalidate the cache
+	// — exactly as the real Brudiclad grant does
+	// (brudiclad_telchor_engineer.go stamps at :125 and invalidates at
+	// :130). The sibling test below already carries this for the strip
+	// side; without it this test asserts on a cache populated by the
+	// DeclareAttackers call above, which production never does.
+	gs.InvalidateCharacteristicsCache()
 
 	attackers = DeclareAttackers(gs, 0)
 	found := false

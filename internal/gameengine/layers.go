@@ -354,11 +354,12 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 		// keywords, externally granted ward, etc.) were previously WIPED by
 		// the unconditional nil + early return. Fold them in here, exactly
 		// as the face-up path does (see below), so they are not lost.
-		for _, g := range p.GrantedAbilities {
-			if !containsFold(c.Keywords, g) {
-				c.Keywords = append(c.Keywords, g)
-			}
-		}
+		// r66 — via the shared helper, which normalises the
+		// "level_bracket:" prefix HasKeyword trims. Folding the raw
+		// string put "level_bracket:flying" in chars.Keywords, so the
+		// layer query missed a level-up band keyword the layer-blind
+		// one saw.
+		foldGrantedAbilities(p, c)
 		// r65 — same fold for the runtime keyword surfaces (Flags
 		// stamp + keyword counters). A keyword counter grants its
 		// keyword regardless of card type (CR §122.6), so it survives
@@ -420,11 +421,7 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	// Granted abilities folded in — they're runtime-only equivalents of
 	// keywords for layer purposes. Python mirrors this in
 	// _baseline_characteristics via `perm.granted`.
-	for _, g := range p.GrantedAbilities {
-		if !containsFold(c.Keywords, g) {
-			c.Keywords = append(c.Keywords, g)
-		}
-	}
+	foldGrantedAbilities(p, c)
 	// r65 — fold the remaining runtime keyword surfaces (the
 	// Flags["kw:<name>"] stamp and keyword counters) into the layer
 	// BASE, so gs.HasKeywordOf is a true superset of p.HasKeyword and

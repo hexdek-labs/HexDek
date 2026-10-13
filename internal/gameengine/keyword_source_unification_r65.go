@@ -47,8 +47,11 @@ import (
 // WHAT THIS CHANGES. Only BaseCharacteristics, and only additively: the
 // runtime keyword surfaces are folded into the layer BASE, so they now
 // compose under the layers instead of sitting beside them. That makes
-// gs.HasKeywordOf a true superset of p.HasKeyword, which is what lets
-// call sites migrate to the layer-correct query. Folding at the base
+// gs.HasKeywordOf a superset of p.HasKeyword, which is what lets
+// call sites migrate to the layer-correct query. (r65 claimed that was
+// already TRUE as shipped; it was not — four sources still escaped it,
+// three of them closed in keyword_source_unification_r66.go, which
+// documents the fourth as a defect in HasKeyword.) Folding at the base
 // (rather than after the layers) is deliberate: a layer-6 "loses all
 // abilities" effect must strip a flag-granted keyword too, which is the
 // Humility phantom the invariants note describes.
@@ -56,10 +59,10 @@ import (
 // NOT changed here: the 81 p.HasKeyword call sites. Migrating them is a
 // behaviour change per call site and is deliberately a separate step.
 
-// runtimeKeywordSources returns the keywords conferred on p by the two
+// runtimeKeywordSources returns the keywords conferred on p by the
 // runtime surfaces that live outside the AST and outside
 // GrantedAbilities: the Flags["kw:<name>"] stamp and keyword counters
-// (CR §122.1c).
+// (CR §122.1c) in BOTH counter stores.
 //
 // The result is SORTED. BaseCharacteristics feeds chars.Keywords, and
 // the LayerIdempotency invariant compares two independently computed
@@ -124,6 +127,31 @@ func runtimeKeywordSources(p *Permanent) []string {
 			} else if def.Name != "" {
 				out = append(out, def.Name)
 			}
+		}
+	}
+
+	// Surface 3 (r66) — keyword counters held in the CounterStacks
+	// store rather than the legacy Counters map. These are two
+	// SEPARATE stores: HasKeyword consults the legacy map directly and
+	// then calls HasKeywordCounter, which reads CounterStacks. r65
+	// folded only the first, so a keyword counter written through the
+	// Counter DB path reached the layer-blind query and not this one.
+	//
+	// Resolved through the same registry lookup as surface 2, so a
+	// divergent grant (phyresis -> infect) folds as the keyword it
+	// confers and a non-KeywordGrant stack folds as nothing.
+	for _, st := range p.CounterStacks {
+		if st.Count <= 0 {
+			continue
+		}
+		def := counters.Lookup(st.Type)
+		if def == nil || def.Category != counters.KeywordGrant {
+			continue
+		}
+		if def.GrantedAbility != nil && def.GrantedAbility.Keyword != "" {
+			out = append(out, def.GrantedAbility.Keyword)
+		} else if def.Name != "" {
+			out = append(out, def.Name)
 		}
 	}
 

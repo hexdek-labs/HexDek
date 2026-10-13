@@ -128,10 +128,27 @@ func keywordActive(gs *GameState, p *Permanent, kw string) bool {
 	if p == nil {
 		return false
 	}
-	if p.HasKeyword(kw) {
-		return true
+	// r66 — this was a UNION (p.HasKeyword || gs.HasKeywordOf) because
+	// neither query was a superset of the other, so combat had to ask
+	// both. r65 + r66 folded every positive runtime surface into the
+	// layer base, and the layer query now sees everything the raw one
+	// does.
+	//
+	// That makes the raw arm not merely redundant but WRONG: the only
+	// case where it can still contribute is one where the layer query
+	// said NO — i.e. a layer-6 "loses all abilities" effect (Humility,
+	// Lignify, Darksteel Mutation) has removed the keyword. Keeping the
+	// union meant a Humbled 2/2 still had flying in combat, because
+	// the Flags["kw:flying"] stamp underneath it answered true forever.
+	// Verified by probe before this change.
+	//
+	// gs == nil (legacy / unit-test paths that build a Permanent with
+	// no GameState) still falls back to the raw query: there are no
+	// layers to consult, so it is the only answer available.
+	if gs == nil {
+		return p.HasKeyword(kw)
 	}
-	return gs != nil && gs.HasKeywordOf(p, kw)
+	return gs.HasKeywordOf(p, kw)
 }
 
 // permFlag gets/sets a single-bit combat flag on a Permanent. We route
