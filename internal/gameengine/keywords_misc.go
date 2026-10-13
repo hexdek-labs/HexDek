@@ -3321,19 +3321,31 @@ func permHasTriggerEvent(gs *GameState, p *Permanent, event string) bool {
 	if p == nil || p.Card == nil || p.Card.AST == nil {
 		return false
 	}
-	if gs.HasLostAllAbilities(p) {
-		return false
-	}
+	// r80 — ORDER MATTERS HERE, and getting it wrong cost ~55% of grinder
+	// throughput. These callers (FireLandfallTriggers and friends) scan
+	// EVERY permanent on every land drop / ETB / spell cast, and almost
+	// none of them carry the trigger. r79 put HasLostAllAbilities first,
+	// so every scanned permanent paid a full layer-pipeline query.
+	//
+	// The cheap printed-AST scan gates the expensive one. Semantics are
+	// identical: with no matching trigger the answer is false either way,
+	// and the layer strip only has anything to say once a trigger exists.
+	found := false
 	for _, ab := range p.Card.AST.Abilities {
 		t, ok := ab.(*gameast.Triggered)
 		if !ok {
 			continue
 		}
 		if t.Trigger.Event != "" && EventEquals(t.Trigger.Event, event) {
-			return true
+			found = true
+			break
 		}
 	}
-	return false
+	if !found {
+		return false
+	}
+	// CR §613.1f — a layer-6 strip suppresses the printed ability.
+	return !gs.HasLostAllAbilities(p)
 }
 
 // landName safely gets the display name of a land permanent.
