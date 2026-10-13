@@ -56,7 +56,7 @@ func TestSoulbond_Generic_PairsOnOwnETB(t *testing.T) {
 	// The soulbond creature enters.
 	sb := sbPlaceSoulbond(gs, 0, "Generic Soulbonder")
 
-	if !HasSoulbond(sb) {
+	if !HasSoulbond(gs, sb) {
 		t.Fatal("setup: generic soulbond creature should report HasSoulbond")
 	}
 	FirePermanentETBTriggers(gs, sb)

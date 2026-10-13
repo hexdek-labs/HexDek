@@ -192,6 +192,12 @@ func ActivateStation(gs *GameState, seatIdx int, ship *Permanent, contributor *P
 	// they're artifacts (no sickness on non-creatures); creature
 	// contributors are subject to summoning sickness because activating
 	// the station cost taps them.
+	// r85 — NOT migrated, deliberately. ActivateStation has zero
+	// production callers (grepped: only this file and its tests), so
+	// every read in it is unreachable and a layer-aware rewrite here
+	// would be unverifiable by anything but the test that calls it
+	// directly. Added to the dead-code ledger as entry 6 — delete-or-wire
+	// is its own change. The same applies to contributor.Power() below.
 	if contributor.IsCreature() && contributor.SummoningSick && !contributor.HasKeyword("haste") {
 		return &CastError{Reason: "summoning_sick"}
 	}

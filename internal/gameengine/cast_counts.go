@@ -158,7 +158,16 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 		// +1/+1 until end of turn."
 		// Check BEFORE the name switch so prowess fires on any permanent
 		// that has the keyword, regardless of card name.
-		if perm.Controller == controller && isNoncreature && perm.IsCreature() && perm.HasKeyword("prowess") {
+		// r85 — layer-aware on both the type and the keyword. The type
+		// gate is migrated with the keyword because it sits in front of
+		// it: left raw, an animated land or Ensoul Artifact carrying a
+		// granted prowess would be rejected before the new keyword query
+		// ever ran, which is the half-migration that reads as working.
+		// Ordering is unchanged on purpose — controller and the cast's
+		// own type are free, and both layer queries hit the same cache
+		// entry, so the second is a map read (r80: the order of a
+		// short-circuit is a performance decision).
+		if perm.Controller == controller && isNoncreature && gs.IsCreatureOf(perm) && keywordActive(gs, perm, "prowess") {
 			perm.Modifications = append(perm.Modifications, Modification{
 				Power:     1,
 				Toughness: 1,
@@ -184,7 +193,10 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 		// Each instance of extort on each permanent triggers separately.
 		// GreedyHat: pay if affordable (1 generic mana as MVP proxy
 		// for {W/B}).
-		if perm.Controller == controller && perm.HasKeyword("extort") {
+		// r85 — layer-aware. Extort is not type-gated (CR §702.101 puts
+		// it on any permanent), so there is nothing cheap to put in
+		// front of the layer query beyond the controller check.
+		if perm.Controller == controller && keywordActive(gs, perm, "extort") {
 			// Check if the caster can pay 1 mana for the extort trigger.
 			casterSeat := gs.Seats[controller]
 			if casterSeat != nil && casterSeat.ManaPool >= 1 {

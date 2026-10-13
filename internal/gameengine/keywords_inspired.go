@@ -79,14 +79,22 @@ func inspiredTriggerFromCard(card *Card) *gameast.Triggered {
 	return nil
 }
 
-// HasInspiredPerm reports whether the permanent has inspired, either
-// via the printed keyword on its underlying card or via a granted
-// ability (perm.HasKeyword, which consults perm.GrantedAbilities).
-func HasInspiredPerm(perm *Permanent) bool {
+// HasInspiredPerm reports whether the permanent has inspired.
+//
+// r85 — layer-aware, same shape and same reasoning as HasRenownPerm: a
+// §613 grant does not write GrantedAbilities and so never reached the
+// old query, and a Humbled permanent untapping must not fire an
+// inspired trigger. The HasInspired(perm.Card) fallback is kept for the
+// printed trigger body the AST stores outside Abilities, with the strip
+// enforced ahead of it.
+func HasInspiredPerm(gs *GameState, perm *Permanent) bool {
 	if perm == nil {
 		return false
 	}
-	if perm.HasKeyword("inspired") {
+	if gs != nil && gs.HasLostAllAbilities(perm) {
+		return false
+	}
+	if keywordActive(gs, perm, "inspired") {
 		return true
 	}
 	return HasInspired(perm.Card)
@@ -112,7 +120,7 @@ func FireInspiredTriggers(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	if !HasInspiredPerm(perm) {
+	if !HasInspiredPerm(gs, perm) {
 		return
 	}
 	// Transition guard — the trigger fires on becoming untapped, not

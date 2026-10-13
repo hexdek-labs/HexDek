@@ -116,7 +116,7 @@ func TestDramaticReversal_FiresInspiredTrigger(t *testing.T) {
 	gs := newGame(t, 2)
 	pain := untapTestTappedPerm(gs, 0, "Pain Seer", []string{"creature"}, "inspired")
 	// Sanity: confirm the granted-ability route exposes Inspired.
-	if !gameengine.HasInspiredPerm(pain) {
+	if !gameengine.HasInspiredPerm(gs, pain) {
 		t.Fatalf("test fixture: HasInspiredPerm returned false on a permanent with `inspired` in GrantedAbilities — granted-ability detection regressed")
 	}
 

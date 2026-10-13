@@ -108,7 +108,7 @@ func TestHasInspiredPerm_GrantedAbilityPath(t *testing.T) {
 	card := newPlainCreature("Hill Giant", 0, 3, 3)
 	perm := putBattlefield(gs, 0, card, false)
 	perm.GrantedAbilities = []string{"inspired"}
-	if !HasInspiredPerm(perm) {
+	if !HasInspiredPerm(gs, perm) {
 		t.Fatal("HasInspiredPerm should pick up a granted inspired ability")
 	}
 }

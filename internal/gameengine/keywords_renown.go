@@ -117,13 +117,13 @@ func ApplyRenownOnCombatDamage(gs *GameState, perm *Permanent, defenderSeat int)
 	if gs == nil || perm == nil {
 		return false
 	}
-	if !HasRenownPerm(perm) {
+	if !HasRenownPerm(gs, perm) {
 		return false
 	}
 	if IsRenowned(perm) {
 		return false
 	}
-	n := renownValueForPerm(perm)
+	n := renownValueForPerm(gs, perm)
 	if n <= 0 {
 		return false
 	}
@@ -161,16 +161,31 @@ func ApplyRenownOnCombatDamage(gs *GameState, perm *Permanent, defenderSeat int)
 	return true
 }
 
-// HasRenownPerm reports whether a permanent has renown via either
-// its printed keyword OR a granted ability (perm.HasKeyword consults
-// perm.GrantedAbilities). Mirrors HasInspiredPerm so granted-renown
-// edge cases (e.g. a global "creatures you control have renown 1"
-// static effect, when one ships) light up here automatically.
-func HasRenownPerm(perm *Permanent) bool {
+// HasRenownPerm reports whether a permanent has renown.
+//
+// r85 — layer-aware. The old comment promised that a global "creatures
+// you control have renown 1" static effect would "light up here
+// automatically" because HasKeyword consults GrantedAbilities. A §613
+// continuous effect does not write GrantedAbilities, so it did not: the
+// one case the comment named was the one case it missed. It does now.
+// The strip direction matters more — a Humbled creature connecting with
+// a player must not become renowned.
+//
+// The HasRenown(perm.Card) fallback is kept deliberately: it reads the
+// printed card for the keyword-with-argument form that the AST stores
+// outside Abilities, and dropping it would lose renown N on every
+// printed card. It is a widening of the same direction, not a union
+// across the layer boundary — but it does mean a layer STRIP cannot
+// fully suppress a printed renown here, so the strip is enforced before
+// it.
+func HasRenownPerm(gs *GameState, perm *Permanent) bool {
 	if perm == nil {
 		return false
 	}
-	if perm.HasKeyword("renown") {
+	if gs != nil && gs.HasLostAllAbilities(perm) {
+		return false
+	}
+	if keywordActive(gs, perm, "renown") {
 		return true
 	}
 	return HasRenown(perm.Card)
@@ -179,7 +194,7 @@ func HasRenownPerm(perm *Permanent) bool {
 // renownValueForPerm returns the renown N for a permanent, preferring
 // the printed card's keyword arg and falling back to 1 when only a
 // granted "renown" string is present without a numeric arg.
-func renownValueForPerm(perm *Permanent) int {
+func renownValueForPerm(gs *GameState, perm *Permanent) int {
 	if perm == nil {
 		return 0
 	}
@@ -189,7 +204,8 @@ func renownValueForPerm(perm *Permanent) int {
 		}
 	}
 	// Granted-renown without a numeric arg — assume Renown 1.
-	if perm.HasKeyword("renown") {
+	// r85 — layer-aware, so a §613-granted renown reaches the default.
+	if keywordActive(gs, perm, "renown") {
 		return 1
 	}
 	return 0

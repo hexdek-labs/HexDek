@@ -188,7 +188,16 @@ func costReduceIfCondition(gs *GameState, seatIdx int, clause string) (bool, boo
 			return false, false
 		}
 		for _, p := range seat.Battlefield {
-			if p != nil && p.IsCreature() && (CardHasKeyword(p.Card, kw) || p.HasKeyword(kw)) {
+			// r85 — was `CardHasKeyword(p.Card, kw) || p.HasKeyword(kw)`.
+			// The first arm is not the r79 printed-AST bypass it looks
+			// like, it is simply dead: CardHasKeyword scans
+			// c.AST.Abilities for a Keyword node, which is exactly
+			// surface 1 of p.HasKeyword, so it could never answer true
+			// where the second arm answered false. Both are replaced by
+			// the layer query, which is a superset of the second arm and
+			// therefore of the pair. The type gate is migrated with it
+			// for the same reason as the prowess site.
+			if p != nil && gs.IsCreatureOf(p) && keywordActive(gs, p, kw) {
 				return true, true
 			}
 		}

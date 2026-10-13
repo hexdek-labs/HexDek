@@ -450,6 +450,12 @@ func CanCastForFreerunning(gs *GameState, seatIdx int) bool {
 // HasMaxSpeedKeyword reports whether the printed text of the permanent
 // includes the max-speed rider keyword. Pure keyword check, no game
 // state needed.
+//
+// r85 — NOT migrated, deliberately. The only caller is HasMaxSpeed just
+// below, and HasMaxSpeed has no production callers at all (grepped: one
+// test and one comment reference). The comment above says resolvers
+// "should call this" — no resolver does. Dead-code ledger entry 7;
+// delete-or-wire is its own change.
 func HasMaxSpeedKeyword(perm *Permanent) bool {
 	if perm == nil {
 		return false

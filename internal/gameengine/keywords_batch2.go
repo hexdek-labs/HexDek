@@ -138,20 +138,28 @@ func UnpairOnLeave(gs *GameState, perm *Permanent) {
 	delete(perm.Flags, "paired_timestamp")
 }
 
-// HasSoulbond reports whether a permanent has the Soulbond keyword. Mirrors
-// the evolve detection (`HasKeyword("evolve") || permHasTriggerEvent(...)`):
-// soulbond is a parsed keyword on a creature, so the canonical
-// `HasKeyword("soulbond")` is the source of truth (covers AST keywords, granted
-// abilities, and the `kw:soulbond` runtime flag tests/tokens use). Face-down
-// permanents have no abilities (CR §708.2) and never have soulbond.
-func HasSoulbond(p *Permanent) bool {
+// HasSoulbond reports whether a permanent has the Soulbond keyword.
+//
+// r85 — layer-aware. The old comment called HasKeyword "the source of
+// truth" and listed the three surfaces it covers; the surface it did not
+// cover is a layer-6 strip, so a Humbled creature entering still paired.
+// Face-down permanents have no abilities (CR §708.2) and never have
+// soulbond; that check stays ahead of the layer query because it is a
+// §708.2 rule, not a §613 one.
+//
+// NOT migrated here, filed with the TYPE axis: the IsCreature reads in
+// FireSoulbondTriggers and in PairSoulbond itself are still layer-blind.
+// PairSoulbond is the authority for every pairing gate and re-validates
+// them, so migrating the loop's pre-filters without it would move the
+// half-migration rather than remove it.
+func HasSoulbond(gs *GameState, p *Permanent) bool {
 	if p == nil || p.Card == nil {
 		return false
 	}
 	if p.Flags != nil && p.Flags["face_down"] != 0 {
 		return false
 	}
-	return p.HasKeyword("soulbond")
+	return keywordActive(gs, p, "soulbond")
 }
 
 // FireSoulbondTriggers is the generic soulbond ETB-observer hook (CR §702.95e/f),
@@ -189,7 +197,7 @@ func FireSoulbondTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 	// (e) The entering creature itself has soulbond: pair it with the first
 	// eligible unpaired creature its controller controls. Skipped cleanly if
 	// it's already paired (e.g. Deadeye's per-card OnETB ran first).
-	if HasSoulbond(newCreature) && !IsPaired(newCreature) {
+	if HasSoulbond(gs, newCreature) && !IsPaired(newCreature) {
 		for _, p := range bf {
 			if p == nil || p == newCreature || !p.IsCreature() || IsPaired(p) {
 				continue
@@ -212,7 +220,7 @@ func FireSoulbondTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 		if IsPaired(newCreature) {
 			break
 		}
-		if !HasSoulbond(p) || IsPaired(p) {
+		if !HasSoulbond(gs, p) || IsPaired(p) {
 			continue
 		}
 		if PairSoulbond(gs, p, newCreature) {

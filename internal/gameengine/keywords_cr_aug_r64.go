@@ -127,10 +127,17 @@ func ApplyIncrementTriggers(gs *GameState, controller, manaSpent int) {
 	}
 	perms := append([]*Permanent(nil), seat.Battlefield...)
 	for _, p := range perms {
-		if p == nil || !p.IsCreature() || !p.HasKeyword("increment") {
+		// r85 — layer-aware on the type, the keyword and the P/T.
+		// §702.191a reads "this creature's power or this creature's
+		// toughness", which is the EFFECTIVE value, so an anthem or a
+		// layer-7b set-power effect has to count; p.Power() was
+		// layer-blind and an anthemed 2/2 was comparing as a 2/2. The
+		// type gate is migrated alongside because it stands in front of
+		// the keyword query (same reasoning as the prowess site).
+		if p == nil || !gs.IsCreatureOf(p) || !keywordActive(gs, p, "increment") {
 			continue
 		}
-		if manaSpent > p.Power() || manaSpent > p.Toughness() {
+		if manaSpent > gs.PowerOf(p) || manaSpent > gs.ToughnessOf(p) {
 			PutCountersTriggered(gs, p, "+1/+1", 1, p)
 		}
 	}

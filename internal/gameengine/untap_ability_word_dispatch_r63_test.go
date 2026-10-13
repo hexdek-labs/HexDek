@@ -52,7 +52,7 @@ func inspiredPerm(gs *GameState) *Permanent {
 func TestUntapAbilityWord_HasInspiredDetectsWrapper(t *testing.T) {
 	gs := untapGame(t)
 	p := inspiredPerm(gs)
-	if !HasInspiredPerm(p) {
+	if !HasInspiredPerm(gs, p) {
 		t.Fatal("HasInspiredPerm must detect the ability_word inspired wrapper")
 	}
 }

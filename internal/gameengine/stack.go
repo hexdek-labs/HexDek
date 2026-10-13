@@ -3105,7 +3105,7 @@ func SplitSecondActive(gs *GameState) bool {
 		if item == nil || item.Countered {
 			continue
 		}
-		if item.Source != nil && permHasSplitSecond(item.Source) {
+		if item.Source != nil && permHasSplitSecond(gs, item.Source) {
 			return true
 		}
 		if item.Card != nil && cardHasSplitSecond(item.Card) {
@@ -3115,13 +3115,28 @@ func SplitSecondActive(gs *GameState) bool {
 	return false
 }
 
-// permHasSplitSecond delegates to HasKeyword (which already checks AST +
-// GrantedAbilities + Flags).
-func permHasSplitSecond(p *Permanent) bool {
+// permHasSplitSecond reports whether a stack item's source permanent
+// carries split second.
+//
+// r85 — layer-aware. The old comment said HasKeyword "already checks AST
+// + GrantedAbilities + Flags", which was true and was never the question:
+// it does not check whether a layer-6 effect has since taken the ability
+// away. A Humbled permanent has no split second and must not lock the
+// table out of responding.
+//
+// The three spellings are kept. Both queries match the keyword name
+// exactly, and the parser is not consistent about which it emits, so the
+// variants are a parser-tolerance measure and not a layer concern.
+//
+// Known limitation, unchanged by this migration and noted rather than
+// fixed: an ability already on the stack exists independently of its
+// source (CR §113.7a), so strictly this should read the source's state
+// as of activation. Neither query snapshots — both answer "now".
+func permHasSplitSecond(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	if p.HasKeyword("split_second") || p.HasKeyword("split second") || p.HasKeyword("split") {
+	if keywordActive(gs, p, "split_second") || keywordActive(gs, p, "split second") || keywordActive(gs, p, "split") {
 		return true
 	}
 	return false
@@ -3343,7 +3358,14 @@ func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 
 		// Permanent-scope ward (printed on the target itself). Only
 		// fires when the target literally has the "ward" keyword.
-		if perm.HasKeyword("ward") {
+		//
+		// r85 — layer-aware. A creature stripped by Humility has no ward
+		// and must not tax the spell targeting it; equally, an
+		// anthem-granted ward now fires here instead of only through the
+		// seat-scope path below. Note the seat-scope loop underneath is
+		// already a separate §702.21a instance, so this is not a union —
+		// the two sources are genuinely two wards.
+		if keywordActive(gs, perm, "ward") {
 			payPermanentWard(gs, item, perm)
 			if item.Countered {
 				return
