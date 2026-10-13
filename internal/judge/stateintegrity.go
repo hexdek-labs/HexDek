@@ -143,6 +143,42 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 			if s.CantLoseShield {
 				severity = SeverityInfo
 			}
+			// r69 — POST-END RESIDUE, downgraded on evidence.
+			//
+			// StateBasedActions returns early once the game has ended,
+			// so after the outcome is decided a seat's life can keep
+			// falling with nothing left to mark it Lost. The §704.5f
+			// check carves out the identical situation and explains it
+			// at length (hat/feynman.go checkToughnessSBA).
+			//
+			// §704.5a did not, and it was NOT safe to assume the same
+			// carve-out applied: an unmarked loser changes who the game
+			// records as losing, and results feed ratings. So the
+			// decision point life was instrumented (r68) and measured
+			// on the live grinder rather than argued. Every sample came
+			// back with the winner comfortably ALIVE when the outcome
+			// was decided and negative only afterwards:
+			//
+			//   final -5, life_at_end=5    final -1, life_at_end=9
+			//
+			// That is residue, and the recorded result is correct.
+			//
+			// The downgrade is deliberately narrow. It requires the
+			// game to have ENDED and the decision-point life to be
+			// KNOWN and ABOVE ZERO. Every other shape stays critical:
+			//
+			//   ended=false        a genuine mid-game SBA miss
+			//   life_at_end <= 0   the engine crowned a player who had
+			//                      already lost — a real CR §104.4a
+			//                      draw-detection miss
+			//   unknown            an end path that bypasses CheckEnd,
+			//                      which is itself worth finding
+			//
+			// Suppressing those would be the "quieten the detector"
+			// move this whole investigation existed to avoid.
+			if g.Ended && s.LifeAtEndKnown && s.LifeAtEnd > 0 {
+				severity = SeverityInfo
+			}
 			// r67 — carry the evidence needed to TRIAGE this, which the
 			// bare message did not. Live grinder output had 190 of these
 			// at critical severity with no way to tell a real SBA miss
