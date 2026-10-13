@@ -2240,8 +2240,12 @@ func resolveFight(gs *GameState, src *Permanent, e *gameast.Fight) {
 	// CR §701.12c: both fighters deal damage SIMULTANEOUSLY equal to their
 	// power. Capture both powers BEFORE dealing any damage so A killing or
 	// shrinking B doesn't change the damage B deals back (and vice versa).
-	aPow := a.Power()
-	bPow := b.Power()
+	// r84 — widening rule: §701.12c says "equal to its power", which is the
+	// EFFECTIVE power, so an anthem or a layer-7b set-power effect has to
+	// count. a.Power() is layer-blind; a Humbled 1/1 was fighting for its
+	// printed 5.
+	aPow := gs.PowerOf(a)
+	bPow := gs.PowerOf(b)
 
 	// A always deals damage to B. The damage is dealt BY A (CR §701.12c, NOT
 	// combat damage) so it routes through the canonical noncombat-damage path
@@ -2292,13 +2296,18 @@ func dealFightDamage(gs *GameState, source, target *Permanent, pow int) {
 	if dealt <= 0 {
 		return
 	}
-	if source.HasKeyword("deathtouch") {
+	// r84 — layer-aware. Combat already reads these through keywordActive
+	// (r70); fight/bite did not, so a §613-granted deathtouch or lifelink
+	// was live in combat and inert in a fight, and a Humbled creature kept
+	// both. Same keyword, same rule, two answers depending on how the
+	// damage was dealt.
+	if keywordActive(gs, source, "deathtouch") {
 		if target.Flags == nil {
 			target.Flags = map[string]int{}
 		}
 		target.Flags["deathtouch_damaged"] = 1
 	}
-	if source.HasKeyword("lifelink") {
+	if keywordActive(gs, source, "lifelink") {
 		GainLife(gs, source.Controller, dealt, source.Card.DisplayName())
 	}
 }

@@ -176,9 +176,18 @@ func (s attackTriggerSpec) matchesAttacker(gs *GameState, atk *Permanent) bool {
 		if !cardHasSubtype(atk.Card, s.subtype) && !atk.hasType(s.subtype) {
 			return false
 		}
-	} else if !atk.IsCreature() {
+	} else if !gs.IsCreatureOf(atk) {
 		// "a creature ..." forms require a creature attacker (attacking
 		// non-creatures exist: vehicles pre-crew edge states fail closed).
+		//
+		// r84 — layer-aware, and deliberately widened past the keyword
+		// axis this batch is about. An animated land or Ensoul Artifact is
+		// a creature by layer 4 and not by printed type; left raw, this
+		// gate would reject it BEFORE the now-layer-aware flying and power
+		// filters below ever ran, so the function would be half-migrated
+		// in the way that reads as working. Note this is one site of 687
+		// layer-blind .IsCreature() reads engine-wide (16 use the layer
+		// query) — that axis is its own migration, filed not fixed.
 		return false
 	}
 	if s.nontoken && atk.IsToken() {
@@ -187,16 +196,26 @@ func (s attackTriggerSpec) matchesAttacker(gs *GameState, atk *Permanent) bool {
 	if s.needsCounter != "" && (atk.Counters == nil || atk.Counters[s.needsCounter] <= 0) {
 		return false
 	}
-	if s.flying > 0 && !atk.HasKeyword("flying") {
+	// r84 — layer-aware. These decide whether a triggered ability FIRES,
+	// so they are rules enforcement, not AI policy: "whenever a creature
+	// with flying attacks" must see a granted flying and must not see a
+	// stripped one. Placement is unchanged on purpose — the cheap subtype
+	// and type filters above still gate the layer query, and the whole
+	// inner loop is already gated by iterAttackTriggers(perm.Card), so
+	// only permanents that actually carry an attack trigger reach here
+	// (the r80 ordering lesson).
+	if s.flying > 0 && !keywordActive(gs, atk, "flying") {
 		return false
 	}
-	if s.flying < 0 && atk.HasKeyword("flying") {
+	if s.flying < 0 && keywordActive(gs, atk, "flying") {
 		return false
 	}
-	if s.powerAtMost > 0 && atk.Power() > s.powerAtMost {
+	// Widening rule: power gates a trigger's firing, so an anthem or a
+	// layer-7b set-power effect must count. atk.Power() was layer-blind.
+	if s.powerAtMost > 0 && gs.PowerOf(atk) > s.powerAtMost {
 		return false
 	}
-	if s.powerAtLeast > 0 && atk.Power() < s.powerAtLeast {
+	if s.powerAtLeast > 0 && gs.PowerOf(atk) < s.powerAtLeast {
 		return false
 	}
 	if s.needsEquipment {
