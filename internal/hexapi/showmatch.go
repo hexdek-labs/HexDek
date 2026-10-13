@@ -2193,6 +2193,25 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 		}
 		if winner >= 0 {
 			endReason = "turn_cap_leader"
+			// r67c — mark the state as turn-cap-adjudicated so the
+			// Judge's §704.5a check can report WHICH path produced a
+			// winner. showmatch does its own adjudication here rather
+			// than calling tournament.AdjudicateGameEnd, and that one
+			// sets this flag; without this line the Judge would read
+			// turn_capped=false on a genuinely capped showmatch game
+			// and point the investigation the wrong way.
+			//
+			// NOTE this branch shares the adjudicator's defect: it
+			// crowns the highest-life living seat with no check that
+			// the life is above 0 (bestLife starts at -999), so an
+			// all-negative table produces a "winner" at <=0 life where
+			// CR §104.4a is an all-players-lost draw. Flagged, not
+			// changed here — fixing the outcome rule is a behaviour
+			// change and belongs with its own regressions.
+			if gs.Flags == nil {
+				gs.Flags = map[string]int{}
+			}
+			gs.Flags["turn_capped"] = 1
 		}
 	}
 
