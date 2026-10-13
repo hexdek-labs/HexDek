@@ -117,12 +117,14 @@ func TestBrudiclad_LTBStripsGrantedHasteOnly(t *testing.T) {
 	gs := newGame(t, 2)
 	grantedTok := addPerm(gs, 0, "Treasure Token", "token", "artifact", "creature")
 	nativeHasteTok := addPerm(gs, 0, "Native Haste Token", "token", "creature")
+	// r87: a RAW FLAG stamp, not an AST keyword — exercises the
+	// pre-existing-grant adoption; it must survive Brudiclad's revoke.
 	nativeHasteTok.Flags["kw:haste"] = 1
 	bru := addPerm(gs, 0, "Brudiclad, Telchor Engineer", "legendary", "creature", "human", "artificer")
 
 	gameengine.InvokeETBHook(gs, bru)
-	if grantedTok.Flags["brudiclad_haste_grant"] != 1 {
-		t.Fatalf("setup: granted token should carry marker; flags=%+v", grantedTok.Flags)
+	if !gameengine.HasKeywordFlagGrant(grantedTok, "haste", "brudiclad_haste") {
+		t.Fatalf("setup: granted token should carry Brudiclad's refcounted grant; flags=%+v", grantedTok.Flags)
 	}
 
 	gameengine.FireCardTrigger(gs, "permanent_ltb", map[string]interface{}{

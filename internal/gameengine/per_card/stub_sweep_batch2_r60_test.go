@@ -77,15 +77,19 @@ func TestVihaanGoldwaker_LTBStripsGrantedFlagsOnly(t *testing.T) {
 	gs := newGame(t, 2)
 	pirate := addPerm(gs, 0, "Test Pirate", "creature", "pirate")
 	nativeVig := addPerm(gs, 0, "Native Vig Pirate", "creature", "pirate")
-	nativeVig.Flags["kw:vigilance"] = 1 // pre-existing native
+	// r87: this is a RAW FLAG stamp, not an AST keyword — the same shape
+	// as any of the ~230 unmigrated stamp sites. It exercises the
+	// pre-existing-grant adoption in GrantKeywordFlag: Vihaan grants over
+	// it, and the revoke must leave it standing.
+	nativeVig.Flags["kw:vigilance"] = 1
 	vihaan := addPerm(gs, 0, "Vihaan, Goldwaker", "legendary", "creature", "human", "warlock")
 
 	gameengine.InvokeETBHook(gs, vihaan)
 
 	// Sanity: pirate got the grant, nativeVig got only the haste add
 	// (vigilance native via the flag was respected by the HasKeyword check).
-	if pirate.Flags["vihaan_goldwaker_grant"] != 1 {
-		t.Fatalf("setup: pirate should have grant marker: %+v", pirate.Flags)
+	if !gameengine.HasKeywordFlagGrant(pirate, "haste", "vihaan_goldwaker") {
+		t.Fatalf("setup: pirate should carry Vihaan's refcounted grant: %+v", pirate.Flags)
 	}
 
 	// Fire LTB.
@@ -99,8 +103,9 @@ func TestVihaanGoldwaker_LTBStripsGrantedFlagsOnly(t *testing.T) {
 	if pirate.Flags["kw:vigilance"] == 1 || pirate.Flags["kw:haste"] == 1 {
 		t.Errorf("granted flags should strip on LTB: %+v", pirate.Flags)
 	}
-	if pirate.Flags["vihaan_goldwaker_grant"] == 1 {
-		t.Errorf("grant marker should strip on LTB: %+v", pirate.Flags)
+	if gameengine.HasKeywordFlagGrant(pirate, "haste", "vihaan_goldwaker") ||
+		gameengine.HasKeywordFlagGrant(pirate, "vigilance", "vihaan_goldwaker") {
+		t.Errorf("grant markers should strip on LTB: %+v", pirate.Flags)
 	}
 	// Native-vigilance pirate: vigilance still set (was native, never granted
 	// by us — we skipped because HasKeyword("vigilance") returned true).

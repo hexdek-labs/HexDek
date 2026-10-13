@@ -44,6 +44,14 @@ import (
 //     4. emitPartial for the blanket haste clause (handled by layers
 //        pipeline, not per-card enforcement).
 //
+// (r87) The haste grant is refcounted — see brudicladHasteMarker below.
+
+// brudicladHasteMarker identifies Brudiclad as a source of the
+// refcounted Flags["kw:haste"] grant (r87). It replaces the private
+// Flags["brudiclad_haste_grant"] boolean this handler kept beside the
+// shared stamp.
+const brudicladHasteMarker = "brudiclad_haste"
+
 func registerBrudicladTelchorEngineer(r *Registry) {
 	r.OnETB("Brudiclad, Telchor Engineer", brudicladETB)
 	r.OnTrigger("Brudiclad, Telchor Engineer", "permanent_etb", brudicladPermETB)
@@ -77,14 +85,22 @@ func brudicladOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	}
 	stripped := 0
 	for _, p := range seat.Battlefield {
-		if p == nil || p == perm || p.Flags == nil {
+		if p == nil || p == perm {
 			continue
 		}
-		if p.Flags["brudiclad_haste_grant"] != 1 {
+		// r87 — refcounted. Was: gate on our private
+		// brudiclad_haste_grant marker, then delete the SHARED
+		// Flags["kw:haste"] outright. That took haste away from a token
+		// another live source (Vihaan, an anthem, an until-EOT grant)
+		// was also granting it to. RevokeKeywordFlag drops only our
+		// marker and leaves the shared flag alone while anyone else
+		// still holds one; it reports whether the keyword actually went
+		// away, which is what the invalidation and the count should
+		// follow.
+		if !gameengine.HasKeywordFlagGrant(p, "haste", brudicladHasteMarker) {
 			continue
 		}
-		delete(p.Flags, "kw:haste")
-		delete(p.Flags, "brudiclad_haste_grant")
+		gameengine.RevokeKeywordFlag(p, "haste", brudicladHasteMarker)
 		stripped++
 	}
 	if stripped > 0 {
@@ -113,17 +129,21 @@ func brudicladTokenHasteSweep(gs *gameengine.GameState, perm *gameengine.Permane
 		if !p.IsToken() || !p.IsCreature() {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		if p.Flags["brudiclad_haste_grant"] == 1 {
+		// r87 — refcounted, and the native-keyword guard is GONE.
+		// It read `if p.HasKeyword("haste") { continue }` with the
+		// stated reason that our LTB strip would otherwise remove a
+		// printed haste. That reason was false: the strip is
+		// provenance-gated and deletes Flags["kw:haste"], which is not
+		// where an AST keyword lives. What it actually did was make
+		// this sweep skip recording its own grant whenever ANY other
+		// source had already stamped the shared flag — so that source's
+		// departure took haste off a token Brudiclad was still
+		// granting it to. Under the refcount, stamping over an existing
+		// grant is the correct and safe thing to do.
+		if gameengine.HasKeywordFlagGrant(p, "haste", brudicladHasteMarker) {
 			continue
 		}
-		if p.HasKeyword("haste") {
-			continue
-		}
-		p.Flags["kw:haste"] = 1
-		p.Flags["brudiclad_haste_grant"] = 1
+		gameengine.GrantKeywordFlag(p, "haste", brudicladHasteMarker)
 		granted++
 	}
 	if granted > 0 {
