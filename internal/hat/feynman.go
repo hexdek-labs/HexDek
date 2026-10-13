@@ -265,6 +265,28 @@ func checkPermanentTypes(gs *gameengine.GameState, r *OracleResult) {
 			if p.IsToken() {
 				continue
 			}
+			// r71 — a FACE-DOWN permanent is a 2/2 creature with no
+			// name and no types other than creature (CR §707.2). Its
+			// printed type line simply does not apply while it is face
+			// down, so reading Card.Types here says nothing about the
+			// permanent that is actually on the battlefield.
+			//
+			// This matters because manifest (CR §701.34) puts ANY card
+			// face down as a 2/2 — including an instant or a sorcery,
+			// entirely legally. The engine implements that
+			// (keywords_manifest.go, "each manifested card itself
+			// becomes the face-down permanent"), so every manifested
+			// Village Rites / Disallow / Crop Rotation was being
+			// reported as a CRITICAL rules violation. Verified by
+			// constructing a manifested sorcery and running this
+			// check: two criticals for a perfectly legal board state.
+			//
+			// A FACE-UP instant or sorcery on the battlefield remains
+			// impossible under any effect and is still flagged — that
+			// is the case this check exists for.
+			if p.Card.FaceDown {
+				continue
+			}
 			for _, t := range p.Card.Types {
 				lower := strings.ToLower(t)
 				if lower == "instant" || lower == "sorcery" {
