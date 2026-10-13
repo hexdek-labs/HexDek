@@ -1669,7 +1669,7 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 				// First infect hit anywhere is also worth biasing.
 				score += 0.5
 			}
-			if n := gameengine.GetAnnihilatorN(attacker); n > 0 {
+			if n := gameengine.GetAnnihilatorN(gs, attacker); n > 0 {
 				perms := 0
 				for _, p := range d.Battlefield {
 					if p != nil {
@@ -6801,7 +6801,7 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		// unblocked hit is catastrophic). Force the must-block path even
 		// when raw life damage isn't lethal.
 		mustBlock := false
-		if gameengine.GetAnnihilatorN(atk) > 0 {
+		if gameengine.GetAnnihilatorN(gs, atk) > 0 {
 			mustBlock = true
 		}
 		if atkInfect {
@@ -7146,7 +7146,7 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				atk.HasKeyword("lifelink") ||
 				atk.HasKeyword("infect") || atk.HasKeyword("toxic") || atk.HasKeyword("poisonous") ||
 				atkDS ||
-				gameengine.GetAnnihilatorN(atk) > 0
+				gameengine.GetAnnihilatorN(gs, atk) > 0
 			if dangerous && !atk.HasKeyword("indestructible") {
 				// Greedy: take blockers in descending power so we kill
 				// the attacker with the fewest creatures lost. Cap at 3

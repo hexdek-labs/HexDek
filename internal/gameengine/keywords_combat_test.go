@@ -102,7 +102,7 @@ func TestIntimidate_BlockedByArtifact(t *testing.T) {
 	atk.Card.Colors = []string{"R"}
 	// Artifact creature can block.
 	blk := addKWCombatBattlefield(gs, 1, "Steel Wall", 0, 4, "artifact", "creature")
-	if !CanBlockIntimidate(atk, blk) {
+	if !CanBlockIntimidate(gs, atk, blk) {
 		t.Error("artifact creature should be able to block intimidate")
 	}
 }
@@ -112,7 +112,7 @@ func TestIntimidate_BlockedBySameColor(t *testing.T) {
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Menacing Ogre", 3, 3, "intimidate", "creature")
 	atk.Card.Types = append(atk.Card.Types, "red") // color via type (engine convention)
 	blk := addKWCombatBattlefield(gs, 1, "Red Bear", 2, 2, "creature", "red")
-	if !CanBlockIntimidate(atk, blk) {
+	if !CanBlockIntimidate(gs, atk, blk) {
 		t.Error("creature sharing a color should be able to block intimidate")
 	}
 }
@@ -122,7 +122,7 @@ func TestIntimidate_CantBeBlockedByDifferentColor(t *testing.T) {
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Menacing Ogre", 3, 3, "intimidate", "creature")
 	atk.Card.Types = append(atk.Card.Types, "red")
 	blk := addKWCombatBattlefield(gs, 1, "Green Bear", 2, 2, "creature", "green")
-	if CanBlockIntimidate(atk, blk) {
+	if CanBlockIntimidate(gs, atk, blk) {
 		t.Error("creature of a different color should NOT block intimidate")
 	}
 }
@@ -135,7 +135,7 @@ func TestFear_BlockedByArtifact(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Fear Bearer", 2, 2, "fear", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Iron Golem", 3, 3, "artifact", "creature")
-	if !CanBlockFear(atk, blk) {
+	if !CanBlockFear(gs, atk, blk) {
 		t.Error("artifact creature should be able to block fear")
 	}
 }
@@ -144,7 +144,7 @@ func TestFear_BlockedByBlack(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Fear Bearer", 2, 2, "fear", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Dark Ritual", 1, 1, "creature", "black")
-	if !CanBlockFear(atk, blk) {
+	if !CanBlockFear(gs, atk, blk) {
 		t.Error("black creature should be able to block fear")
 	}
 }
@@ -153,7 +153,7 @@ func TestFear_CantBeBlockedByNonBlackNonArtifact(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Fear Bearer", 2, 2, "fear", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "White Knight", 2, 2, "creature", "white")
-	if CanBlockFear(atk, blk) {
+	if CanBlockFear(gs, atk, blk) {
 		t.Error("non-black, non-artifact creature should NOT block fear")
 	}
 }
@@ -166,7 +166,7 @@ func TestShadow_ShadowBlocksShadow(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Shadow Attacker", 2, 2, "shadow", "creature")
 	blk := addKWCombatBattlefieldWithKeyword(gs, 1, "Shadow Blocker", 1, 3, "shadow", "creature")
-	if !CanBlockShadow(atk, blk) {
+	if !CanBlockShadow(gs, atk, blk) {
 		t.Error("shadow creature should be able to block shadow creature")
 	}
 }
@@ -175,7 +175,7 @@ func TestShadow_NonShadowCantBlockShadow(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Shadow Attacker", 2, 2, "shadow", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Normal Blocker", 3, 3, "creature")
-	if CanBlockShadow(atk, blk) {
+	if CanBlockShadow(gs, atk, blk) {
 		t.Error("non-shadow creature should NOT block shadow creature")
 	}
 }
@@ -184,7 +184,7 @@ func TestShadow_ShadowCantBlockNonShadow(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefield(gs, 0, "Normal Attacker", 2, 2, "creature")
 	blk := addKWCombatBattlefieldWithKeyword(gs, 1, "Shadow Blocker", 1, 3, "shadow", "creature")
-	if CanBlockShadow(atk, blk) {
+	if CanBlockShadow(gs, atk, blk) {
 		t.Error("shadow creature should NOT block non-shadow creature")
 	}
 }
@@ -197,7 +197,7 @@ func TestSkulk_CantBeBlockedByGreaterPower(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Skulker", 2, 2, "skulk", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Big Blocker", 4, 4, "creature")
-	if CanBlockSkulk(atk, blk) {
+	if CanBlockSkulk(gs, atk, blk) {
 		t.Error("creature with greater power should NOT block skulk")
 	}
 }
@@ -206,7 +206,7 @@ func TestSkulk_CanBeBlockedByEqualPower(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Skulker", 2, 2, "skulk", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Equal Blocker", 2, 2, "creature")
-	if !CanBlockSkulk(atk, blk) {
+	if !CanBlockSkulk(gs, atk, blk) {
 		t.Error("creature with equal power should be able to block skulk")
 	}
 }
@@ -215,7 +215,7 @@ func TestSkulk_CanBeBlockedByLesserPower(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Skulker", 3, 3, "skulk", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Small Blocker", 1, 1, "creature")
-	if !CanBlockSkulk(atk, blk) {
+	if !CanBlockSkulk(gs, atk, blk) {
 		t.Error("creature with lesser power should be able to block skulk")
 	}
 }
@@ -228,7 +228,7 @@ func TestDaunt_CantBeBlockedByPower2OrLess(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Daunter", 4, 4, "daunt", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Small Blocker", 2, 2, "creature")
-	if CanBlockDaunt(atk, blk) {
+	if CanBlockDaunt(gs, atk, blk) {
 		t.Error("creature with power 2 should NOT block daunt")
 	}
 }
@@ -237,7 +237,7 @@ func TestDaunt_CanBeBlockedByPower3Plus(t *testing.T) {
 	gs := newKWCombatGame(t)
 	atk := addKWCombatBattlefieldWithKeyword(gs, 0, "Daunter", 4, 4, "daunt", "creature")
 	blk := addKWCombatBattlefield(gs, 1, "Big Blocker", 3, 3, "creature")
-	if !CanBlockDaunt(atk, blk) {
+	if !CanBlockDaunt(gs, atk, blk) {
 		t.Error("creature with power 3 should be able to block daunt")
 	}
 }
@@ -266,7 +266,7 @@ func TestCanBlockCombatKeywords_AllPass(t *testing.T) {
 func TestBanding_HasBanding(t *testing.T) {
 	gs := newKWCombatGame(t)
 	p := addKWCombatBattlefieldWithKeyword(gs, 0, "Banded Warrior", 2, 2, "banding", "creature")
-	if !HasBanding(p) {
+	if !HasBanding(gs, p) {
 		t.Error("creature should have banding")
 	}
 }
@@ -462,8 +462,8 @@ func TestAnnihilator_GetN(t *testing.T) {
 	gs := newKWCombatGame(t)
 	p := addKWCombatBattlefieldWithKeyword(gs, 0, "Emrakul", 15, 15, "annihilator", "creature")
 	p.Flags["annihilator_n"] = 6
-	if GetAnnihilatorN(p) != 6 {
-		t.Errorf("expected annihilator 6, got %d", GetAnnihilatorN(p))
+	if GetAnnihilatorN(gs, p) != 6 {
+		t.Errorf("expected annihilator 6, got %d", GetAnnihilatorN(gs, p))
 	}
 }
 
@@ -1213,7 +1213,7 @@ func TestAnnihilator_GetN_FromAST(t *testing.T) {
 		},
 	}
 	// No Flags set — should extract N=4 from AST Args.
-	if got := GetAnnihilatorN(p); got != 4 {
+	if got := GetAnnihilatorN(gs, p); got != 4 {
 		t.Errorf("expected annihilator 4 from AST, got %d", got)
 	}
 }
@@ -1228,7 +1228,7 @@ func TestAnnihilator_GetN_FlagOverridesAST(t *testing.T) {
 		},
 	}
 	p.Flags["annihilator_n"] = 8 // Runtime override should take priority.
-	if got := GetAnnihilatorN(p); got != 8 {
+	if got := GetAnnihilatorN(gs, p); got != 8 {
 		t.Errorf("expected flag override annihilator 8, got %d", got)
 	}
 }
@@ -1242,7 +1242,7 @@ func TestAfflict_GetN_FromAST(t *testing.T) {
 			&gameast.Keyword{Name: "afflict", Args: []interface{}{float64(3)}},
 		},
 	}
-	if got := GetAfflictN(p); got != 3 {
+	if got := GetAfflictN(gs, p); got != 3 {
 		t.Errorf("expected afflict 3 from AST, got %d", got)
 	}
 }
@@ -1256,7 +1256,7 @@ func TestRampage_GetN_FromAST(t *testing.T) {
 			&gameast.Keyword{Name: "rampage", Args: []interface{}{float64(2)}},
 		},
 	}
-	if got := GetRampageN(p); got != 2 {
+	if got := GetRampageN(gs, p); got != 2 {
 		t.Errorf("expected rampage 2 from AST, got %d", got)
 	}
 }
@@ -1265,7 +1265,7 @@ func TestKeywordNFromAST_DefaultsTo1_NoArgs(t *testing.T) {
 	gs := newKWCombatGame(t)
 	// Keyword with no Args — should fall back to default 1.
 	p := addKWCombatBattlefieldWithKeyword(gs, 0, "GenericAnnihilator", 5, 5, "annihilator", "creature")
-	if got := GetAnnihilatorN(p); got != 1 {
+	if got := GetAnnihilatorN(gs, p); got != 1 {
 		t.Errorf("expected annihilator default 1 with no Args, got %d", got)
 	}
 }
@@ -1280,7 +1280,7 @@ func TestKeywordNFromAST_IntArg(t *testing.T) {
 			&gameast.Keyword{Name: "afflict", Args: []interface{}{5}},
 		},
 	}
-	if got := GetAfflictN(p); got != 5 {
+	if got := GetAfflictN(gs, p); got != 5 {
 		t.Errorf("expected afflict 5 from int arg, got %d", got)
 	}
 }
@@ -1364,13 +1364,13 @@ func TestCombatKeywords_NilSafety(t *testing.T) {
 		}
 	}()
 
-	CanBlockIntimidate(nil, nil)
-	CanBlockFear(nil, nil)
-	CanBlockShadow(nil, nil)
-	CanBlockSkulk(nil, nil)
-	CanBlockDaunt(nil, nil)
+	CanBlockIntimidate(nil, nil, nil)
+	CanBlockFear(nil, nil, nil)
+	CanBlockShadow(nil, nil, nil)
+	CanBlockSkulk(nil, nil, nil)
+	CanBlockDaunt(nil, nil, nil)
 	CanBlockCombatKeywords(nil, nil, nil)
-	HasBanding(nil)
+	HasBanding(nil, nil)
 	ApplyBandingDamageRedistribution(nil, nil)
 	ApplyRampage(nil, nil, 0)
 	FireRampageTriggers(nil, nil)

@@ -2106,7 +2106,7 @@ func applyBandingRedistribution(gs *GameState, attackers []*Permanent, blockerMa
 		atkBands[k] = append(atkBands[k], a)
 	}
 	for _, band := range atkBands {
-		if !bandHasBanding(band) {
+		if !bandHasBanding(gs, band) {
 			continue
 		}
 		ApplyBandingDamageRedistribution(gs, band)
@@ -2121,7 +2121,7 @@ func applyBandingRedistribution(gs *GameState, attackers []*Permanent, blockerMa
 			blkGroups[b.Controller] = append(blkGroups[b.Controller], b)
 		}
 		for _, band := range blkGroups {
-			if !bandHasBanding(band) {
+			if !bandHasBanding(gs, band) {
 				continue
 			}
 			ApplyBandingDamageRedistribution(gs, band)
@@ -2131,12 +2131,12 @@ func applyBandingRedistribution(gs *GameState, attackers []*Permanent, blockerMa
 
 // bandHasBanding returns true if any creature in the group has banding.
 // Band formation requires at least one creature with banding per §702.22c.
-func bandHasBanding(group []*Permanent) bool {
+func bandHasBanding(gs *GameState, group []*Permanent) bool {
 	if len(group) < 2 {
 		return false
 	}
 	for _, p := range group {
-		if HasBanding(p) {
+		if HasBanding(gs, p) {
 			return true
 		}
 	}

@@ -2554,7 +2554,7 @@ func attackerRank(gs *gameengine.GameState, a *gameengine.Permanent) int {
 		score += 15
 	}
 	// Annihilator N: each unblocked hit costs N permanents. Scale by N.
-	if n := gameengine.GetAnnihilatorN(a); n > 0 {
+	if n := gameengine.GetAnnihilatorN(gs, a); n > 0 {
 		score += 4 + 3*n
 	}
 	// Trample: excess damage leaks past the chump — small bump.

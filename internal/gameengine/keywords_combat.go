@@ -68,11 +68,11 @@ import (
 // CanBlockIntimidate checks if a blocker can legally block an attacker with
 // intimidate. Returns true if blocking is legal. The blocker must be an
 // artifact creature OR share a color with the attacker.
-func CanBlockIntimidate(attacker, blocker *Permanent) bool {
+func CanBlockIntimidate(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	if !attacker.HasKeyword("intimidate") {
+	if !keywordActive(gs, attacker, "intimidate") {
 		return true // No intimidate, no restriction.
 	}
 	// Artifact creatures can always block.
@@ -99,11 +99,11 @@ func CanBlockIntimidate(attacker, blocker *Permanent) bool {
 // CanBlockFear checks if a blocker can legally block an attacker with fear.
 // Returns true if blocking is legal. The blocker must be an artifact creature
 // OR be black.
-func CanBlockFear(attacker, blocker *Permanent) bool {
+func CanBlockFear(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	if !attacker.HasKeyword("fear") {
+	if !keywordActive(gs, attacker, "fear") {
 		return true
 	}
 	// Artifact creatures can always block.
@@ -126,12 +126,12 @@ func CanBlockFear(attacker, blocker *Permanent) bool {
 // CanBlockShadow checks shadow evasion. A creature with shadow can only
 // be blocked by creatures with shadow. A creature without shadow cannot
 // block a creature with shadow, and vice versa.
-func CanBlockShadow(attacker, blocker *Permanent) bool {
+func CanBlockShadow(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	atkShadow := attacker.HasKeyword("shadow")
-	blkShadow := blocker.HasKeyword("shadow")
+	atkShadow := keywordActive(gs, attacker, "shadow")
+	blkShadow := keywordActive(gs, blocker, "shadow")
 	if atkShadow && !blkShadow {
 		return false // Shadow attacker can only be blocked by shadow.
 	}
@@ -148,14 +148,16 @@ func CanBlockShadow(attacker, blocker *Permanent) bool {
 
 // CanBlockSkulk checks if a blocker can legally block an attacker with skulk.
 // The blocker's power must be <= the attacker's power.
-func CanBlockSkulk(attacker, blocker *Permanent) bool {
+func CanBlockSkulk(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	if !attacker.HasKeyword("skulk") {
+	if !keywordActive(gs, attacker, "skulk") {
 		return true
 	}
-	return blocker.Power() <= attacker.Power()
+	// r72 — skulk compares EFFECTIVE power. blocker.Power() is layer-blind,
+	// so a +X/+X anthem or a layer-7b set-power effect was invisible here.
+	return gs.PowerOf(blocker) <= gs.PowerOf(attacker)
 }
 
 // ---------------------------------------------------------------------------
@@ -165,14 +167,15 @@ func CanBlockSkulk(attacker, blocker *Permanent) bool {
 
 // CanBlockDaunt checks if a blocker can legally block an attacker with daunt.
 // The blocker must have power > 2.
-func CanBlockDaunt(attacker, blocker *Permanent) bool {
+func CanBlockDaunt(gs *GameState, attacker, blocker *Permanent) bool {
 	if attacker == nil || blocker == nil {
 		return true
 	}
-	if !attacker.HasKeyword("daunt") {
+	if !keywordActive(gs, attacker, "daunt") {
 		return true
 	}
-	return blocker.Power() > 2
+	// r72 — effective power, same reason as skulk above.
+	return gs.PowerOf(blocker) > 2
 }
 
 // ---------------------------------------------------------------------------
@@ -182,19 +185,19 @@ func CanBlockDaunt(attacker, blocker *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 func CanBlockCombatKeywords(gs *GameState, attacker, blocker *Permanent) bool {
-	if !CanBlockIntimidate(attacker, blocker) {
+	if !CanBlockIntimidate(gs, attacker, blocker) {
 		return false
 	}
-	if !CanBlockFear(attacker, blocker) {
+	if !CanBlockFear(gs, attacker, blocker) {
 		return false
 	}
-	if !CanBlockShadow(attacker, blocker) {
+	if !CanBlockShadow(gs, attacker, blocker) {
 		return false
 	}
-	if !CanBlockSkulk(attacker, blocker) {
+	if !CanBlockSkulk(gs, attacker, blocker) {
 		return false
 	}
-	if !CanBlockDaunt(attacker, blocker) {
+	if !CanBlockDaunt(gs, attacker, blocker) {
 		return false
 	}
 	return true
@@ -220,11 +223,11 @@ func CanBlockCombatKeywords(gs *GameState, attacker, blocker *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // HasBanding returns true if the permanent has the banding keyword.
-func HasBanding(p *Permanent) bool {
+func HasBanding(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
-	return p.HasKeyword("banding")
+	return keywordActive(gs, p, "banding")
 }
 
 // ApplyBandingDamageRedistribution redistributes combat damage among a
@@ -301,7 +304,7 @@ func ApplyBandingDamageRedistribution(gs *GameState, bandedCreatures []*Permanen
 
 // GetRampageN returns the rampage N value for a permanent.
 // Checks (in priority order): Flags["rampage_n"], AST keyword Args, default 1.
-func GetRampageN(p *Permanent) int {
+func GetRampageN(gs *GameState, p *Permanent) int {
 	if p == nil {
 		return 0
 	}
@@ -310,7 +313,7 @@ func GetRampageN(p *Permanent) int {
 			return v
 		}
 	}
-	if !p.HasKeyword("rampage") {
+	if !keywordActive(gs, p, "rampage") {
 		return 0
 	}
 	// Extract N from AST keyword args (e.g. "rampage 2" → Args[0] = 2).
@@ -326,7 +329,7 @@ func ApplyRampage(gs *GameState, attacker *Permanent, blockerCount int) {
 	if gs == nil || attacker == nil || blockerCount <= 1 {
 		return
 	}
-	n := GetRampageN(attacker)
+	n := GetRampageN(gs, attacker)
 	if n <= 0 {
 		return
 	}
@@ -359,7 +362,7 @@ func FireRampageTriggers(gs *GameState, blockerMap map[*Permanent][]*Permanent) 
 		return
 	}
 	for atk, blockers := range blockerMap {
-		if len(blockers) > 1 && GetRampageN(atk) > 0 {
+		if len(blockers) > 1 && GetRampageN(gs, atk) > 0 {
 			ApplyRampage(gs, atk, len(blockers))
 		}
 	}
@@ -380,7 +383,7 @@ func ApplyBattleCry(gs *GameState, seatIdx int, attackers []*Permanent) {
 	// Count battle cry instances among attackers.
 	battleCrySources := []*Permanent{}
 	for _, a := range attackers {
-		if a.HasKeyword("battle cry") {
+		if keywordActive(gs, a, "battle cry") {
 			battleCrySources = append(battleCrySources, a)
 		}
 	}
@@ -424,7 +427,7 @@ func ApplyBattleCry(gs *GameState, seatIdx int, attackers []*Permanent) {
 // Simplified: creates 1/1 tokens with same name, tapped and attacking each
 // other opponent. Registers a delayed trigger to exile at end of combat.
 func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
-	if gs == nil || attacker == nil || !attacker.HasKeyword("myriad") {
+	if gs == nil || attacker == nil || !keywordActive(gs, attacker, "myriad") {
 		return
 	}
 	defSeat, _ := AttackerDefender(attacker)
@@ -536,7 +539,7 @@ func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
 // token copies. Called from DeclareAttackers in combat.go.
 func FireMyriadTriggers(gs *GameState, attackerSeat int, attackers []*Permanent) {
 	for _, atk := range attackers {
-		if atk.HasKeyword("myriad") {
+		if keywordActive(gs, atk, "myriad") {
 			ApplyMyriad(gs, atk, attackerSeat)
 		}
 	}
@@ -568,7 +571,7 @@ func ApplyMelee(gs *GameState, attackerSeat int, attackers []*Permanent) {
 	}
 
 	for _, atk := range attackers {
-		if !atk.HasKeyword("melee") {
+		if !keywordActive(gs, atk, "melee") {
 			continue
 		}
 		atk.Modifications = append(atk.Modifications, Modification{
@@ -598,7 +601,7 @@ func ApplyMelee(gs *GameState, attackerSeat int, attackers []*Permanent) {
 
 // GetAnnihilatorN returns the annihilator N value for a permanent.
 // Checks (in priority order): Flags["annihilator_n"], AST keyword Args, default 1.
-func GetAnnihilatorN(p *Permanent) int {
+func GetAnnihilatorN(gs *GameState, p *Permanent) int {
 	if p == nil {
 		return 0
 	}
@@ -607,7 +610,7 @@ func GetAnnihilatorN(p *Permanent) int {
 			return v
 		}
 	}
-	if !p.HasKeyword("annihilator") {
+	if !keywordActive(gs, p, "annihilator") {
 		return 0
 	}
 	// Extract N from AST keyword args (e.g. "annihilator 6" → Args[0] = 6).
@@ -628,7 +631,7 @@ func ApplyAnnihilator(gs *GameState, attacker *Permanent, defenderSeat int) {
 	if gs == nil || attacker == nil {
 		return
 	}
-	n := GetAnnihilatorN(attacker)
+	n := GetAnnihilatorN(gs, attacker)
 	if n <= 0 || defenderSeat < 0 || defenderSeat >= len(gs.Seats) {
 		return
 	}
@@ -681,7 +684,7 @@ func FireAnnihilatorTriggers(gs *GameState, attackers []*Permanent) {
 		return
 	}
 	for _, atk := range attackers {
-		n := GetAnnihilatorN(atk)
+		n := GetAnnihilatorN(gs, atk)
 		if n <= 0 {
 			continue
 		}
@@ -700,7 +703,7 @@ func FireAnnihilatorTriggers(gs *GameState, attackers []*Permanent) {
 
 // GetAfflictN returns the afflict N value for a permanent.
 // Checks (in priority order): Flags["afflict_n"], AST keyword Args, default 1.
-func GetAfflictN(p *Permanent) int {
+func GetAfflictN(gs *GameState, p *Permanent) int {
 	if p == nil {
 		return 0
 	}
@@ -709,7 +712,7 @@ func GetAfflictN(p *Permanent) int {
 			return v
 		}
 	}
-	if !p.HasKeyword("afflict") {
+	if !keywordActive(gs, p, "afflict") {
 		return 0
 	}
 	// Extract N from AST keyword args (e.g. "afflict 3" → Args[0] = 3).
@@ -725,7 +728,7 @@ func ApplyAfflict(gs *GameState, attacker *Permanent, defenderSeat int) {
 	if gs == nil || attacker == nil {
 		return
 	}
-	n := GetAfflictN(attacker)
+	n := GetAfflictN(gs, attacker)
 	if n <= 0 || defenderSeat < 0 || defenderSeat >= len(gs.Seats) {
 		return
 	}
@@ -742,7 +745,7 @@ func FireAfflictTriggers(gs *GameState, blockerMap map[*Permanent][]*Permanent) 
 		if len(blockers) == 0 {
 			continue
 		}
-		n := GetAfflictN(atk)
+		n := GetAfflictN(gs, atk)
 		if n <= 0 {
 			continue
 		}
@@ -764,7 +767,7 @@ func FireAfflictTriggers(gs *GameState, blockerMap map[*Permanent][]*Permanent) 
 // attacker. Simplified: picks the largest creature the defender controls
 // and forces it to block.
 func ApplyProvoke(gs *GameState, attacker *Permanent, defenderSeat int) {
-	if gs == nil || attacker == nil || !attacker.HasKeyword("provoke") {
+	if gs == nil || attacker == nil || !keywordActive(gs, attacker, "provoke") {
 		return
 	}
 	if defenderSeat < 0 || defenderSeat >= len(gs.Seats) {
@@ -813,7 +816,7 @@ func FireProvokeTriggers(gs *GameState, attackers []*Permanent) {
 		return
 	}
 	for _, atk := range attackers {
-		if !atk.HasKeyword("provoke") {
+		if !keywordActive(gs, atk, "provoke") {
 			continue
 		}
 		defSeat, ok := AttackerDefender(atk)
@@ -835,6 +838,11 @@ func FireProvokeTriggers(gs *GameState, attackers []*Permanent) {
 
 // HasTrampleOverPlaneswalkers returns true if the permanent has
 // "trample over planeswalkers".
+// r72 — DELIBERATELY NOT MIGRATED. This helper has ZERO production
+// callers (tests only); nothing in combat damage consults it, so the
+// "implemented as a flag check in combat damage" note above describes a
+// wiring that does not exist. Migrating a dead function would only hide
+// that. Flagged for deletion-or-wiring as its own change.
 func HasTrampleOverPlaneswalkers(p *Permanent) bool {
 	if p == nil {
 		return false
