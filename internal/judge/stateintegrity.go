@@ -87,6 +87,19 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 		out = append(out, v)
 	}
 
+	// r67 — totals computed in a PRE-PASS, because the running `alive`
+	// counter below is only partially accumulated at the point the
+	// §704.5a check reads it (same loop). The post-loop consumers are
+	// unaffected; this exists so the violation context can report a
+	// TRUE survivor count rather than "however many seats we happened
+	// to have walked so far", which would be plausible and wrong.
+	totalAlive := 0
+	for _, s := range g.Seats {
+		if !s.Lost {
+			totalAlive++
+		}
+	}
+
 	lost, alive := 0, 0
 	for _, s := range g.Seats {
 		if s.Lost {
@@ -111,12 +124,43 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 			if s.CantLoseShield {
 				severity = SeverityInfo
 			}
+			// r67 — carry the evidence needed to TRIAGE this, which the
+			// bare message did not. Live grinder output had 190 of these
+			// at critical severity with no way to tell a real SBA miss
+			// from the two known-benign shapes:
+			//
+			//   * the game ENDED in the same window the life hit <=0.
+			//     StateBasedActions returns early once Flags["ended"]==1
+			//     (sba.go:43), so the final pass that would mark the seat
+			//     never runs. The sibling §704.5f check carves this out
+			//     explicitly (hat/feynman.go checkToughnessSBA); §704.5a
+			//     never did.
+			//   * the seat is the SOLE SURVIVOR at <=0 life, i.e. it WON
+			//     while negative — the shielded-win shape the severity
+			//     branch above is meant to downgrade, but only when
+			//     hasCantLoseEffect found the replacement. That helper
+			//     matches on ControllerSeat, so a shield registered under
+			//     another seat is missed and the case re-escalates.
+			//
+			// Deliberately diagnostic only: severity is unchanged, so
+			// this cannot alter any existing verdict. The carve-out
+			// decision waits on this data rather than being guessed —
+			// §704.5a is NOT obviously benign the way §704.5f is, because
+			// an unmarked loser changes who the game records as losing.
 			emit(ValidationViolation{
 				Name:     "704.5a",
 				Message:  fmt.Sprintf("seat %d has %d life but is not marked lost", s.Seat, s.Life),
 				Seat:     s.Seat,
 				Severity: severity,
-				Context:  map[string]interface{}{"life": s.Life},
+				Context: map[string]interface{}{
+					"life":             s.Life,
+					"ended":            g.Ended,
+					"has_winner":       g.HasWinner,
+					"alive_seats":      totalAlive,
+					"cant_lose_shield": s.CantLoseShield,
+					"sba_loss_emitted": s.SBALossEmitted,
+					"sole_survivor":    totalAlive == 1,
+				},
 			})
 		}
 
