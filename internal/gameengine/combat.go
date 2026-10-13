@@ -413,7 +413,7 @@ func CombatPhase(gs *GameState) {
 	// first/double strike there are two steps.
 	hasFS := false
 	for _, a := range attackers {
-		if a.HasKeyword("first strike") || a.HasKeyword("double strike") {
+		if keywordActive(gs, a, "first strike") || keywordActive(gs, a, "double strike") {
 			hasFS = true
 			break
 		}
@@ -421,7 +421,7 @@ func CombatPhase(gs *GameState) {
 	if !hasFS {
 		for _, bs := range blockerMap {
 			for _, b := range bs {
-				if b.HasKeyword("first strike") || b.HasKeyword("double strike") {
+				if keywordActive(gs, b, "first strike") || keywordActive(gs, b, "double strike") {
 					hasFS = true
 					break
 				}
@@ -717,7 +717,7 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 		// nil-receiver no-op when the validator is off.
 		gs.Legality.ObserveAttackDeclaration(gs, attackerSeat, p)
 
-		if !p.HasKeyword("vigilance") {
+		if !keywordActive(gs, p, "vigilance") {
 			p.Tapped = true
 			// Dispatch tap_event for cards like Magda, Brazen Outlaw
 			// and Emmara, Soul of the Accord.
@@ -838,6 +838,12 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 }
 
 // canAttack mirrors Python can_attack() — CR §508.1a.
+// DEPRECATED / DEAD: canAttack has no callers — canAttackGS is the live
+// path. Left in place rather than deleted in the r70 keyword migration
+// because removing an exported-adjacent helper is a separate change,
+// but note it keeps the LAYER-BLIND p.HasKeyword deliberately: with no
+// GameState there are no layers to consult. If it ever gains a caller,
+// that caller should use canAttackGS instead.
 func canAttack(p *Permanent) bool {
 	if p == nil || !p.IsCreature() {
 		return false
@@ -880,7 +886,7 @@ func canAttackGS(gs *GameState, p *Permanent) bool {
 	if p.SummoningSick && !keywordActive(gs, p, "haste") {
 		return false
 	}
-	if p.HasKeyword("defender") {
+	if keywordActive(gs, p, "defender") {
 		return false
 	}
 	if p.Flags != nil && p.Flags["detained"] == 1 {
@@ -1655,6 +1661,14 @@ func scoreBlock(atk, b *Permanent) int {
 
 // incomingIsLethal reports whether 'src' would deal lethal damage to 'dst'
 // this combat (accounting for deathtouch and current marked damage).
+// incomingIsLethal keeps the layer-blind queries (p.HasKeyword, and
+// src.Power() rather than gs.PowerOf) because it is AI POLICY, not
+// rules enforcement: it only scores how attractive a block looks
+// (scoreBlock), and neither caller has a GameState. A wrong score
+// yields a suboptimal block, never an illegal game state, so it is
+// deliberately NOT in the r70 migration batch — threading gs through
+// the block-scoring path is its own change with its own AI
+// regressions.
 func incomingIsLethal(src, dst *Permanent) bool {
 	if src == nil || dst == nil {
 		return false
@@ -1876,7 +1890,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		if !alive(gs, atk) {
 			continue
 		}
-		if !dealsInStep(atk, isFirstStrike) {
+		if !dealsInStep(gs, atk, isFirstStrike) {
 			continue
 		}
 		dmg := gs.PowerOf(atk)
@@ -1908,7 +1922,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 			if len(liveBlockers) == 0 {
 				// All declared blockers removed before damage. Trample
 				// spills to the battle.
-				if atk.HasKeyword("trample") {
+				if keywordActive(gs, atk, "trample") {
 					if battle, ok := LookupBattleByTimestamp(gs, battleTS); ok {
 						ApplyCombatDamageToBattle(gs, atk, dmg, battle)
 					}
@@ -1930,7 +1944,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 				}
 			}
 			remaining := dmg
-			hasTrample := atk.HasKeyword("trample")
+			hasTrample := keywordActive(gs, atk, "trample")
 			for i, b := range ordered {
 				if remaining <= 0 {
 					break
@@ -1981,7 +1995,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		if len(liveBlockers) == 0 {
 			// All declared blockers removed before damage. Trample goes
 			// to defender; otherwise damage fizzles per §510.1c.
-			if atk.HasKeyword("trample") {
+			if keywordActive(gs, atk, "trample") {
 				applyCombatDamageToPlayer(gs, atk, dmg, defenderSeat)
 			}
 			continue
@@ -2003,7 +2017,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		}
 
 		remaining := dmg
-		hasTrample := atk.HasKeyword("trample")
+		hasTrample := keywordActive(gs, atk, "trample")
 		for i, b := range ordered {
 			if remaining <= 0 {
 				break
@@ -2034,7 +2048,7 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 			if !alive(gs, b) || !alive(gs, atk) {
 				continue
 			}
-			if !dealsInStep(b, isFirstStrike) {
+			if !dealsInStep(gs, b, isFirstStrike) {
 				continue
 			}
 			dmg := gs.PowerOf(b)
@@ -2132,9 +2146,9 @@ func bandHasBanding(group []*Permanent) bool {
 // dealsInStep decides if p deals damage in this step. First-strike step
 // is for FS+DS; the regular step is for everyone WITHOUT plain FS
 // (double-strikers also deal in the regular step).
-func dealsInStep(p *Permanent, firstStrike bool) bool {
-	fs := p.HasKeyword("first strike")
-	ds := p.HasKeyword("double strike")
+func dealsInStep(gs *GameState, p *Permanent, firstStrike bool) bool {
+	fs := keywordActive(gs, p, "first strike")
+	ds := keywordActive(gs, p, "double strike")
 	if firstStrike {
 		return fs || ds
 	}
@@ -2159,7 +2173,7 @@ func alive(gs *GameState, p *Permanent) bool {
 
 // lethalAmountGS is the layer-aware variant used by DealCombatDamageStep.
 func lethalAmountGS(gs *GameState, attacker, blocker *Permanent) int {
-	if attacker.HasKeyword("deathtouch") {
+	if keywordActive(gs, attacker, "deathtouch") {
 		return 1
 	}
 	need := gs.ToughnessOf(blocker) - blocker.MarkedDamage
@@ -2278,7 +2292,7 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 	}
 	gs.Seats[seatIdx].Flags["damage_taken_this_turn"] = 1
 	gs.Seats[seatIdx].Turn.DamageReceived += amount
-	if src.HasKeyword("lifelink") {
+	if keywordActive(gs, src, "lifelink") {
 		GainLife(gs, src.Controller, amount, src.Card.DisplayName())
 	}
 	// §702.165 — Toxic: in ADDITION to normal damage, the damaged player
@@ -2407,7 +2421,7 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 				"rule":        "702.90",
 			},
 		})
-		if src.HasKeyword("lifelink") {
+		if keywordActive(gs, src, "lifelink") {
 			GainLife(gs, src.Controller, amount, src.Card.DisplayName())
 		}
 		fireCombatDamageTriggers(gs, src, amount, "creature", target.Controller, target)
@@ -2419,14 +2433,14 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 	if HasWither(src) {
 		ApplyWitherDamageToCreature(gs, src, target, amount)
 		gs.InvalidateCharacteristicsCache() // -1/-1 counters change P/T
-		if src.HasKeyword("lifelink") {
+		if keywordActive(gs, src, "lifelink") {
 			GainLife(gs, src.Controller, amount, src.Card.DisplayName())
 		}
 		fireCombatDamageTriggers(gs, src, amount, "creature", target.Controller, target)
 		return
 	}
 	target.MarkedDamage += amount
-	if src.HasKeyword("deathtouch") && amount > 0 {
+	if keywordActive(gs, src, "deathtouch") && amount > 0 {
 		// CR §702.2b — any nonzero damage from a deathtouch source is lethal;
 		// the §704.5h SBA (sba704_5h) destroys the creature via this flag,
 		// so the kill does NOT depend on marked damage reaching toughness.
@@ -2450,7 +2464,7 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 			"combat":      true,
 		},
 	})
-	if src.HasKeyword("lifelink") {
+	if keywordActive(gs, src, "lifelink") {
 		GainLife(gs, src.Controller, amount, src.Card.DisplayName())
 	}
 	fireCombatDamageTriggers(gs, src, amount, "creature", target.Controller, target)
