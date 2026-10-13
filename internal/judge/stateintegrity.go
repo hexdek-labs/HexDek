@@ -148,8 +148,19 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 			// §704.5a is NOT obviously benign the way §704.5f is, because
 			// an unmarked loser changes who the game records as losing.
 			emit(ValidationViolation{
-				Name:     "704.5a",
-				Message:  fmt.Sprintf("seat %d has %d life but is not marked lost", s.Seat, s.Life),
+				Name: "704.5a",
+				// The evidence is in the MESSAGE, not only in Context,
+				// because ValidationViolation.String() — what reaches
+				// server.log — renders severity/surface/name/seat/message
+				// and DROPS Context entirely. Context still carries the
+				// typed fields for the violations.jsonl consumers; this
+				// suffix is what makes the live log line triageable,
+				// which was the whole point of the change.
+				Message: fmt.Sprintf(
+					"seat %d has %d life but is not marked lost "+
+						"(ended=%t winner=%t alive=%d sole_survivor=%t shield=%t sba_emitted=%t)",
+					s.Seat, s.Life, g.Ended, g.HasWinner, totalAlive,
+					totalAlive == 1, s.CantLoseShield, s.SBALossEmitted),
 				Seat:     s.Seat,
 				Severity: severity,
 				Context: map[string]interface{}{

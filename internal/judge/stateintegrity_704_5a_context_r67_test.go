@@ -1,6 +1,9 @@
 package judge
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // r67 — pins the TRIAGE CONTEXT on the §704.5a violation.
 //
@@ -113,4 +116,35 @@ func severityOf704(vs []ValidationViolation) string {
 		}
 	}
 	return SeverityInfo
+}
+
+// The context fields are necessary but NOT sufficient: the server log
+// renders violations through ValidationViolation.String(), which emits
+// severity/surface/name/seat/message and DROPS Context. A first version
+// of r67 put the evidence only in Context and shipped to production,
+// where the log line came out exactly as uninformative as before. This
+// pins the evidence into the MESSAGE, which is the surface that
+// actually reaches the log a human reads.
+func TestStateIntegrityR67_EvidenceSurvivesStringRendering(t *testing.T) {
+	g := GameSnapshot{TotalSeats: 4, Ended: true, HasWinner: true, Seats: []SeatSnapshot{
+		seat704(0, -27, false),
+		seat704(1, 0, true), seat704(2, 0, true), seat704(3, 0, true),
+	}}
+	var line string
+	for _, v := range CheckStateIntegrity(g) {
+		if v.Name == "704.5a" {
+			line = v.String()
+		}
+	}
+	if line == "" {
+		t.Fatal("expected a 704.5a violation")
+	}
+	for _, want := range []string{
+		"ended=true", "winner=true", "alive=1",
+		"sole_survivor=true", "shield=false", "sba_emitted=false",
+	} {
+		if !strings.Contains(line, want) {
+			t.Errorf("rendered log line is missing %q — it reads: %s", want, line)
+		}
+	}
 }
