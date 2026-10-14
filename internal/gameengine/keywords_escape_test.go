@@ -463,7 +463,18 @@ func TestEscape_CounteredSpellReturnsToGraveyardAndCanEscapeAgain(t *testing.T) 
 // escape change lands, so that removing too much shows up here as a
 // failure. The other seven r96 escape assertions all go red on revert.
 func TestEscape_FlashbackOffboardExileStillHonored_r96(t *testing.T) {
-	item := &StackItem{CostMeta: map[string]interface{}{"exile_on_resolve": true}}
+	// r100 — the fixture now stamps zone_cast_keyword, as CastFlashback
+	// actually does. It used to carry only exile_on_resolve and was
+	// called a flashback item in prose alone, which passed because the
+	// tag was hardcoded to flashback's number for EVERY item reaching
+	// the branch. Once the tag became per-source this fixture started
+	// getting the generic §614.1a, and this guard caught it — which is
+	// the guard doing its job: a keyword-less item is not a flashback
+	// item, and the test now asserts what its name claims.
+	item := &StackItem{CostMeta: map[string]interface{}{
+		"exile_on_resolve":  true,
+		"zone_cast_keyword": "flashback",
+	}}
 	zone, rule := postStackZoneForOffboard(item, "graveyard", "701.6a")
 	if zone != "exile" {
 		t.Fatalf("flashback off-board zone = %q, want exile (§702.34a)", zone)

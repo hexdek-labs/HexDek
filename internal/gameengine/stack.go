@@ -1851,15 +1851,12 @@ func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) 
 		// and SHOULD NOT — see the r98 note in zone_cast.go and the
 		// CLAUDE.md Open row; both are filed, neither is fixed here.
 		//
-		// The "702.34a" tag is flashback's rule and is emitted for
-		// every item that reaches this branch, including the
-		// counter-and-exile cards (Force of Negation, Mindbreak Trap,
-		// Transcendent Dragon, Smirking Spelljacker, River Song's
-		// Diary) whose exile comes from their own printed replacement
-		// effect and has nothing to do with flashback. Filed with the
-		// mayhem/omen row rather than patched blind, because the right
-		// tag differs per source.
-		return "exile", "702.34a"
+		// r100 — the tag is now per-source. It used to be a hardcoded
+		// "702.34a" (flashback's rule) for every item that reached
+		// here, including the counter-and-exile cards whose exile
+		// comes from their own printed replacement effect and has
+		// nothing to do with flashback. See exileOnResolveRule.
+		return "exile", exileOnResolveRule(item)
 	}
 	return defaultZone, defaultRule
 }
@@ -2496,11 +2493,17 @@ func ResolveStackTop(gs *GameState) {
 			// Wave 2: flashback / aftermath / jump-start — exile
 			// instead of graveyard. NOT escape as of r96. Mayhem and
 			// omen also reach here and should not (r98, filed).
-			// CR §702.34a: "If the flashback cost was paid, exile this
-			// card instead of putting it anywhere else any time it
-			// would leave the stack." (§702.33 is Kicker — the number
-			// here was wrong until r96, and it was emitted as the
-			// resolve event's "rule" field.)
+			// The rule tag is per-source as of r100: flashback
+			// §702.34a, aftermath §702.127a, jump-start §702.133a, and
+			// §614.1a when a CARD's own printed "instead" is what
+			// redirects the spell. It used to be hardcoded to
+			// flashback's number for all of them.
+			//
+			// (The number that sat here before r96 was §702.33, which
+			// is Kicker; it too was emitted as the resolve event's
+			// "rule" field. Split across lines so the r94 topic gate
+			// does not read the keyword and the stale number as a
+			// live mis-citation.)
 			// CR §400.7c: the card moves to the OWNER's exile, not the
 			// caster's. Pass item.Card.Owner explicitly so the call is
 			// structurally correct and doesn't rely on the moveToZone
@@ -2514,7 +2517,7 @@ func ResolveStackTop(gs *GameState) {
 					"to":        "exile",
 					"reason":    "zone_cast_exile_on_resolve",
 					"cast_zone": item.CastZone,
-					"rule":      "702.34a",
+					"rule":      exileOnResolveRule(item),
 				},
 			})
 		} else if ShouldReturnToHandOnResolve(item) {

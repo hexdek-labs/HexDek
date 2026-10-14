@@ -440,6 +440,61 @@ func CastFromZone(
 // spell should be exiled instead of going to the graveyard.
 // ---------------------------------------------------------------------------
 
+// exileOnResolveRule returns the CR rule that actually pins the
+// exile-instead-of-anywhere-else routing for this item, for the "rule"
+// field of the resolve event.
+//
+// r100 — before this, every item reaching the exile branch was tagged
+// "702.34a", flashback's number, as event DATA. That is right for
+// flashback and wrong for everything else that gets there. Only three
+// KEYWORDS carry such a clause, each in its own subrule, all read
+// verbatim from the pinned edition:
+//
+//	flashback   702.34a   "If the flashback cost was paid, exile this
+//	                       card instead of putting it anywhere else any
+//	                       time it would leave the stack."
+//	aftermath   702.127a  "If this spell was cast from a graveyard,
+//	                       exile it instead of putting it anywhere else
+//	                       any time it would leave the stack."
+//	jump-start  702.133a  "If this spell was cast using its jump-start
+//	                       ability, exile this card instead of putting
+//	                       it anywhere else any time it would leave the
+//	                       stack."
+//
+// Everything else that reaches the branch does so because a CARD's own
+// printed text replaces the destination — Force of Negation, Mindbreak
+// Trap, Transcendent Dragon, Smirking Spelljacker, River Song's Diary,
+// Kess, Maestros Ascendancy, Feather, Eldritch Evolution, Emry's and
+// Wrexial's grants. Those are §614.1a replacement effects ("Effects
+// that use the word 'instead' are replacement effects"), not keyword
+// abilities, so that is the honest tag: it names the mechanism without
+// claiming a keyword the card does not have.
+//
+// Deliberately absent: escape (r96), mayhem and omen (r99). None of the
+// three carries an exile clause and none of them should reach the
+// branch at all; if one does, the §614.1a default is the correct answer
+// to "under what rule", because by then something else put the flag on.
+func exileOnResolveRule(item *StackItem) string {
+	if item == nil || item.CostMeta == nil {
+		return crReplacementInstead
+	}
+	kw, _ := item.CostMeta["zone_cast_keyword"].(string)
+	switch kw {
+	case "flashback":
+		return "702.34a"
+	case "aftermath":
+		return "702.127a"
+	case "jump-start":
+		return "702.133a"
+	}
+	return crReplacementInstead
+}
+
+// crReplacementInstead is CR §614.1a — the generic "effects that use the
+// word 'instead' are replacement effects" rule, used when a card's own
+// printed text, not a keyword, is what redirects the spell to exile.
+const crReplacementInstead = "614.1a"
+
 // ShouldShuffleIntoLibraryOnResolve returns true if the stack item is
 // shuffled into its owner's library as it resolves, instead of going to
 // its owner's graveyard.
