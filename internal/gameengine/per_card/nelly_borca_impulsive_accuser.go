@@ -57,7 +57,7 @@ func nellySuspect(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		best.Flags = map[string]int{}
 	}
 	best.Flags["suspected"] = 1
-	best.Flags["kw:menace"] = 1
+	gameengine.SetKeywordFlags(gs, best, "menace")
 	best.Flags["cant_block"] = 1
 	for _, s := range gs.Seats {
 		if s == nil {

@@ -119,8 +119,8 @@ func inspiritRefreshArtifactGrants(gs *gameengine.GameState, perm *gameengine.Pe
 	if entering.Flags == nil {
 		entering.Flags = map[string]int{}
 	}
-	entering.Flags["kw:hexproof"] = 1
-	entering.Flags["kw:indestructible"] = 1
+	gameengine.SetKeywordFlags(gs, entering, "hexproof")
+	gameengine.SetKeywordFlags(gs, entering, "indestructible")
 }
 
 // inspiritStampArtifactGrants walks the controller's battlefield and
@@ -145,8 +145,8 @@ func inspiritStampArtifactGrants(gs *gameengine.GameState, perm *gameengine.Perm
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["kw:hexproof"] = 1
-		p.Flags["kw:indestructible"] = 1
+		gameengine.SetKeywordFlags(gs, p, "hexproof")
+		gameengine.SetKeywordFlags(gs, p, "indestructible")
 		count++
 	}
 	return count

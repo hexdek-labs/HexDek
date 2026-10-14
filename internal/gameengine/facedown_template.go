@@ -146,7 +146,7 @@ func makeFaceDown(gs *GameState, perm *Permanent, templateKey string, opts faceD
 	// CheckWardOnTargeting via the runtime-flag path, since §613.2b strips
 	// the AST keywords from the face-down characteristics.
 	if tmpl.Ward > 0 {
-		perm.Flags["kw:ward"] = 1
+		SetKeywordFlags(gs, perm, "ward")
 		perm.Flags["ward_cost"] = tmpl.Ward
 	}
 	for _, m := range opts.Markers {

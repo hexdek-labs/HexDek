@@ -66,19 +66,19 @@ func jetmirEra3Apply(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			p.Flags = map[string]int{}
 		}
 		if count >= 3 {
-			p.Flags["kw:vigilance"] = 1
+			gameengine.SetKeywordFlags(gs, p, "vigilance")
 		} else {
-			delete(p.Flags, "kw:vigilance")
+			gameengine.ClearKeywordFlags(gs, p, "vigilance")
 		}
 		if count >= 6 {
-			p.Flags["kw:trample"] = 1
+			gameengine.SetKeywordFlags(gs, p, "trample")
 		} else {
-			delete(p.Flags, "kw:trample")
+			gameengine.ClearKeywordFlags(gs, p, "trample")
 		}
 		if count >= 9 {
-			p.Flags["kw:double strike"] = 1
+			gameengine.SetKeywordFlags(gs, p, "double strike")
 		} else {
-			delete(p.Flags, "kw:double strike")
+			gameengine.ClearKeywordFlags(gs, p, "double strike")
 		}
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

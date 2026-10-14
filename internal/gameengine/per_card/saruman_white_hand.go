@@ -35,7 +35,7 @@ func sarumanWhiteHandETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:ward"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "ward")
 	perm.Flags["ward_cost"] = 2
 }
 

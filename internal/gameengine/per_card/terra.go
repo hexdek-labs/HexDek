@@ -196,7 +196,7 @@ func terraSagaChapter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 			if tokenPerm.Flags == nil {
 				tokenPerm.Flags = map[string]int{}
 			}
-			tokenPerm.Flags["kw:haste"] = 1
+			gameengine.SetKeywordFlags(gs, tokenPerm, "haste")
 			tokenPerm.SummoningSick = false
 			if cardHasType(copyCard, "saga") || cardHasSubtype(copyCard, "saga") {
 				tokenPerm.AddCounter("lore", 3)

@@ -37,7 +37,7 @@ func sarumanOfManyColorsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	// r60 — migrated 2026-05-27 to unified WardCost primitive. Filter
 	// "instant or sorcery or enchantment" matches Saruman's literal
 	// printed wording; payWardByDiscard routes accordingly.
-	gameengine.SetWardCost(perm, gameengine.WardCost{
+	gameengine.SetWardCost(gs, perm, gameengine.WardCost{
 		Type:   gameengine.WardCostDiscard,
 		Amount: 1,
 		Filter: "instant or sorcery or enchantment",

@@ -68,8 +68,8 @@ func kenrithGrantTrampleHaste(gs *gameengine.GameState, src *gameengine.Permanen
 			if p.Flags == nil {
 				p.Flags = map[string]int{}
 			}
-			p.Flags["kw:trample"] = 1
-			p.Flags["kw:haste"] = 1
+			gameengine.SetKeywordFlags(gs, p, "trample")
+			gameengine.SetKeywordFlags(gs, p, "haste")
 			p.SummoningSick = false
 			count++
 		}
@@ -95,8 +95,8 @@ func kenrithGrantTrampleHaste(gs *gameengine.GameState, src *gameengine.Permanen
 				if p == nil || p.Flags == nil {
 					continue
 				}
-				delete(p.Flags, "kw:trample")
-				delete(p.Flags, "kw:haste")
+				gameengine.ClearKeywordFlags(gs, p, "trample")
+				gameengine.ClearKeywordFlags(gs, p, "haste")
 			}
 		},
 	})

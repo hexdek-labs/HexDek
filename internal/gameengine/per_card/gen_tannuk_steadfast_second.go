@@ -71,7 +71,7 @@ func tannukLTBCleanup(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 		// Only clear the anthem-granted haste; native-haste cards have
 		// "haste" baked into their Types tag so the AST reapplies it.
 		if p.Flags["kw:haste"] == 1 && p.Card != nil && !cardHasType(p.Card, "haste") {
-			delete(p.Flags, "kw:haste")
+			gameengine.ClearKeywordFlags(gs, p, "haste")
 			cleared++
 		}
 	}
@@ -174,6 +174,6 @@ func tannukApplyHaste(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, p, "haste")
 	}
 }

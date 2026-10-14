@@ -391,7 +391,7 @@ func TriggerAfterlife(gs *GameState, perm *Permanent, n int) {
 		if t.Flags == nil {
 			t.Flags = map[string]int{}
 		}
-		t.Flags["kw:flying"] = 1 // CR §702.135 — Spirit tokens have flying
+		SetKeywordFlags(gs, t, "flying") // CR §702.135 — Spirit tokens have flying
 		if t.Card != nil {
 			t.Card.Colors = []string{"W", "B"} // white AND black
 		}
@@ -443,7 +443,7 @@ func ApplyBlitz(gs *GameState, perm *Permanent) {
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:haste"] = 1
+	SetKeywordFlags(gs, perm, "haste")
 	perm.Flags["blitz"] = 1
 
 	seatIdx := perm.Controller

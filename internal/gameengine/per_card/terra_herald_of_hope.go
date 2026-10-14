@@ -74,7 +74,7 @@ func terraHeraldOfHopeCombatBegin(gs *gameengine.GameState, perm *gameengine.Per
 		milled++
 	}
 
-	perm.Flags["kw:flying"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "flying")
 	captured := perm
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -84,7 +84,7 @@ func terraHeraldOfHopeCombatBegin(gs *gameengine.GameState, perm *gameengine.Per
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:flying")
+			gameengine.ClearKeywordFlags(gs, captured, "flying")
 		},
 	})
 

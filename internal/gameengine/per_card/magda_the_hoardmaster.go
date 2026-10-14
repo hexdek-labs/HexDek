@@ -76,8 +76,8 @@ func magdaHoardmasterActivated(gs *gameengine.GameState, src *gameengine.Permane
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
-		tok.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
+		gameengine.SetKeywordFlags(gs, tok, "haste")
 		tok.SummoningSick = false
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

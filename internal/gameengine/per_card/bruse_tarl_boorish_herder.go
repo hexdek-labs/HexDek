@@ -62,8 +62,8 @@ func bruseTarlGrant(gs *gameengine.GameState, perm *gameengine.Permanent, cause 
 	if best.Flags == nil {
 		best.Flags = map[string]int{}
 	}
-	best.Flags["kw:double_strike"] = 1
-	best.Flags["kw:lifelink"] = 1
+	gameengine.SetKeywordFlags(gs, best, "double_strike")
+	gameengine.SetKeywordFlags(gs, best, "lifelink")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"target": best.Card.DisplayName(),

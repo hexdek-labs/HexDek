@@ -148,7 +148,7 @@ func arahboCatAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:trample")
+			gameengine.ClearKeywordFlags(gs, captured, "trample")
 		},
 	})
 

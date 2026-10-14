@@ -87,15 +87,27 @@ func leonardoFiveColorGrant(gs *gameengine.GameState, src *gameengine.Permanent,
 	}
 
 	captured := []*gameengine.Permanent{}
+	granted := false
 	for _, p := range seat.Battlefield {
 		if p == nil || !p.IsCreature() {
 			continue
 		}
 		// r89: refcounted grant (see keyword_flag_grants_r87.go).
-		gameengine.GrantKeywordFlag(p, "menace", leonardoGrantMarker)
-		gameengine.GrantKeywordFlag(p, "trample", leonardoGrantMarker)
-		gameengine.GrantKeywordFlag(p, "lifelink", leonardoGrantMarker)
+		// r97 — see najeela: the grant arm must invalidate too, not
+		// just the revoke arm in the delayed trigger below.
+		if gameengine.GrantKeywordFlag(p, "menace", leonardoGrantMarker) {
+			granted = true
+		}
+		if gameengine.GrantKeywordFlag(p, "trample", leonardoGrantMarker) {
+			granted = true
+		}
+		if gameengine.GrantKeywordFlag(p, "lifelink", leonardoGrantMarker) {
+			granted = true
+		}
 		captured = append(captured, p)
+	}
+	if granted {
+		gs.InvalidateCharacteristicsCache()
 	}
 	if len(captured) > 0 {
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{

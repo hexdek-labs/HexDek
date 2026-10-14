@@ -56,9 +56,9 @@ func sokratesUpkeepRefreshHexproof(gs *gameengine.GameState, perm *gameengine.Pe
 		perm.Flags = map[string]int{}
 	}
 	if !perm.Tapped {
-		perm.Flags["kw:hexproof"] = 1
+		gameengine.SetKeywordFlags(gs, perm, "hexproof")
 	} else {
-		delete(perm.Flags, "kw:hexproof")
+		gameengine.ClearKeywordFlags(gs, perm, "hexproof")
 	}
 }
 
@@ -79,7 +79,7 @@ func sokratesLTBClearHexproof(gs *gameengine.GameState, perm *gameengine.Permane
 		return
 	}
 	if perm.Flags != nil {
-		delete(perm.Flags, "kw:hexproof")
+		gameengine.ClearKeywordFlags(gs, perm, "hexproof")
 	}
 }
 
@@ -88,7 +88,7 @@ func sokratesETBStampHexproof(gs *gameengine.GameState, perm *gameengine.Permane
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	sokratesSyncHexproof(perm)
+	sokratesSyncHexproof(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"tapped": perm.Tapped,
@@ -123,10 +123,10 @@ func sokratesUpkeepRestampHexproof(gs *gameengine.GameState, perm *gameengine.Pe
 	if gs == nil || perm == nil {
 		return
 	}
-	sokratesSyncHexproof(perm)
+	sokratesSyncHexproof(gs, perm)
 }
 
-func sokratesSyncHexproof(perm *gameengine.Permanent) {
+func sokratesSyncHexproof(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if perm == nil {
 		return
 	}
@@ -134,9 +134,9 @@ func sokratesSyncHexproof(perm *gameengine.Permanent) {
 		perm.Flags = map[string]int{}
 	}
 	if !perm.Tapped {
-		perm.Flags["kw:hexproof"] = 1
+		gameengine.SetKeywordFlags(gs, perm, "hexproof")
 	} else {
-		delete(perm.Flags, "kw:hexproof")
+		gameengine.ClearKeywordFlags(gs, perm, "hexproof")
 	}
 }
 

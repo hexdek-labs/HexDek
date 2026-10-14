@@ -106,14 +106,21 @@ var wardCostFilters = map[*Permanent]string{}
 // flag, the alt-kind int discriminant, the amount, and (when non-empty)
 // the filter string. Callers in per_card/ should prefer this over
 // touching Permanent.Flags directly.
-func SetWardCost(perm *Permanent, cost WardCost) {
+//
+// r97 — takes gs so the kw:ward stamp invalidates the characteristics
+// cache. CheckWardOnTargeting gates permanent-scope ward on
+// keywordActive (stack.go), which since r66 is the LAYER query alone,
+// so a ward stamped into a primed cache did not tax the next spell.
+// gs may be nil for the throwaway permanent stack.go builds to reuse
+// this Flags encoding — that one is never read through the layers.
+func SetWardCost(gs *GameState, perm *Permanent, cost WardCost) {
 	if perm == nil {
 		return
 	}
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:ward"] = 1
+	SetKeywordFlags(gs, perm, "ward")
 	perm.Flags["ward_alt_kind"] = int(cost.Type)
 	perm.Flags["ward_alt_filter"] = cost.Amount
 	if cost.Filter != "" {

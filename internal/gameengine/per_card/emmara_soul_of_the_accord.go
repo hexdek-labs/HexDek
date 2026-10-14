@@ -29,7 +29,7 @@ func emmaraTapped(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:lifelink"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "lifelink")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,

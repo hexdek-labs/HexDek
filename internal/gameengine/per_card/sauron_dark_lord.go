@@ -52,7 +52,7 @@ func sauronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// r60 — migrated 2026-05-27 to unified WardCost primitive. Filter
 	// "legendary artifact or creature" matches Sauron's literal printed
 	// wording; payWardBySacrifice routes accordingly.
-	gameengine.SetWardCost(perm, gameengine.WardCost{
+	gameengine.SetWardCost(gs, perm, gameengine.WardCost{
 		Type:   gameengine.WardCostSacrifice,
 		Amount: 1,
 		Filter: "legendary artifact or creature",

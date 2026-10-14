@@ -60,9 +60,9 @@ func wilsonRefinedGrizzlyETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["ward"] = 2
-	perm.Flags["kw:vigilance"] = 1
-	perm.Flags["kw:reach"] = 1
-	perm.Flags["kw:trample"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "vigilance")
+	gameengine.SetKeywordFlags(gs, perm, "reach")
+	gameengine.SetKeywordFlags(gs, perm, "trample")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
 		"ward":     2,

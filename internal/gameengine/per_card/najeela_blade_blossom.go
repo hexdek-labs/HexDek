@@ -137,6 +137,7 @@ func najeelaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 	untapped := 0
 	buffed := 0
 	captured := []*gameengine.Permanent{}
+	granted := false
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -155,13 +156,27 @@ func najeelaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 			// r89: refcounted grant. Najeela buffs EVERY attacking
 			// creature on the table, so she routinely shares a keyword
 			// flag with another grantor on the same permanent.
-			gameengine.GrantKeywordFlag(p, "trample", najeelaGrantMarker)
-			gameengine.GrantKeywordFlag(p, "lifelink", najeelaGrantMarker)
-			gameengine.GrantKeywordFlag(p, "haste", najeelaGrantMarker)
+			// r97 — GrantKeywordFlag deliberately does not invalidate;
+			// its doc puts that on the caller. Only the REVOKE arm below
+			// did it, so every grant here was invisible to the layer
+			// query (and therefore to combat, which since r66 reads the
+			// layer alone) until something unrelated invalidated.
+			if gameengine.GrantKeywordFlag(p, "trample", najeelaGrantMarker) {
+				granted = true
+			}
+			if gameengine.GrantKeywordFlag(p, "lifelink", najeelaGrantMarker) {
+				granted = true
+			}
+			if gameengine.GrantKeywordFlag(p, "haste", najeelaGrantMarker) {
+				granted = true
+			}
 			p.SummoningSick = false
 			captured = append(captured, p)
 			buffed++
 		}
+	}
+	if granted {
+		gs.InvalidateCharacteristicsCache()
 	}
 	if len(captured) > 0 {
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{

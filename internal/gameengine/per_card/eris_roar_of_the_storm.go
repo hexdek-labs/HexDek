@@ -48,8 +48,8 @@ func erisSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
-		tok.Flags["kw:prowess"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
+		gameengine.SetKeywordFlags(gs, tok, "prowess")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,

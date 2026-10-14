@@ -105,7 +105,7 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 			if p.Flags == nil {
 				p.Flags = map[string]int{}
 			}
-			p.Flags["kw:haste"] = 1
+			gameengine.SetKeywordFlags(gs, p, "haste")
 			// Control change: remove from original seat's battlefield
 			// (unless it's already the caster's), append to caster's,
 			// reassign Controller. The direct-mutation pattern matches
@@ -181,7 +181,7 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 				// creature untapped, those states are spent.
 				if p.Flags != nil {
 					if cap.priorHaste == 0 {
-						delete(p.Flags, "kw:haste")
+						gameengine.ClearKeywordFlags(gs, p, "haste")
 					}
 				}
 			}

@@ -56,7 +56,7 @@ func squallSeedAttackAlone(gs *gameengine.GameState, perm *gameengine.Permanent,
 		return
 	}
 	grantKeywordUntilEOT(gs, lone, "double strike")
-	lone.Flags["kw:double_strike"] = 1
+	gameengine.SetKeywordFlags(gs, lone, "double_strike")
 	lone.Flags["kw_eot:double_strike"] = 1
 	lone.Flags["double_strike_eot"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

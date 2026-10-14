@@ -53,7 +53,7 @@ func massOfMysteriesCombatBegin(gs *gameengine.GameState, perm *gameengine.Perma
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
-	target.Flags["kw:myriad_until_eot"] = 1
+	gameengine.SetKeywordFlags(gs, target, "myriad_until_eot")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"target": target.Card.DisplayName(),

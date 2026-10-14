@@ -113,10 +113,10 @@ func drMadisonLiActivated(gs *gameengine.GameState, src *gameengine.Permanent, a
 					return
 				}
 				if grantedTrample {
-					delete(captured.Flags, "kw:trample")
+					gameengine.ClearKeywordFlags(gs, captured, "trample")
 				}
 				if grantedHaste {
-					delete(captured.Flags, "kw:haste")
+					gameengine.ClearKeywordFlags(gs, captured, "haste")
 				}
 			},
 		})

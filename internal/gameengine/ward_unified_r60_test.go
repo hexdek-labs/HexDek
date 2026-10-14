@@ -55,7 +55,7 @@ func wardedPermViaSetWardCost(gs *GameState, name string, cost WardCost, types .
 		Owner:      0,
 	}
 	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, p)
-	SetWardCost(p, cost)
+	SetWardCost(gs, p, cost)
 	return p
 }
 

@@ -103,7 +103,7 @@ func ezrimSacGrantKeyword(gs *gameengine.GameState, src *gameengine.Permanent, a
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	src.Flags["kw:lifelink"] = 1
+	gameengine.SetKeywordFlags(gs, src, "lifelink")
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "end_of_turn",
 		ControllerSeat: seatIdx,
@@ -111,7 +111,7 @@ func ezrimSacGrantKeyword(gs *gameengine.GameState, src *gameengine.Permanent, a
 		OneShot:        true,
 		EffectFn: func(gs *gameengine.GameState) {
 			if src.Flags != nil {
-				delete(src.Flags, "kw:lifelink")
+				gameengine.ClearKeywordFlags(gs, src, "lifelink")
 			}
 		},
 	})

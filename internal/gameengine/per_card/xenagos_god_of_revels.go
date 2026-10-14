@@ -83,7 +83,7 @@ func xenagosCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:haste")
+			gameengine.ClearKeywordFlags(gs, captured, "haste")
 		},
 	})
 	gs.InvalidateCharacteristicsCache()

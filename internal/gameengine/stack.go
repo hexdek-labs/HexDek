@@ -3445,7 +3445,7 @@ func paySeatScopeWard(gs *GameState, item *StackItem, target *Permanent, entry S
 	// Flags-based ward kind. Cleaner than threading WardCost through
 	// the legacy alt-payment signature.
 	tmp := &Permanent{Card: target.Card, Controller: target.Controller}
-	SetWardCost(tmp, cost)
+	SetWardCost(nil, tmp, cost)
 	tryPayAltWardCost(gs, item, tmp)
 }
 

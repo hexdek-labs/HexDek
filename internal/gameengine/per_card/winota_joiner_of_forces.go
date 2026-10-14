@@ -117,7 +117,7 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 				newPerm.Flags = map[string]int{}
 			}
 			// Grant indestructible until end of turn.
-			newPerm.Flags["kw:indestructible"] = 1
+			gameengine.SetKeywordFlags(gs, newPerm, "indestructible")
 			if defenderSeat >= 0 {
 				// CR §508.1g — Winota puts the Human onto the
 				// battlefield tapped and attacking. MarkEnteredAttacking
@@ -138,7 +138,7 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 					if captured == nil || captured.Flags == nil {
 						return
 					}
-					delete(captured.Flags, "kw:indestructible")
+					gameengine.ClearKeywordFlags(gs, captured, "indestructible")
 				},
 			})
 		}

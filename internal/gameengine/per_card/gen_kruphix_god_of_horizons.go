@@ -71,7 +71,7 @@ func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:indestructible"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "indestructible")
 	// R63: register the "becomes colorless instead of being lost"
 	// converter (replaces the R55/R57 all-color exemption stand-in).
 	// Unlike an exemption — which retained each color in its own bucket —

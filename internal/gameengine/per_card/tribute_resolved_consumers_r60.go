@@ -301,7 +301,7 @@ func grantHasteUEOT(gs *gameengine.GameState, src *gameengine.Permanent) {
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	src.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, src, "haste")
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -312,7 +312,7 @@ func grantHasteUEOT(gs *gameengine.GameState, src *gameengine.Permanent) {
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:haste")
+			gameengine.ClearKeywordFlags(gs, captured, "haste")
 		},
 	})
 }

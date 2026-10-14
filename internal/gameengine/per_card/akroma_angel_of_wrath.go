@@ -33,11 +33,11 @@ func akromaAngelOfWrathETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:flying"] = 1
-	perm.Flags["kw:first_strike"] = 1
-	perm.Flags["kw:vigilance"] = 1
-	perm.Flags["kw:trample"] = 1
-	perm.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "flying")
+	gameengine.SetKeywordFlags(gs, perm, "first_strike")
+	gameengine.SetKeywordFlags(gs, perm, "vigilance")
+	gameengine.SetKeywordFlags(gs, perm, "trample")
+	gameengine.SetKeywordFlags(gs, perm, "haste")
 	perm.Flags["prot:B"] = 1
 	perm.Flags["prot:R"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

@@ -71,8 +71,8 @@ func theLocustGodOnDraw(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if tok.Flags == nil {
 		tok.Flags = map[string]int{}
 	}
-	tok.Flags["kw:flying"] = 1
-	tok.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, tok, "flying")
+	gameengine.SetKeywordFlags(gs, tok, "haste")
 	// Haste implies not summoning sick for the attack legality check —
 	// also clear the bit explicitly to match the printed effect.
 	tok.SummoningSick = false

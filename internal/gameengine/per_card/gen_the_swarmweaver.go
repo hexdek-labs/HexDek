@@ -81,11 +81,11 @@ func theSwarmweaverApplyDelirium(gs *gameengine.GameState, perm *gameengine.Perm
 		}
 		if active {
 			p.Flags["swarmweaver_anthem"] = 1
-			p.Flags["kw:deathtouch"] = 1
+			gameengine.SetKeywordFlags(gs, p, "deathtouch")
 			stamped++
 		} else {
 			delete(p.Flags, "swarmweaver_anthem")
-			delete(p.Flags, "kw:deathtouch")
+			gameengine.ClearKeywordFlags(gs, p, "deathtouch")
 		}
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

@@ -90,8 +90,8 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
-	target.Flags["kw:lifelink"] = 1
-	target.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, target, "lifelink")
+	gameengine.SetKeywordFlags(gs, target, "haste")
 	gs.Seats[seatIdx].Battlefield = append(gs.Seats[seatIdx].Battlefield, target)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "gain_control",
@@ -159,8 +159,8 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 				// they don't ride along with a future reanimation that
 				// rewraps the same *Card pointer.
 				if captured.Flags != nil {
-					delete(captured.Flags, "kw:lifelink")
-					delete(captured.Flags, "kw:haste")
+					gameengine.ClearKeywordFlags(gs, captured, "lifelink")
+					gameengine.ClearKeywordFlags(gs, captured, "haste")
 				}
 				return
 			}
@@ -189,8 +189,8 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 				})
 			}
 			if captured.Flags != nil {
-				delete(captured.Flags, "kw:lifelink")
-				delete(captured.Flags, "kw:haste")
+				gameengine.ClearKeywordFlags(gs, captured, "lifelink")
+				gameengine.ClearKeywordFlags(gs, captured, "haste")
 			}
 		},
 	})

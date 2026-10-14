@@ -53,7 +53,7 @@ func worldspineWurmDies(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 			if tok.Flags == nil {
 				tok.Flags = map[string]int{}
 			}
-			tok.Flags["kw:trample"] = 1
+			gameengine.SetKeywordFlags(gs, tok, "trample")
 		}
 	}
 	// Reshuffle Worldspine into owner's library. Worldspine is in its

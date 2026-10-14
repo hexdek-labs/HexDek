@@ -74,6 +74,6 @@ func exavaApplyHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent)
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, p, "haste")
 	}
 }

@@ -88,7 +88,7 @@ func barkKnuckleBoxerExpend(gs *gameengine.GameState, perm *gameengine.Permanent
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	src.Flags["kw:indestructible"] = 1
+	gameengine.SetKeywordFlags(gs, src, "indestructible")
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -99,7 +99,7 @@ func barkKnuckleBoxerExpend(gs *gameengine.GameState, perm *gameengine.Permanent
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:indestructible")
+			gameengine.ClearKeywordFlags(gs, captured, "indestructible")
 		},
 	})
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

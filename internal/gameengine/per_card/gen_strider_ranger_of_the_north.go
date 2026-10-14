@@ -64,7 +64,7 @@ func striderLandfall(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	postPower := gs.PowerOf(pick)
 	if postPower >= 4 {
 		grantKeywordUntilEOT(gs, pick, "first strike")
-		pick.Flags["kw:first_strike"] = 1
+		gameengine.SetKeywordFlags(gs, pick, "first_strike")
 		pick.Flags["kw_eot:first_strike"] = 1
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

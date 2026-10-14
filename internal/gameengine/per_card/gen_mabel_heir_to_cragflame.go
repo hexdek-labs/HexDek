@@ -45,9 +45,9 @@ func mabelHeirToCragflameETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		if target.Flags == nil {
 			target.Flags = map[string]int{}
 		}
-		target.Flags["kw:vigilance"] = 1
-		target.Flags["kw:trample"] = 1
-		target.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, target, "vigilance")
+		gameengine.SetKeywordFlags(gs, target, "trample")
+		gameengine.SetKeywordFlags(gs, target, "haste")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     seatIdx,

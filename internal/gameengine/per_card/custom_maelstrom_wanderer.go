@@ -67,7 +67,7 @@ func maelstromWandererETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 			if target.Flags == nil {
 				target.Flags = map[string]int{}
 			}
-			target.Flags["kw:haste"] = 1
+			gameengine.SetKeywordFlags(gs, target, "haste")
 			// Cancel summoning sickness so the haste grant has its
 			// expected effect on creatures that ETB'd this turn.
 			target.SummoningSick = false

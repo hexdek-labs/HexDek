@@ -43,7 +43,7 @@ func kykarNoncreatureCast(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		if token.Flags == nil {
 			token.Flags = map[string]int{}
 		}
-		token.Flags["kw:flying"] = 1
+		gameengine.SetKeywordFlags(gs, token, "flying")
 	}
 
 	spellName := ""

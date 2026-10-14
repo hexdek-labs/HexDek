@@ -204,10 +204,10 @@ func quintoriusMinusFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 					return
 				}
 				if !hadDSCap {
-					delete(captured.Flags, "kw:double_strike")
+					gameengine.ClearKeywordFlags(gs, captured, "double_strike")
 				}
 				if !hadVigCap {
-					delete(captured.Flags, "kw:vigilance")
+					gameengine.ClearKeywordFlags(gs, captured, "vigilance")
 				}
 			},
 		})

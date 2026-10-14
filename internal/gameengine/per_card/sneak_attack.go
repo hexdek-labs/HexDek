@@ -74,7 +74,7 @@ func sneakAttackActivated(gs *gameengine.GameState, src *gameengine.Permanent, a
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "haste")
 
 	// Register delayed trigger: sacrifice at next end step.
 	capturedPerm := perm

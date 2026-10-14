@@ -222,6 +222,7 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 
 	stolen := []dihadaThreatenedPerm{}
 	allHaste := []*gameengine.Permanent{}
+	granted := false
 	allUntap := 0
 
 	// Collect every nonland permanent across all seats first to avoid
@@ -261,7 +262,10 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 		// available shape before the refcount existed but could only
 		// see grantors present AT THE MOMENT Dihada stamped — a second
 		// grantor arriving later was still clobbered on the revert.
-		gameengine.GrantKeywordFlag(p, "haste", dihadaHasteMarker)
+		// r97 — the grant arm must invalidate; only the revoke arm did.
+		if gameengine.GrantKeywordFlag(p, "haste", dihadaHasteMarker) {
+			granted = true
+		}
 		p.SummoningSick = false
 		allHaste = append(allHaste, p)
 
@@ -296,6 +300,10 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 				originalTimest: origTS,
 			})
 		}
+	}
+
+	if granted {
+		gs.InvalidateCharacteristicsCache()
 	}
 
 	// Capture for the delayed trigger so haste is removed from non-stolen

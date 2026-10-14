@@ -59,7 +59,7 @@ func aradeshOnCreatureAttacks(gs *gameengine.GameState, perm *gameengine.Permane
 	if attacker.Flags == nil {
 		attacker.Flags = map[string]int{}
 	}
-	attacker.Flags["kw:double_strike"] = 1
+	gameengine.SetKeywordFlags(gs, attacker, "double_strike")
 	// Use the canonical current power (counters + until-EOT modifications +
 	// layer effects), not a hand-rolled BasePower+temp_power+counter sum that
 	// missed the enlist +power/+0 modification (and any other power source).

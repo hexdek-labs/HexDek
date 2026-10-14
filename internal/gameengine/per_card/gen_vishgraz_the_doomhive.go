@@ -61,7 +61,7 @@ func vishgrazTheDoomhiveETB(gs *gameengine.GameState, perm *gameengine.Permanent
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:toxic"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "toxic")
 		tok.Flags["cant_block"] = 1
 	}
 	vishgrazSyncBuff(gs, perm)

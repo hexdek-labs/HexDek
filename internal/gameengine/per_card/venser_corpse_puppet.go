@@ -102,8 +102,8 @@ func venserCorpsePuppetProliferate(gs *gameengine.GameState, perm *gameengine.Pe
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:flying")
-			delete(captured.Flags, "kw:lifelink")
+			gameengine.ClearKeywordFlags(gs, captured, "flying")
+			gameengine.ClearKeywordFlags(gs, captured, "lifelink")
 		},
 	})
 	gs.InvalidateCharacteristicsCache()

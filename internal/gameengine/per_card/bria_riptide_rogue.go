@@ -43,13 +43,13 @@ func briaRiptideRogueETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if seat == nil {
 		return
 	}
-	stampProwess(perm)
+	stampProwess(gs, perm)
 	granted := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p == perm || !p.IsCreature() {
 			continue
 		}
-		stampProwess(p)
+		stampProwess(gs, p)
 		granted++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
@@ -71,7 +71,7 @@ func briaRiptideRogueGrantOnETB(gs *gameengine.GameState, perm *gameengine.Perma
 	if entry == nil || entry == perm || !entry.IsCreature() {
 		return
 	}
-	stampProwess(entry)
+	stampProwess(gs, entry)
 }
 
 func briaRiptideRogueUnblockable(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -130,7 +130,7 @@ func briaRiptideRogueUnblockable(gs *gameengine.GameState, perm *gameengine.Perm
 
 // stampProwess marks a permanent as having the prowess keyword via the
 // runtime flag channel that combat.HasKeyword honors.
-func stampProwess(p *gameengine.Permanent) {
+func stampProwess(gs *gameengine.GameState, p *gameengine.Permanent) {
 	if p == nil {
 		return
 	}
@@ -140,5 +140,5 @@ func stampProwess(p *gameengine.Permanent) {
 	if _, ok := p.Flags["kw:"+strings.ToLower("prowess")]; ok {
 		return
 	}
-	p.Flags["kw:prowess"] = 1
+	gameengine.SetKeywordFlags(gs, p, "prowess")
 }

@@ -121,6 +121,6 @@ func tophApplyLandAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["kw:double strike"] = 1
+		gameengine.SetKeywordFlags(gs, p, "double strike")
 	}
 }

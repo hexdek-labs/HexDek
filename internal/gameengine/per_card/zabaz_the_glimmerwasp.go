@@ -99,7 +99,7 @@ func zabazFlying(gs *gameengine.GameState, src *gameengine.Permanent) {
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:flying")
+			gameengine.ClearKeywordFlags(gs, captured, "flying")
 		},
 	})
 	gs.InvalidateCharacteristicsCache()

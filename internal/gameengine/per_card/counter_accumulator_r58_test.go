@@ -147,7 +147,7 @@ func TestHelixPinnacle_ShroudDropsAt100(t *testing.T) {
 	helix := addPerm(gs, 0, "Helix Pinnacle", "enchantment")
 	helixPinnacleETB(gs, helix)
 	helix.AddCounter("tower", 100)
-	helixPinnacleRefreshShroud(helix)
+	helixPinnacleRefreshShroud(gs, helix)
 	if helix.Flags["kw:shroud"] == 1 {
 		t.Errorf("shroud should clear at 100 tower counters")
 	}

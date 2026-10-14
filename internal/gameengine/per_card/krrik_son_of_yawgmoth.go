@@ -41,7 +41,7 @@ func krrikSonOfYawgmothETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	perm.Flags["kw:lifelink"] = 1
+	gameengine.SetKeywordFlags(gs, perm, "lifelink")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})

@@ -99,7 +99,7 @@ func ellieVengefulActivate(gs *gameengine.GameState, src *gameengine.Permanent, 
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	src.Flags["kw:indestructible"] = 1
+	gameengine.SetKeywordFlags(gs, src, "indestructible")
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -110,7 +110,7 @@ func ellieVengefulActivate(gs *gameengine.GameState, src *gameengine.Permanent, 
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:indestructible")
+			gameengine.ClearKeywordFlags(gs, captured, "indestructible")
 		},
 	})
 

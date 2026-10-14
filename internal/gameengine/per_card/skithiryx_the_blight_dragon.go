@@ -76,7 +76,7 @@ func skithiryxGrantHaste(gs *gameengine.GameState, src *gameengine.Permanent) {
 		src.Flags = map[string]int{}
 	}
 	alreadyHasted := src.Flags["kw:haste"] == 1
-	src.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, src, "haste")
 	src.SummoningSick = false
 
 	// Note: Flying and Infect are AST keywords — no per-card handling needed.
@@ -96,7 +96,7 @@ func skithiryxGrantHaste(gs *gameengine.GameState, src *gameengine.Permanent) {
 				if captured == nil || captured.Flags == nil {
 					return
 				}
-				delete(captured.Flags, "kw:haste")
+				gameengine.ClearKeywordFlags(gs, captured, "haste")
 			},
 		})
 	}

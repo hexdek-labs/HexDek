@@ -110,7 +110,7 @@ func karlachAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 			p.Flags = map[string]int{}
 		}
 		if p.Flags["kw:first strike"] == 0 {
-			p.Flags["kw:first strike"] = 1
+			gameengine.SetKeywordFlags(gs, p, "first strike")
 			firstStrikeGrants = append(firstStrikeGrants, p)
 			granted++
 		}
@@ -128,7 +128,7 @@ func karlachAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 					if p == nil || p.Flags == nil {
 						continue
 					}
-					delete(p.Flags, "kw:first strike")
+					gameengine.ClearKeywordFlags(gs, p, "first strike")
 				}
 			},
 		})

@@ -76,7 +76,7 @@ func helixPinnacleETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 				p.Card.DisplayName(), "helix_pinnacle_100_tower")
 		},
 	})
-	helixPinnacleRefreshShroud(perm)
+	helixPinnacleRefreshShroud(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":       controller,
 		"threshold":  100,
@@ -131,7 +131,7 @@ func helixPinnacleActivate(gs *gameengine.GameState, src *gameengine.Permanent, 
 	gameengine.SyncManaAfterSpend(seat)
 	src.Tapped = true
 	src.AddCounter("tower", x)
-	helixPinnacleRefreshShroud(src)
+	helixPinnacleRefreshShroud(gs, src)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":          seatIdx,
 		"x":             x,
@@ -148,7 +148,7 @@ func helixPinnacleUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if activeSeat != perm.Controller {
 		return
 	}
-	helixPinnacleRefreshShroud(perm)
+	helixPinnacleRefreshShroud(gs, perm)
 	gs.EvaluateCounterThresholds()
 }
 
@@ -163,7 +163,7 @@ func helixPinnacleLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	gs.UnregisterCounterThresholdsForPermanent(perm)
 }
 
-func helixPinnacleRefreshShroud(perm *gameengine.Permanent) {
+func helixPinnacleRefreshShroud(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if perm == nil {
 		return
 	}
@@ -171,9 +171,9 @@ func helixPinnacleRefreshShroud(perm *gameengine.Permanent) {
 		perm.Flags = map[string]int{}
 	}
 	if gameengine.CounterThresholdCount(perm, "tower") < 100 {
-		perm.Flags["kw:shroud"] = 1
+		gameengine.SetKeywordFlags(gs, perm, "shroud")
 	} else {
-		delete(perm.Flags, "kw:shroud")
+		gameengine.ClearKeywordFlags(gs, perm, "shroud")
 	}
 }
 

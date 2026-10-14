@@ -46,7 +46,7 @@ func baralKariFirstSpell(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "haste")
 		tok.SummoningSick = false
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

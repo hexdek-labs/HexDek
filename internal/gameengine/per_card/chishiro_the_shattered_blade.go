@@ -40,7 +40,7 @@ func chishiroAuraEquipETB(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:menace"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "menace")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,

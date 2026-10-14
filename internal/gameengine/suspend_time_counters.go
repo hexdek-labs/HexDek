@@ -274,7 +274,7 @@ func grantSuspendHaste(gs *GameState, card *Card) {
 				if p.Flags == nil {
 					p.Flags = map[string]int{}
 				}
-				p.Flags["kw:haste"] = 1
+				SetKeywordFlags(gs, p, "haste")
 				gs.LogEvent(Event{
 					Kind:   "suspend_haste_granted",
 					Seat:   p.Controller,

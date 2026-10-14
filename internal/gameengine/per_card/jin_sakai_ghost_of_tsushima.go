@@ -98,7 +98,7 @@ func jinSakaiAttackModal(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	}
 	switch mode {
 	case "standoff":
-		atk.Flags["kw:double strike"] = 1
+		gameengine.SetKeywordFlags(gs, atk, "double strike")
 	case "ghost":
 		atk.Flags["unblockable"] = 1
 	}

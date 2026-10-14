@@ -218,6 +218,6 @@ func tivashCreateDemonToken(gs *gameengine.GameState, perm *gameengine.Permanent
 	if tok.Flags == nil {
 		tok.Flags = map[string]int{}
 	}
-	tok.Flags["kw:flying"] = 1
+	gameengine.SetKeywordFlags(gs, tok, "flying")
 	tok.Card.Colors = []string{"B"}
 }

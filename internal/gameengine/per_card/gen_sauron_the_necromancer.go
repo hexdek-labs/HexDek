@@ -85,7 +85,7 @@ func sauronTheNecromancerAttack(gs *gameengine.GameState, perm *gameengine.Perma
 	// MarkEnteredAttacking stamps both flagAttacking and the carve-out
 	// tag so the legality invariant honors the bypass.
 	gameengine.MarkEnteredAttacking(tokenPerm)
-	tokenPerm.Flags["kw:menace"] = 1
+	gameengine.SetKeywordFlags(gs, tokenPerm, "menace")
 	tokenPerm.SummoningSick = false
 	if def, ok := gameengine.AttackerDefender(perm); ok {
 		gameengine.SetAttackerDefender(tokenPerm, def)

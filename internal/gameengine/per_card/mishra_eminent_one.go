@@ -99,7 +99,7 @@ func mishraEminentOneCombatBegin(gs *gameengine.GameState, perm *gameengine.Perm
 	if token.Flags == nil {
 		token.Flags = map[string]int{}
 	}
-	token.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, token, "haste")
 	token.Flags["haste_eot"] = 1
 	token.SummoningSick = false
 	tokenRef := token

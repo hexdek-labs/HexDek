@@ -502,7 +502,7 @@ func saiOnSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
 	}
 	emit(gs, slug, "Sai, Master Thopterist", map[string]interface{}{
 		"seat":  perm.Controller,

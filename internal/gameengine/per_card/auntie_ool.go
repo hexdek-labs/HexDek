@@ -48,7 +48,7 @@ func auntieOolETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// r60 — migrated 2026-05-27 to unified WardCost primitive. Amount=2
 	// is the Blight value (counters placed); payWardByBlight routes
 	// accordingly.
-	gameengine.SetWardCost(perm, gameengine.WardCost{
+	gameengine.SetWardCost(gs, perm, gameengine.WardCost{
 		Type:   gameengine.WardCostBlight,
 		Amount: 2,
 	})

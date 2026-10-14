@@ -127,7 +127,7 @@ func theDestinedWhiteMageActivate(gs *gameengine.GameState, src *gameengine.Perm
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
-	target.Flags["kw:lifelink"] = 1
+	gameengine.SetKeywordFlags(gs, target, "lifelink")
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -138,7 +138,7 @@ func theDestinedWhiteMageActivate(gs *gameengine.GameState, src *gameengine.Perm
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:lifelink")
+			gameengine.ClearKeywordFlags(gs, captured, "lifelink")
 		},
 	})
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

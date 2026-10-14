@@ -54,7 +54,7 @@ func apheliaAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:deathtouch"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "deathtouch")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,

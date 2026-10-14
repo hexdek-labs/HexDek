@@ -167,7 +167,7 @@ func gisaResurrectorUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent,
 			if newPerm.Flags == nil {
 				newPerm.Flags = map[string]int{}
 			}
-			newPerm.Flags["kw:decayed"] = 1
+			gameengine.SetKeywordFlags(gs, newPerm, "decayed")
 			returned++
 		}
 	}

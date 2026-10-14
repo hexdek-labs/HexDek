@@ -61,7 +61,7 @@ func avacynGrantIndestructible(gs *gameengine.GameState, perm *gameengine.Perman
 			if target.Flags == nil {
 				target.Flags = map[string]int{}
 			}
-			target.Flags["kw:indestructible"] = 1
+			gameengine.SetKeywordFlags(gs, target, "indestructible")
 		}
 	}
 	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{

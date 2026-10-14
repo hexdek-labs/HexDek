@@ -46,8 +46,8 @@ func hermesNoncreatureCast(gs *gameengine.GameState, perm *gameengine.Permanent,
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
-		tok.Flags["kw:vigilance"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
+		gameengine.SetKeywordFlags(gs, tok, "vigilance")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,

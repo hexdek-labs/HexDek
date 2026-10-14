@@ -122,7 +122,7 @@ func admiralBrassBeginCombatReanim(gs *gameengine.GameState, perm *gameengine.Pe
 	if ent.Flags == nil {
 		ent.Flags = map[string]int{}
 	}
-	ent.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, ent, "haste")
 	ent.SummoningSick = false
 
 	captured := ent
@@ -135,7 +135,7 @@ func admiralBrassBeginCombatReanim(gs *gameengine.GameState, perm *gameengine.Pe
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:haste")
+			gameengine.ClearKeywordFlags(gs, captured, "haste")
 		},
 	})
 

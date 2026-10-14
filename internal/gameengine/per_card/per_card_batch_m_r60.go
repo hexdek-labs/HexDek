@@ -137,7 +137,7 @@ func alandraSkyDreamerOnDraw(gs *gameengine.GameState, perm *gameengine.Permanen
 	if tok.Flags == nil {
 		tok.Flags = map[string]int{}
 	}
-	tok.Flags["kw:flying"] = 1
+	gameengine.SetKeywordFlags(gs, tok, "flying")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": seatIdx,
 	})

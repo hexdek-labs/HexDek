@@ -44,7 +44,7 @@ func chainerNightmareGrantHaste(gs *gameengine.GameState, perm *gameengine.Perma
 	if entered.Flags == nil {
 		entered.Flags = map[string]int{}
 	}
-	entered.Flags["kw:haste"] = 1
+	gameengine.SetKeywordFlags(gs, entered, "haste")
 	entered.SummoningSick = false
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,

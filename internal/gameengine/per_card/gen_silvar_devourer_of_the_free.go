@@ -108,7 +108,7 @@ func silvarDevourerOfTheFreeActivate(gs *gameengine.GameState, src *gameengine.P
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	src.Flags["kw:indestructible"] = 1
+	gameengine.SetKeywordFlags(gs, src, "indestructible")
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
@@ -119,7 +119,7 @@ func silvarDevourerOfTheFreeActivate(gs *gameengine.GameState, src *gameengine.P
 			if captured == nil || captured.Flags == nil {
 				return
 			}
-			delete(captured.Flags, "kw:indestructible")
+			gameengine.ClearKeywordFlags(gs, captured, "indestructible")
 		},
 	})
 

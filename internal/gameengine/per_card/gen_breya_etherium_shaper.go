@@ -64,7 +64,7 @@ func breyaEtheriumShaperETB(gs *gameengine.GameState, perm *gameengine.Permanent
 			if newPerm.Flags == nil {
 				newPerm.Flags = map[string]int{}
 			}
-			newPerm.Flags["kw:flying"] = 1
+			gameengine.SetKeywordFlags(gs, newPerm, "flying")
 		}
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

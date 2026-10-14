@@ -62,7 +62,7 @@ func kolodinTriumphCasterEOTSweep(gs *gameengine.GameState, perm *gameengine.Per
 				swept++
 			}
 			if p.Flags["kw:artifact_creature_until_eot"] != 0 {
-				delete(p.Flags, "kw:artifact_creature_until_eot")
+				gameengine.ClearKeywordFlags(gs, p, "artifact_creature_until_eot")
 				swept++
 			}
 		}

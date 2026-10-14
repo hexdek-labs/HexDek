@@ -27,7 +27,7 @@ func chargingWarBoarETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	gameengine.SetWardCost(perm, gameengine.WardCost{
+	gameengine.SetWardCost(gs, perm, gameengine.WardCost{
 		Type:   gameengine.WardCostLife,
 		Amount: 3,
 	})

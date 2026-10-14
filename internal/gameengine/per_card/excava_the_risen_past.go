@@ -76,7 +76,7 @@ func excavaAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		if ent.Flags == nil {
 			ent.Flags = map[string]int{}
 		}
-		ent.Flags["kw:flying"] = 1
+		gameengine.SetKeywordFlags(gs, ent, "flying")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,

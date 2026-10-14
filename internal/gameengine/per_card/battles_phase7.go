@@ -178,8 +178,8 @@ func battleInvasionOfDominaria(gs *gameengine.GameState, perm *gameengine.Perman
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
-		tok.Flags["kw:lifelink"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
+		gameengine.SetKeywordFlags(gs, tok, "lifelink")
 	}
 	emit(gs, slug, perm.Card.DisplayName(),
 		map[string]interface{}{"seat": perm.Controller})
@@ -236,7 +236,7 @@ func battleInvasionOfIkoria(gs *gameengine.GameState, perm *gameengine.Permanent
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:trample"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "trample")
 	}
 	emit(gs, slug, perm.Card.DisplayName(),
 		map[string]interface{}{"seat": perm.Controller})
@@ -262,8 +262,8 @@ func battleInvasionOfIxalan(gs *gameengine.GameState, perm *gameengine.Permanent
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:trample"] = 1
-		tok.Flags["kw:haste"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "trample")
+		gameengine.SetKeywordFlags(gs, tok, "haste")
 	}
 	emit(gs, slug, perm.Card.DisplayName(),
 		map[string]interface{}{"seat": perm.Controller})
@@ -279,7 +279,7 @@ func battleInvasionOfKaladesh(gs *gameengine.GameState, perm *gameengine.Permane
 		if tok.Flags == nil {
 			tok.Flags = map[string]int{}
 		}
-		tok.Flags["kw:flying"] = 1
+		gameengine.SetKeywordFlags(gs, tok, "flying")
 	}
 	emit(gs, slug, perm.Card.DisplayName(),
 		map[string]interface{}{"seat": perm.Controller})

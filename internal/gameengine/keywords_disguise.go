@@ -277,7 +277,7 @@ func TurnFaceUpDisguise(gs *GameState, perm *Permanent, cost int) bool {
 	// abilities on the AST come back into play automatically once
 	// Card.FaceDown is false — the layers system stops applying the
 	// §707.2 override and BaseCharacteristics walks the AST as normal.
-	delete(perm.Flags, "kw:ward")
+	ClearKeywordFlags(gs, perm, "ward")
 	delete(perm.Flags, "ward_cost")
 	delete(perm.Flags, "disguise_face_down")
 	delete(perm.Flags, "face_down")
