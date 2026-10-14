@@ -28,6 +28,11 @@ func sakashimaCopyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
+	// CR 614.1c + 614.5 — one opportunity per permanent. See
+	// clone_as_enters_once_r90.go.
+	if !claimCloneAsEnters(perm) {
+		return
+	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return

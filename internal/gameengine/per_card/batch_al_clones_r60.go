@@ -46,6 +46,14 @@ type cloneRider func(*gameengine.Permanent)
 // on the next pass. We DON'T no-op; downstream invariants need the ETB
 // event regardless of whether a copy target was available.
 func cloneVariantETB(gs *gameengine.GameState, perm *gameengine.Permanent, slug string, allow clonePredicate, rider cloneRider) {
+	// CR 614.1c + 614.5 — "enters as a copy" is a replacement effect and
+	// gets exactly one opportunity. Without this, a Copy Enchantment that
+	// copies a Copy Enchantment re-selects this handler by name through
+	// fireETBOnCopy forever; see clone_as_enters_once_r90.go for the prod
+	// stack overflow that produced it.
+	if !claimCloneAsEnters(perm) {
+		return
+	}
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
@@ -252,6 +260,10 @@ func spittingImageResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 	})
 	emitPartial(gs, slug, "Spitting Image",
 		"retrace_alt_cost_cast_from_graveyard_discard_land_needs_alt_cost_primitive")
+	// The token entered as a copy, so its one as-enters-copy opportunity
+	// is spent (CR 614.5); claim it before the ETB fan-out so a copied
+	// clone body can't run a second one on it.
+	claimCloneAsEnters(token)
 	// Fire ETB on the token so chained ETB effects (Lord of Extinction
 	// graveyard count, Mulldrifter card draw, etc.) trigger.
 	fireETBOnCopy(gs, token)

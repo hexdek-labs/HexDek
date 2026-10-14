@@ -48,6 +48,11 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
+	// CR 614.1c + 614.5 — one opportunity per permanent. See
+	// clone_as_enters_once_r90.go.
+	if !claimCloneAsEnters(perm) {
+		return
+	}
 	// Mark the sac-on-target flag regardless of copy target.
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
@@ -188,10 +193,14 @@ func fireETBOnCopy(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// etb_with_counters static (adds nothing).
 	gameengine.ApplyStaticETBCounters(gs, perm)
 	name := perm.Card.DisplayName()
-	// Skip self-referential copies.
-	if name == "Phantasmal Image" {
-		return
-	}
+	// r90: this used to be `if name == "Phantasmal Image" { return }` — a
+	// self-reference guard covering exactly one of the five clone paths
+	// that reach this chokepoint. Copy Enchantment copying a Copy
+	// Enchantment went straight through it and overflowed the stack on
+	// prod. The guard now lives where the rule does: every as-enters-copy
+	// handler claims its single CR 614.5 opportunity, so dispatching one
+	// here on a permanent that already entered is a no-op rather than a
+	// re-entry. See clone_as_enters_once_r90.go.
 	reg := Global()
 	reg.mu.RLock()
 	handlers := append([]ETBHandler(nil), reg.etb[normalizeName(name)]...)

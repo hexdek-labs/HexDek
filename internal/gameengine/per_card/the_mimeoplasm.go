@@ -32,6 +32,17 @@ func theMimeoplasmETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
+	// CR 614.1c + 614.5 — "As this enters, ... it enters as a copy" is a
+	// replacement effect with one opportunity. This handler is reachable
+	// through fireETBOnCopy when another clone enters as a copy of The
+	// Mimeoplasm, which would run a SECOND as-enters copy on a permanent
+	// that had already entered — and, because this one exiles two
+	// graveyard cards as its cost, would exile two more every time. It
+	// never hung (nothing here calls fireETBOnCopy), so there was no
+	// crash to find it by. See clone_as_enters_once_r90.go.
+	if !claimCloneAsEnters(perm) {
+		return
+	}
 
 	// Collect all creature cards in graveyards.
 	type cand struct {
