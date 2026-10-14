@@ -131,6 +131,10 @@ func heliodPickCounterTarget(seat *gameengine.Seat) *gameengine.Permanent {
 	return firstEnchantment
 }
 
+// heliodLifelinkUEOTMarker is this grant's source identity in the r87
+// refcount (keyword_flag_grants_r87.go).
+const heliodLifelinkUEOTMarker = "heliod_sun_crowned_lifelink_ueot"
+
 // heliodSunCrownedActivate handles "{1}{W}: Another target creature
 // gains lifelink until end of turn." R52 batchM port — stamps the
 // kw:lifelink flag and schedules a cleanup delayed trigger at the
@@ -160,8 +164,16 @@ func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanen
 			if p == nil || p == src || p.Card == nil || !p.IsCreature() {
 				continue
 			}
+			// AI POLICY, left layer-blind on purpose: this is Heliod's
+			// own target preference ("don't waste the grant on something
+			// that already shows lifelink"), not a rules query. Any
+			// creature here is a legal target either way, so reading the
+			// raw flag can only pick a slightly worse target, never an
+			// illegal one. It is also imprecise in the other direction —
+			// it does not see PRINTED lifelink — which is pre-existing
+			// and deliberately not widened here.
 			if p.Flags != nil && p.Flags["kw:lifelink"] == 1 {
-				continue // already has lifelink
+				continue
 			}
 			score := gs.PowerOf(p)
 			if i == src.Controller {
@@ -179,11 +191,19 @@ func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanen
 	}
 	seat.ManaPool -= 2
 	gameengine.SyncManaAfterSpend(seat)
-	if target.Flags == nil {
-		target.Flags = map[string]int{}
-	}
-	target.Flags["kw:lifelink"] = 1
-	target.Flags["kw:lifelink_from_heliod_ueot"] = 1
+	// r91: refcounted grant (keyword_flag_grants_r87.go), replacing the
+	// old Flags["kw:lifelink_from_heliod_ueot"] provenance tag that the
+	// layer fold took verbatim into chars.Keywords.
+	//
+	// The invalidation here is NEW. The old grant path set the shared
+	// flag and never invalidated the characteristics cache, although its
+	// own cleanup trigger did — so a cached entry taken before the
+	// activation answered "no lifelink" for a creature that had just
+	// been granted it, until something unrelated invalidated. That is
+	// the invalidation gap r89 found in three of four migrated paths,
+	// present here too.
+	gameengine.GrantKeywordFlag(target, "lifelink", heliodLifelinkUEOTMarker)
+	gs.InvalidateCharacteristicsCache()
 	// Cleanup at end step.
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
@@ -192,12 +212,10 @@ func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,
 		EffectFn: func(gs *gameengine.GameState) {
-			if captured == nil || captured.Flags == nil {
+			if captured == nil {
 				return
 			}
-			if captured.Flags["kw:lifelink_from_heliod_ueot"] == 1 {
-				delete(captured.Flags, "kw:lifelink_from_heliod_ueot")
-				delete(captured.Flags, "kw:lifelink")
+			if gameengine.RevokeKeywordFlag(captured, "lifelink", heliodLifelinkUEOTMarker) {
 				gs.InvalidateCharacteristicsCache()
 			}
 		},

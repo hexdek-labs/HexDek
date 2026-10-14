@@ -20,6 +20,12 @@ import (
 //
 // "Fast Healing" first-main-phase recursion is a delayed trigger out of
 // scope here — the gen_*.go partial still documents that gap.
+// oldOneEyeTrampleMarker is this anthem's source identity in the r87
+// refcount (keyword_flag_grants_r87.go), replacing the old
+// Flags["kw:trample_from_old_one_eye"] provenance tag, which the layer
+// fold took verbatim into chars.Keywords as a keyword of that name.
+const oldOneEyeTrampleMarker = "old_one_eye_trample"
+
 func registerOldOneEyeCustom(r *Registry) {
 	r.OnETB("Old One Eye", oldOneEyeApplyAnthemOnETB)
 	r.OwnsETBTrigger("Old One Eye")
@@ -49,14 +55,19 @@ func oldOneEyeRefreshAnthem(gs *gameengine.GameState, perm *gameengine.Permanent
 		if p == nil || p == perm || !p.IsCreature() {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		if p.Flags["kw:trample"] != 1 {
-			p.Flags["kw:trample"] = 1
-			p.Flags["kw:trample_from_old_one_eye"] = 1
+		// r91: the guard here used to be `if p.Flags["kw:trample"] != 1`
+		// — skip anything that already shows trample. That is the exact
+		// defect r87's doc names: it made Old One Eye decline to RECORD
+		// its own grant whenever another source had got there first, so
+		// when that other source left it deleted the shared flag and
+		// took trample away with Old One Eye still on the battlefield.
+		// The refcount is what makes the guard unnecessary: granting
+		// twice under the same marker is idempotent, and the shared flag
+		// survives until the last holder revokes.
+		if !gameengine.HasKeywordFlagGrant(p, "trample", oldOneEyeTrampleMarker) {
 			stamped++
 		}
+		gameengine.GrantKeywordFlag(p, "trample", oldOneEyeTrampleMarker)
 	}
 	if stamped > 0 {
 		gs.InvalidateCharacteristicsCache()
@@ -113,11 +124,10 @@ func oldOneEyeStripAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) 
 		if p == nil || p == perm || p.Flags == nil {
 			continue
 		}
-		if p.Flags["kw:trample_from_old_one_eye"] != 1 {
+		if !gameengine.HasKeywordFlagGrant(p, "trample", oldOneEyeTrampleMarker) {
 			continue
 		}
-		delete(p.Flags, "kw:trample_from_old_one_eye")
-		delete(p.Flags, "kw:trample")
+		gameengine.RevokeKeywordFlag(p, "trample", oldOneEyeTrampleMarker)
 		stripped++
 	}
 	if stripped > 0 {

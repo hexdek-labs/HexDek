@@ -13,6 +13,18 @@ import (
 // stamping the Modification + kw:menace here makes the buff real.
 const gisaTribeAnthemTag = "gisa_skeleton_zombie_anthem"
 
+// gisaMenaceMarker is this anthem's source identity in the r87 refcount
+// (keyword_flag_grants_r87.go). It replaces the old
+// Flags["kw:menace_from_gisa"] provenance tag, which lived INSIDE the
+// namespace runtimeKeywordSources folds verbatim and therefore reached
+// chars.Keywords as a keyword literally named "menace_from_gisa" — the
+// r89 find, of which this file was the canonical example quoted in
+// three other doc comments. "kwsrc:" is outside the fold.
+//
+// Gisa is legendary and this sweep only touches her own controller's
+// battlefield, so one marker per effect is one marker per source.
+const gisaMenaceMarker = "gisa_skeleton_zombie_menace"
+
 func registerGisaTheHellraiserCustom(r *Registry) {
 	r.OnETB("Gisa, the Hellraiser", gisaRefreshAnthemOnETB)
 	r.OnTrigger("Gisa, the Hellraiser", "permanent_etb", gisaRefreshAnthemOnEvent)
@@ -40,17 +52,11 @@ func gisaRefreshTribeAnthem(gs *gameengine.GameState, perm *gameengine.Permanent
 	for _, p := range seat.Battlefield {
 		if p == nil || p == perm || p.Card == nil || !p.IsCreature() {
 			stripTaggedModifications(p, gisaTribeAnthemTag)
-			if p != nil && p.Flags != nil && p.Flags["kw:menace_from_gisa"] == 1 {
-				delete(p.Flags, "kw:menace_from_gisa")
-				delete(p.Flags, "kw:menace")
-			}
+			gameengine.RevokeKeywordFlag(p, "menace", gisaMenaceMarker)
 			continue
 		}
 		stripTaggedModifications(p, gisaTribeAnthemTag)
-		if p.Flags != nil && p.Flags["kw:menace_from_gisa"] == 1 {
-			delete(p.Flags, "kw:menace_from_gisa")
-			delete(p.Flags, "kw:menace")
-		}
+		gameengine.RevokeKeywordFlag(p, "menace", gisaMenaceMarker)
 		if !cardHasSubtype(p.Card, "skeleton") && !cardHasSubtype(p.Card, "zombie") {
 			continue
 		}
@@ -60,11 +66,7 @@ func gisaRefreshTribeAnthem(gs *gameengine.GameState, perm *gameengine.Permanent
 			Duration:  gisaTribeAnthemTag,
 			Timestamp: gs.NextTimestamp(),
 		})
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:menace"] = 1
-		p.Flags["kw:menace_from_gisa"] = 1
+		gameengine.GrantKeywordFlag(p, "menace", gisaMenaceMarker)
 		stamped++
 	}
 	if stamped > 0 {
@@ -123,12 +125,11 @@ func gisaStripTribeAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) 
 		if p == nil || p == perm || p.Flags == nil {
 			continue
 		}
-		if p.Flags["kw:menace_from_gisa"] != 1 {
+		if !gameengine.HasKeywordFlagGrant(p, "menace", gisaMenaceMarker) {
 			continue
 		}
 		stripTaggedModifications(p, gisaTribeAnthemTag)
-		delete(p.Flags, "kw:menace_from_gisa")
-		delete(p.Flags, "kw:menace")
+		gameengine.RevokeKeywordFlag(p, "menace", gisaMenaceMarker)
 		stripped++
 	}
 	if stripped > 0 {

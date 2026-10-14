@@ -42,10 +42,19 @@ import "strings"
 // The marker namespace is deliberately NOT under "kw:".
 // runtimeKeywordSources folds every "kw:"-prefixed key VERBATIM into
 // chars.Keywords, so a provenance tag written as "kw:menace_from_gisa"
-// (the existing convention, a84fc750) lands in the layer-computed
-// keyword set as a keyword literally named "menace_from_gisa". Harmless
-// only because nothing asks for that name. "kwsrc:" keeps provenance out
-// of the keyword set entirely.
+// (the convention this migration replaced, a84fc750) lands in the
+// layer-computed keyword set as a keyword literally named
+// "menace_from_gisa". Harmless only because nothing asks for that name.
+// "kwsrc:" keeps provenance out of the keyword set entirely.
+//
+// UPDATED r91: that convention is GONE from production code. The last
+// four tags — menace_from_gisa, haste_from_kolodin,
+// trample_from_old_one_eye, lifelink_from_heliod_ueot — migrated in
+// batch 2, and `grep -o 'kw:[a-z_]*_from_[a-z_]*'` over internal/ now
+// returns nothing outside tests that synthesize the flag to pin the
+// fold's behaviour. The hazard the namespace poses is unchanged, so the
+// rule stands for anything written next; what changed is that no live
+// handler relies on it any more.
 //
 // INTEROP WITH THE ~230 UNMIGRATED RAW STAMP SITES. A raw stamper writes
 // Flags["kw:<x>"] with no marker. If a migrated source then granted and

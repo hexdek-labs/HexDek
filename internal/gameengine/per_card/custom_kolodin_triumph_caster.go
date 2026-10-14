@@ -11,6 +11,15 @@ import (
 // haste anthem, which the AST keyword pipeline does NOT actually
 // apply (Mount/Vehicle aren't first-class haste targets in the
 // keyword pipeline). Stamping the flag here makes the haste real.
+// kolodinHasteMarker is this anthem's source identity in the r87
+// refcount (keyword_flag_grants_r87.go), replacing the old
+// Flags["kw:haste_from_kolodin"] provenance tag — which the layer fold
+// took verbatim into chars.Keywords as a keyword named
+// "haste_from_kolodin". Haste is among the most-shared granted keywords
+// on a board, so colliding with another grantor is this handler's
+// ordinary case, not an edge one.
+const kolodinHasteMarker = "kolodin_mount_vehicle_haste"
+
 func registerKolodinTriumphCasterCustom(r *Registry) {
 	r.OnETB("Kolodin, Triumph Caster", kolodinRefreshAnthemOnETB)
 	r.OnTrigger("Kolodin, Triumph Caster", "permanent_etb", kolodinRefreshAnthemOnEvent)
@@ -44,11 +53,7 @@ func kolodinRefreshMountVehicleHaste(gs *gameengine.GameState, perm *gameengine.
 		if !isMount && !isVehicle {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:haste"] = 1
-		p.Flags["kw:haste_from_kolodin"] = 1
+		gameengine.GrantKeywordFlag(p, "haste", kolodinHasteMarker)
 		stamped++
 	}
 	if stamped > 0 {
@@ -105,11 +110,10 @@ func kolodinStripMountVehicleHaste(gs *gameengine.GameState, perm *gameengine.Pe
 		if p == nil || p == perm || p.Flags == nil {
 			continue
 		}
-		if p.Flags["kw:haste_from_kolodin"] != 1 {
+		if !gameengine.HasKeywordFlagGrant(p, "haste", kolodinHasteMarker) {
 			continue
 		}
-		delete(p.Flags, "kw:haste_from_kolodin")
-		delete(p.Flags, "kw:haste")
+		gameengine.RevokeKeywordFlag(p, "haste", kolodinHasteMarker)
 		stripped++
 	}
 	if stripped > 0 {

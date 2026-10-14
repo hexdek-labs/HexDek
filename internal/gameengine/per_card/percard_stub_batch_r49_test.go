@@ -461,8 +461,14 @@ func TestOldOneEye_DoesNotStampSelf(t *testing.T) {
 
 	oldOneEyeApplyAnthemOnETB(gs, one)
 
-	if one.Flags["kw:trample_from_old_one_eye"] == 1 {
-		t.Errorf("Old One Eye should not stamp the from-marker on itself")
+	// r91: this used to assert on Flags["kw:trample_from_old_one_eye"],
+	// which no longer exists — the assertion would have passed
+	// vacuously. It now asks the refcount the same question.
+	if gameengine.HasKeywordFlagGrant(one, "trample", oldOneEyeTrampleMarker) {
+		t.Errorf("Old One Eye should not record a trample grant on itself")
+	}
+	if one.HasKeyword("trample") {
+		t.Errorf("Old One Eye should not stamp trample on itself; flags=%v", one.Flags)
 	}
 }
 
