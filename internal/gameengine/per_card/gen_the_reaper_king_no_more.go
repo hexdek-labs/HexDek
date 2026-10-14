@@ -145,13 +145,10 @@ func theReaperDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		// mismatch that breaks slice-iterated "creatures you control" and,
 		// once a later control op runs, aliases the *Permanent onto two
 		// battlefields → CardIdentity dup; r63 Scarab God / Reaper King).
-		if perm.Controller != np.Controller && perm.Controller >= 0 && perm.Controller < len(gs.Seats) && gs.Seats[perm.Controller] != nil {
-			removePermanent(gs, np) // np is on the owner's slice here
-			np.Controller = perm.Controller
-			np.Timestamp = gs.NextTimestamp()
-			gs.Seats[perm.Controller].Battlefield = append(gs.Seats[perm.Controller].Battlefield, np)
-			gs.InvalidateCharacteristicsCache()
-		} else {
+		// r102 — canonical reparent; keeps the slice/Controller pairing
+		// the comment above is about, and adds the §302.6 stamp (a no-op
+		// here: np entered the battlefield this instant).
+		if !gameengine.ApplyControlChange(gs, np, perm.Controller) {
 			np.Controller = perm.Controller
 		}
 	}

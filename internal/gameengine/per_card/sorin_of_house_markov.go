@@ -158,15 +158,9 @@ func sorinNeonateMinusSix(gs *gameengine.GameState, src *gameengine.Permanent) {
 		return
 	}
 	priorOwner := target.Controller
-	prevSeat := gs.Seats[priorOwner]
-	for i, p := range prevSeat.Battlefield {
-		if p == target {
-			prevSeat.Battlefield = append(prevSeat.Battlefield[:i], prevSeat.Battlefield[i+1:]...)
-			break
-		}
-	}
-	target.Controller = src.Controller
-	gs.Seats[src.Controller].Battlefield = append(gs.Seats[src.Controller].Battlefield, target)
+	// r102 — canonical reparent. This site also never bumped the
+	// timestamp or invalidated the §613 cache; the primitive does both.
+	gameengine.ApplyControlChange(gs, target, src.Controller)
 	if !cardHasType(target.Card, "vampire") {
 		target.Card.Types = append(target.Card.Types, "vampire")
 	}

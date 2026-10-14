@@ -62,18 +62,11 @@ func perplexingChimeraTrigger(gs *gameengine.GameState, perm *gameengine.Permane
 	// Swap Chimera controller -- move between battlefields.
 	if originalChimeraController >= 0 && originalChimeraController < len(gs.Seats) &&
 		originalSpellController >= 0 && originalSpellController < len(gs.Seats) {
-		// Remove from current controller's battlefield.
-		srcSeat := gs.Seats[originalChimeraController]
-		for i, p := range srcSeat.Battlefield {
-			if p == perm {
-				srcSeat.Battlefield = append(srcSeat.Battlefield[:i], srcSeat.Battlefield[i+1:]...)
-				break
-			}
-		}
-		// Add to new controller's battlefield.
-		perm.Controller = originalSpellController
-		gs.Seats[originalSpellController].Battlefield = append(
-			gs.Seats[originalSpellController].Battlefield, perm)
+		// r102 — the Chimera itself changes hands, so it takes the
+		// canonical reparent (CR §302.6 stamp, §702.95e unpair, §613
+		// invalidation). The topItem.Controller swap above is a STACK
+		// item, not a permanent, and is untouched by §302.6.
+		gameengine.ApplyControlChange(gs, perm, originalSpellController)
 	}
 
 	spellName := ""

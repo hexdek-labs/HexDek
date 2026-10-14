@@ -724,8 +724,22 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 			if perm.Tapped {
 				return &CastError{Reason: "already_tapped"}
 			}
-			// Summoning-sick creatures can't use tap-symbol abilities (CR §302.6).
-			if perm.SummoningSick && perm.IsCreature() {
+			// Summoning-sick creatures can't use tap-symbol abilities
+			// (CR §302.6) — UNLESS they have haste. CR §702.10c: "If a
+			// creature has haste, its controller can activate its
+			// activated abilities whose cost includes the tap symbol or
+			// the untap symbol even if that creature hasn't been
+			// controlled by that player continuously since their most
+			// recent turn began."
+			//
+			// r102: §702.10 has two arms and only ONE of them was here.
+			// canAttackGS carries §702.10b (the attack arm) with its haste
+			// check; this, the §702.10c arm, had none, so a creature that
+			// entered with haste — Hall of the Bandit Lord, Lightning
+			// Greaves, Anger — could attack but could not use its own {T}
+			// ability. Layer-aware read, so an anthem- or graveyard-granted
+			// haste counts.
+			if perm.SummoningSick && perm.IsCreature() && !keywordActive(gs, perm, "haste") {
 				return &CastError{Reason: "summoning_sick"}
 			}
 			perm.Tapped = true

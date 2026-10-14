@@ -272,17 +272,12 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 		// Move to Dihada's controller's battlefield if not already.
 		if fromSeat != seat {
 			origTS := p.Timestamp
-			// Detach from original controller.
-			origSeat := gs.Seats[fromSeat]
-			for idx, q := range origSeat.Battlefield {
-				if q == p {
-					origSeat.Battlefield = append(origSeat.Battlefield[:idx], origSeat.Battlefield[idx+1:]...)
-					break
-				}
-			}
-			p.Controller = seat
-			p.Timestamp = gs.NextTimestamp()
-			gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+			// r102 — canonical reparent.
+			gameengine.ApplyControlChange(gs, p, seat)
+			// Re-clear the CR §302.6 stamp the reparent just applied:
+			// Dihada's -11 prints "gain haste until end of turn", and
+			// the clear above this block ran before the move.
+			p.SummoningSick = false
 			gs.LogEvent(gameengine.Event{
 				Kind:   "gain_control",
 				Seat:   seat,
@@ -328,12 +323,10 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 				// battlefield (died, exiled, bounced, re-stolen).
 				ourSeat := gs.Seats[seat]
 				stillHere := false
-				ourIdx := -1
 				if ourSeat != nil {
-					for idx, q := range ourSeat.Battlefield {
+					for _, q := range ourSeat.Battlefield {
 						if q == p {
 							stillHere = true
-							ourIdx = idx
 							break
 						}
 					}
@@ -348,10 +341,9 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 				if dest == nil {
 					continue
 				}
-				ourSeat.Battlefield = append(ourSeat.Battlefield[:ourIdx], ourSeat.Battlefield[ourIdx+1:]...)
-				p.Controller = st.originalSeat
-				p.Timestamp = gs.NextTimestamp()
-				dest.Battlefield = append(dest.Battlefield, p)
+				// r102 — canonical reparent home (CR §302.6 applies in
+				// this direction too: the owner's control was broken).
+				gameengine.ApplyControlChange(gs, p, st.originalSeat)
 				gs.LogEvent(gameengine.Event{
 					Kind:   "lose_control",
 					Seat:   seat,

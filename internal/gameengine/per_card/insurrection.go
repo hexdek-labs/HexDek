@@ -22,7 +22,9 @@ import (
 //     permanents (own + opps; the oracle says "all creatures").
 //   - For each: clear Tapped, clear SummoningSick, stamp the haste
 //     flag (Flags["kw:haste"]=1) so the combat-legality + attack
-//     pipeline sees haste. Reassign Controller=caster and move the
+//     pipeline sees haste. r102: the reparent is now the canonical
+//     gameengine.ApplyControlChange and runs BEFORE the haste clear.
+//     Historically this was a hand-rolled move of the
 //     permanent from the original seat's Battlefield slice to the
 //     caster's. This is the direct-battlefield-mutation pattern from
 //     roil_elemental.go's landfall steal.
@@ -52,7 +54,6 @@ type insurrectionCapture struct {
 	perm           *gameengine.Permanent
 	priorController int
 	priorTapped    bool
-	priorSick      bool
 	priorHaste     int
 }
 
@@ -94,10 +95,15 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 				perm:           p,
 				priorController: p.Controller,
 				priorTapped:    p.Tapped,
-				priorSick:      p.SummoningSick,
 				priorHaste:     priorHaste,
 			})
-			// Untap.
+			// r102 — the canonical reparent runs FIRST, because it
+			// stamps CR §302.6 sickness on the new controller and
+			// Insurrection's printed "they gain haste until end of
+			// turn" is what clears it. Clearing before the move would
+			// be silently undone by the stamp.
+			gameengine.ApplyControlChange(gs, p, seat)
+			// "Untap them, and they gain haste until end of turn."
 			p.Tapped = false
 			p.SummoningSick = false
 			// Grant haste via flag (the same shape baral_and_kari_zev.go
@@ -106,23 +112,6 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 				p.Flags = map[string]int{}
 			}
 			gameengine.SetKeywordFlags(gs, p, "haste")
-			// Control change: remove from original seat's battlefield
-			// (unless it's already the caster's), append to caster's,
-			// reassign Controller. The direct-mutation pattern matches
-			// roil_elemental.go:78.
-			if p.Controller != seat {
-				old := gs.Seats[p.Controller]
-				if old != nil {
-					for j, q := range old.Battlefield {
-						if q == p {
-							old.Battlefield = append(old.Battlefield[:j], old.Battlefield[j+1:]...)
-							break
-						}
-					}
-				}
-				p.Controller = seat
-				caster.Battlefield = append(caster.Battlefield, p)
-			}
 		}
 	}
 
@@ -157,28 +146,21 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 				if p.Controller != seat {
 					continue
 				}
-				casterBF := gs.Seats[seat]
-				if casterBF == nil {
+				// r102 — canonical reparent home. Returns false if the
+				// permanent is no longer where we left it, which is the
+				// defensive check the hand-rolled splice was doing.
+				if !gameengine.ApplyControlChange(gs, p, cap.priorController) {
 					continue
 				}
-				stillThere := false
-				for j, q := range casterBF.Battlefield {
-					if q == p {
-						casterBF.Battlefield = append(casterBF.Battlefield[:j], casterBF.Battlefield[j+1:]...)
-						stillThere = true
-						break
-					}
-				}
-				if !stillThere {
-					continue
-				}
-				p.Controller = cap.priorController
-				if orig := gs.Seats[cap.priorController]; orig != nil {
-					orig.Battlefield = append(orig.Battlefield, p)
-				}
-				// Clear the haste flag we added. Don't restore the
-				// prior Tapped/Sick — combat happened with this
-				// creature untapped, those states are spent.
+				// Clear the haste flag we added. The prior Tapped state
+				// is NOT restored — combat happened with this creature
+				// untapped and that is spent. Nor is the prior
+				// SummoningSick: CR §302.6 asks whether the controller
+				// has had it CONTINUOUSLY since their most recent turn
+				// began, and this one's control was interrupted, so the
+				// reparent's fresh stamp is the right answer and a
+				// snapshot of the pre-theft value would be the wrong
+				// one. That is why priorSick is gone from the capture.
 				if p.Flags != nil {
 					if cap.priorHaste == 0 {
 						gameengine.ClearKeywordFlags(gs, p, "haste")

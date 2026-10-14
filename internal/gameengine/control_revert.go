@@ -49,22 +49,17 @@ func RevertControlToOwner(gs *GameState, p *Permanent, reason string) bool {
 	if p.Controller == owner {
 		return true // already home — idempotent
 	}
-	if !gs.removePermanent(p) {
+	from := p.Controller
+	// r102 — the canonical reparent handles the slice move, the §702.95e
+	// soulbond break, the timestamp, the §613 cache invalidation, and the
+	// §302.6 stamp. Coming HOME is a control change too: the owner's
+	// control was interrupted, so it has not been theirs continuously
+	// since their most recent turn began and §302.6 bites until their
+	// next untap step.
+	if !ApplyControlChange(gs, p, owner) {
 		return false // left the battlefield since the grant
 	}
-	// CR §702.95e — a control change breaks any soulbond pairing. Do it before
-	// the Controller/Timestamp flip below, while p still carries its old
-	// timestamp + flags (the pairing link is keyed on the old timestamp).
-	UnpairOnLeave(gs, p)
-	from := p.Controller
-	p.Controller = owner
 	p.Owner = owner // re-align any corrupted Permanent.Owner while here
-	p.Timestamp = gs.NextTimestamp()
-	gs.Seats[owner].Battlefield = append(gs.Seats[owner].Battlefield, p)
-	// §613 layer-2 → layer-7 dependency: control change feeds anthems /
-	// "creatures you control" statics, so the characteristics cache must be
-	// recomputed on the new controller relationship.
-	gs.InvalidateCharacteristicsCache()
 	gs.LogEvent(Event{
 		Kind:   "control_reverted",
 		Seat:   owner,

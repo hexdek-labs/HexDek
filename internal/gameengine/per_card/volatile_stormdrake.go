@@ -88,13 +88,13 @@ func volatileStormdrakeETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 			break
 		}
 	}
-	perm.Controller = oppSeat
-	perm.Timestamp = gs.NextTimestamp()
-	target.Controller = mySeat
-	target.Timestamp = gs.NextTimestamp()
-	theirs.Battlefield = append(theirs.Battlefield, perm)
-	mine.Battlefield = append(mine.Battlefield, target)
-	gs.InvalidateCharacteristicsCache()
+	// r102 — both halves of the exchange are control changes (CR §302.6
+	// stamp, §702.95e unpair, §613 invalidation on each). The manual
+	// splices above have already removed both from their old slices, so
+	// the primitive's own removePermanent is a no-op and only the append
+	// side runs.
+	gameengine.ApplyControlChange(gs, perm, oppSeat)
+	gameengine.ApplyControlChange(gs, target, mySeat)
 
 	// Energy: +4, then pay target.CMC or sac.
 	if mine.Flags == nil {

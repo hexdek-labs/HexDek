@@ -59,12 +59,9 @@ func resolveTempControlMod(gs *GameState, src *Permanent) {
 	}
 
 	oldController := best.Controller
-	gs.removePermanent(best)
-	best.Controller = newController
-	best.Timestamp = gs.NextTimestamp()
-	gs.Seats[newController].Battlefield = append(gs.Seats[newController].Battlefield, best)
-	// §613 layer-2 → layer-7: recompute anthems on the new controller.
-	gs.InvalidateCharacteristicsCache()
+	// r102 — canonical reparent (§302.6 stamp, §702.95e unpair, §613
+	// invalidation). The sickness clear below is the printed haste.
+	ApplyControlChange(gs, best, newController)
 
 	// Until-EOT steal: register for the cleanup-step revert to owner.
 	RegisterTempControlGrant(gs, best, oldController)

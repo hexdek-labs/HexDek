@@ -481,10 +481,11 @@ func reanimateResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 			if p == nil || p.Card != bestCard {
 				continue
 			}
-			if p.Controller != seat {
-				removePermanent(gs, p)
-				p.Controller = seat
-				gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+			// r102 — canonical reparent. Not strictly a control CHANGE
+			// (the permanent entered this instant, so it is already
+			// §302.6-sick and the stamp is a no-op); routed anyway so
+			// every battlefield reparent has one shape.
+			if gameengine.ApplyControlChange(gs, p, seat) {
 				reparented = true
 			}
 			break
@@ -885,14 +886,11 @@ func gildedDrakeETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	// Exchange control: Drake goes to opponent, target comes to us.
 	opponentSeat := bestTarget.Controller
-	// Give Drake to opponent.
-	removePermanent(gs, perm)
-	perm.Controller = opponentSeat
-	gs.Seats[opponentSeat].Battlefield = append(gs.Seats[opponentSeat].Battlefield, perm)
-	// Take target creature.
-	removePermanent(gs, bestTarget)
-	bestTarget.Controller = seat
-	gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, bestTarget)
+	// r102 — Gilded Drake's exchange is two control changes. The creature
+	// we take is summoning-sick for us per CR §302.6 (the card prints no
+	// haste), and so is the Drake for them.
+	gameengine.ApplyControlChange(gs, perm, opponentSeat)
+	gameengine.ApplyControlChange(gs, bestTarget, seat)
 	emit(gs, slug, "Gilded Drake", map[string]interface{}{
 		"seat":         seat,
 		"stole":        bestTarget.Card.DisplayName(),

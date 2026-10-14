@@ -71,21 +71,10 @@ func treasureNabberTrigger(gs *gameengine.GameState, perm *gameengine.Permanent,
 
 	// Gain control of the artifact until end of Nabber controller's next turn.
 	oldController := artifact.Controller
-	artifact.Controller = nabberSeat
-
-	// Move from old controller's battlefield to new controller's.
-	if oldController >= 0 && oldController < len(gs.Seats) && gs.Seats[oldController] != nil {
-		bf := gs.Seats[oldController].Battlefield
-		for i, p := range bf {
-			if p == artifact {
-				gs.Seats[oldController].Battlefield = append(bf[:i], bf[i+1:]...)
-				break
-			}
-		}
-	}
-	if nabberSeat >= 0 && nabberSeat < len(gs.Seats) && gs.Seats[nabberSeat] != nil {
-		gs.Seats[nabberSeat].Battlefield = append(gs.Seats[nabberSeat].Battlefield, artifact)
-	}
+	// r102 — canonical reparent. The §302.6 stamp is inert for an
+	// artifact (every reader gates on IsCreature) but becomes live the
+	// moment something animates it while Nabber holds it.
+	gameengine.ApplyControlChange(gs, artifact, nabberSeat)
 
 	gs.LogEvent(gameengine.Event{
 		Kind:   "control_change",

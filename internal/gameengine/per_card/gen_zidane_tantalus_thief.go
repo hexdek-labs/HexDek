@@ -75,24 +75,19 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 		return
 	}
 
-	// Move the permanent to Zidane's seat. Mirror the in-engine
-	// gain_control pattern.
-	src := gs.Seats[origOwner]
-	for i, p := range src.Battlefield {
-		if p == target {
-			src.Battlefield = append(src.Battlefield[:i], src.Battlefield[i+1:]...)
-			break
-		}
-	}
-	target.Controller = seatIdx
-	target.Timestamp = gs.NextTimestamp()
+	// r102 — canonical reparent (CR §302.6 stamp, §702.95e unpair, §613
+	// invalidation). The stamp is deliberately LEFT standing here: the
+	// granted haste below is what legalises attacking (§702.10b) and
+	// {T} abilities (§702.10c), exactly as the card reads, and when the
+	// EOT closure strips that haste the §302.6 restriction correctly
+	// comes back with it.
+	gameengine.ApplyControlChange(gs, target, seatIdx)
 	target.Tapped = false
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
 	gameengine.SetKeywordFlags(gs, target, "lifelink")
 	gameengine.SetKeywordFlags(gs, target, "haste")
-	gs.Seats[seatIdx].Battlefield = append(gs.Seats[seatIdx].Battlefield, target)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "gain_control",
 		Seat:   seatIdx,
@@ -164,20 +159,8 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 				}
 				return
 			}
-			// Pluck from current controller's bf and return to original.
-			cur := gs.Seats[captured.Controller]
-			if cur != nil {
-				for i, p := range cur.Battlefield {
-					if p == captured {
-						cur.Battlefield = append(cur.Battlefield[:i], cur.Battlefield[i+1:]...)
-						break
-					}
-				}
-			}
-			if originalOwner >= 0 && originalOwner < len(gs.Seats) {
-				captured.Controller = originalOwner
-				captured.Timestamp = gs.NextTimestamp()
-				gs.Seats[originalOwner].Battlefield = append(gs.Seats[originalOwner].Battlefield, captured)
+			// r102 — canonical reparent home.
+			if gameengine.ApplyControlChange(gs, captured, originalOwner) {
 				gs.LogEvent(gameengine.Event{
 					Kind:   "gain_control",
 					Seat:   originalOwner,

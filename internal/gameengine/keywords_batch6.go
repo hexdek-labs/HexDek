@@ -1290,21 +1290,14 @@ func ExchangeControl(gs *GameState, perm1, perm2 *Permanent) {
 	if gs == nil || perm1 == nil || perm2 == nil || perm1 == perm2 {
 		return
 	}
-	gs.removePermanent(perm1)
-	gs.removePermanent(perm2)
-
-	perm1.Controller, perm2.Controller = perm2.Controller, perm1.Controller
-	perm1.Timestamp = gs.NextTimestamp()
-	perm2.Timestamp = gs.NextTimestamp()
-
-	if perm1.Controller >= 0 && perm1.Controller < len(gs.Seats) {
-		gs.Seats[perm1.Controller].Battlefield = append(
-			gs.Seats[perm1.Controller].Battlefield, perm1)
-	}
-	if perm2.Controller >= 0 && perm2.Controller < len(gs.Seats) {
-		gs.Seats[perm2.Controller].Battlefield = append(
-			gs.Seats[perm2.Controller].Battlefield, perm2)
-	}
+	// r102 — both halves of the exchange are control changes, so both go
+	// through the canonical reparent (§302.6 stamp, §702.95e unpair, §613
+	// invalidation). Sequential is safe: the first call takes perm1 out of
+	// seat1 and puts it in seat2, and perm2 is still in seat2's slice for
+	// the second call to find.
+	seat1, seat2 := perm1.Controller, perm2.Controller
+	ApplyControlChange(gs, perm1, seat2)
+	ApplyControlChange(gs, perm2, seat1)
 
 	name1, name2 := "<nil>", "<nil>"
 	if perm1.Card != nil {

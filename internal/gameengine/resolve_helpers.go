@@ -5037,12 +5037,9 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 			if t.Kind == TargetKindPermanent && t.Permanent != nil && t.Permanent.Controller != seat {
 				p := t.Permanent
 				oldController := p.Controller
-				gs.removePermanent(p)
-				p.Controller = seat
-				p.Timestamp = gs.NextTimestamp()
-				if seat >= 0 && seat < len(gs.Seats) {
-					gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
-				}
+				// r102 — canonical reparent. This path previously also
+				// skipped the §613 cache invalidation the AST path does.
+				ApplyControlChange(gs, p, seat)
 				gs.LogEvent(Event{Kind: "gain_control", Seat: seat, Target: oldController, Source: sourceName(src),
 					Details: map[string]interface{}{"target_card": p.Card.DisplayName()}})
 				return true

@@ -56,13 +56,10 @@ func karonaUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	// player (CR §110.2a — controller may differ from owner). On a control
 	// change the creature is summoning-sick under its new controller, but
 	// Karona has haste so it can still attack.
-	if perm.Controller != activeSeat {
-		removePermanent(gs, perm)
-		perm.Controller = activeSeat
-		perm.SummoningSick = true
-		gs.Seats[activeSeat].Battlefield = append(gs.Seats[activeSeat].Battlefield, perm)
-		perm.Timestamp = gs.NextTimestamp()
-	}
+	// r102 — this handler was the ONLY one of the twenty-five that
+	// stamped §302.6 by hand, with the comment above explaining exactly
+	// why. It now routes through the primitive that generalises it.
+	gameengine.ApplyControlChange(gs, perm, activeSeat)
 
 	emit(gs, slug, "Karona, False God", map[string]interface{}{
 		"seat":      activeSeat,

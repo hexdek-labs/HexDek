@@ -136,41 +136,42 @@ func teveshSzatMinusTen(gs *gameengine.GameState, src *gameengine.Permanent) {
 	var zoneSteals []stolen
 
 	// Gain control of all commanders on the battlefield (skip our own).
+	//
+	// r102 — collect first, reparent after. The walk used to splice each
+	// seat's slice by hand while rebuilding it, and the canonical
+	// ApplyControlChange does its own removePermanent, so the two would
+	// fight over the slice mid-iteration.
+	var toSteal []*gameengine.Permanent
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
-		var keep []*gameengine.Permanent
 		for _, p := range s.Battlefield {
-			if p == nil || p.Card == nil {
-				keep = append(keep, p)
-				continue
-			}
-			if p.Controller == dest {
-				keep = append(keep, p)
+			if p == nil || p.Card == nil || p.Controller == dest {
 				continue
 			}
 			if !teveshSzatIsCommander(gs, p) {
-				keep = append(keep, p)
 				continue
 			}
-			old := p.Controller
-			p.Controller = dest
-			p.Timestamp = gs.NextTimestamp()
-			gs.Seats[dest].Battlefield = append(gs.Seats[dest].Battlefield, p)
-			gs.LogEvent(gameengine.Event{
-				Kind:   "gain_control",
-				Seat:   dest,
-				Target: old,
-				Source: src.Card.DisplayName(),
-				Details: map[string]interface{}{
-					"target_card": p.Card.DisplayName(),
-					"reason":      "tevesh_szat_minus_ten",
-				},
-			})
-			battlefieldSteals = append(battlefieldSteals, stolen{from: old, name: p.Card.DisplayName()})
+			toSteal = append(toSteal, p)
 		}
-		s.Battlefield = keep
+	}
+	for _, p := range toSteal {
+		old := p.Controller
+		if !gameengine.ApplyControlChange(gs, p, dest) {
+			continue
+		}
+		gs.LogEvent(gameengine.Event{
+			Kind:   "gain_control",
+			Seat:   dest,
+			Target: old,
+			Source: src.Card.DisplayName(),
+			Details: map[string]interface{}{
+				"target_card": p.Card.DisplayName(),
+				"reason":      "tevesh_szat_minus_ten",
+			},
+		})
+		battlefieldSteals = append(battlefieldSteals, stolen{from: old, name: p.Card.DisplayName()})
 	}
 
 	// Pull every commander out of the command zone and onto our battlefield.

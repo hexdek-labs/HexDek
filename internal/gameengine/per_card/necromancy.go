@@ -122,20 +122,9 @@ func necromancyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 
 	// Move control to Necromancy's controller per "under your control".
-	if creature.Controller != seat {
-		oldSeat := creature.Controller
-		if oldSeat >= 0 && oldSeat < len(gs.Seats) && gs.Seats[oldSeat] != nil {
-			bf := gs.Seats[oldSeat].Battlefield
-			for i, p := range bf {
-				if p == creature {
-					gs.Seats[oldSeat].Battlefield = append(bf[:i], bf[i+1:]...)
-					break
-				}
-			}
-		}
-		creature.Controller = seat
-		gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, creature)
-	}
+	// r102 — canonical reparent; the creature was reanimated this instant
+	// so it is already §302.6-sick and the stamp is a no-op.
+	gameengine.ApplyControlChange(gs, creature, seat)
 
 	// Attach Necromancy to the reanimated creature.
 	perm.AttachedTo = creature

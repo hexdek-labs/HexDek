@@ -268,11 +268,10 @@ func nicolBolasMinusFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 			if p == nil || p.Card != bestCard {
 				continue
 			}
-			if p.Controller != owner {
-				removePermanent(gs, p)
-				p.Controller = owner
-				gs.Seats[owner].Battlefield = append(gs.Seats[owner].Battlefield, p)
-			}
+			// r102 — canonical reparent. The permanent entered this
+			// instant, so it is already §302.6-sick and the stamp is a
+			// no-op; routed for one shape across every reparent.
+			gameengine.ApplyControlChange(gs, p, owner)
 			break
 		}
 	}

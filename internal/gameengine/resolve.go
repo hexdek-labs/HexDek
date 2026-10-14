@@ -2024,28 +2024,22 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 		if oldController == newController {
 			continue
 		}
-		// Remove from old controller's battlefield, add to new.
-		gs.removePermanent(p)
-		// CR §702.95e — a control change breaks any soulbond pairing. Break it
-		// before the Controller/Timestamp flip, while p still carries the old
-		// timestamp the pairing link is keyed on.
-		UnpairOnLeave(gs, p)
-		p.Controller = newController
-		p.Timestamp = gs.NextTimestamp()
-		gs.Seats[newController].Battlefield = append(gs.Seats[newController].Battlefield, p)
-		// §613 layer-2 → layer-7: recompute anthems / "you control" statics
-		// on the new controller relationship (the stolen creature loses the
-		// old controller's anthem and gains the new controller's).
-		gs.InvalidateCharacteristicsCache()
+		// r102 — the canonical reparent: slice move, §702.95e unpair,
+		// §302.6 sickness stamp on the new controller, timestamp, and the
+		// §613 layer-2 → layer-7 cache invalidation (the stolen creature
+		// loses the old controller's anthem and gains the new one's).
+		ApplyControlChange(gs, p, newController)
 		// r63 §108.3: ownership NEVER changes on control effects —
 		// Permanent.Owner stays Card.Owner.
 		if e.Duration == "until_end_of_turn" {
 			// Until-EOT steal (Act of Treason class): revert at the §514.2
 			// cleanup step. Per the printed "untap it; it gains haste",
-			// untap the creature and clear summoning sickness so it can
-			// attack THIS turn (functional haste — no persistent kw:haste
-			// flag, which would wrongly stick to the owner's creature after
-			// the EOT revert). Mirrors resolveTempControlMod.
+			// untap the creature and clear the §302.6 sickness
+			// ApplyControlChange just stamped, so it can attack THIS turn
+			// (functional haste — no persistent kw:haste flag, which would
+			// wrongly stick to the owner's creature after the EOT revert).
+			// Mirrors resolveTempControlMod. The stamp is the rule, this
+			// clear is the card: the order matters.
 			p.Tapped = false
 			p.SummoningSick = false
 			RegisterTempControlGrant(gs, p, oldController)

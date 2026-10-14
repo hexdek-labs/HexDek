@@ -73,16 +73,10 @@ func rootwaterMatriarchActivate(gs *gameengine.GameState, src *gameengine.Perman
 	if oldSeat == nil || newSeat == nil {
 		return
 	}
-	for i, p := range oldSeat.Battlefield {
-		if p == target {
-			oldSeat.Battlefield = append(oldSeat.Battlefield[:i], oldSeat.Battlefield[i+1:]...)
-			break
-		}
-	}
-	target.Controller = src.Controller
-	target.Timestamp = gs.NextTimestamp()
-	newSeat.Battlefield = append(newSeat.Battlefield, target)
-	gs.InvalidateCharacteristicsCache()
+	// r102 — canonical reparent (CR §302.6 stamp, §702.95e unpair, §613
+	// invalidation). Rootwater Matriarch's steal is permanent and prints
+	// no haste, so the creature is summoning-sick for its new controller.
+	gameengine.ApplyControlChange(gs, target, src.Controller)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":      src.Controller,
 		"stolen":    target.Card.DisplayName(),

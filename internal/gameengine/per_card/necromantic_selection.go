@@ -128,10 +128,9 @@ func necromanticSelectionResolve(gs *gameengine.GameState, item *gameengine.Stac
 			if p == nil || p.Card != bestCard {
 				continue
 			}
-			if p.Controller != seat {
-				removePermanent(gs, p)
-				p.Controller = seat
-				gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+			// r102 — canonical reparent; the permanent entered this
+			// instant so the §302.6 stamp is a no-op.
+			if gameengine.ApplyControlChange(gs, p, seat) {
 				reparented = true
 			}
 			break

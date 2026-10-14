@@ -74,17 +74,9 @@ func roilElementalLandfall(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if oldSeat == nil || newSeat == nil {
 		return
 	}
-	// Remove from old controller's battlefield, append to new.
-	for i, p := range oldSeat.Battlefield {
-		if p == target {
-			oldSeat.Battlefield = append(oldSeat.Battlefield[:i], oldSeat.Battlefield[i+1:]...)
-			break
-		}
-	}
-	target.Controller = perm.Controller
-	target.Timestamp = gs.NextTimestamp()
-	newSeat.Battlefield = append(newSeat.Battlefield, target)
-	gs.InvalidateCharacteristicsCache()
+	// r102 — canonical reparent (CR §302.6 stamp, §702.95e unpair, §613
+	// invalidation). Roil Elemental's landfall steal prints no haste.
+	gameengine.ApplyControlChange(gs, target, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":           perm.Controller,
 		"stolen":         target.Card.DisplayName(),

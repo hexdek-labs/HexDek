@@ -2352,8 +2352,13 @@ func buildActivationOptions(gs *gameengine.GameState, seatIdx int, phase string)
 			}
 
 			// Summoning sickness: creatures can't use tap-symbol abilities
-			// on the turn they entered (CR §302.6).
-			if act.Cost.Tap && perm.SummoningSick && perm.IsCreature() {
+			// on the turn they entered (CR §302.6) — unless they have
+			// haste (CR §702.10c). r102: this enumerator mirrored the
+			// engine gate in activation.go, including its missing haste
+			// arm, so the AI never even considered a {T} ability on a
+			// hasty creature.
+			if act.Cost.Tap && perm.SummoningSick && perm.IsCreature() &&
+				!gs.HasKeywordOf(perm, "haste") {
 				continue
 			}
 

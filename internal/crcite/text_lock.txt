@@ -398,6 +398,8 @@
 702.107	0d19b34b800a	Outlast
 702.107a	a3825869633a	Outlast
 702.108	8014434641dd	Prowess
+702.10b	aae53f9c90d8	Haste
+702.10c	b8bd7dc0cbe0	Haste
 702.11	3c8ed45954d4	Hexproof
 702.110	deda3f8aaf0b	Exploit
 702.110b	f8a3bd932a32	Exploit
