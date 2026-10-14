@@ -86,8 +86,21 @@ func runtimeKeywordSources(p *Permanent) []string {
 	// "kw:first_strike" and one written as "kw:first strike" are already
 	// two different keys to it; rewriting underscores here would make
 	// this query match keywords the flag surface does not, which is the
-	// opposite of a faithful fold. It also keeps provenance tags such as
-	// "kw:menace_from_gisa" from being reinterpreted as a keyword.
+	// opposite of a faithful fold.
+	//
+	// CORRECTED r89 — this comment used to end by claiming the verbatim
+	// fold "keeps provenance tags such as kw:menace_from_gisa from being
+	// reinterpreted as a keyword". That is FALSE, and measured false:
+	// the verbatim fold is exactly what puts "menace_from_gisa" into
+	// chars.Keywords as a keyword of that name. What it avoids is the
+	// tag being normalised into something that collides with the REAL
+	// keyword, which is a smaller and different guarantee. No keyword
+	// query answers wrongly as a result — "menace" stays false both raw
+	// and layer-aware — so the harm is a fabricated entry in the layer's
+	// keyword set, and a comment that would tell the next person a
+	// provenance tag is safe inside the kw: namespace. It is not; that
+	// is why r87's markers live under "kwsrc:". Pinned by
+	// TestKeywordFoldR89_ProvenanceTagInKwNamespaceBecomesAKeyword.
 	if len(p.Flags) > 0 {
 		for k := range p.Flags {
 			if !strings.HasPrefix(k, "kw:") {

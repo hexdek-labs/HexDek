@@ -4,6 +4,16 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
+// dihadaBuffMarker and dihadaHasteMarker identify Dihada as a source of
+// her two refcounted keyword grants (r89): the +1 legendary buff
+// (vigilance / lifelink / indestructible) and the -11 mass threaten
+// (haste). They are separate markers because the two grants have
+// different durations and revoke independently.
+const (
+	dihadaBuffMarker  = "dihada_legendary_buff"
+	dihadaHasteMarker = "dihada_mass_threaten_haste"
+)
+
 // registerDihada wires Dihada, Binder of Wills.
 //
 // Oracle text:
@@ -88,12 +98,11 @@ func dihadaPlusTwo(gs *gameengine.GameState, src *gameengine.Permanent) {
 		return
 	}
 
-	if target.Flags == nil {
-		target.Flags = map[string]int{}
-	}
-	target.Flags["kw:vigilance"] = 1
-	target.Flags["kw:lifelink"] = 1
-	target.Flags["kw:indestructible"] = 1
+	// r89: refcounted grant (see keyword_flag_grants_r87.go).
+	gameengine.GrantKeywordFlag(target, "vigilance", dihadaBuffMarker)
+	gameengine.GrantKeywordFlag(target, "lifelink", dihadaBuffMarker)
+	gameengine.GrantKeywordFlag(target, "indestructible", dihadaBuffMarker)
+	gs.InvalidateCharacteristicsCache()
 
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
@@ -101,12 +110,19 @@ func dihadaPlusTwo(gs *gameengine.GameState, src *gameengine.Permanent) {
 		ControllerSeat: seat,
 		SourceCardName: "Dihada, Binder of Wills",
 		EffectFn: func(gs *gameengine.GameState) {
-			if captured == nil || captured.Flags == nil {
+			if captured == nil {
 				return
 			}
-			delete(captured.Flags, "kw:vigilance")
-			delete(captured.Flags, "kw:lifelink")
-			delete(captured.Flags, "kw:indestructible")
+			changed := gameengine.RevokeKeywordFlag(captured, "vigilance", dihadaBuffMarker)
+			if gameengine.RevokeKeywordFlag(captured, "lifelink", dihadaBuffMarker) {
+				changed = true
+			}
+			if gameengine.RevokeKeywordFlag(captured, "indestructible", dihadaBuffMarker) {
+				changed = true
+			}
+			if changed {
+				gs.InvalidateCharacteristicsCache()
+			}
 		},
 	})
 
@@ -194,7 +210,6 @@ func dihadaMinusThree(gs *gameengine.GameState, src *gameengine.Permanent) {
 type dihadaThreatenedPerm struct {
 	perm           *gameengine.Permanent
 	originalSeat   int
-	hadHaste       bool
 	originalTimest int
 }
 
@@ -241,15 +256,12 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 			allUntap++
 		}
 
-		// Haste flag — record prior state so we can restore.
-		hadHaste := false
-		if p.Flags != nil && p.Flags["kw:haste"] == 1 {
-			hadHaste = true
-		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:haste"] = 1
+		// r89: refcounted grant. This replaces a hand-rolled
+		// "did it already have haste?" snapshot, which was the best
+		// available shape before the refcount existed but could only
+		// see grantors present AT THE MOMENT Dihada stamped — a second
+		// grantor arriving later was still clobbered on the revert.
+		gameengine.GrantKeywordFlag(p, "haste", dihadaHasteMarker)
 		p.SummoningSick = false
 		allHaste = append(allHaste, p)
 
@@ -281,7 +293,6 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 			stolen = append(stolen, dihadaThreatenedPerm{
 				perm:           p,
 				originalSeat:   fromSeat,
-				hadHaste:       hadHaste,
 				originalTimest: origTS,
 			})
 		}
@@ -291,26 +302,6 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 	// permanents too at end of turn.
 	capturedHasteList := make([]*gameengine.Permanent, len(allHaste))
 	copy(capturedHasteList, allHaste)
-	hadHasteSet := make(map[*gameengine.Permanent]bool, len(stolen))
-	for _, st := range stolen {
-		hadHasteSet[st.perm] = st.hadHaste
-	}
-	// For non-stolen permanents, record whether they already had haste so
-	// we don't strip a real keyword.
-	preStateHaste := make(map[*gameengine.Permanent]bool, len(allHaste))
-	for _, p := range allHaste {
-		if had, ok := hadHasteSet[p]; ok {
-			preStateHaste[p] = had
-			continue
-		}
-		// Non-stolen: we can no longer reconstruct prior flag, but we
-		// just set kw:haste so removing it is safe unless the AST
-		// itself grants haste — HasKeyword still returns true via AST
-		// even after we delete the flag. So unconditionally clear our
-		// runtime flag.
-		preStateHaste[p] = false
-	}
-
 	capturedStolen := make([]dihadaThreatenedPerm, len(stolen))
 	copy(capturedStolen, stolen)
 
@@ -364,14 +355,17 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 					},
 				})
 			}
-			// Strip runtime haste flag where we added it.
+			// Strip the haste grant Dihada owns. The refcount keeps
+			// any other grantor's haste alive, which the removed
+			// pre-state snapshot could not do.
+			changed := false
 			for _, p := range capturedHasteList {
-				if p == nil || p.Flags == nil {
-					continue
+				if gameengine.RevokeKeywordFlag(p, "haste", dihadaHasteMarker) {
+					changed = true
 				}
-				if !preStateHaste[p] {
-					delete(p.Flags, "kw:haste")
-				}
+			}
+			if changed {
+				gs.InvalidateCharacteristicsCache()
 			}
 		},
 	})

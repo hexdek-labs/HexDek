@@ -6,6 +6,10 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
+// leonardoGrantMarker identifies Leonardo as a source of the refcounted
+// menace / trample / lifelink grants (r89).
+const leonardoGrantMarker = "leonardo_the_balance"
+
 // registerLeonardoTheBalance wires Leonardo, the Balance.
 //
 // Oracle text (Scryfall, verified 2026-05-01; TMNT crossover):
@@ -87,12 +91,10 @@ func leonardoFiveColorGrant(gs *gameengine.GameState, src *gameengine.Permanent,
 		if p == nil || !p.IsCreature() {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:menace"] = 1
-		p.Flags["kw:trample"] = 1
-		p.Flags["kw:lifelink"] = 1
+		// r89: refcounted grant (see keyword_flag_grants_r87.go).
+		gameengine.GrantKeywordFlag(p, "menace", leonardoGrantMarker)
+		gameengine.GrantKeywordFlag(p, "trample", leonardoGrantMarker)
+		gameengine.GrantKeywordFlag(p, "lifelink", leonardoGrantMarker)
 		captured = append(captured, p)
 	}
 	if len(captured) > 0 {
@@ -101,13 +103,23 @@ func leonardoFiveColorGrant(gs *gameengine.GameState, src *gameengine.Permanent,
 			ControllerSeat: src.Controller,
 			SourceCardName: src.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {
+				changed := false
 				for _, p := range captured {
-					if p == nil || p.Flags == nil {
+					if p == nil {
 						continue
 					}
-					delete(p.Flags, "kw:menace")
-					delete(p.Flags, "kw:trample")
-					delete(p.Flags, "kw:lifelink")
+					if gameengine.RevokeKeywordFlag(p, "menace", leonardoGrantMarker) {
+						changed = true
+					}
+					if gameengine.RevokeKeywordFlag(p, "trample", leonardoGrantMarker) {
+						changed = true
+					}
+					if gameengine.RevokeKeywordFlag(p, "lifelink", leonardoGrantMarker) {
+						changed = true
+					}
+				}
+				if changed {
+					gs.InvalidateCharacteristicsCache()
 				}
 			},
 		})

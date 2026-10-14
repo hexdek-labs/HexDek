@@ -6,6 +6,12 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
+// najeelaGrantMarker identifies Najeela as a source of the refcounted
+// trample / lifelink / haste grants (r89). She buffs every attacking
+// creature on the table, so sharing a flag with another grantor is
+// the normal case for her, not an edge one.
+const najeelaGrantMarker = "najeela_blade_blossom"
+
 // registerNajeelaBladeBlossom wires Najeela, the Blade-Blossom.
 //
 // Oracle text (Scryfall):
@@ -146,12 +152,12 @@ func najeelaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 				p.Tapped = false
 				untapped++
 			}
-			if p.Flags == nil {
-				p.Flags = map[string]int{}
-			}
-			p.Flags["kw:trample"] = 1
-			p.Flags["kw:lifelink"] = 1
-			p.Flags["kw:haste"] = 1
+			// r89: refcounted grant. Najeela buffs EVERY attacking
+			// creature on the table, so she routinely shares a keyword
+			// flag with another grantor on the same permanent.
+			gameengine.GrantKeywordFlag(p, "trample", najeelaGrantMarker)
+			gameengine.GrantKeywordFlag(p, "lifelink", najeelaGrantMarker)
+			gameengine.GrantKeywordFlag(p, "haste", najeelaGrantMarker)
 			p.SummoningSick = false
 			captured = append(captured, p)
 			buffed++
@@ -163,13 +169,23 @@ func najeelaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 			ControllerSeat: src.Controller,
 			SourceCardName: src.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {
+				changed := false
 				for _, p := range captured {
-					if p == nil || p.Flags == nil {
+					if p == nil {
 						continue
 					}
-					delete(p.Flags, "kw:trample")
-					delete(p.Flags, "kw:lifelink")
-					delete(p.Flags, "kw:haste")
+					if gameengine.RevokeKeywordFlag(p, "trample", najeelaGrantMarker) {
+						changed = true
+					}
+					if gameengine.RevokeKeywordFlag(p, "lifelink", najeelaGrantMarker) {
+						changed = true
+					}
+					if gameengine.RevokeKeywordFlag(p, "haste", najeelaGrantMarker) {
+						changed = true
+					}
+				}
+				if changed {
+					gs.InvalidateCharacteristicsCache()
 				}
 			},
 		})

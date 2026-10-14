@@ -20,7 +20,15 @@ import (
 // battlefield naturally drops the next refresh" — there is no next
 // refresh once Mustard is gone, and nothing dropped anything, so the
 // anthem was permanent (r65).
-const mustardSoldierAnthemMarker = "kw:from_commander_mustard"
+// mustardSoldierAnthemMarker identifies Mustard as a source of the
+// refcounted vigilance / trample / haste grants (r89). It replaces the
+// private provenance flag this handler kept beside the shared stamps,
+// which was written as "kw:from_commander_mustard" — INSIDE the kw:
+// namespace, which runtimeKeywordSources folds VERBATIM, so it reached
+// chars.Keywords as a keyword literally named "from_commander_mustard".
+// Measured, not inferred: see TestKeywordFlagMarkersR89_ProvenanceTag…
+// in the gameengine package. The kwsrc: namespace is outside the fold.
+const mustardSoldierAnthemMarker = "commander_mustard_soldier_anthem"
 
 func registerCommanderMustardCustom(r *Registry) {
 	r.OnETB("Commander Mustard", mustardRefreshAnthemOnETB)
@@ -53,13 +61,11 @@ func mustardRefreshSoldierAnthem(gs *gameengine.GameState, perm *gameengine.Perm
 		if !cardHasSubtype(p.Card, "soldier") {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:vigilance"] = 1
-		p.Flags["kw:trample"] = 1
-		p.Flags["kw:haste"] = 1
-		p.Flags[mustardSoldierAnthemMarker] = 1
+		// r89: refcounted grant; the marker IS the provenance record,
+		// so the separate provenance flag is gone.
+		gameengine.GrantKeywordFlag(p, "vigilance", mustardSoldierAnthemMarker)
+		gameengine.GrantKeywordFlag(p, "trample", mustardSoldierAnthemMarker)
+		gameengine.GrantKeywordFlag(p, "haste", mustardSoldierAnthemMarker)
 		stamped++
 	}
 	if stamped > 0 {
@@ -74,8 +80,10 @@ func mustardRefreshSoldierAnthem(gs *gameengine.GameState, perm *gameengine.Perm
 // ---------------------------------------------------------------------------
 // r65 — static anthem stamps outlived their own source.
 //
-// The anthem is applied by stamping Flags["kw:<name>"] onto each
-// matching creature, with a provenance marker recording who stamped it.
+// The anthem is applied by granting the shared Flags["kw:<name>"] stamp
+// to each matching creature through the r87 refcount, whose per-source
+// marker is also the provenance record (r89; it used to be a separate
+// flag of its own).
 // The refresh function was registered for permanent_etb AND
 // permanent_ltb, so when the ANTHEM SOURCE ITSELF left the battlefield
 // the handler re-ran and RE-STAMPED instead of stripping: the buff
@@ -113,16 +121,17 @@ func mustardStripSoldierAnthem(gs *gameengine.GameState, perm *gameengine.Perman
 	}
 	stripped := 0
 	for _, p := range seat.Battlefield {
-		if p == nil || p == perm || p.Flags == nil {
+		if p == nil || p == perm {
 			continue
 		}
-		if p.Flags[mustardSoldierAnthemMarker] != 1 {
+		if !gameengine.HasKeywordFlagGrant(p, "vigilance", mustardSoldierAnthemMarker) &&
+			!gameengine.HasKeywordFlagGrant(p, "trample", mustardSoldierAnthemMarker) &&
+			!gameengine.HasKeywordFlagGrant(p, "haste", mustardSoldierAnthemMarker) {
 			continue
 		}
-		delete(p.Flags, mustardSoldierAnthemMarker)
-		delete(p.Flags, "kw:vigilance")
-		delete(p.Flags, "kw:trample")
-		delete(p.Flags, "kw:haste")
+		gameengine.RevokeKeywordFlag(p, "vigilance", mustardSoldierAnthemMarker)
+		gameengine.RevokeKeywordFlag(p, "trample", mustardSoldierAnthemMarker)
+		gameengine.RevokeKeywordFlag(p, "haste", mustardSoldierAnthemMarker)
 		stripped++
 	}
 	if stripped > 0 {
