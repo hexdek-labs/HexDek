@@ -125,13 +125,29 @@ func AdjudicateGameEnd(gs *gameengine.GameState, nSeats int, endedNaturally bool
 	gs.Flags["turn_capped"] = 1
 	gs.Flags["ended"] = 1
 
-	living := []int{}
-	for i, s := range gs.Seats {
-		if s != nil && !s.Lost {
-			living = append(living, i)
+	// r104 — eligibility is "not Lost AND above 0 life". `!Lost` alone
+	// is not alive: the §704.5a SBA that sets Lost stops running once
+	// the game has ended, so a seat can reach the cap at or below 0
+	// with the flag still false. See turn_cap_104_4a_r104.go.
+	//
+	// Mark those seats Lost before adjudicating. The old code reached
+	// them by accident — they were in `living`, below top life, and so
+	// picked up LossReason "turn_cap" — and filtering them out without
+	// this would leave them unmarked at game end, which is precisely
+	// the state the Judge's §704.5a check reports. They lost to
+	// §704.5a, not to the cap, and the reason now says so.
+	for _, s := range gs.Seats {
+		if s != nil && !s.Lost && s.Life <= 0 {
+			s.Lost = true
+			s.LossReason = "life"
 		}
 	}
+	living := TurnCapEligible(gs)
 	if len(living) == 0 {
+		// CR §104.4a — "If all the players remaining in a game lose
+		// simultaneously, the game is a draw." Reported under the
+		// EXISTING reason rather than a new one, so no new string
+		// enters the anti-cheat outcome digest vocabulary.
 		endReason = "turn_cap_all_dead"
 		gs.LogEvent(gameengine.Event{
 			Kind: "game_end", Seat: -1, Target: -1,

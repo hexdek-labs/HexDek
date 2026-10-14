@@ -507,16 +507,9 @@ func (room *SpectateRoom) runOneSpectateGame() {
 		}
 	}
 	if winner < 0 {
-		bestLife := -999
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && s.Life > bestLife {
-				bestLife = s.Life
-				winner = i
-			}
-		}
-		if winner >= 0 {
-			endReason = "turn_cap_leader"
-		}
+		// r104 — canonical turn-cap rule (CR §104.3b eligibility,
+		// §104.4a draw); see tournament/turn_cap_104_4a_r104.go.
+		winner, endReason = tournament.TurnCapWinner(gs)
 	}
 
 	// win_reason captures HOW the winner won (orthogonal to endReason,

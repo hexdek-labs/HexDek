@@ -544,13 +544,14 @@ func buildGoOutcome(gs *gameengine.GameState, decks []*deckparser.TournamentDeck
 	}
 	// Turn-cap tiebreak (mirror runner.runOneGame).
 	if o.Winner < 0 && o.EndReason == "" {
-		living := []int{}
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost {
-				living = append(living, i)
-			}
-		}
+		// r104 — eligibility via the canonical helper (CR §104.3b: a
+		// seat at or below 0 life has lost, the SBA simply stopped
+		// running). The tie handling below stays local: this mirror
+		// reports turn_cap_tie as a non-win, where AdjudicateGameEnd
+		// breaks the tie by seat index.
+		living := tournament.TurnCapEligible(gs)
 		if len(living) == 0 {
+			// CR §104.4a — all remaining players have lost: a draw.
 			o.EndReason = "turn_cap_all_dead"
 		} else {
 			topLife := gs.Seats[living[0]].Life

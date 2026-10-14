@@ -1283,13 +1283,11 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 			}
 		}
 		if winner < 0 {
-			bestLife := -999
-			for i, s := range gs.Seats {
-				if s != nil && !s.Lost && s.Life > bestLife {
-					bestLife = s.Life
-					winner = i
-				}
-			}
+			// r104 — canonical turn-cap rule (CR §104.3b eligibility,
+			// §104.4a draw). Was a `bestLife := -999` loop whose
+			// sentinel sits below every reachable life total, so it
+			// crowned a seat at or below 0 life.
+			winner, _ = tournament.TurnCapWinner(gs)
 		}
 
 		// Curse: record results + dimension stats for gauntlet seats.
@@ -1926,13 +1924,8 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 		}
 	}
 	if winner < 0 {
-		bestLife := -999
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && s.Life > bestLife {
-				bestLife = s.Life
-				winner = i
-			}
-		}
+		// r104 — canonical turn-cap rule; see turn_cap_104_4a_r104.go.
+		winner, _ = tournament.TurnCapWinner(gs)
 	}
 
 	// Per-card win/loss + first-played telemetry. firstPlayed is built
@@ -2269,36 +2262,27 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 		}
 	}
 	if winner < 0 {
-		// Highest life wins on turn cap.
-		bestLife := -999
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && s.Life > bestLife {
-				bestLife = s.Life
-				winner = i
-			}
+		// r104 — the canonical turn-cap rule. The defect the r67c note
+		// here flagged and deferred ("crowns the highest-life living
+		// seat with no check that the life is above 0 ... where CR
+		// §104.4a is an all-players-lost draw") is now fixed in
+		// tournament.TurnCapWinner, with its own regressions, and all
+		// six copies of this loop route through it.
+		winner, endReason = tournament.TurnCapWinner(gs)
+		// r67c — mark the state as turn-cap-adjudicated so the Judge's
+		// §704.5a check can report WHICH path produced a winner.
+		// showmatch adjudicates here rather than calling
+		// tournament.AdjudicateGameEnd, and that one sets this flag;
+		// without this line the Judge reads turn_capped=false on a
+		// genuinely capped showmatch game and points the investigation
+		// the wrong way. r104: set unconditionally, including on the
+		// §104.4a draw — the game WAS capped either way, and the two
+		// sibling copies above not setting it is exactly how 494 live
+		// alerts came to read turn_capped=false across 674 capped games.
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
 		}
-		if winner >= 0 {
-			endReason = "turn_cap_leader"
-			// r67c — mark the state as turn-cap-adjudicated so the
-			// Judge's §704.5a check can report WHICH path produced a
-			// winner. showmatch does its own adjudication here rather
-			// than calling tournament.AdjudicateGameEnd, and that one
-			// sets this flag; without this line the Judge would read
-			// turn_capped=false on a genuinely capped showmatch game
-			// and point the investigation the wrong way.
-			//
-			// NOTE this branch shares the adjudicator's defect: it
-			// crowns the highest-life living seat with no check that
-			// the life is above 0 (bestLife starts at -999), so an
-			// all-negative table produces a "winner" at <=0 life where
-			// CR §104.4a is an all-players-lost draw. Flagged, not
-			// changed here — fixing the outcome rule is a behaviour
-			// change and belongs with its own regressions.
-			if gs.Flags == nil {
-				gs.Flags = map[string]int{}
-			}
-			gs.Flags["turn_capped"] = 1
-		}
+		gs.Flags["turn_capped"] = 1
 	}
 
 	// win_reason captures HOW the winner won (orthogonal to endReason,
