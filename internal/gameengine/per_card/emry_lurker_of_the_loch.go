@@ -98,10 +98,29 @@ func emryActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		emitFail(gs, slug, src.Card.DisplayName(), "no_artifact_in_graveyard", nil)
 		return
 	}
-	// Per oracle: "{T}: You may cast target artifact card from your
-	// graveyard." Register a zone-cast permission from graveyard.
-	// ExileOnResolve = true implements the "if that spell would be put
-	// into a graveyard this turn, exile it instead" clause.
+	// Oracle, re-fetched r98: "{T}: Choose target artifact card in your
+	// graveyard. You may cast that card this turn. (You still pay its
+	// costs. Timing rules still apply.)"
+	//
+	// ExileOnResolve is FALSE (r98). Until r98 this was true, and the
+	// comment justified it with the clause "if that spell would be put
+	// into a graveyard this turn, exile it instead" — quoted as if
+	// printed on Emry. IT IS NOT ON THE CARD. Kess, Maestros
+	// Ascendancy and Wrexial all carry that exact sentence and were
+	// verified in the same pass; Emry has no exile clause of any kind,
+	// which is the point of the card — the artifact goes back to the
+	// graveyard and can be cast again next turn.
+	//
+	// The flag was inert on the RESOLVE path (an artifact is a
+	// permanent spell, and the exile branch in stack.go is an else-if
+	// after the ETB arm, so it never ran — measured). It was NOT inert
+	// on the off-board path: postStackZoneForOffboard consults
+	// ShouldExileOnResolve with no permanent-spell check, so a
+	// COUNTERED Emry-cast artifact was exiled instead of returned to
+	// the graveyard — and the resolve event tagged it §702.34a,
+	// flashback's rule, on a card with no flashback. Same split-path
+	// shape as the r96 escape defect.
+	//
 	// Oracle "you may cast it this turn" → stamp Duration + GrantTurn so
 	// ExpireZoneCastGrants reaps at EOT cleanup of the grant turn even
 	// if the delayed-trigger fallback below races or is skipped.
@@ -109,7 +128,7 @@ func emryActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		Zone:              gameengine.ZoneGraveyard,
 		Keyword:           "emry_artifact_cast",
 		ManaCost:          -1, // pay normal mana cost
-		ExileOnResolve:    true,
+		ExileOnResolve:    false,
 		RequireController: seat,
 		SourceName:        "Emry, Lurker of the Loch",
 		Duration:          "until_end_of_turn",

@@ -1845,9 +1845,20 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // the destination, included in the resolve event's "rule" detail.
 func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) (string, string) {
 	if ShouldExileOnResolve(item) {
-		// flashback / aftermath / omen / mayhem / jump-start — exile
-		// instead of any other zone. NOT escape (§702.138 has no
-		// carveout) and not buyback, per the note above.
+		// flashback / aftermath / jump-start — exile instead of any
+		// other zone. NOT escape (§702.138 has no carveout) and not
+		// buyback, per the note above. Mayhem and omen reach here too
+		// and SHOULD NOT — see the r98 note in zone_cast.go and the
+		// CLAUDE.md Open row; both are filed, neither is fixed here.
+		//
+		// The "702.34a" tag is flashback's rule and is emitted for
+		// every item that reaches this branch, including the
+		// counter-and-exile cards (Force of Negation, Mindbreak Trap,
+		// Transcendent Dragon, Smirking Spelljacker, River Song's
+		// Diary) whose exile comes from their own printed replacement
+		// effect and has nothing to do with flashback. Filed with the
+		// mayhem/omen row rather than patched blind, because the right
+		// tag differs per source.
 		return "exile", "702.34a"
 	}
 	return defaultZone, defaultRule
@@ -2454,9 +2465,9 @@ func ResolveStackTop(gs *GameState) {
 				MarkInstanceIDCeased(gs, item.Card.InstanceID)
 			}
 		} else if ShouldExileOnResolve(item) {
-			// Wave 2: flashback / aftermath / omen / mayhem /
-			// jump-start — exile instead of graveyard. NOT escape as
-			// of r96.
+			// Wave 2: flashback / aftermath / jump-start — exile
+			// instead of graveyard. NOT escape as of r96. Mayhem and
+			// omen also reach here and should not (r98, filed).
 			// CR §702.34a: "If the flashback cost was paid, exile this
 			// card instead of putting it anywhere else any time it
 			// would leave the stack." (§702.33 is Kicker — the number

@@ -101,15 +101,29 @@ func tannukETBHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	seat.Flags["tannuk_warp_grant_2r_active"] = 1
 	tannukApplyHaste(gs, perm)
 	// R57: register a ZoneCastPolicy granting warp {2}{R} on artifact
-	// and red creature cards in the controller's hand. Warp is an
-	// alt-cost shaped like "pay 3 mana, exile at end of next end
-	// step, then cast from exile later" — the engine's
-	// ExileOnResolve toggle on ZoneCastPolicy handles the first half;
-	// the "cast from exile later" half relies on the exile->cast
-	// permission survival that ZoneCastPolicy with `Zone=exile` would
-	// model in a follow-up. The hand-cast permission is the load-
-	// bearing half (the strategic value of warp is the cheap cast,
-	// not the delayed re-cast).
+	// and red creature cards in the controller's hand.
+	//
+	// Oracle, re-fetched r98: "Artifact cards and red creature cards in
+	// your hand have warp {2}{R}. (You may cast a card from your hand
+	// for its warp cost. Exile that permanent at the beginning of the
+	// next end step, then you may cast it from exile on a later turn.)"
+	//
+	// ExileOnResolve is FALSE (r98). Until r98 it was true, described as
+	// handling "the first half". It does not: ExileOnResolve exiles the
+	// SPELL as it leaves the stack, whereas warp exiles the PERMANENT at
+	// the beginning of the next end step — the permanent must enter the
+	// battlefield first, which is the entire mechanic. The flag was
+	// inert on the resolve path (warp targets are permanent spells, and
+	// the exile branch is an else-if after the ETB arm — measured), but
+	// live on the off-board path, where a COUNTERED warped spell was
+	// exiled instead of going to the graveyard and the event claimed
+	// §702.34a, flashback's rule.
+	//
+	// STILL NOT IMPLEMENTED, filed in CLAUDE.md Open: the delayed exile
+	// at the next end step, and the subsequent cast-from-exile. The
+	// hand-cast permission is the load-bearing half (the strategic value
+	// of warp is the cheap cast, not the delayed re-cast), so a warped
+	// permanent currently just stays on the battlefield.
 	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
 		SourcePerm:      perm,
 		HandlerID:       "tannuk_warp_2r_grant",
@@ -119,7 +133,7 @@ func tannukETBHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) 
 		ControllerSeat:  perm.Controller,
 		Predicate:       tannukWarpPredicate,
 		ManaCost:        3, // {2}{R} = 3 generic-equivalent
-		ExileOnResolve:  true,
+		ExileOnResolve:  false,
 		Duration:        "while_source_on_bf",
 		SourceTimestamp: perm.Timestamp,
 		GrantTurn:       gs.Turn,

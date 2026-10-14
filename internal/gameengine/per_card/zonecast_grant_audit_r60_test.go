@@ -148,43 +148,42 @@ func TestJeskasWill_ExileGrantExpiresAtEndOfTurn(t *testing.T) {
 	}
 }
 
-// TestVivi_GraveyardGrantExpiresAtEndOfTurn — Vivi's combat-damage
-// trigger grants a free cast from the controller's graveyard for the
-// remainder of the turn. The delayed-trigger fallback existed already;
-// this pin ensures the Duration stamp also reaps deterministically.
-func TestVivi_GraveyardGrantExpiresAtEndOfTurn(t *testing.T) {
+// TestVivi_NoGraveyardGrant_r98 — replaces
+// TestVivi_GraveyardGrantExpiresAtEndOfTurn, which pinned an ability
+// Vivi Ornitier does not have.
+//
+// Oracle (fetched r98, Scryfall ecc1027a, set fin): a {0} power-scaled
+// mana ability and a "whenever you cast a noncreature spell" trigger.
+// No combat-damage trigger, no graveyard cast, no exile clause. The old
+// handler granted free graveyard casts off combat damage and quoted
+// Kess's wording as Vivi's own; it now registers nothing.
+//
+// Asserted as the POSITIVE fact — no grant exists after combat damage —
+// rather than by deleting the old assertions, because a test that only
+// stops checking for a grant also passes if grants stop working
+// entirely.
+func TestVivi_NoGraveyardGrant_r98(t *testing.T) {
 	gs := newGame(t, 2)
 	gs.Turn = 3
+	Reset()
 	vivi := addPerm(gs, 0, "Vivi Ornitier", "creature")
+	vivi.Card.BasePower, vivi.Card.BaseToughness = 2, 2
 	bolt := &gameengine.Card{Name: "Lightning Bolt", Owner: 0, Types: []string{"instant"}}
 	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt)
 
-	viviOrnitierCombatDamage(gs, vivi, map[string]interface{}{
+	before := len(gs.ZoneCastGrants)
+	gameengine.FireCardTrigger(gs, "combat_damage_player", map[string]interface{}{
 		"source_seat":   0,
 		"source_card":   "Vivi Ornitier",
 		"defender_seat": 1,
 	})
 
-	grant := gs.ZoneCastGrants[bolt]
-	if grant == nil {
-		t.Fatalf("Vivi should register a free-cast grant on the graveyard instant")
+	if g := gs.ZoneCastGrants[bolt]; g != nil {
+		t.Errorf("Vivi granted a graveyard cast on combat damage; the card has no such ability "+
+			"(grant=%+v)", g)
 	}
-	if grant.Duration != "until_end_of_turn" {
-		t.Errorf("Duration: want until_end_of_turn, got %q", grant.Duration)
-	}
-	if grant.GrantTurn != 3 {
-		t.Errorf("GrantTurn: want 3, got %d", grant.GrantTurn)
-	}
-	if grant.ManaCost != 0 {
-		t.Errorf("ManaCost: want 0 (without paying), got %d", grant.ManaCost)
-	}
-	if !grant.ExileOnResolve {
-		t.Errorf("ExileOnResolve: want true (cast-this-way → exile)")
-	}
-
-	gameengine.ExpireZoneCastGrants(gs)
-	if _, still := gs.ZoneCastGrants[bolt]; still {
-		t.Errorf("Vivi grant must be reclaimed at cleanup of its grant turn")
+	if n := len(gs.ZoneCastGrants); n != before {
+		t.Errorf("combat damage from Vivi registered %d new zone-cast grant(s); want 0", n-before)
 	}
 }
 

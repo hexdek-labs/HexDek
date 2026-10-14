@@ -564,10 +564,25 @@ func NewEscapePermission(escapeCost int, exileCount int) *ZoneCastPermission {
 				ExileFilter:   "other",
 			},
 		},
-		// CR §702.138 has no exile-instead-of-anywhere-else clause —
-		// only flashback (§702.34a), aftermath, omen, mayhem and
-		// jump-start carry one. An escape-cast spell takes the ordinary
-		// post-stack routing. Was true until r96; see keywords_escape.go.
+		// CR §702.138 has no exile-instead-of-anywhere-else clause.
+		// An escape-cast spell takes the ordinary post-stack routing.
+		// Was true until r96; see keywords_escape.go.
+		//
+		// CORRECTED r98 — this comment used to justify the change by
+		// listing the keywords that "legitimately" carry such a clause:
+		// flashback, aftermath, omen, mayhem and jump-start. THAT LIST
+		// WAS NEVER VERIFIED AND TWO OF THE FIVE ARE WRONG. Only three
+		// carry the sentence, each explicitly:
+		//   flashback   §702.34a
+		//   aftermath   §702.127a
+		//   jump-start  §702.133a
+		// Mayhem's section has three subrules and none of them is an
+		// exile clause; the engine cites its c subrule, which is the
+		// costless variant of the alternative cost. And omen is not a
+		// §702 keyword at all — it is §720, whose 3d subrule says an
+		// Omen spell is SHUFFLED INTO ITS OWNER'S LIBRARY as it
+		// resolves, not exiled. Both are filed in CLAUDE.md Open; do
+		// not re-derive this list from a comment, read the CR.
 		ExileOnResolve:    false,
 		RequireController: -1,
 	}

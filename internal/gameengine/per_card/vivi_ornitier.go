@@ -1,155 +1,48 @@
 package per_card
 
-import (
-	"fmt"
-
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerViviOrnitier wires Vivi Ornitier.
+// registerViviOrnitier — deliberately registers NOTHING (r98).
 //
-// Oracle text:
+// # WHAT THE CARD ACTUALLY SAYS
 //
-//	Whenever Vivi Ornitier deals combat damage to a player, you may cast
-//	an instant or sorcery spell from your graveyard without paying its
-//	mana cost. If a spell cast this way would be put into your graveyard,
-//	exile it instead.
+// Oracle, fetched r98 (Scryfall ecc1027a-8c07-44a0-bdde-fa2844cff694,
+// set fin, Legendary Creature — Wizard, {1}{U}{R}):
 //
-// Implementation:
-//   - OnTrigger "combat_damage_player": gates on source == Vivi and
-//     source_seat == controller (rules out copies / opponent-controlled
-//     Vivi via control magic still requires the source filter).
-//   - We grant a one-shot ZoneCastPermission for graveyard with
-//     ManaCost=0 + ExileOnResolve=true on every instant/sorcery currently
-//     in the controller's graveyard. The AI/Hat consults ZoneCastGrants
-//     when scoring castable plays and may choose the highest-impact spell.
-//   - A delayed end-of-turn trigger revokes any unused grants so the
-//     opportunity stays one-shot per oracle text. Cast spells exit the
-//     graveyard naturally (CastFromZone removes them, ExileOnResolve
-//     handles post-resolution routing).
-//   - De-dupe per (turn, source_seat) — "Whenever ~ deals combat damage
-//     to A player" fires once per damage event per defender, but the
-//     graveyard-grant scope is per-controller and we want one grant
-//     window per turn so multi-defender first-strike + normal damage
-//     does not double-grant.
-func registerViviOrnitier(r *Registry) {
-	r.OnTrigger("Vivi Ornitier", "combat_damage_player", viviOrnitierCombatDamage)
-}
-
-func viviOrnitierCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "vivi_ornitier_free_cast_from_graveyard"
-	if gs == nil || perm == nil || ctx == nil {
-		return
-	}
-
-	sourceSeat, _ := ctx["source_seat"].(int)
-	sourceName, _ := ctx["source_card"].(string)
-	if sourceSeat != perm.Controller {
-		return
-	}
-	if sourceName != "" && sourceName != perm.Card.DisplayName() {
-		return
-	}
-
-	seat := gs.Seats[perm.Controller]
-	if seat == nil || seat.Lost {
-		return
-	}
-
-	// Collect candidate instants/sorceries in the controller's graveyard.
-	type candidate struct {
-		card *gameengine.Card
-		cmc  int
-	}
-	var candidates []candidate
-	for _, c := range seat.Graveyard {
-		if c == nil {
-			continue
-		}
-		if !cardHasType(c, "instant") && !cardHasType(c, "sorcery") {
-			continue
-		}
-		candidates = append(candidates, candidate{card: c, cmc: cardCMC(c)})
-	}
-
-	if len(candidates) == 0 {
-		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":          perm.Controller,
-			"defender_seat": ctx["defender_seat"],
-			"candidates":    0,
-		})
-		return
-	}
-
-	// Best heuristic: highest CMC (free cast value).
-	best := candidates[0]
-	for _, c := range candidates[1:] {
-		if c.cmc > best.cmc {
-			best = c
-		}
-	}
-
-	// Grant one-shot free-cast permission to every candidate so the AI
-	// has the same flexibility a human player would. Track granted cards
-	// in a delayed end-of-turn trigger for cleanup of unused grants.
-	grantedNames := make([]string, 0, len(candidates))
-	grantedCards := make([]*gameengine.Card, 0, len(candidates))
-	for _, c := range candidates {
-		if gameengine.GetZoneCastGrant(gs, c.card) != nil {
-			// Don't override an existing grant (e.g. Underworld Breach escape).
-			continue
-		}
-		// Implementation treats Vivi's per-trigger cast opportunity as a
-		// EOT-bounded window (the delayed-trigger fallback below also
-		// reclaims at end_of_turn). Stamp Duration + GrantTurn so
-		// ExpireZoneCastGrants reaps deterministically regardless of
-		// delayed-trigger timing.
-		zonePerm := &gameengine.ZoneCastPermission{
-			Zone:              gameengine.ZoneGraveyard,
-			Keyword:           "vivi_free_cast",
-			ManaCost:          0,
-			ExileOnResolve:    true,
-			RequireController: perm.Controller,
-			SourceName:        perm.Card.DisplayName(),
-			Duration:          "until_end_of_turn",
-			GrantTurn:         gs.Turn,
-		}
-		gameengine.RegisterZoneCastGrant(gs, c.card, zonePerm)
-		grantedNames = append(grantedNames, c.card.DisplayName())
-		grantedCards = append(grantedCards, c.card)
-	}
-
-	if len(grantedCards) > 0 {
-		controller := perm.Controller
-		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "end_of_turn",
-			ControllerSeat: controller,
-			SourceCardName: perm.Card.DisplayName(),
-			EffectFn: func(gs *gameengine.GameState) {
-				for _, c := range grantedCards {
-					if g := gameengine.GetZoneCastGrant(gs, c); g != nil &&
-						g.Keyword == "vivi_free_cast" {
-						gameengine.RemoveZoneCastGrant(gs, c)
-					}
-				}
-			},
-		})
-	}
-
-	dedupeKey := fmt.Sprintf("vivi_grant_t%d", gs.Turn+1)
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags[dedupeKey]++
-
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":          perm.Controller,
-		"defender_seat": ctx["defender_seat"],
-		"candidates":    len(candidates),
-		"granted":       grantedNames,
-		"best":          best.card.DisplayName(),
-		"best_cmc":      best.cmc,
-	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"free_cast_relies_on_ai_consuming_zone_cast_grant_within_priority_window")
-}
+//	{0}: Add X mana in any combination of {U} and/or {R}, where X is
+//	Vivi Ornitier's power. Activate only during your turn and only once
+//	each turn.
+//	Whenever you cast a noncreature spell, put a +1/+1 counter on Vivi
+//	Ornitier and it deals 1 damage to each opponent.
+//
+// # WHAT THE HANDLER USED TO DO
+//
+// It registered OnTrigger("Vivi Ornitier", "combat_damage_player") and,
+// on combat damage, granted a free ZoneCastPermission (ManaCost 0,
+// ExileOnResolve true) on every instant and sorcery in the controller's
+// graveyard. Its doc comment quoted this as the card's oracle text:
+//
+//	"Whenever Vivi Ornitier deals combat damage to a player, you may
+//	cast an instant or sorcery spell from your graveyard without paying
+//	its mana cost. If a spell cast this way would be put into your
+//	graveyard, exile it instead."
+//
+// That text is not on the card and never was. Vivi has no combat-damage
+// trigger, no graveyard-cast ability and no exile clause — the quoted
+// sentence is the Kess / Maestros Ascendancy wording, both of which do
+// carry it and were verified in the same r98 pass.
+//
+// So this was not a wrong flag on a real ability; it was a whole
+// fabricated ability handing its controller free spells out of the
+// graveyard every time a 3-mana creature connected. Registering nothing
+// is strictly more correct than registering that.
+//
+// # WHAT IS NOW MISSING, filed in CLAUDE.md Open
+//
+// Both real abilities. The noncreature-cast trigger is an ordinary
+// shape the AST pipeline may already cover; the {0} mana ability is
+// not — "add X mana where X is this creature's power" is a
+// power-scaled mana ability with a once-per-turn, your-turn-only
+// restriction, and the restricted-mana enforcement gap noted in the
+// r63 predefined-token audit applies to it. Neither is implemented
+// here, and a handler that implements a different card is worse than
+// no handler, so this is left empty rather than guessed at.
+func registerViviOrnitier(r *Registry) {}

@@ -641,11 +641,21 @@ func forceOfNegationResolve(gs *gameengine.GameState, item *gameengine.StackItem
 		return
 	}
 	target.Countered = true
-	// If countered spell would go to graveyard, exile it instead.
+	// CR-correct per oracle: "Counter target noncreature spell. If that
+	// spell is countered this way, exile it instead of putting it into
+	// its owner's graveyard." (verified against the card r98).
+	//
+	// r98 — this used to ASSIGN a fresh map, discarding whatever the
+	// countered spell already carried. Every sibling counter-and-exile
+	// handler (Transcendent Dragon, Smirking Spelljacker, River Song's
+	// Diary, Mindbreak Trap) nil-checks and writes one key; this was the
+	// only wholesale replacement, so countering a spell wiped its
+	// flashback / escape / paradigm / zone-cast markers along the way.
 	if target.Card != nil {
-		target.CostMeta = map[string]interface{}{
-			"exile_on_resolve": true,
+		if target.CostMeta == nil {
+			target.CostMeta = map[string]interface{}{}
 		}
+		target.CostMeta["exile_on_resolve"] = true
 	}
 	emitCounter(gs, slug, "Force of Negation", item.Controller, target)
 }
