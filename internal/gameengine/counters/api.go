@@ -188,7 +188,7 @@ func PairRemoveSBA(target Target) (int, bool) {
 
 // HasKeywordCounter reports whether the target has at least one counter
 // whose registered type is a KeywordGrant for the named keyword (CR
-// §122.1c). The query accepts either the canonical name ("first strike")
+// §122.1b). The query accepts either the canonical name ("first strike")
 // or any registered alias ("first-strike"), or the bare keyword string
 // for keyword counters whose canonical name equals the keyword.
 //
@@ -213,7 +213,7 @@ func HasKeywordCounter(target Target, keyword string) bool {
 }
 
 // GrantsKeyword reports whether a counter of type counterType grants the
-// named keyword per CR §122.1c. True both when the counter's canonical
+// named keyword per CR §122.1b. True both when the counter's canonical
 // name IS the keyword (a flying counter grants flying, a haste counter
 // grants haste) and when a KeywordGrant counter confers a keyword whose
 // name DIFFERS from the counter's own — a phyresis counter grants infect

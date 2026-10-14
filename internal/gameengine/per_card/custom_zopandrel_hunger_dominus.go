@@ -110,6 +110,13 @@ func zopandrelIndestructibleActivate(gs *gameengine.GameState, src *gameengine.P
 	gameengine.SacrificePermanent(gs, sac1, "zopandrel_sac_cost")
 	gameengine.SacrificePermanent(gs, sac2, "zopandrel_sac_cost")
 	src.AddCounter("indestructible", 1)
+	// r92: a keyword counter is a layer-6 grant (CR 122.1b), and
+	// AddCounter is the raw primitive — it takes no gs and cannot
+	// invalidate. Without this the layer-aware authority keeps
+	// answering from a cached entry taken before the counter went
+	// on; the canonical placer (counter_place.go) invalidates, and
+	// every raw keyword-counter site in the tree had skipped it.
+	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":           src.Controller,
 		"sacrificed":     []string{sac1Name, sac2Name},

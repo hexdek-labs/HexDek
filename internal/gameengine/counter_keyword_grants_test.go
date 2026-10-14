@@ -16,7 +16,7 @@ import (
 // placeKeywordCounter is the test-side AddCounters convenience that
 // drives the new CounterStacks path — distinct from the legacy
 // Permanent.Counters map so we're confident the keyword grant flows
-// through the §122.1c API, not the map fallback.
+// through the §122.1b API, not the map fallback.
 // r77 — this used to call counters.AddCounters directly, bypassing the
 // production entry point. That hid a real bug: AddCountersToPermanent
 // never invalidated the characteristics cache after writing the

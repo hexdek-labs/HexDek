@@ -23,7 +23,7 @@ const (
 	// StatModifier covers +1/+1, -1/-1, and any +N/+M printed variant.
 	StatModifier
 	// KeywordGrant covers counters whose presence grants a keyword
-	// ability per CR §122.1c (lifelink, deathtouch, flying, etc.).
+	// ability per CR §122.1b (lifelink, deathtouch, flying, etc.).
 	KeywordGrant
 	// ResourceMarker covers depletable charge-shaped trackers placed by
 	// activated/triggered abilities (charge, stun, shield, oil).
@@ -140,7 +140,7 @@ func PairsWith(other string) StackingRule {
 	return StackingRule{PairsWith: other}
 }
 
-// AbilityRef points at a granted ability per CR §122.1c. The Phase 1 form
+// AbilityRef points at a granted ability per CR §122.1b. The Phase 1 form
 // only carries a Keyword string; Phase 2 extends to full ability shapes
 // (triggered/static patterns) as the keyword-counter family lands.
 type AbilityRef struct {

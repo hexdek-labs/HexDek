@@ -45,7 +45,7 @@ func TestKeywordUnificationR65_KeywordCounterReachesLayerQuery(t *testing.T) {
 	gs.InvalidateCharacteristicsCache()
 
 	if !gs.HasKeywordOf(p, "flying") {
-		t.Error("the layer-aware query must see a flying counter (CR §122.1c)")
+		t.Error("the layer-aware query must see a flying counter (CR §122.1b)")
 	}
 }
 

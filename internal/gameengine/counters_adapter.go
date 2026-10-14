@@ -66,7 +66,7 @@ func (p *Permanent) AsCounterTarget() counters.Target {
 }
 
 // HasKeywordCounter reports whether this permanent carries at least one
-// counter that, per CR §122.1c, grants the named keyword. Convenience
+// counter that, per CR §122.1b, grants the named keyword. Convenience
 // wrapper over counters.HasKeywordCounter.
 //
 // §122.6: the result is independent of card type. A creature stripped of

@@ -321,7 +321,7 @@ func TestRegistryStackingBehaviorPairs(t *testing.T) {
 	}
 }
 
-// TestRegistryKeywordCounterGrantsAbility pins §122.1c metadata.
+// TestRegistryKeywordCounterGrantsAbility pins §122.1b metadata.
 func TestRegistryKeywordCounterGrantsAbility(t *testing.T) {
 	lifelink := Lookup("lifelink")
 	if lifelink.GrantedAbility == nil || lifelink.GrantedAbility.Keyword != "lifelink" {

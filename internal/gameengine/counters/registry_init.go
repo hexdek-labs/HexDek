@@ -32,7 +32,7 @@ func init() {
 		Notes:            "CR §122 base counter; §704.5r pair-removal with +1/+1; infect/wither sources place these",
 	})
 
-	// CR §122.1c keyword counters. The presence of the counter grants the
+	// CR §122.1b keyword counters. The presence of the counter grants the
 	// keyword for as long as the counter remains. Persistence through type
 	// changes per §122.6 is pinned by counters_property_test.go.
 	registerDefinition(&CounterTypeDef{
@@ -44,7 +44,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "lifelink"},
-		Notes:            "CR §122.1c keyword counter; grants while present, persists through type changes per §122.6",
+		Notes:            "CR §122.1b keyword counter; grants while present, persists through type changes per §122.6",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "deathtouch",
@@ -55,7 +55,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "deathtouch"},
-		Notes:            "CR §122.1c keyword counter; CR §702.2 deathtouch grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.2 deathtouch grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "flying",
@@ -66,7 +66,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "flying"},
-		Notes:            "CR §122.1c keyword counter; CR §702.9 flying grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.9 flying grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "first strike",
@@ -78,7 +78,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "first strike"},
-		Notes:            "CR §122.1c keyword counter; CR §702.7 first strike grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.7 first strike grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "double strike",
@@ -90,7 +90,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "double strike"},
-		Notes:            "CR §122.1c keyword counter; CR §702.4 double strike grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.4 double strike grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "hexproof",
@@ -101,7 +101,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "hexproof"},
-		Notes:            "CR §122.1c keyword counter; CR §702.11 hexproof grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.11 hexproof grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "indestructible",
@@ -112,7 +112,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "indestructible"},
-		Notes:            "CR §122.1c keyword counter; CR §702.12 indestructible grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.12 indestructible grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "menace",
@@ -123,7 +123,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "menace"},
-		Notes:            "CR §122.1c keyword counter; CR §702.110 menace grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.110 menace grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "reach",
@@ -134,7 +134,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "reach"},
-		Notes:            "CR §122.1c keyword counter; CR §702.17 reach grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.17 reach grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "trample",
@@ -145,7 +145,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "trample"},
-		Notes:            "CR §122.1c keyword counter; CR §702.19 trample grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.19 trample grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "vigilance",
@@ -156,7 +156,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "vigilance"},
-		Notes:            "CR §122.1c keyword counter; CR §702.20 vigilance grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.20 vigilance grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "ward",
@@ -167,7 +167,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "ward"},
-		Notes:            "CR §122.1c keyword counter; CR §702.21 ward grant (cost defaults to printed value)",
+		Notes:            "CR §122.1b keyword counter; CR §702.21 ward grant (cost defaults to printed value)",
 	})
 
 	// CR §122 charge counters — the broadest "other tracker" family. Many

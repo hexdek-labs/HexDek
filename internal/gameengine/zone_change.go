@@ -63,7 +63,7 @@ func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, all
 		return false
 	}
 
-	// §122.1b: Shield counter — "If this permanent would be destroyed or
+	// §122.1c: Shield counter — "If this permanent would be destroyed or
 	// dealt damage, remove a shield counter from it instead."
 	if perm.Counters != nil && perm.Counters["shield"] > 0 {
 		perm.Counters["shield"]--
@@ -77,7 +77,7 @@ func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, all
 			Details: map[string]interface{}{
 				"target_card":       perm.Card.DisplayName(),
 				"shields_remaining": perm.Counters["shield"],
-				"rule":              "122.1b",
+				"rule":              "122.1c",
 			},
 		})
 		return false

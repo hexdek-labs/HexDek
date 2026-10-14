@@ -164,6 +164,13 @@ func solphimIndestructibleActivate(gs *gameengine.GameState, src *gameengine.Per
 	}
 	seat.Turn.Discarded += 2
 	src.AddCounter("indestructible", 1)
+	// r92: a keyword counter is a layer-6 grant (CR 122.1b), and
+	// AddCounter is the raw primitive — it takes no gs and cannot
+	// invalidate. Without this the layer-aware authority keeps
+	// answering from a cached entry taken before the counter went
+	// on; the canonical placer (counter_place.go) invalidates, and
+	// every raw keyword-counter site in the tree had skipped it.
+	gs.InvalidateCharacteristicsCache()
 	discarded := []string{}
 	if d1 != nil {
 		discarded = append(discarded, d1.DisplayName())

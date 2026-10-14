@@ -62,7 +62,7 @@ import (
 // runtimeKeywordSources returns the keywords conferred on p by the
 // runtime surfaces that live outside the AST and outside
 // GrantedAbilities: the Flags["kw:<name>"] stamp and keyword counters
-// (CR §122.1c) in BOTH counter stores.
+// (CR §122.1b) in BOTH counter stores.
 //
 // The result is SORTED. BaseCharacteristics feeds chars.Keywords, and
 // the LayerIdempotency invariant compares two independently computed
@@ -112,7 +112,7 @@ func runtimeKeywordSources(p *Permanent) []string {
 		}
 	}
 
-	// Surface 2 — keyword counters (CR §122.1c). A counter grants its
+	// Surface 2 — keyword counters (CR §122.1b). A counter grants its
 	// keyword regardless of the permanent's card type (§122.6), so this
 	// is folded unconditionally.
 	//

@@ -9,7 +9,7 @@ package counters
 // and the 3 player-counter kinds) with the remaining ~230 entries:
 // the P/T variant shapes (§704.5r non-pairing), the §306/§310/§714
 // resource counters on planeswalkers / battles / Sagas (defense), the
-// remaining §122.1c keyword counters (haste, shadow, decayed, phyresis,
+// remaining §122.1b keyword counters (haste, shadow, decayed, phyresis,
 // strike), the countdown family (fade, age) per §702.24 / §702.32, the
 // §614 replacement-effect counters (finality, mannequin, incarnation,
 // isolation, paralyzation, pin, echo), the alternate-win / threshold
@@ -111,8 +111,8 @@ func statModifier(name string, target TargetType, notes string) *CounterTypeDef 
 	}
 }
 
-// keywordGrant is the §122.1c presence-grants-keyword shape. Only the
-// remaining §122.1c keywords not covered by Phase 2 register here.
+// keywordGrant is the §122.1b presence-grants-keyword shape. Only the
+// remaining §122.1b keywords not covered by Phase 2 register here.
 func keywordGrant(name, keyword, crCite string) *CounterTypeDef {
 	return &CounterTypeDef{
 		Name:             name,
@@ -123,7 +123,7 @@ func keywordGrant(name, keyword, crCite string) *CounterTypeDef {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: keyword},
-		Notes:            "CR §122.1c keyword counter; " + crCite,
+		Notes:            "CR §122.1b keyword counter; " + crCite,
 	}
 }
 
@@ -209,9 +209,9 @@ func registerPhase5ResourceSubstance() {
 }
 
 // ---------------------------------------------------------------------------
-// Remaining §122.1c keyword counters (Section C). Phase 2 covered the 12
+// Remaining §122.1b keyword counters (Section C). Phase 2 covered the 12
 // most common; this block fills the long tail (haste, shadow, decayed,
-// phyresis) plus the legacy "strike" alias. CR §122.1c grants the keyword
+// phyresis) plus the legacy "strike" alias. CR §122.1b grants the keyword
 // while the counter is present per §122.6.
 // ---------------------------------------------------------------------------
 
@@ -222,7 +222,7 @@ func registerPhase5RemainingKeywordCounters() {
 		"CR §702.146 decayed grant (can't block; sacrifice after attacking) — Rot-Curse Rakshasa counter form"))
 	registerDefinition(keywordGrant("phyresis", "infect",
 		"CR §702.91 infect grant — Weatherlight Compleated phyresis counter"))
-	// CR §122.1c legacy "strike counter" — errata'd as "first strike counter" per
+	// CR §122.1b legacy "strike counter" — errata'd as "first strike counter" per
 	// the Probe F catalog. Aliased so old-frame oracle text resolves correctly.
 	registerDefinition(&CounterTypeDef{
 		Name:             "strike",
@@ -234,7 +234,7 @@ func registerPhase5RemainingKeywordCounters() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "first strike"},
-		Notes:            "CR §122.1c keyword counter; legacy alias of first strike per WotC errata",
+		Notes:            "CR §122.1b keyword counter; legacy alias of first strike per WotC errata",
 	})
 }
 

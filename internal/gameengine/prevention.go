@@ -175,7 +175,7 @@ func PreventDamageToPermanent(gs *GameState, target *Permanent, amount int, src 
 	// protection (a protection-from-red creature took Pyroclasm damage).
 	// attackerHasProtectionFromGS reads the SOURCE's effective (§613 layer-5)
 	// colors via ColorsOf, so a creature turned red is correctly matched.
-	// Placed before the §122.1b shield-counter replacement so a protected
+	// Placed before the §122.1c shield-counter replacement so a protected
 	// creature doesn't waste a shield on damage that's prevented anyway
 	// (§616.1 — the affected permanent's controller orders the effects).
 	if src != nil && attackerHasProtectionFromGS(gs, target, src) {
@@ -193,7 +193,7 @@ func PreventDamageToPermanent(gs *GameState, target *Permanent, amount int, src 
 		return 0
 	}
 
-	// §122.1b: Shield counter — "If this permanent would be dealt damage,
+	// §122.1c: Shield counter — "If this permanent would be dealt damage,
 	// remove a shield counter from it instead."
 	if target.Counters != nil && target.Counters["shield"] > 0 {
 		target.Counters["shield"]--
@@ -209,7 +209,7 @@ func PreventDamageToPermanent(gs *GameState, target *Permanent, amount int, src 
 				"target_card":       target.Card.DisplayName(),
 				"shields_remaining": target.Counters["shield"],
 				"prevented":         "damage",
-				"rule":              "122.1b",
+				"rule":              "122.1c",
 			},
 		})
 		return 0

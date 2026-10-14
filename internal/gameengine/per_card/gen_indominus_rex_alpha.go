@@ -25,6 +25,22 @@ import (
 //     counter, so duplicates among discards still yield the same set
 //     of counters — but each "card discarded this way" is still
 //     graveyarded, which is correct per oracle).
+//   - r92: this loop used to ALSO write Flags["kw:<name>"] beside each
+//     counter, justified in a comment as mirroring "the pattern other
+//     counter-grants use so combat checks see the keyword immediately".
+//     Both halves of that are wrong, and measured wrong. The flag is
+//     redundant on the way in — a keyword counter already answers true
+//     on both authorities with no flag (CR 122.1b; HasKeyword surface 4
+//     reads Counters, and the layer fold reads the same store). And it
+//     is PERMANENT on the way out: the flag has no provenance and
+//     nothing removes it, so once a counter is taken off (Vampire
+//     Hexmage, Hex Parasite, Thief of Blood, Solemnity) the keyword
+//     stays on the creature for the rest of the game. That matters more
+//     on this card than on any other, because here the counters ARE the
+//     keywords. Nor was it "the pattern": grep found no other handler
+//     of this shape, and the canonical placer writes no such flag. What
+//     the loop actually needed was the characteristics-cache
+//     invalidation it never did.
 //   - "Draw a card for each counter on it": after the discard +
 //     counter pass, sum every counter type on the permanent and
 //     drawOne that many times. Other counter sources that happened
@@ -80,13 +96,14 @@ func indominusRexAlphaETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	}
 	for kw := range gainedCounters {
 		perm.AddCounter(kw, 1)
-		// Engine keyword consumers look at Flags["kw:<name>"] alongside
-		// the counter; mirror the pattern other counter-grants use so
-		// combat checks see the keyword immediately.
-		if perm.Flags == nil {
-			perm.Flags = map[string]int{}
-		}
-		perm.Flags["kw:"+kw] = 1
+	}
+	if len(gainedCounters) > 0 {
+		// The counter IS the grant (CR 122.1b) and both keyword
+		// authorities already read it: Permanent.HasKeyword surface 4
+		// checks Counters directly, and runtimeKeywordSources folds the
+		// same store for the layer query. Invalidating is the whole of
+		// what the grant needs here.
+		gs.InvalidateCharacteristicsCache()
 	}
 
 	// Draw a card for each counter — sum across all kinds (oracle

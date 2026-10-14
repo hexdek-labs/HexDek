@@ -20,7 +20,7 @@ import (
 // is a bare name match on the legacy Counters map, so Counters["prowess"]
 // makes it answer true; the layer fold resolves each counter through the
 // registry and only folds types categorised KeywordGrant — the twelve
-// real §122.1c keyword counters. There is no prowess counter in Magic.
+// real §122.1b keyword counters. There is no prowess counter in Magic.
 // This is the same defect already pinned for +1/+1 by
 // TestKeywordSupersetR66_PlusOneCounterIsNotAKeyword, and the migration
 // corrects it rather than inheriting it. Pinned below so the claim is
@@ -39,7 +39,7 @@ func r85Bogus(t *testing.T, kw string) {
 		t.Fatalf("precondition: the raw query is expected to answer true for a bogus %q counter", kw)
 	}
 	if keywordActive(gs, p, kw) {
-		t.Errorf("a %q counter is not a §122.1c keyword counter and must not grant %s", kw, kw)
+		t.Errorf("a %q counter is not a §122.1b keyword counter and must not grant %s", kw, kw)
 	}
 }
 

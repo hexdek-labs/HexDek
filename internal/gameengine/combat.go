@@ -82,7 +82,7 @@ func (p *Permanent) HasKeyword(name string) bool {
 			return true
 		}
 	}
-	// 4) Keyword counters — CR §122.1c: a keyword counter grants that
+	// 4) Keyword counters — CR §122.1b: a keyword counter grants that
 	// keyword to the permanent it's on. Flying counter = has flying, etc.
 	// Two surfaces are checked: the legacy Permanent.Counters map (still
 	// the dominant path until the Counter DB migration completes) and the
@@ -94,7 +94,7 @@ func (p *Permanent) HasKeyword(name string) bool {
 		if p.Counters[want] > 0 {
 			return true
 		}
-		// §122.1c divergent grant: a keyword counter whose TYPE NAME
+		// §122.1b divergent grant: a keyword counter whose TYPE NAME
 		// differs from the keyword it confers — a phyresis counter grants
 		// infect (§702.91). The direct name check above only matches
 		// counters stored under the keyword's own name; resolve each

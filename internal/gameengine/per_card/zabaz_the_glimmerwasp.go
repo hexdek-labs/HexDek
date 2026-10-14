@@ -65,7 +65,7 @@ func zabazDestroyArtifact(gs *gameengine.GameState, src *gameengine.Permanent) {
 		return
 	}
 	destroyed := pick.Card.DisplayName()
-	// DestroyPermanent handles §122.1b shield counters, §702.12b
+	// DestroyPermanent handles §122.1c shield counters, §702.12b
 	// indestructible, §614 would_die replacements, §903.9b commander
 	// redirect (target artifact may be a commander artifact —
 	// Hammer of Nazahn, Skullclamp commanders), detachAll, and LTB

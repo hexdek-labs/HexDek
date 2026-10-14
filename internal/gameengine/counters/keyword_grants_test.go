@@ -52,7 +52,7 @@ func TestPhase2KeywordCountersRegistered(t *testing.T) {
 			t.Errorf("%q StackingBehavior.PairsWith = %q, want empty (NoPair)", name, def.StackingBehavior.PairsWith)
 		}
 		if def.Notes == "" {
-			t.Errorf("%q Notes empty — every keyword-counter entry must cite §122.1c + the keyword's CR §", name)
+			t.Errorf("%q Notes empty — every keyword-counter entry must cite §122.1b + the keyword's CR §", name)
 		}
 	}
 }
@@ -79,7 +79,7 @@ func TestKeywordCounterAliasesResolve(t *testing.T) {
 	}
 }
 
-// TestHasKeywordCounterEveryKeyword exercises the §122.1c grant
+// TestHasKeywordCounterEveryKeyword exercises the §122.1b grant
 // predicate across every Phase 2 keyword counter. For each: place one
 // counter via AddCounters, assert HasKeywordCounter returns true; remove
 // the counter, assert it returns false. This is the canonical "the

@@ -19,7 +19,7 @@ var phase5LongtailNames = []string{
 	// Section B — resource-substance counters
 	"defense",
 
-	// Section C — remaining §122.1c keyword counters
+	// Section C — remaining §122.1b keyword counters
 	"haste", "shadow", "decayed", "phyresis", "strike",
 
 	// Section E — countdown family (time is Phase 1)
@@ -90,7 +90,7 @@ func TestPhase5LongtailRegistered(t *testing.T) {
 	}
 }
 
-// TestPhase5KeywordGrantInvariant pins the §122.1c invariant: a counter
+// TestPhase5KeywordGrantInvariant pins the §122.1b invariant: a counter
 // whose Category is KeywordGrant MUST have a non-nil GrantedAbility, and
 // a counter whose Category is NOT KeywordGrant MUST have a nil
 // GrantedAbility. This protects against accidental category/grant drift
@@ -100,7 +100,7 @@ func TestPhase5KeywordGrantInvariant(t *testing.T) {
 		isKW := def.Category == KeywordGrant
 		hasGrant := def.GrantedAbility != nil
 		if isKW && !hasGrant {
-			t.Errorf("%q Category=KeywordGrant but GrantedAbility=nil (violates §122.1c)", def.Name)
+			t.Errorf("%q Category=KeywordGrant but GrantedAbility=nil (violates §122.1b)", def.Name)
 		}
 		if !isKW && hasGrant {
 			t.Errorf("%q Category=%v but GrantedAbility=%+v (only KeywordGrant should carry a granted ability)",
@@ -439,7 +439,7 @@ func TestPlayerCountersNoDoubling(t *testing.T) {
 }
 
 // TestKeywordCounterStrikeAliases pins the legacy "strike counter" alias
-// resolves to first strike per the WotC errata noted in §122.1c.
+// resolves to first strike per the WotC errata noted in §122.1b.
 func TestKeywordCounterStrikeAliases(t *testing.T) {
 	def := Lookup("strike")
 	if def == nil {
@@ -481,15 +481,15 @@ func TestDecayedCounterGrantsDecayed(t *testing.T) {
 }
 
 // TestEveryKeywordCounterHasCRCitation pins that every keyword counter
-// Notes string mentions CR §122.1c — the load-bearing rule grants the
+// Notes string mentions CR §122.1b — the load-bearing rule grants the
 // keyword while the counter is present.
 func TestEveryKeywordCounterHasCRCitation(t *testing.T) {
 	for _, def := range All() {
 		if def.Category != KeywordGrant {
 			continue
 		}
-		if !strings.Contains(def.Notes, "§122.1c") {
-			t.Errorf("%q is KeywordGrant but Notes missing §122.1c citation: %q", def.Name, def.Notes)
+		if !strings.Contains(def.Notes, "§122.1b") {
+			t.Errorf("%q is KeywordGrant but Notes missing §122.1b citation: %q", def.Name, def.Notes)
 		}
 	}
 }
