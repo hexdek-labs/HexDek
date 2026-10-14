@@ -165,8 +165,17 @@ func TestCastMayhem_PaysCostAndPushesStack(t *testing.T) {
 	if item.CastZone != ZoneGraveyard {
 		t.Fatalf("stack item CastZone=%q, want %q", item.CastZone, ZoneGraveyard)
 	}
-	if !ShouldExileOnResolve(item) {
-		t.Fatal("mayhem stack item should be tagged exile_on_resolve")
+	// r99 — INVERTED. §702.187 has three subrules and none is an exile
+	// clause; the "§702.187c" this used to cite is the costless variant
+	// of the alternative cost. Asserted as the absence of the key AND
+	// through the predicate, so neither a stale stamp nor a changed
+	// predicate can pass this silently.
+	if _, present := item.CostMeta["exile_on_resolve"]; present {
+		t.Fatalf("mayhem stack item carries exile_on_resolve; §702.187 has no exile clause "+
+			"(CostMeta=%+v)", item.CostMeta)
+	}
+	if ShouldExileOnResolve(item) {
+		t.Fatal("ShouldExileOnResolve is true for a mayhem item")
 	}
 	if v := item.CostMeta["mayhem"]; v != true {
 		t.Fatalf("CostMeta[\"mayhem\"] = %v, want true", v)
@@ -278,7 +287,11 @@ func TestCastMayhem_InsufficientMana(t *testing.T) {
 // End-to-end: discard → mayhem-cast → resolve → exile
 // ---------------------------------------------------------------------------
 
-func TestMayhem_DiscardCastResolveExile_EndToEnd(t *testing.T) {
+// r99 — was TestMayhem_DiscardCastResolveExile_EndToEnd, which pinned
+// the bug. Re-pointed at the POSITIVE destination (the graveyard)
+// rather than having its exile assertion deleted: "not in exile" also
+// passes for a card that vanished entirely.
+func TestMayhem_DiscardCastResolvesToGraveyard_EndToEnd(t *testing.T) {
 	gs := newMayhemGame(t)
 	gs.Active = 0
 	gs.Turn = 3
@@ -297,23 +310,26 @@ func TestMayhem_DiscardCastResolveExile_EndToEnd(t *testing.T) {
 		t.Fatalf("CastMayhem failed: %v", err)
 	}
 
-	// 3. Resolve — §702.187c routes the spell to exile.
+	// 3. Resolve — mayhem has no exile clause, so the spell takes the
+	// ordinary post-stack routing to its owner's graveyard, where it
+	// stays (it is no longer mayhem-eligible, since it was not
+	// discarded again).
 	ResolveStackTop(gs)
 
+	foundInGrave := false
 	for _, c := range gs.Seats[0].Graveyard {
 		if c == card {
-			t.Fatal("mayhem spell should be in exile after resolution, not graveyard (§702.187c)")
-		}
-	}
-	foundInExile := false
-	for _, c := range gs.Seats[0].Exile {
-		if c == card {
-			foundInExile = true
+			foundInGrave = true
 			break
 		}
 	}
-	if !foundInExile {
-		t.Fatal("mayhem spell should be in exile after resolution")
+	if !foundInGrave {
+		t.Fatal("mayhem spell should be in its owner's graveyard after resolution")
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == card {
+			t.Fatal("mayhem spell was exiled; §702.187 has no exile clause")
+		}
 	}
 }
 

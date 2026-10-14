@@ -157,8 +157,19 @@ func TestCastOmen_PaysAndStampsCostMeta(t *testing.T) {
 	if v, ok := item.CostMeta["zone_cast_keyword"]; !ok || v != "omen" {
 		t.Fatalf("CostMeta[\"zone_cast_keyword\"] = %v, want \"omen\"", item.CostMeta["zone_cast_keyword"])
 	}
-	if !ShouldExileOnResolve(item) {
-		t.Fatal("omen cast should stamp exile_on_resolve=true so stack.go routes to exile")
+	// r99 — INVERTED. §720.3d: "As an Omen spell resolves, its
+	// controller shuffles it into its owner's library instead of
+	// putting it into its owner's graveyard as it resolves." Not exile.
+	if _, present := item.CostMeta["exile_on_resolve"]; present {
+		t.Fatalf("omen cast carries exile_on_resolve; §720.3d sends it to the library "+
+			"(CostMeta=%+v)", item.CostMeta)
+	}
+	if ShouldExileOnResolve(item) {
+		t.Fatal("ShouldExileOnResolve is true for an omen item")
+	}
+	if !ShouldShuffleIntoLibraryOnResolve(item) {
+		t.Fatalf("omen cast should stamp shuffle_into_library_on_resolve; CostMeta=%+v",
+			item.CostMeta)
 	}
 
 	// Seat-level "spell omen-cast this turn" flag set.
@@ -166,23 +177,14 @@ func TestCastOmen_PaysAndStampsCostMeta(t *testing.T) {
 		t.Fatal("SpellOmenCastThisTurn(0) returned false after an omen cast")
 	}
 
-	// The cast-from-exile grant is registered at cast time and keyed on
-	// the card pointer so it survives the stack→exile move on resolve.
-	grant := GetZoneCastGrant(gs, card)
-	if grant == nil {
-		t.Fatal("CastOmen should register a ZoneCastPermission for the omen face")
-	}
-	if grant.Zone != ZoneExile {
-		t.Fatalf("grant.Zone = %q, want %q", grant.Zone, ZoneExile)
-	}
-	if grant.Keyword != "omen" {
-		t.Fatalf("grant.Keyword = %q, want \"omen\"", grant.Keyword)
-	}
-	if grant.RequireController != 0 {
-		t.Fatalf("grant.RequireController = %d, want 0 (card.Owner)", grant.RequireController)
-	}
-	if grant.ManaCost != -1 {
-		t.Fatalf("grant.ManaCost = %d, want -1 (use card's printed mana cost)", grant.ManaCost)
+	// r99 — NO cast-from-exile grant. This block used to assert one was
+	// registered (Zone=exile, ManaCost=-1). §720 grants nothing of the
+	// kind; the card is shuffled into the library, so there is never a
+	// card in exile for such a grant to apply to. Asserted positively
+	// as "no grant exists", not by deleting the old checks.
+	if g := GetZoneCastGrant(gs, card); g != nil {
+		t.Errorf("CastOmen registered a zone-cast grant (%+v); §720 has no "+
+			"cast-the-omen-face-later ability", g)
 	}
 }
 
@@ -246,7 +248,10 @@ func TestCastOmen_InsufficientMana(t *testing.T) {
 // (b) Resolve goes to exile, not graveyard
 // ---------------------------------------------------------------------------
 
-func TestOmen_ResolveExilesInsteadOfGraveyard(t *testing.T) {
+// r99 — was TestOmen_ResolveExilesInsteadOfGraveyard, which pinned the
+// wrong zone. Re-pointed at the POSITIVE destination (the owner's
+// library) rather than having its exile assertion deleted.
+func TestOmen_ResolveShufflesIntoOwnersLibrary(t *testing.T) {
 	gs := newOmenGame(t)
 	gs.Active = 0
 	gs.Seats[0].ManaPool = 5
@@ -262,28 +267,26 @@ func TestOmen_ResolveExilesInsteadOfGraveyard(t *testing.T) {
 
 	// Must NOT be in graveyard (the §702.176 "exile it" clause replaces
 	// the default §608.2g graveyard destination).
-	for _, c := range gs.Seats[0].Graveyard {
+	// CR §720.3d — the OWNER's library, shuffled in.
+	foundInLibrary := false
+	for _, c := range gs.Seats[0].Library {
 		if c == card {
-			t.Fatal("omen card should be in exile after resolution, not graveyard (§702.176)")
-		}
-	}
-	// Must be in exile (its owner's exile, per the implicit owner
-	// destination of "exile it").
-	foundInExile := false
-	for _, c := range gs.Seats[0].Exile {
-		if c == card {
-			foundInExile = true
+			foundInLibrary = true
 			break
 		}
 	}
-	if !foundInExile {
-		t.Fatal("omen card should be in owner's exile after resolution")
+	if !foundInLibrary {
+		t.Fatal("omen card should be shuffled into its owner's library after resolution (§720.3d)")
 	}
-
-	// The cast-from-exile grant must still be present — it activates
-	// only now that the card has landed in exile.
-	if grant := GetZoneCastGrant(gs, card); grant == nil {
-		t.Fatal("post-resolve omen grant should still be registered")
+	for _, c := range gs.Seats[0].Graveyard {
+		if c == card {
+			t.Fatal("omen card went to the graveyard; §720.3d replaces that with the library")
+		}
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == card {
+			t.Fatal("omen card was exiled; §720 has no exile clause at all")
+		}
 	}
 }
 
@@ -291,80 +294,43 @@ func TestOmen_ResolveExilesInsteadOfGraveyard(t *testing.T) {
 // (c) Omen face castable from exile via the registered ZoneCastPermission
 // ---------------------------------------------------------------------------
 
-func TestOmen_Face2_CastableFromExileViaGrant(t *testing.T) {
+// r99 — replaces TestOmen_Face2_CastableFromExileViaGrant, which drove
+// an ability the card does not have. Nothing in §720 lets a player cast
+// the omen face later from exile; that is foretell/plot-shaped reminder
+// text which the old implementation carried in its header, beside a
+// rule number that points at Impending.
+//
+// Asserted as the POSITIVE fact — after resolution the card is in the
+// library and no grant exists — rather than by deleting the old test,
+// so this also fails if omen stops resolving at all.
+func TestOmen_NoCastFromExileGrant_r99(t *testing.T) {
 	gs := newOmenGame(t)
 	gs.Active = 0
 	gs.Seats[0].ManaPool = 5
-	// CMC 3 — the second cast uses the printed mana cost via ManaCost=-1.
 	card := newOmenCard("Augur's Sight", 0, 3, "{1}{U}")
 	gs.Seats[0].Hand = append(gs.Seats[0].Hand, card)
 
-	// First cast — pay omen cost (2), card resolves to exile.
 	if _, err := CastOmen(gs, 0, card, 2); err != nil {
 		t.Fatalf("CastOmen failed: %v", err)
 	}
 	ResolveStackTop(gs)
 
-	// Sanity: card in exile.
-	inExile := false
-	for _, c := range gs.Seats[0].Exile {
+	inLibrary := false
+	for _, c := range gs.Seats[0].Library {
 		if c == card {
-			inExile = true
+			inLibrary = true
 			break
 		}
 	}
-	if !inExile {
-		t.Fatal("setup: omen card should be in exile after resolution")
+	if !inLibrary {
+		t.Fatalf("omen card should be in its owner's library after resolution (§720.3d)")
 	}
-
-	// Refill mana so the second cast can pay the printed mana cost (CMC 3).
-	gs.Seats[0].ManaPool = 3
-	gs.Stack = gs.Stack[:0]
-
-	// CanCastFromZone should return the omen grant for ZoneExile.
-	grant := GetZoneCastGrant(gs, card)
-	if grant == nil {
-		t.Fatal("ZoneCastPermission for omen should be present pre-cast")
+	if g := GetZoneCastGrant(gs, card); g != nil {
+		t.Errorf("a zone-cast grant survives for an omen card (%+v); §720 grants no "+
+			"later cast of the omen face", g)
 	}
-	perms := []*ZoneCastPermission{grant}
-	got := CanCastFromZone(gs, 0, card, ZoneExile, perms)
-	if got == nil {
-		t.Fatal("CanCastFromZone should return the omen grant for ZoneExile")
-	}
-	if got.Keyword != "omen" {
-		t.Fatalf("matched grant.Keyword = %q, want \"omen\"", got.Keyword)
-	}
-
-	// Drive the second cast through CastFromZone. CastFromZone runs the
-	// full cast pipeline (cast triggers, push, priority, DrainStack), so
-	// the spell will resolve before this call returns.
-	if _, err := CastFromZone(gs, 0, card, ZoneExile, grant, nil); err != nil {
-		t.Fatalf("CastFromZone for omen face2 failed: %v", err)
-	}
-	// Mana paid was the card's CMC (3) since ManaCost=-1 instructs
-	// CastFromZone to use the printed mana cost.
-	if gs.Seats[0].ManaPool != 0 {
-		t.Fatalf("expected 0 mana left after paying CMC=3, got %d", gs.Seats[0].ManaPool)
-	}
-	// Card removed from exile.
-	for _, c := range gs.Seats[0].Exile {
-		if c == card {
-			t.Fatal("card should no longer be in exile after the omen-face cast")
-		}
-	}
-	// The second cast must NOT exile-on-resolve: the §702.176 omen
-	// replacement applies only to the omen-cost cast, not the later
-	// from-exile cast. After DrainStack the omen face has resolved
-	// and the card has gone to its owner's graveyard (CR §608.2g).
-	inGraveyard := false
-	for _, c := range gs.Seats[0].Graveyard {
-		if c == card {
-			inGraveyard = true
-			break
-		}
-	}
-	if !inGraveyard {
-		t.Fatal("face2 cast should resolve to graveyard, not exile (omen replacement does not re-apply to the from-exile cast)")
+	if got := CanCastFromZone(gs, 0, card, ZoneExile, nil); got != nil {
+		t.Errorf("CanCastFromZone returned a permission for an omen card in exile: %+v", got)
 	}
 }
 
@@ -394,5 +360,68 @@ func TestNewOmenCastFromExilePermission_Shape(t *testing.T) {
 	}
 	if p.ExileOnResolve {
 		t.Fatal("face2 grant should NOT set ExileOnResolve — second cast resolves normally")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// r99 — the SCOPE of §720.3d, and an over-suppression guard.
+// ---------------------------------------------------------------------------
+
+// §720.3d replaces the destination only "as an Omen spell resolves". A
+// COUNTERED Omen spell is not covered by it and goes to its owner's
+// graveyard under the ordinary rule. This pins that the new branch did
+// not over-reach into the off-board path the way escape's exile flag
+// did before r96.
+func TestOmen_CounteredGoesToGraveyardNotLibrary_r99(t *testing.T) {
+	gs := newOmenGame(t)
+	gs.Active = 0
+	gs.Seats[0].ManaPool = 5
+	card := newOmenCard("Augur's Sight", 0, 3, "{1}{U}")
+	gs.Seats[0].Hand = append(gs.Seats[0].Hand, card)
+
+	if _, err := CastOmen(gs, 0, card, 2); err != nil {
+		t.Fatalf("CastOmen failed: %v", err)
+	}
+	item := gs.Stack[len(gs.Stack)-1]
+	item.Countered = true
+	ResolveStackTop(gs)
+
+	inGrave := false
+	for _, c := range gs.Seats[0].Graveyard {
+		if c == card {
+			inGrave = true
+			break
+		}
+	}
+	if !inGrave {
+		t.Errorf("a COUNTERED omen spell should go to its owner's graveyard; " +
+			"§720.3d is a resolution replacement only")
+	}
+	for _, c := range gs.Seats[0].Library {
+		if c == card {
+			t.Errorf("a countered omen spell was shuffled into the library; " +
+				"the §720.3d branch over-reached into the off-board path")
+		}
+	}
+}
+
+// Over-suppression guard: the new branch must not divert spells that
+// are not Omens. A flashback item still exiles (§702.34a), and an
+// ordinary item still reaches the graveyard.
+func TestOmen_ShuffleBranchDoesNotCatchOtherSpells_r99(t *testing.T) {
+	flashback := &StackItem{CostMeta: map[string]interface{}{"exile_on_resolve": true}}
+	if ShouldShuffleIntoLibraryOnResolve(flashback) {
+		t.Error("a flashback item matched the omen shuffle predicate")
+	}
+	if zone, rule := postStackZoneForOffboard(flashback, "graveyard", "701.6a"); zone != "exile" {
+		t.Errorf("flashback off-board routing = %q (%s), want exile", zone, rule)
+	}
+	plain := &StackItem{}
+	if ShouldShuffleIntoLibraryOnResolve(plain) {
+		t.Error("an item with no CostMeta matched the omen shuffle predicate")
+	}
+	omen := &StackItem{CostMeta: map[string]interface{}{"shuffle_into_library_on_resolve": true}}
+	if zone, _ := postStackZoneForOffboard(omen, "graveyard", "701.6a"); zone != "graveyard" {
+		t.Errorf("countered omen off-board routing = %q, want graveyard", zone)
 	}
 }

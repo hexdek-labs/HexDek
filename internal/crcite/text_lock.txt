@@ -832,6 +832,9 @@
 718.5	99fb427a12d2	A prototype card’s characteristics other than its power, toughness, and mana cost (and other than color) remain the same whether it was cast as a prototyped spell or cast normally.
 720.1	29c8f4ec3d8a	Omen cards have a two-part card frame, with a smaller frame inset within their text box.
 720.2	87d6cf65cb19	The text that appears in the inset frame on the left defines alternative characteristics that the object may have while it’s a spell. The card’s normal characteristics appear as usual, although with a smaller text box on the right.
+720.3	dee89be2b0c8	As a player casts an omen card, the player chooses whether they cast the card normally or as an Omen.
+720.3b	8a09acf2b021	As a player casts an omen card, the player chooses whether they cast the card normally or as an Omen.
+720.3d	5d83a254d0d1	As a player casts an omen card, the player chooses whether they cast the card normally or as an Omen.
 720.4	0c11c3a9a944	In every zone except the stack, and while on the stack not as an Omen, an omen card has only its normal characteristics.
 720.5	1c7051be772d	If an effect instructs a player to choose a card name and the player wants to choose an omen card’s alternative name, the player may do so.
 721.2	5fd17faefad4	A station symbol represents a static ability. The station symbol includes a single number followed by a plus sign, indicated here as “{N+}.” Any abilities printed within the same text box striation as a station symbol are part of its static ability. The same is true of any power and toughness boxes printed within that striation, indicated here as [P/T].

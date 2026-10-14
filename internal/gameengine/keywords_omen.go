@@ -1,45 +1,68 @@
 package gameengine
 
-// keywords_omen.go — Omen (CR §702.176) as a real cast-from-hand alt-cost
-// mechanic that exiles the spell on resolution and grants a one-time
-// cast-from-exile permission for the "omen face."
+// keywords_omen.go — Omen, CR §720 (Omen Cards).
 //
-// Omen appears on Foundations / Bloomburrow-style class cards. The
-// printed rules text is effectively:
+// CORRECTED r99 (was CLAUDE.md open issue (11)). Everything above this
+// line used to describe a different mechanic. The file header read:
 //
-//   Omen [cost]
-//   (Rather than cast this card from your hand, you may pay [cost] and
-//    exile it with an omen counter. Activate only as a sorcery. Cast it
-//    on a later turn from exile.)
+//	"Omen (CR §702.176) as a real cast-from-hand alt-cost mechanic that
+//	 exiles the spell on resolution and grants a one-time
+//	 cast-from-exile permission for the 'omen face.'"
 //
-// In rules-engine terms it is the same shape as Warp (§702.185) and
-// Flashback (§702.34): an alternative cost (CR §601.2b / §601.2f-h)
-// that flips an "exile instead of graveyard" replacement and produces a
-// fresh ZoneCastPermission so the owner can cast the exiled face later
-// at its printed mana cost.
+// and quoted reminder text of the form "pay [cost] and exile it with an
+// omen counter ... cast it on a later turn from exile", which is the
+// foretell / plot shape, not omen's. Three things were wrong:
 //
-// Wiring:
-//   - HasOmen / OmenCost are thin keyword readers (parallel to
-//     HasFlashback / FlashbackCost / HasMayhem / MayhemCost).
-//   - CastOmen is the alt-cost cast entry point. It removes the card
-//     from the caller's hand, pays the omen cost, pushes a StackItem
-//     with CostMeta{"omen": true, "omen_cost": N, "exile_on_resolve":
-//     true, "zone_cast_keyword": "omen"} so that stack.go's existing
-//     ShouldExileOnResolve branch routes the card to exile on
-//     resolution (CR §702.176, "exile it" clause), and registers a
-//     ZoneCastPermission keyed to the card pointer with Zone=exile so
-//     the owner may cast the omen face later (CR §702.176, "cast it on
-//     a later turn from exile" clause). It also sets the seat-level
-//     flag "spell_omen_cast_this_turn:<seat>" for any card that wants
-//     to key off "if you cast a spell for its omen cost this turn."
-//   - NewOmenCastFromExilePermission builds the post-resolve grant so
-//     tests and per-card hooks can synthesize it directly.
+//  1. §702.176 IS IMPENDING. Omen is not a keyword ability and has no
+//     §702 section at all; it is a two-part card frame defined in §720,
+//     and the glossary entry is "Omen Card -> see rule 720". The wrong
+//     number was in the doc comment AND emitted as the omen_cast
+//     event's "rule" field, i.e. as event DATA.
+//  2. THE RESOLUTION ZONE WAS WRONG. §720.3d: "As an Omen spell
+//     resolves, its controller shuffles it into its owner's library
+//     instead of putting it into its owner's graveyard as it resolves."
+//     The engine exiled it.
+//  3. THE CAST-FROM-EXILE GRANT IS FABRICATED. Nothing in §720 lets a
+//     player cast the omen face later from exile; the card is in the
+//     library. That grant is no longer registered.
 //
-// Sorcery-speed and zone-cast-restriction checks (Drannith Magistrate,
-// generic §601.2a legality) are intentionally NOT enforced here; the
-// upstream cast pipeline runs them before any alt-cost decision is
-// made, matching CastFlashback / CastWarp / CastMayhem.
-
+// What §720 actually says, in the parts that bear on this file:
+//
+//	720.2   the inset frame defines ALTERNATIVE CHARACTERISTICS the
+//	        object may have while it is a spell
+//	720.3   as a player casts an omen card, they choose whether to cast
+//	        it normally or as an Omen
+//	720.3b  while on the stack as an Omen, the spell has ONLY its
+//	        alternative characteristics
+//	720.3d  as an Omen spell resolves, its controller shuffles it into
+//	        its owner's library instead of putting it into its owner's
+//	        graveyard
+//	720.4   in every zone except the stack, and on the stack not as an
+//	        Omen, the card has only its normal characteristics
+//
+// So the mechanic is a cast-time MODE CHOICE with a resolution-zone
+// replacement, not an alternative cost with a delayed re-cast.
+//
+// Wiring now:
+//   - HasOmen / OmenCost stay as the thin keyword readers the parser
+//     feeds; the engine models the Omen half's cost through them.
+//   - CastOmen removes the card from hand, pays, and pushes a StackItem
+//     with CostMeta["shuffle_into_library_on_resolve"]=true so
+//     ResolveStackTop's §720.3d branch sends the card to its owner's
+//     library and shuffles.
+//   - §720.3d is a RESOLUTION replacement only. A COUNTERED or fizzled
+//     Omen spell is not covered by it and goes to its owner's graveyard
+//     under the ordinary rule — postStackZoneForOffboard deliberately
+//     does not consult the new flag.
+//
+// STILL NOT MODELLED, filed: §720.2/§720.3b alternative characteristics.
+// The engine casts the card itself rather than an object wearing the
+// Omen half's name, type line and text, so "while on the stack as an
+// Omen the spell has ONLY its alternative characteristics" is not
+// represented. Our oracle endpoint returns only the primary face for
+// these cards, so the Omen half's text may not reach the parser at all
+// — that is the thing to check first.
+//
 import (
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/mana"
@@ -90,11 +113,12 @@ func OmenCost(card *Card) int {
 }
 
 // ---------------------------------------------------------------------------
-// CastOmen — pay the alt cost from hand, exile-on-resolve, grant exile cast.
+// CastOmen — pay the Omen-half cost from hand; §720.3d routes the card
+// to its owner's library on resolution.
 // ---------------------------------------------------------------------------
 
-// CastOmen casts a card from `seatIdx`'s hand for its omen cost.
-// CR §702.176.
+// CastOmen casts a card from `seatIdx`'s hand as an Omen.
+// CR §720.3 / §720.3d.
 //
 // Preconditions enforced here:
 //   - card has the omen keyword
@@ -175,11 +199,14 @@ func CastOmen(gs *GameState, seatIdx int, card *Card, omenCost int) (*CostPaymen
 		Controller: seatIdx,
 		CastZone:   ZoneHand,
 		Effect:     collectSpellEffect(card),
+		// §720.3d — shuffled into the OWNER's library as it resolves.
+		// Deliberately NOT "exile_on_resolve", which is what this was
+		// until r99 and is the wrong zone.
 		CostMeta: map[string]interface{}{
-			"exile_on_resolve":  true,
-			"zone_cast_keyword": "omen",
-			"omen":              true,
-			"omen_cost":         omenCost,
+			"shuffle_into_library_on_resolve": true,
+			"zone_cast_keyword":               "omen",
+			"omen":                            true,
+			"omen_cost":                       omenCost,
 		},
 	}
 	PushStackItem(gs, item)
@@ -192,13 +219,13 @@ func CastOmen(gs *GameState, seatIdx int, card *Card, omenCost int) (*CostPaymen
 	}
 	gs.Flags["spell_omen_cast_this_turn:"+itoa(seatIdx)] = 1
 
-	// Register the cast-from-exile permission keyed on the card pointer.
-	// The grant has Zone=exile so it only activates once the spell has
-	// resolved and the card has been moved into the owner's exile by the
-	// ShouldExileOnResolve branch in stack.go. RemoveZoneCastGrant will
-	// be invoked by the future from-exile cast (or by any LTB cleanup
-	// that removes the card from exile).
-	RegisterZoneCastGrant(gs, card, NewOmenCastFromExilePermission(card.Owner))
+	// NO cast-from-exile grant (r99). This used to register one, on the
+	// theory that omen exiles the card for a later re-cast. §720 grants
+	// nothing of the kind and the card is shuffled into the library, so
+	// the grant described an ability that does not exist.
+	// NewOmenCastFromExilePermission now has NO PRODUCTION CALLERS and
+	// is on the dead-code ledger; it is left in place rather than
+	// deleted here because delete-or-wire is its own change.
 
 	gs.LogEvent(Event{
 		Kind:   "omen_cast",
@@ -206,7 +233,10 @@ func CastOmen(gs *GameState, seatIdx int, card *Card, omenCost int) (*CostPaymen
 		Source: card.DisplayName(),
 		Amount: omenCost,
 		Details: map[string]interface{}{
-			"rule": "702.176",
+			// §720.3 is the cast-time choice to cast the card as an
+			// Omen. The old value here was "702.176", which is
+			// Impending — a wrong number emitted as event DATA.
+			"rule": "720.3",
 		},
 	})
 
@@ -226,17 +256,20 @@ func SpellOmenCastThisTurn(gs *GameState, seatIdx int) bool {
 // NewOmenCastFromExilePermission — the post-resolve "cast from exile" grant.
 // ---------------------------------------------------------------------------
 
-// NewOmenCastFromExilePermission returns a ZoneCastPermission that lets
-// the card's owner cast the omen face from exile at the card's normal
-// mana cost. CR §702.176 ("cast it on a later turn from exile") — the
-// alt omen cost itself is consumed by the first cast, so the second
-// cast pays the printed mana cost. ManaCost = -1 instructs CastFromZone
-// / CanCastFromZone to use the card's printed mana cost.
+// NewOmenCastFromExilePermission — DEAD AS OF r99, no production
+// callers. On the dead-code ledger; left in place because delete-or-wire
+// is its own change.
+//
+// It returns a ZoneCastPermission that would let the card's owner cast
+// the omen face from exile at the card's normal mana cost. The rule it
+// used to cite for that ("cast it on a later turn from exile") does not
+// exist: that is foretell/plot-shaped reminder text, and the number
+// beside it pointed at Impending. An Omen spell is shuffled into its
+// owner's library as it resolves, so there is never a card in exile for
+// this grant to apply to.
 //
 // RequireController is the owner so an opponent that exiled the card
-// (e.g. via a steal effect resolving on the omen-cast spell) cannot
-// hijack the second cast. Duration is empty — the grant persists until
-// the card leaves exile (cast or removed) per CR §702.176.
+// could not hijack the second cast. Duration is empty.
 func NewOmenCastFromExilePermission(owner int) *ZoneCastPermission {
 	return &ZoneCastPermission{
 		Zone:              ZoneExile,

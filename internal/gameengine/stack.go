@@ -2464,6 +2464,34 @@ func ResolveStackTop(gs *GameState) {
 			if item.Card != nil {
 				MarkInstanceIDCeased(gs, item.Card.InstanceID)
 			}
+		} else if ShouldShuffleIntoLibraryOnResolve(item) {
+			// CR §720.3d — an Omen spell is shuffled into its OWNER's
+			// library as it resolves, not put into a graveyard and not
+			// exiled. Until r99 omen was routed through the exile
+			// branch below, which is the wrong zone entirely.
+			owner := item.Card.Owner
+			if owner < 0 || owner >= len(gs.Seats) {
+				owner = item.Controller
+			}
+			MoveCard(gs, item.Card, owner, "stack", "library", "omen-resolve")
+			shuffleLibrary(gs, owner)
+			gs.LogEvent(Event{
+				Kind:   "resolve",
+				Seat:   item.Controller,
+				Source: name,
+				Details: map[string]interface{}{
+					"to":        "library",
+					"reason":    "omen_shuffle_into_library",
+					"cast_zone": item.CastZone,
+					"rule":      "720.3d",
+				},
+			})
+			gs.LogEvent(Event{
+				Kind:   "shuffle",
+				Seat:   owner,
+				Target: owner,
+				Source: name,
+			})
 		} else if ShouldExileOnResolve(item) {
 			// Wave 2: flashback / aftermath / jump-start — exile
 			// instead of graveyard. NOT escape as of r96. Mayhem and

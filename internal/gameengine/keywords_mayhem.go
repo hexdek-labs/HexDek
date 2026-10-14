@@ -14,10 +14,31 @@ package gameengine
 //
 // Implementation mirrors keywords_flashback.go: a thin permission check
 // (HasMayhem + MayhemDiscards[card] == gs.Turn), MayhemCost reads the
-// keyword arg, and CastMayhem removes the card from its owner's graveyard,
-// pays the mana, and pushes a StackItem with CostMeta["exile_on_resolve"]
-// = true so the existing ResolveStackTop branch routes it to exile on
-// resolution per §702.187c.
+// keyword arg, and CastMayhem removes the card from its owner's
+// graveyard and pays the mana.
+//
+// NO EXILE CLAUSE (r99, was CLAUDE.md open issue (11)). Until r99 this
+// pushed CostMeta["exile_on_resolve"]=true and justified it with
+// "§702.187c". The whole of §702.187 was read verbatim from the pinned
+// edition, and it has exactly three subrules:
+//
+//	a  mayhem is a static ability that functions while the card is in a
+//	   player's graveyard
+//	b  "Mayhem [cost]" means "As long as you discarded this card this
+//	   turn, you may cast it from your graveyard by paying [cost] rather
+//	   than paying its mana cost"
+//	c  "Mayhem" without a cost means "You may play this card from your
+//	   graveyard if you discarded it this turn."
+//
+// None of the three is an exile clause, and the subrule that was cited
+// is the COSTLESS VARIANT OF THE ALTERNATIVE COST. The word appears in
+// exactly five places in the CR — those three, the section header, and
+// a glossary entry that likewise describes only an alternative cost.
+// Contrast flashback, aftermath and jump-start, whose own subrules each
+// carry an explicit "exile this card instead of putting it anywhere
+// else any time it would leave the stack" sentence; mayhem has nothing
+// like it, so a mayhem-cast spell takes the ordinary post-stack routing
+// and a countered one goes to its owner's graveyard.
 //
 // The discard-side wiring lives in resolve.go's DiscardCard, which sets
 // gs.MayhemDiscards[card] = gs.Turn whenever a card with mayhem hits a
@@ -187,8 +208,8 @@ func CastMayhem(gs *GameState, seatIdx int, card *Card, mayhemCost int) (*CostPa
 		Controller: seatIdx,
 		CastZone:   ZoneGraveyard,
 		Effect:     collectSpellEffect(card),
+		// Deliberately NO "exile_on_resolve" key — see the header.
 		CostMeta: map[string]interface{}{
-			"exile_on_resolve":  true,
 			"zone_cast_keyword": "mayhem",
 			"mayhem":            true,
 			"mayhem_cost":       mayhemCost,

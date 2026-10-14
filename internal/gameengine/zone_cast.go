@@ -440,6 +440,26 @@ func CastFromZone(
 // spell should be exiled instead of going to the graveyard.
 // ---------------------------------------------------------------------------
 
+// ShouldShuffleIntoLibraryOnResolve returns true if the stack item is
+// shuffled into its owner's library as it resolves, instead of going to
+// its owner's graveyard.
+//
+// CR §720.3d (Omen Cards): "As an Omen spell resolves, its controller
+// shuffles it into its owner's library instead of putting it into its
+// owner's graveyard as it resolves."
+//
+// Note the scope: §720.3d is a RESOLUTION replacement only. A COUNTERED
+// or fizzled Omen spell is not covered by it and goes to its owner's
+// graveyard under the ordinary rule, which is why
+// postStackZoneForOffboard deliberately does NOT consult this.
+func ShouldShuffleIntoLibraryOnResolve(item *StackItem) bool {
+	if item == nil || item.CostMeta == nil {
+		return false
+	}
+	b, ok := item.CostMeta["shuffle_into_library_on_resolve"].(bool)
+	return ok && b
+}
+
 // ShouldExileOnResolve returns true if the stack item should be exiled
 // after resolution instead of going to its normal post-resolution zone.
 // This is true for flashback and escape casts.
