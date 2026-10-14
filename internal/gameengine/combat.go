@@ -96,7 +96,7 @@ func (p *Permanent) HasKeyword(name string) bool {
 		}
 		// §122.1b divergent grant: a keyword counter whose TYPE NAME
 		// differs from the keyword it confers — a phyresis counter grants
-		// infect (§702.91). The direct name check above only matches
+		// infect (§702.90). The direct name check above only matches
 		// counters stored under the keyword's own name; resolve each
 		// present counter type through the registry and match its granted
 		// keyword. The legacy Counters map is the store the generic AST

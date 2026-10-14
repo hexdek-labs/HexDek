@@ -77,7 +77,7 @@ func TestManifestDread_DeadCreaturePutsRealCardInGraveyard(t *testing.T) {
 }
 
 // The hidden card's own ETB self-trigger must NOT fire while manifested
-// (CR §708.4 — a face-down permanent has no abilities). The generic
+// (CR §708.2 — a face-down permanent has no abilities). The generic
 // permanent_etb observer event still fires (a creature did enter).
 func TestManifest_HiddenCardSelfETBDoesNotFire(t *testing.T) {
 	gs := newManifestGame(t)

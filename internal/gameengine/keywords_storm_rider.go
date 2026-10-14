@@ -186,7 +186,7 @@ func ApplyStormCopy(gs *GameState, original *StackItem, count int) int {
 			Details: map[string]interface{}{
 				"stack_id":   copyItem.ID,
 				"stack_size": len(gs.Stack),
-				"rule":       "702.40a+706.10",
+				"rule":       "702.40a+707.10",
 			},
 		})
 	}

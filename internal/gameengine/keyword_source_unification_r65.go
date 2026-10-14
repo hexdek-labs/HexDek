@@ -133,7 +133,7 @@ func runtimeKeywordSources(p *Permanent) []string {
 			}
 			// A divergent grant confers a keyword under a different name
 			// than the counter's own (a phyresis counter grants infect,
-			// CR §702.91); otherwise the canonical counter name IS the
+			// CR §702.90); otherwise the canonical counter name IS the
 			// keyword.
 			if def.GrantedAbility != nil && def.GrantedAbility.Keyword != "" {
 				out = append(out, def.GrantedAbility.Keyword)

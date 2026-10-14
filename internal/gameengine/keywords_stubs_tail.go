@@ -265,7 +265,7 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 				"stack_id":   copyItem.ID,
 				"copy_index": i + 1,
 				"of_total":   tiers,
-				"rule":       "702.182+706.10",
+				"rule":       "702.182+707.10",
 			},
 		})
 	}

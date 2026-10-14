@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// living_weapon_r63_test.go — Living weapon (CR §702.91, New Phyrexia).
+// living_weapon_r63_test.go — Living weapon (CR §702.92, New Phyrexia).
 // ApplyLivingWeapon existed but had NO caller — living weapon was inert (no
 // Germ token, no auto-attach). These pin: 0/0 black Germ via the canonical
 // token path, auto-attach, the equip buff making the Germ a real creature,

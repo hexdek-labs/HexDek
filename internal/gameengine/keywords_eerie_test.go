@@ -311,7 +311,7 @@ func TestOnEnchantmentETB_NonEnchantmentETBNoop(t *testing.T) {
 }
 
 func TestOnEnchantmentETB_FaceDownEerieSourceSkipped(t *testing.T) {
-	// CR §708.4: face-down permanents have no abilities. An eerie
+	// CR §708.2: face-down permanents have no abilities. An eerie
 	// carrier turned face-down (manifested, morphed, or disguised in
 	// the engine model) must NOT fire.
 	gs := newEerieGame(t)

@@ -711,7 +711,7 @@ func buildCombatClaimTests() []claimTest {
 			return nil
 		}},
 		// Menace requires 2+ blockers
-		{claim: "702.110: menace requires 2+ blockers", category: cat, test: func() *failure {
+		{claim: "702.111: menace requires 2+ blockers", category: cat, test: func() *failure {
 			gs := advGameState()
 			menace := makePerm(gs, 0, "Menace Creature", []string{"creature"}, 3, 3)
 			menace.Flags["kw:menace"] = 1

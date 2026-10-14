@@ -7,7 +7,7 @@ package counters
 // This file extends the registry beyond the Phase 1 + 2 + 4 set (the 10
 // most common stat/storage shapes, 12 ability-granting keyword counters,
 // and the 3 player-counter kinds) with the remaining ~230 entries:
-// the P/T variant shapes (§704.5r non-pairing), the §306/§310/§714
+// the P/T variant shapes (§704.5q non-pairing), the §306/§310/§714
 // resource counters on planeswalkers / battles / Sagas (defense), the
 // remaining §122.1b keyword counters (haste, shadow, decayed, phyresis,
 // strike), the countdown family (fade, age) per §702.24 / §702.32, the
@@ -37,9 +37,9 @@ package counters
 // on a permanent controlled by the doubling player; false for player
 // counters (engine ruling, see Phase 4 note) and lore (engine ruling at
 // registry_init.go Phase 1). Proliferate is true for all §122 counters
-// per §701.27 except energy (already excluded at Phase 4). Stacking
+// per §701.34 except energy (already excluded at Phase 4). Stacking
 // behavior is NoPair for everything except the +1/+1 / -1/-1 family
-// already wired at Phase 1 — §704.5r is the only counter-pair cancel
+// already wired at Phase 1 — §704.5q is the only counter-pair cancel
 // in the Comprehensive Rules.
 
 func init() {
@@ -63,7 +63,7 @@ func init() {
 
 // permanentTracker builds the canonical §122 storage-counter shape: lives on
 // the listed permanent targets, doubled by §122.1g, proliferate-eligible per
-// §701.27, no pair-cancel, no granted ability. Used for the bulk of the
+// §701.34, no pair-cancel, no granted ability. Used for the bulk of the
 // long-tail markers.
 func permanentTracker(name string, targets []TargetType, notes string) *CounterTypeDef {
 	return &CounterTypeDef{
@@ -95,9 +95,9 @@ func resourceMarker(name string, targets []TargetType, notes string) *CounterTyp
 	}
 }
 
-// statModifier is the §704.5r non-pairing P/T variant shape. The +1/+1 and
+// statModifier is the §704.5q non-pairing P/T variant shape. The +1/+1 and
 // -1/-1 entries already live in registry_init.go with PairsWith metadata;
-// every other shape is NoPair per §704.5r ("Only +1/+1 and -1/-1 cancel").
+// every other shape is NoPair per §704.5q ("Only +1/+1 and -1/-1 cancel").
 func statModifier(name string, target TargetType, notes string) *CounterTypeDef {
 	return &CounterTypeDef{
 		Name:             name,
@@ -146,7 +146,7 @@ func countdown(name string, targets []TargetType, notes string) *CounterTypeDef 
 
 // thresholdCounter is the discrete-effect-at-threshold shape (quest, level,
 // verse, study, tower, intervention, filibuster, luck). Doubling applies per
-// §122.1g, proliferate is on per §701.27, no pair-cancel.
+// §122.1g, proliferate is on per §701.34, no pair-cancel.
 func thresholdCounter(name string, targets []TargetType, notes string) *CounterTypeDef {
 	return &CounterTypeDef{
 		Name:             name,
@@ -161,9 +161,9 @@ func thresholdCounter(name string, targets []TargetType, notes string) *CounterT
 }
 
 // ---------------------------------------------------------------------------
-// §704.5r non-pairing P/T variants (Section A of the Probe F catalog).
+// §704.5q non-pairing P/T variants (Section A of the Probe F catalog).
 // All ten extra shapes sit independently and modify P/T additively. None
-// cancel against any other shape — only +1/+1 / -1/-1 do per §704.5r.
+// cancel against any other shape — only +1/+1 / -1/-1 do per §704.5q.
 // ---------------------------------------------------------------------------
 
 func registerPhase5StatModifierVariants() {
@@ -217,11 +217,11 @@ func registerPhase5ResourceSubstance() {
 
 func registerPhase5RemainingKeywordCounters() {
 	registerDefinition(keywordGrant("haste", "haste", "CR §702.10 haste grant"))
-	registerDefinition(keywordGrant("shadow", "shadow", "CR §702.27 shadow grant (combat-block restriction)"))
+	registerDefinition(keywordGrant("shadow", "shadow", "CR §702.28 shadow grant (combat-block restriction)"))
 	registerDefinition(keywordGrant("decayed", "decayed",
-		"CR §702.146 decayed grant (can't block; sacrifice after attacking) — Rot-Curse Rakshasa counter form"))
+		"CR §702.147 decayed grant (can't block; sacrifice after attacking) — Rot-Curse Rakshasa counter form"))
 	registerDefinition(keywordGrant("phyresis", "infect",
-		"CR §702.91 infect grant — Weatherlight Compleated phyresis counter"))
+		"CR §702.90 infect grant — Weatherlight Compleated phyresis counter"))
 	// CR §122.1b legacy "strike counter" — errata'd as "first strike counter" per
 	// the Probe F catalog. Aliased so old-frame oracle text resolves correctly.
 	registerDefinition(&CounterTypeDef{
@@ -291,7 +291,7 @@ func registerPhase5Replacements() {
 // Level counters are special: CR §711 defines per-level brackets statically
 // (P/T + abilities by count). They DO get doubled by §122.1g (Doubling Season
 // + level up makes the creature level up faster) and ARE proliferate-eligible
-// per §701.27.
+// per §701.34.
 // ---------------------------------------------------------------------------
 
 func registerPhase5Thresholds() {
@@ -331,7 +331,7 @@ func registerPhase5Thresholds() {
 // ---------------------------------------------------------------------------
 // Long-tail multi-card storage / accumulator counters (Section H.1, ≥2 cards
 // each). All follow the standard §122 plumbing: §122.6 persistence, §122.1g
-// doubling at placement, §701.27 proliferate-eligible.
+// doubling at placement, §701.34 proliferate-eligible.
 //
 // Targets are taken from each entry's Probe F mechanic notes — when a counter
 // appears on multiple permanent types across its source cards, all are
@@ -508,7 +508,7 @@ func registerPhase5MultiCardStorage() {
 // catalog entry's mechanic is unclear from the table alone, the safer choice
 // is broader ValidTargets (e.g. [TargetCreature, TargetArtifact]) — overly
 // strict targeting risks ErrInvalidTarget at placement time on legitimate
-// per_card calls. The §704.5r invariant is unaffected either way.
+// per_card calls. The §704.5q invariant is unaffected either way.
 // ---------------------------------------------------------------------------
 
 func registerPhase5SingleCardMarkers() {

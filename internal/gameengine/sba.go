@@ -845,7 +845,7 @@ func sba704_5j(gs *GameState) bool {
 				continue
 			}
 			// CR §704.5j keys on the permanent's NAME — its effective name,
-			// not its printed one. Read the layer-aware name (§706.2 copy
+			// not its printed one. Read the layer-aware name (§707.2 copy
 			// effects set Characteristics.Name) so it stays consistent with
 			// the layer-aware HasSupertypeOf legendary check above. A
 			// TEMPORARY copy of a legend (Cytoshape / Mirrorweave —

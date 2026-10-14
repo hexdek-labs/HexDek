@@ -2,7 +2,7 @@ package counters
 
 import "errors"
 
-// Counter DB Phase 4 — proliferate primitive per CR §701.23:
+// Counter DB Phase 4 — proliferate primitive per CR §701.34:
 //
 //	"To proliferate means to choose any number of permanents and/or
 //	players that have a counter, then give each another counter of a
@@ -27,12 +27,12 @@ type ProliferateChoice struct {
 	// CounterType is the registry name (or alias) of the counter kind the
 	// controller chose to add one more of. MUST already be present on
 	// Target with Count > 0 — Proliferate rejects choices that don't
-	// satisfy CR §701.23's "of a kind already there" gate.
+	// satisfy CR §701.34's "of a kind already there" gate.
 	CounterType string
 }
 
 // ErrCounterTypeNotPresent is returned by Proliferate when a choice
-// names a counter type the target does not currently carry. CR §701.23
+// names a counter type the target does not currently carry. CR §701.34
 // requires the kind to be "already there" — silently no-op'ing would
 // mask caller bugs (Atraxa's controller picks a kind by inspecting
 // CounterStacks; a mismatch means stale state or a per_card race).
@@ -80,7 +80,7 @@ func Proliferate(choices []ProliferateChoice, sourceInstanceID string, tick int)
 		}
 		// Skip the AddCounters ValidTargets gate: the target already
 		// proved it can hold this kind by carrying a counter. This is
-		// the §701.23 contract — proliferate never validates legality
+		// the §701.34 contract — proliferate never validates legality
 		// beyond presence. Still routes through the doubling pipeline.
 		placed := ApplyDoublingPipeline(c.Target, canonical, 1)
 		stacks := cloneStacks(c.Target.CounterStacks())

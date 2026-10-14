@@ -1378,7 +1378,7 @@ func ApplyLivingWeapon(gs *GameState, equipment *Permanent) *Permanent {
 }
 
 // HasLivingWeapon reports whether the card carries the living weapon keyword
-// (CR §702.91). Normalizes spaces/underscores so it matches the parser token
+// (CR §702.90). Normalizes spaces/underscores so it matches the parser token
 // regardless of "living weapon" / "living_weapon" spelling.
 func HasLivingWeapon(card *Card) bool {
 	if card == nil || card.AST == nil {
@@ -1767,7 +1767,7 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 // creature. It can be turned face up for its mana cost.
 
 // CloakFaceDownWardCost is the ward cost a cloaked permanent has while
-// face down (CR §702.171a — "a 2/2 creature with ward {2}"). This is the
+// face down (CR §701.58a — "a 2/2 creature with ward {2}"). This is the
 // defining difference between cloak and manifest, which grants no ward.
 const CloakFaceDownWardCost = 2
 
@@ -1795,7 +1795,7 @@ func PerformCloak(gs *GameState, seatIdx int, card *Card) *Permanent {
 		Counters:      map[string]int{},
 	}
 	// Stamp the cloak face-down overlay through the unified primitive:
-	// FaceDownTemplate="cloak" + ward {2} (CR §702.171a — the key cloak-vs-
+	// FaceDownTemplate="cloak" + ward {2} (CR §701.58a — the key cloak-vs-
 	// manifest difference) from the template, plus the "cloaked" marker.
 	makeFaceDown(gs, perm, "cloak", faceDownOpts{Markers: []string{"cloaked"}})
 	// Store original card reference for face-up.

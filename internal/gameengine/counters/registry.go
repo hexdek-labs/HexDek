@@ -9,7 +9,7 @@
 // internal/gameengine/ adapt their *Permanent to the Target interface so
 // later phases can wire AddCounters into the engine without creating an
 // import cycle. Phase 2+ layers on keyword counter ability grants, SBA
-// pair-removal (§704.5r), proliferate (CR §701.27), the full replacement-
+// pair-removal (§704.5q), proliferate (CR §701.34), the full replacement-
 // effect doubling pipeline (§122.1g), and the long-tail 242 remaining
 // counter types catalogued in docs/counter-types-catalog-r60.md.
 package counters
@@ -32,7 +32,7 @@ const (
 	LoreCounter
 	// LoyaltyCounter is the planeswalker resource per CR §306.
 	LoyaltyCounter
-	// TimeCounter covers suspend / fade / age trackers per §702.61.
+	// TimeCounter covers suspend / fade / age trackers per §702.62.
 	TimeCounter
 	// OtherTracker is the catch-all for rules-text-specific markers.
 	OtherTracker
@@ -122,7 +122,7 @@ func (p PlacementRule) Allows(ctx PlacementRule) bool {
 	return p&ctx != 0
 }
 
-// StackingRule captures the §704.5r-style pair-removal behavior. The zero
+// StackingRule captures the §704.5q-style pair-removal behavior. The zero
 // value (NoPair) means counters of this type never cancel against another
 // counter type during the SBA pass.
 type StackingRule struct {

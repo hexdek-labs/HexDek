@@ -61,7 +61,7 @@ func ixidronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 				Source: p.Card.DisplayName(),
 				Details: map[string]interface{}{
 					"reason": "ixidron_etb",
-					"rule":   "702.36",
+					"rule":   "702.37",
 				},
 			})
 		}

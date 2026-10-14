@@ -2769,7 +2769,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// Register §614 replacement effects.
 	RegisterReplacementsForPermanent(gs, perm)
 
-	// CR §702.91 — Living weapon. Create the 0/0 Germ + auto-attach this
+	// CR §702.92 — Living weapon. Create the 0/0 Germ + auto-attach this
 	// Equipment to it. Run after the equipment's continuous effects register so
 	// the equip buff is live the moment the Germ is attached. This is the cast
 	// path; FirePermanentETBTriggers covers non-cast entries. ApplyLivingWeapon

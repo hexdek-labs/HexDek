@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// ripple_cast_triggers_test.go — a ripple cast IS a cast (CR §702.19a,
+// ripple_cast_triggers_test.go — a ripple cast IS a cast (CR §702.60a,
 // "you may cast any cards revealed this way"), so it must count for
 // storm/magecraft and fire the "whenever you cast a spell" family.
 //
@@ -80,7 +80,8 @@ func TestRippleCast_FiresCastTriggerFamily(t *testing.T) {
 	}
 }
 
-// TestRippleCast_FiresMagecraftVisibleCast — CR §702.137a: magecraft
+// TestRippleCast_FiresMagecraftVisibleCast — magecraft is an ability
+// word, so it has no CR entry of its own (§207.2c): magecraft
 // triggers on casting an instant or sorcery, and a ripple cast is a
 // cast. Magecraft keys off the instant/sorcery cast dispatch, so that
 // firing for the ripple-cast card is the observable property.

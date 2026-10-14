@@ -74,7 +74,7 @@ func HasManifest(card *Card) bool {
 // IsManifested reports whether the permanent was placed on the
 // battlefield via a manifest action — perm.Flags["manifested"] > 0.
 // Distinguishes a Manifest face-down from a Morph face-down (CR
-// §702.36); the two share the face-down state but trigger different
+// §702.37); the two share the face-down state but trigger different
 // "while face-down" abilities.
 func IsManifested(perm *Permanent) bool {
 	if perm == nil || perm.Flags == nil {
@@ -91,7 +91,7 @@ func IsManifested(perm *Permanent) bool {
 // per CR §701.34a/c, in the real-card overlay model: each manifested
 // card itself becomes the face-down permanent (the permanent of record),
 // so it can move zones, be owned, and fire dies-triggers correctly. Its
-// §707.2 2/2-vanilla shape comes from the "manifest" FaceDownTemplate via
+// §708.2 2/2-vanilla shape comes from the "manifest" FaceDownTemplate via
 // the layers system — there is no synthetic wrapper and no OriginalCard
 // orphan.
 //
@@ -104,7 +104,7 @@ func IsManifested(perm *Permanent) bool {
 //   - It becomes a face-down permanent: perm.Card = the real card with
 //     Card.FaceDown=true, FaceDownTemplate="manifest", Flags
 //     {"manifested":1,"face_down":1}, SummoningSick=true.
-//   - ETB triggers fire (the §708.4 face-down gate suppresses the hidden
+//   - ETB triggers fire (the §708.2 face-down gate suppresses the hidden
 //     card's own self-triggers/statics); replacements skip while hidden.
 //   - A "manifest" event is emitted (one per card, plus a final
 //     summary event with Amount=count for tooling that batches).
@@ -145,7 +145,7 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 		// Stamp the manifest overlay: Card.FaceDown, FaceDownTemplate=
 		// "manifest", the "manifested" marker, and "face_down" so the ETB /
 		// replacement face-down gates treat the real card's abilities as
-		// absent (§708.4).
+		// absent (§708.2).
 		makeFaceDown(gs, perm, "manifest", faceDownOpts{Markers: []string{"manifested", "face_down"}})
 
 		seat.Battlefield = append(seat.Battlefield, perm)
@@ -201,7 +201,7 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 //   - the face-down overlay is cleared (Card.FaceDown=false,
 //     FaceDownTemplate="", manifest markers removed) so the real card
 //     reveals its printed characteristics
-//   - the real card's replacement effects are re-registered (§708.4)
+//   - the real card's replacement effects are re-registered (§708.2)
 //   - the §613 cache is invalidated
 //   - A "manifest_flip" event is emitted with the revealed card name
 //
@@ -263,7 +263,7 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 	// Clear the face-down overlay — the real card (already perm.Card)
 	// reveals its printed name, types, P/T, AST, and mana cost. Drop the
 	// FaceDownTemplate and the manifest markers so the layers system stops
-	// applying the §707.2 override and the face-down ETB/replacement gates
+	// applying the §708.2 override and the face-down ETB/replacement gates
 	// release.
 	underlying.FaceDown = false
 	perm.FaceDownTemplate = ""
@@ -274,7 +274,7 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 	delete(perm.Flags, "face_down")
 
 	// The real card's static abilities (replacement effects) become active
-	// now that it's face up — they were skipped at ETB by the §708.4
+	// now that it's face up — they were skipped at ETB by the §708.2
 	// face-down guard. Turning face up is not an ETB, so we re-register
 	// replacements without re-firing ETB triggers.
 	RegisterReplacementsForPermanent(gs, perm)

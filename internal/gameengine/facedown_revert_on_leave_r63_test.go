@@ -2,7 +2,7 @@ package gameengine
 
 import "testing"
 
-// r63 — face-down REVERT-ON-LEAVE (CR §707.2): when a face-down permanent
+// r63 — face-down REVERT-ON-LEAVE (CR §708.2): when a face-down permanent
 // in the real-card overlay model (disguise, cyber / external turn-down)
 // leaves the battlefield, the overlay ceases and the TRUE card enters the
 // destination zone FACE UP. The real card is the permanent of record, so

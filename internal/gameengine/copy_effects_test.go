@@ -2,7 +2,7 @@ package gameengine
 
 // Odin Golden-Game Oracle — copy/clone effects test suite.
 //
-// Deterministic, state-based golden assertions for CR §706.2 / §613.1a
+// Deterministic, state-based golden assertions for CR §707.2 / §613.1a
 // copy effects across three interaction modes:
 //
 //   1. Phantasmal Image copying a tribal lord (Elvish Archdruid) —
@@ -15,7 +15,7 @@ package gameengine
 //      across the name boundary.
 //   3. Clone targeting a token that is itself a copy of a creature —
 //      verifies that the Clone inherits the *underlying* creature's
-//      printed values (CR §706.2: a copy uses the source's copiable
+//      printed values (CR §707.2: a copy uses the source's copiable
 //      values, which for a copy-token are the values it was created as
 //      a copy of).
 //
@@ -57,13 +57,13 @@ func TestOdin_PhantasmalImage_CopiesElvishArchdruid_AnthemPropagates(t *testing.
 
 	// Phantasmal Image enters as a 1/1 Illusion with no printed abilities.
 	// CopyPermanentLayered will overwrite its copiable values with the
-	// Archdruid's per CR §706.2.
+	// Archdruid's per CR §707.2.
 	imageAST := &gameast.CardAST{Name: "Phantasmal Image"}
 	image := addBattlefieldWithAST(gs, 0, "Phantasmal Image", 1, 1,
 		imageAST, "creature")
 	image.Card.TypeLine = "Creature — Illusion"
 
-	// Apply the §706.2 / §613.1a copy. Permanent duration so the AST +
+	// Apply the §707.2 / §613.1a copy. Permanent duration so the AST +
 	// Card pointer get re-stamped — that's how the engine surfaces the
 	// copied static to registerASTStaticEffects below.
 	CopyPermanentLayered(gs, image, archdruid, DurationPermanent)
@@ -126,7 +126,7 @@ func TestOdin_PhantasmalImage_CopiesElvishArchdruid_AnthemPropagates(t *testing.
 // Test 2 — Sakashima of a Thousand Faces copies a commander.
 // -----------------------------------------------------------------------------
 //
-// Sakashima's printed exception (CR §706.2 + card text): "...except its
+// Sakashima's printed exception (CR §707.2 + card text): "...except its
 // name is still Sakashima of a Thousand Faces..." — i.e. a layer-1 name
 // override applied AFTER the copy effect. The §903.8 commander-tax
 // tracker keys on name, so a Sakashima-copy of an opponent's commander
@@ -169,7 +169,7 @@ func TestOdin_Sakashima_CopiesCommander_KeepsNameNoTax(t *testing.T) {
 		3, 3, sakashimaAST, "creature", "legendary")
 	sakashima.Card.TypeLine = "Legendary Creature — Human Rogue"
 
-	// §706.2 copy: Sakashima becomes a copy of Krenko.
+	// §707.2 copy: Sakashima becomes a copy of Krenko.
 	CopyPermanentLayered(gs, sakashima, krenko, DurationPermanent)
 
 	// Sakashima's exception: re-stamp the name back to "Sakashima of a
@@ -205,7 +205,7 @@ func TestOdin_Sakashima_CopiesCommander_KeepsNameNoTax(t *testing.T) {
 		},
 		Duration: DurationPermanent,
 	})
-	// CR §706.2 / Sakashima's printed text: the exception applies at
+	// CR §707.2 / Sakashima's printed text: the exception applies at
 	// layer 1, so the runtime Card.Name (used by IsCommanderCard for
 	// ID-by-name) must also reflect the exception. Re-stamp it.
 	sakashima.Card.Name = sakashimaName
@@ -255,7 +255,7 @@ func TestOdin_Sakashima_CopiesCommander_KeepsNameNoTax(t *testing.T) {
 // Test 3 — Clone targets a token that is itself a copy of a creature.
 // -----------------------------------------------------------------------------
 //
-// CR §706.2: "the copy uses the copiable values of the source." A token
+// CR §707.2: "the copy uses the copiable values of the source." A token
 // that was created as a copy of Bear has Bear's copiable values; cloning
 // the token must therefore yield a Bear-shape, not a generic-token shape.
 
@@ -268,7 +268,7 @@ func TestOdin_Clone_OfCopyToken_InheritsUnderlyingCreature(t *testing.T) {
 
 	// Token "create a token copy of Grizzly Bears". Phase 1 — the
 	// token's printed identity (1/1 generic) is overwritten by the
-	// copy effect to inherit Bear's copiable values per §706.2.
+	// copy effect to inherit Bear's copiable values per §707.2.
 	tokenAST := (*gameast.CardAST)(nil) // tokens have no AST.
 	_ = tokenAST
 	token := addBattlefield(gs, 0, "Bear Token", 1, 1, "creature", "token")
@@ -290,7 +290,7 @@ func TestOdin_Clone_OfCopyToken_InheritsUnderlyingCreature(t *testing.T) {
 	// of any creature. We point CopyPermanentLayered at the token and
 	// the engine reads the token's CURRENT BaseCharacteristics — which,
 	// because the token has already been re-stamped to Bear's values,
-	// returns Bear's printed values. CR §706.2: the Clone gets Bear.
+	// returns Bear's printed values. CR §707.2: the Clone gets Bear.
 	cloneAST := &gameast.CardAST{Name: "Clone"}
 	clone := addBattlefieldWithAST(gs, 0, "Clone", 0, 0, cloneAST, "creature")
 	clone.Card.TypeLine = "Creature — Shapeshifter"

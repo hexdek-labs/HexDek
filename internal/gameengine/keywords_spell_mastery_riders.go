@@ -241,7 +241,7 @@ func OnConstellationETB(gs *GameState, enteredPerm *Permanent) {
 	if !enteredPerm.IsEnchantment() {
 		return
 	}
-	// Face-down permanents have no abilities (CR §708.4) — but their
+	// Face-down permanents have no abilities (CR §708.2) — but their
 	// ETB still triggers OTHER permanents' constellation abilities, so
 	// we don't filter on face_down here. The face-down guard belongs
 	// inside FireConstellationTriggers if the carrier itself is face-

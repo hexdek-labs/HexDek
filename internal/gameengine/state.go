@@ -1710,7 +1710,7 @@ type Permanent struct {
 	OriginalCard *Card
 
 	// FaceDownTemplate names the face-down characteristics overlay this
-	// permanent wears while Card.FaceDown is set (CR §707.2 / §613.2b):
+	// permanent wears while Card.FaceDown is set (CR §708.2 / §613.2b):
 	// "morph" / "disguise" / "cloak" / "manifest" / "cyber". Empty string
 	// (the zero value) means the default morph template (2/2 colorless
 	// nameless no-abilities creature) — so legacy face-down permanents that
@@ -1807,7 +1807,7 @@ type Permanent struct {
 	// Empty when this permanent is not currently copying anything.
 	CopiedTargetInstanceID string
 
-	// CopiableSnapshot is the §706.2 frozen-at-copy-moment snapshot of
+	// CopiableSnapshot is the §707.2 frozen-at-copy-moment snapshot of
 	// the source's printed values. nil unless this permanent is acting
 	// as a copy.
 	CopiableSnapshot *CopiableCharacteristics
@@ -1943,7 +1943,7 @@ func (p *Permanent) Power() int {
 	if p == nil {
 		return 0
 	}
-	// Face-down creatures are always 2/2 (CR §707.2).
+	// Face-down creatures are always 2/2 (CR §708.2).
 	if p.Card != nil && p.Card.FaceDown {
 		return 2
 	}
@@ -1977,7 +1977,7 @@ func (p *Permanent) Toughness() int {
 	if p == nil {
 		return 0
 	}
-	// Face-down creatures are always 2/2 (CR §707.2).
+	// Face-down creatures are always 2/2 (CR §708.2).
 	if p.Card != nil && p.Card.FaceDown {
 		return 2
 	}
@@ -2054,7 +2054,7 @@ func (p *Permanent) hasType(t string) bool {
 	if p == nil || p.Card == nil {
 		return false
 	}
-	// CR §707.2 — a face-down permanent's types are exactly the face-down
+	// CR §708.2 — a face-down permanent's types are exactly the face-down
 	// template's (creature, plus artifact for the cyber template); the
 	// hidden card's printed types/supertypes are masked. This mirrors the
 	// BaseCharacteristics face-down override so type queries agree with the
@@ -2733,7 +2733,7 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	// CR §707.4 / §702.36: face-down cards are turned face-up when they
+	// CR §708.9 / §702.37: face-down cards are turned face-up when they
 	// move to any zone other than the battlefield. Clear the FaceDown flag.
 	// Cards entering the battlefield may remain face-down (Morph, Manifest).
 	if c.FaceDown && zone != "battlefield" && zone != "battlefield_tapped" {

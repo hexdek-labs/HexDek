@@ -48,7 +48,7 @@ func r70Strip(gs *GameState, target *Permanent, id string) {
 	gs.InvalidateCharacteristicsCache()
 }
 
-// §702.3 vigilance — DeclareAttackers taps attackers that lack it.
+// §702.20 vigilance — DeclareAttackers taps attackers that lack it.
 func TestKeywordMigrationR70_VigilanceGrantAndStrip(t *testing.T) {
 	// GRANT: a layer-granted vigilance must stop the tap.
 	gs := r70Game(t)

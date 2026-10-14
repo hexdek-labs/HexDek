@@ -2,7 +2,7 @@ package gameengine
 
 // facedown_template.go — the unified face-down OVERLAY registry (r63).
 //
-// DESIGN MODEL (CR §707.2 / §613.2b):
+// DESIGN MODEL (CR §708.2 / §613.2b):
 //
 // A face-down permanent is the REAL card (the permanent of record —
 // authoritative for zone moves, ownership, dies-triggers, commander
@@ -16,7 +16,7 @@ package gameengine
 // The overlay's characteristics depend on WHAT turned the permanent face
 // down — morph, disguise, cloak, manifest, or an external "turn face down"
 // effect (Cyber Conversion / Ixidron). FaceDownTemplate captures that, and
-// the registry below maps a template key to the §707.2 base the layers
+// the registry below maps a template key to the §708.2 base the layers
 // system applies (layers.go BaseCharacteristics).
 //
 // NOTE on the legacy wrapper model: morph / cloak / manifest historically
@@ -29,7 +29,7 @@ package gameengine
 // below unify the FLAG + TEMPLATE stamping across all paths today, leaving
 // each path's card-of-record model untouched.
 
-// FaceDownTemplate is the §707.2 characteristics overlay a face-down
+// FaceDownTemplate is the §708.2 characteristics overlay a face-down
 // permanent wears, keyed by the effect that turned it face down.
 type FaceDownTemplate struct {
 	// Key is the registry key ("morph" / "disguise" / "cloak" /
@@ -47,7 +47,7 @@ type FaceDownTemplate struct {
 	// Colors — WUBRG(C) letters; nil/empty means colorless.
 	Colors []string
 	// Ward is the ward {N} granted while face down; 0 = no ward. Disguise
-	// and cloak face-downs have ward {2} (CR §702.166a / §702.171a).
+	// and cloak face-downs have ward {2} (CR §702.168a / §701.58a).
 	Ward int
 	// Hidden reports whether the underlying identity is concealed from
 	// opponents. True for the morph family; false for Cyber Conversion /
@@ -65,20 +65,20 @@ type FaceDownTemplate struct {
 // faceDownTemplates is the canonical registry. Keys are the effect that
 // created the face-down state.
 var faceDownTemplates = map[string]FaceDownTemplate{
-	// CR §702.36 — Morph: 2/2 colorless nameless creature, no abilities,
+	// CR §702.37 — Morph: 2/2 colorless nameless creature, no abilities,
 	// turn face up for the morph cost.
 	"morph": {
 		Key: "morph", Power: 2, Toughness: 2,
 		Types: []string{"creature"}, Hidden: true, TurnUp: "morph",
 	},
-	// CR §702.166 — Disguise: like morph but with ward {2}; turn up for
+	// CR §702.168 — Disguise: like morph but with ward {2}; turn up for
 	// the disguise cost.
 	"disguise": {
 		Key: "disguise", Power: 2, Toughness: 2,
 		Types: []string{"creature"}, Ward: DisguiseFaceDownWardCost,
 		Hidden: true, TurnUp: "disguise",
 	},
-	// CR §702.171 — Cloak: 2/2 colorless creature with ward {2}; turn up
+	// CR §701.58 — Cloak: 2/2 colorless creature with ward {2}; turn up
 	// for the underlying card's mana cost (if it's a creature card).
 	"cloak": {
 		Key: "cloak", Power: 2, Toughness: 2,
@@ -102,7 +102,7 @@ var faceDownTemplates = map[string]FaceDownTemplate{
 }
 
 // FaceDownTemplateFor returns the template registered under key, falling
-// back to the morph template (the §707.2 default 2/2 colorless nameless
+// back to the morph template (the §708.2 default 2/2 colorless nameless
 // no-ability creature) for an unknown or empty key. The fallback is what
 // keeps legacy face-down permanents (FaceDownTemplate == "") computing the
 // correct base.
@@ -126,7 +126,7 @@ type faceDownOpts struct {
 }
 
 // makeFaceDown stamps the face-down overlay described by templateKey onto
-// perm. CR §707.2. The REAL card stays perm.Card (the permanent of
+// perm. CR §708.2. The REAL card stays perm.Card (the permanent of
 // record); makeFaceDown only sets Card.FaceDown, records the template, and
 // raises the runtime flags. It does NOT register replacements, fire ETB,
 // or move zones — callers own that, because the cast/manifest paths fire
@@ -142,7 +142,7 @@ func makeFaceDown(gs *GameState, perm *Permanent, templateKey string, opts faceD
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
-	// Ward {N} from the template (CR §702.166a / §702.171a) — read by
+	// Ward {N} from the template (CR §702.168a / §701.58a) — read by
 	// CheckWardOnTargeting via the runtime-flag path, since §613.2b strips
 	// the AST keywords from the face-down characteristics.
 	if tmpl.Ward > 0 {
@@ -158,7 +158,7 @@ func makeFaceDown(gs *GameState, perm *Permanent, templateKey string, opts faceD
 
 // TurnPermanentFaceDown turns an EXISTING battlefield permanent face down
 // under the given template — the entry point no mint path covered before
-// (Cyber Conversion / Ixidron). CR §707.2.
+// (Cyber Conversion / Ixidron). CR §708.2.
 //
 // Unlike the cast / manifest paths, the permanent is ALREADY on the
 // battlefield, so this is a pure overlay flip: the REAL card stays
@@ -187,7 +187,7 @@ func TurnPermanentFaceDown(gs *GameState, perm *Permanent, templateKey string) b
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"template": FaceDownTemplateFor(templateKey).Key,
-			"rule":     "707.2",
+			"rule":     "708.2",
 		},
 	})
 	return true

@@ -169,7 +169,7 @@ func TestApplyStaticETBCounters_HonorsArgs1ForCustomCounterKind(t *testing.T) {
 }
 
 // TestApplyStaticETBCounters_SkipsFaceDown — face-down permanents have
-// no abilities per CR §708.4, including the etb_with_counters Static.
+// no abilities per CR §708.2, including the etb_with_counters Static.
 func TestApplyStaticETBCounters_SkipsFaceDown(t *testing.T) {
 	gs := newTestGameState(2)
 	perm := &Permanent{

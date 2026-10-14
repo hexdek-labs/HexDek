@@ -64,7 +64,7 @@ func TestTurnPermanentFaceDown_PreservesCounters(t *testing.T) {
 		t.Fatal("returned false")
 	}
 	if bear.Counters["+1/+1"] != 3 {
-		t.Errorf("counters must be preserved across face-down (§707.2), got %d", bear.Counters["+1/+1"])
+		t.Errorf("counters must be preserved across face-down (§708.2), got %d", bear.Counters["+1/+1"])
 	}
 	// 2/2 base + three +1/+1 counters = 5/5.
 	chars := GetEffectiveCharacteristics(gs, bear)

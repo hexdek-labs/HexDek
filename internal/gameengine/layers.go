@@ -46,7 +46,7 @@ package gameengine
 // per-counter timestamps which the engine doesn't yet track; the
 // post-pass gives us correct results for the 25+ canonical tests.
 //
-// Face-down permanents (§707.2 / §613.2b): if perm.Card.FaceDown is
+// Face-down permanents (§708.2 / §613.2b): if perm.Card.FaceDown is
 // true, the baseline is overridden to a 2/2 colorless nameless
 // no-subtype creature with no abilities BEFORE any layer effects are
 // applied. The face-down family agent's output will register a proper
@@ -314,7 +314,7 @@ func (gs *GameState) UnregisterContinuousEffectsForPermanent(p *Permanent) int {
 // supertypes, colors, P/T, keywords, abilities). For a token:
 // Card.AST == nil, use Card.BasePower/BaseToughness/Types.
 //
-// §707.2 / §613.2b: face-down permanents have a CDA override to a 2/2
+// §708.2 / §613.2b: face-down permanents have a CDA override to a 2/2
 // colorless nameless no-subtype creature with no abilities. We apply
 // that override HERE (as a layer-1b-equivalent) rather than through
 // the registered-effects machinery — the face-down family agent may
@@ -329,7 +329,7 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	if p.Card == nil {
 		return c
 	}
-	// Face-down CDA override (§707.2 / §613.2b). The template — keyed by
+	// Face-down CDA override (§708.2 / §613.2b). The template — keyed by
 	// what turned the permanent face down (morph / disguise / cloak /
 	// manifest / cyber), defaulting to morph — supplies the §707.2 BASE
 	// characteristics ONLY. Empty/unknown FaceDownTemplate falls back to
@@ -349,12 +349,12 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 		// face down (they're not copiable values of the face-down object).
 		c.Abilities = nil
 		c.Keywords = nil
-		// The template's intrinsic ward (disguise / cloak, CR §702.166a /
-		// §702.171a) is a characteristic of the face-down object itself.
+		// The template's intrinsic ward (disguise / cloak, CR §702.168a /
+		// §701.58a) is a characteristic of the face-down object itself.
 		if tmpl.Ward > 0 {
 			c.Keywords = append(c.Keywords, "ward")
 		}
-		// §707.2 — a face-down permanent has mana value 0.
+		// §708.2 — a face-down permanent has mana value 0.
 		c.CMC = 0
 		c.FaceDown = true
 		// GRANT-RETENTION FIX (r63): the template is the BASE layer only.
@@ -374,7 +374,7 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 		// r65 — same fold for the runtime keyword surfaces (Flags
 		// stamp + keyword counters). A keyword counter grants its
 		// keyword regardless of card type (CR §122.6), so it survives
-		// the §707.2 face-down wipe exactly as a runtime grant does.
+		// the §708.2 face-down wipe exactly as a runtime grant does.
 		foldRuntimeKeywordSources(p, c)
 		return c
 	}
@@ -1000,7 +1000,7 @@ func (gs *GameState) HasKeywordOf(p *Permanent, kw string) bool {
 // -----------------------------------------------------------------------------
 
 // CopyPermanentLayered implements a layer-1 copy effect: the target
-// permanent becomes a copy of the source permanent per CR §706.2 /
+// permanent becomes a copy of the source permanent per CR §707.2 /
 // §613.1a. The copy replaces the target's copiable characteristics
 // (name, types, subtypes, supertypes, colors, abilities, P/T) with
 // the source's printed values. The target retains its own status
@@ -1019,7 +1019,7 @@ func CopyPermanentLayered(gs *GameState, target, source *Permanent, duration str
 		duration = DurationPermanent
 	}
 	// Snapshot the source's printed characteristics at copy time. Per
-	// §706.2, the copy uses the SOURCE's printed (copiable) values —
+	// §707.2, the copy uses the SOURCE's printed (copiable) values —
 	// NOT the layer-modified values. We read from the source's Card
 	// and base characteristics.
 	srcBase := BaseCharacteristics(source)
@@ -1064,7 +1064,7 @@ func CopyPermanentLayered(gs *GameState, target, source *Permanent, duration str
 			target.OriginalCard = target.Card
 		}
 		// InstanceID Phase 5: route through BecomeCopyOfCard so the
-		// target keeps its OWN InstanceID (per CR §706.2 — the copying
+		// target keeps its OWN InstanceID (per CR §707.2 — the copying
 		// permanent retains its identity; only printed characteristics
 		// flip). Bare DeepCopy puts the SOURCE's ID into target.Card,
 		// which collides with the source perm's wrapper and trips
@@ -1084,7 +1084,7 @@ func CopyPermanentLayered(gs *GameState, target, source *Permanent, duration str
 			"target_timestamp": target.Timestamp,
 			"source_name":     srcBase.Name,
 			"duration":        duration,
-			"rule":            "706.2",
+			"rule":            "707.2",
 		},
 	})
 }

@@ -77,12 +77,12 @@ func TestPhase8ExperienceNotProliferateEligible(t *testing.T) {
 // TestPhase8PoisonAndRadStillProliferateEligible is a regression test
 // for the Phase 4 player-counter family. Phase 8 narrowed the player-
 // counter set to exactly {poison, rad}; both MUST stay proliferate-
-// eligible per CR §701.27. Defends against an over-broad future sweep
+// eligible per CR §701.34. Defends against an over-broad future sweep
 // that mistakenly removes poison/rad alongside experience.
 func TestPhase8PoisonAndRadStillProliferateEligible(t *testing.T) {
 	for _, name := range []string{"poison", "rad"} {
 		if !IsProliferateEligibleType(name) {
-			t.Errorf("%q reported NOT proliferate-eligible; Phase 4 ruling requires eligibility per CR §701.27", name)
+			t.Errorf("%q reported NOT proliferate-eligible; Phase 4 ruling requires eligibility per CR §701.34", name)
 		}
 		def := Lookup(name)
 		if def == nil {

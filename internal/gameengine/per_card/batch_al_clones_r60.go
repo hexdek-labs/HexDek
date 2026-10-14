@@ -74,7 +74,7 @@ func cloneVariantETB(gs *gameengine.GameState, perm *gameengine.Permanent, slug 
 	}
 	perm.OriginalCard = perm.Card
 	// InstanceID Phase 5: preserve perm's InstanceID across the in-place
-	// copy so identity doesn't duplicate with target.Card. Per §706.2.
+	// copy so identity doesn't duplicate with target.Card. Per §707.2.
 	if cp := gameengine.BecomeCopyOfCard(gs, perm, target.Card); cp != nil {
 		perm.Card = cp
 	}
@@ -273,7 +273,7 @@ func spittingImageResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 // Sakashima of a Thousand Faces — UPGRADE.
 //
 // Pre-upgrade impl in custom_sakashima_of_a_thousand_faces.go did only
-// P/T copy. CR §706.2 says "enter as a copy" means the new permanent
+// P/T copy. CR §707.2 says "enter as a copy" means the new permanent
 // copies every printable characteristic of the original. The upgrade
 // path here calls sakashimaCopyETB() first (preserving the original
 // emit + the existing test's P/T-copy assertion), then does the full

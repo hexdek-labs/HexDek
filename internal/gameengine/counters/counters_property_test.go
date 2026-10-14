@@ -305,7 +305,7 @@ func TestApplyDoublingPipelinePlaceholder(t *testing.T) {
 	}
 }
 
-// TestRegistryStackingBehaviorPairs pins the §704.5r pair-removal config
+// TestRegistryStackingBehaviorPairs pins the §704.5q pair-removal config
 // metadata for Phase 3 to read.
 func TestRegistryStackingBehaviorPairs(t *testing.T) {
 	plus := Lookup("+1/+1")

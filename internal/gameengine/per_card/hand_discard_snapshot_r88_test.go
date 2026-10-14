@@ -15,7 +15,7 @@ import (
 // `for len(Hand) > 0 { DiscardCard(...) }`, DiscardCard fires
 // card_discarded, and that trigger puts a card back into the same hand.
 // Pre-r88 the loop cannot exit. Post-r88 the handler discards the
-// SNAPSHOT taken when the effect was applied (CR §701.8a) and the
+// SNAPSHOT taken when the effect was applied (CR §701.9a) and the
 // refilled cards stay in hand.
 
 // r88HandCard puts a card into seat's hand and returns it.

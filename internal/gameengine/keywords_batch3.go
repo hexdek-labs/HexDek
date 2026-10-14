@@ -137,7 +137,7 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 				"stack_id":   copyItem.ID,
 				"stack_size": len(gs.Stack),
 				"copy_index": i + 1,
-				"rule":       "702.56+706.10",
+				"rule":       "702.56+707.10",
 			},
 		})
 	}

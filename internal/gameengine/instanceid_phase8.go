@@ -565,10 +565,10 @@ func CleanupExpiredDelayedAbilities(gs *GameState) int {
 }
 
 // ---------------------------------------------------------------------------
-// Suspend — §702.61 as a delayed-trigger composition
+// Suspend — §702.62 as a delayed-trigger composition
 // ---------------------------------------------------------------------------
 
-// RegisterSuspendComposition wires CR §702.61 as a pair of delayed
+// RegisterSuspendComposition wires CR §702.62 as a pair of delayed
 // abilities on the pool, per design v2 §11 (Suspend reimplemented as a
 // delayed-trigger composition). The card is assumed to already be in
 // exile (the cast-time exile is handled at cast resolution; this helper

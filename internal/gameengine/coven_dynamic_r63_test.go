@@ -105,7 +105,7 @@ func TestCoven_EvalConditionWiredLive(t *testing.T) {
 	}
 }
 
-// (4) face-down creatures count as power 2 (CR §707.2); tokens count by power.
+// (4) face-down creatures count as power 2 (CR §708.2); tokens count by power.
 func TestCoven_FaceDownAndTokensCountByPower(t *testing.T) {
 	gs := newFixtureGame(t)
 	// A face-down (2 power), a 1/1, a 3/3 → powers 2,1,3 → coven.

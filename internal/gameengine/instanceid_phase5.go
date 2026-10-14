@@ -78,7 +78,7 @@ const (
 	CopyTargetNewToken                         // a fresh token is minted as a copy
 )
 
-// CopyRestriction filters legal copy targets per §706.3 (only permanents
+// CopyRestriction filters legal copy targets per §707.3 (only permanents
 // you could legally affect with the originating effect can be copied).
 type CopyRestriction struct {
 	TypeFilter     []string // e.g. ["artifact","creature","enchantment"]
@@ -106,7 +106,7 @@ type CopyEvent struct {
 	Mechanism  int    // index into Permanent.CopyMechanisms
 }
 
-// CopiableCharacteristics is the §706.2 snapshot frozen at copy time.
+// CopiableCharacteristics is the §707.2 snapshot frozen at copy time.
 // Captures the printed values the copy uses; layered effects on the copy
 // stack on top of this snapshot via Layer 1.
 type CopiableCharacteristics struct {
@@ -236,7 +236,7 @@ func RecordCopyEvent(gs *GameState, perm *Permanent, ev CopyEvent) {
 // BecomeCopyOfCard implements the Phase 5 in-place copy semantics for
 // permanent-becomes-copy effects (Clone, Spark Double, Phantasmal Image's
 // ETB rider, Mirage Mirror's permanent-duration arm, Sakashima's ETB-as-
-// copy). Per CR §706.2 + design §4 mint path 3, the copying permanent
+// copy). Per CR §707.2 + design §4 mint path 3, the copying permanent
 // KEEPS ITS OWN IDENTITY — only the printed characteristics flip. So
 // the right pointer-swap pattern is:
 //
@@ -275,7 +275,7 @@ func BecomeCopyOfCard(gs *GameState, perm *Permanent, sourceCard *Card) *Card {
 	if perm.Card != nil {
 		cp.Owner = perm.Card.Owner
 	}
-	// Snapshot the §706.2 copiable values.
+	// Snapshot the §707.2 copiable values.
 	perm.CopiableSnapshot = &CopiableCharacteristics{
 		Name:             sourceCard.DisplayName(),
 		Types:            append([]string(nil), sourceCard.Types...),

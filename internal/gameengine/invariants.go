@@ -253,7 +253,7 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 			for _, mc := range p.MergedCardPtrs {
 				addID(mc)
 			}
-			// OriginalCard is the pre-§706.2-clone identity preserved
+			// OriginalCard is the pre-§707.2-clone identity preserved
 			// when CopyPermanentLayered did the in-place swap. Its ID
 			// is the perm's ORIGINAL ID (BecomeCopyOfCard preserves it
 			// onto p.Card.InstanceID), so OriginalCard's InstanceID

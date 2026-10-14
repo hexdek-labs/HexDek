@@ -120,7 +120,7 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	// Point Image's Card at the copied Card (shares the AST, types,
 	// powers, abilities — this IS what "enter as a copy" means per CR
-	// §706.2). We preserve perm.Flags (so the sac-on-target rider
+	// §707.2). We preserve perm.Flags (so the sac-on-target rider
 	// persists) and perm.Timestamp (Image has its own ETB timestamp).
 	//
 	// Phantasmal-specific addenda (illusion type + sac-rider) are
@@ -129,14 +129,14 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// sentinel suffices for the trigger handler.
 	perm.OriginalCard = perm.Card
 	// InstanceID Phase 5: preserve perm.Card.InstanceID across the copy
-	// so identity doesn't duplicate with target.Card. Per §706.2 the
+	// so identity doesn't duplicate with target.Card. Per §707.2 the
 	// copying permanent retains its own identity; only printed
 	// characteristics flip.
 	perm.Card = gameengine.BecomeCopyOfCard(gs, perm, target.Card)
 	if perm.Card == nil {
 		perm.Card = perm.OriginalCard
 	}
-	// Copy +1/+1 counters that are "part of the copy" per §706.2 —
+	// Copy +1/+1 counters that are "part of the copy" per §707.2 —
 	// actually, counters on the COPY SOURCE are NOT copied (they're
 	// per-permanent state). We leave perm.Counters empty; this matches
 	// oracle intent.
@@ -177,7 +177,7 @@ func fireETBOnCopy(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	// CR §706.2 + §614.1c — a permanent that ENTERS as a copy of a card
+	// CR §707.2 + §614.1c — a permanent that ENTERS as a copy of a card
 	// carrying an "enters with N counters" self-replacement (Scourge of
 	// Skola Vale, District Mascot, Hangarback Walker, …) enters WITH those
 	// counters: the as-enters self-replacement is a copiable value applied

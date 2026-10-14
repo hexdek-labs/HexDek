@@ -2,7 +2,7 @@ package gameengine
 
 // Tests for the 5 keywords flagged by 7174n1c:
 //
-//   1. Proliferate — CR §701.27
+//   1. Proliferate — CR §701.34
 //   2. Populate    — CR §701.30
 //   3. Evolve      — CR §702.100
 //   4. Extort      — CR §702.101
@@ -83,7 +83,7 @@ func flaggedCountTokens(gs *GameState, seat int) int {
 }
 
 // ===========================================================================
-// 1. PROLIFERATE — CR §701.27
+// 1. PROLIFERATE — CR §701.34
 // ===========================================================================
 
 func TestProliferate_AddsCountersToOwnPermanents(t *testing.T) {

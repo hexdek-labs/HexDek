@@ -123,7 +123,7 @@ func OnEnchantmentETB(gs *GameState, enteredPerm *Permanent) {
 		if !HasEerie(src.Card) {
 			continue
 		}
-		// Don't fire for face-down permanents — CR §708.4 strips their
+		// Don't fire for face-down permanents — CR §708.2 strips their
 		// abilities, so an eerie keyword on the printed AST is silent
 		// while face-down.
 		if src.Flags != nil && src.Flags["face_down"] == 1 {

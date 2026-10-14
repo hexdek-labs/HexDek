@@ -26,7 +26,7 @@ func ApplySelfEntersTapped(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil || perm.Card.AST == nil {
 		return
 	}
-	// Face-down permanents have no abilities (CR §708.4).
+	// Face-down permanents have no abilities (CR §708.2).
 	if perm.Flags != nil && perm.Flags["face_down"] != 0 {
 		return
 	}

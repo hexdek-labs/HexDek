@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Test helpers — Disguise (CR §702.166)
+// Test helpers — Disguise (CR §702.168)
 // ---------------------------------------------------------------------------
 
 func newDisguiseGame(t *testing.T) *GameState {
@@ -115,7 +115,7 @@ func TestCastDisguiseFaceDown_Spawns2x2WardTwo(t *testing.T) {
 		t.Error("permanent should be tagged with disguise_face_down=1")
 	}
 
-	// 2/2 via the §707.2 face-down characteristic override (layers.go
+	// 2/2 via the §708.2 face-down characteristic override (layers.go
 	// BaseCharacteristics).
 	chars := BaseCharacteristics(perm)
 	if chars.Power != 2 || chars.Toughness != 2 {
@@ -159,14 +159,14 @@ func TestCastDisguiseFaceDown_StampsCostMetaAltCost(t *testing.T) {
 			continue
 		}
 		if v, _ := ev.Details["alt_cost"].(string); v == "disguise" {
-			if rule, _ := ev.Details["rule"].(string); rule == "702.166a" {
+			if rule, _ := ev.Details["rule"].(string); rule == "702.168a" {
 				saw = true
 				break
 			}
 		}
 	}
 	if !saw {
-		t.Fatal("expected a cast_face_down event with alt_cost=disguise and rule=702.166a")
+		t.Fatal("expected a cast_face_down event with alt_cost=disguise and rule=702.168a")
 	}
 }
 
@@ -274,14 +274,14 @@ func TestTurnFaceUpDisguise_PaysCostAndRevealsCharacteristics(t *testing.T) {
 	gotEvent := false
 	for _, ev := range gs.EventLog {
 		if ev.Kind == "disguise_turn_face_up" && ev.Amount == 4 {
-			if rule, _ := ev.Details["rule"].(string); rule == "702.166b" {
+			if rule, _ := ev.Details["rule"].(string); rule == "702.168d" {
 				gotEvent = true
 				break
 			}
 		}
 	}
 	if !gotEvent {
-		t.Error("expected a disguise_turn_face_up event with rule 702.166b and amount 4")
+		t.Error("expected a disguise_turn_face_up event with rule 702.168d and amount 4")
 	}
 }
 

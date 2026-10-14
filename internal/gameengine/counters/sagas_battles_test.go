@@ -27,7 +27,7 @@ func TestPhase7_LoreCounterRegistryShape(t *testing.T) {
 		t.Error("lore counters must NOT be doubled (CR §714.2b — fixed +1 per precombat main)")
 	}
 	if !def.Proliferate {
-		t.Error("lore counters must be proliferate-eligible (CR §701.27)")
+		t.Error("lore counters must be proliferate-eligible (CR §701.34)")
 	}
 	if len(def.ValidTargets) == 0 {
 		t.Fatal("lore counter has no ValidTargets")

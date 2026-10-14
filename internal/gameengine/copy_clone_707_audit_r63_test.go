@@ -7,7 +7,7 @@ import (
 )
 
 // copy_clone_707_audit_r63_test.go — CR §707 copy/clone mechanic audit.
-// Exercises the copiable-value contract (§707.2 / §706.2), copy-spell
+// Exercises the copiable-value contract (§707.2 / §707.2), copy-spell
 // (§707.10), legend-rule-on-clones (§704.5j), and enters-as-a-copy
 // counter timing. Direct-API style (CopyPermanentLayered / resolveCopySpell
 // / StateBasedActions) mirroring copy_effects_test.go.
@@ -79,7 +79,7 @@ func TestCopy707_CloneOfAnthemBuffedCreature_CopiesPrintedBase(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// §706.2 — enters-with-counters is a copiable ABILITY: a clone of a creature
+// §707.2 — enters-with-counters is a copiable ABILITY: a clone of a creature
 // whose printed text says "enters with N counters" gains that ability and,
 // AS IT ENTERS AS A COPY, gets its OWN N counters — but does NOT inherit the
 // source's EXISTING counters.

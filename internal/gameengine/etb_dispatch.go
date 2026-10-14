@@ -113,7 +113,7 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	}
 	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 
-	// CR §708.4: face-down permanents have no abilities — skip self-triggers.
+	// CR §708.2: face-down permanents have no abilities — skip self-triggers.
 	faceDown := perm.Flags != nil && perm.Flags["face_down"] != 0
 
 	// CR §122.1g / §614.1d — generic Static `etb_with_counters` self-
@@ -163,7 +163,7 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		RegisterContinuousEffectsForPermanent(gs, perm)
 	}
 
-	// CR §702.91 — Living weapon. When this Equipment enters, create a 0/0
+	// CR §702.92 — Living weapon. When this Equipment enters, create a 0/0
 	// black Phyrexian Germ token and attach this Equipment to it. ApplyLivingWeapon
 	// had no caller — it was inert. Run AFTER the equipment's continuous effects
 	// register so the equip buff is live the moment the Germ is attached (a

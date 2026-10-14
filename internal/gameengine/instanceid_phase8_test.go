@@ -358,7 +358,7 @@ func TestPhase8_DelayedAbilityExpiresWithoutMatch(t *testing.T) {
 // Suspend as delayed-trigger composition
 // ----------------------------------------------------------------------
 
-// TestPhase8_SuspendTicksAndCastsForFree drives the §702.61 composition
+// TestPhase8_SuspendTicksAndCastsForFree drives the §702.62 composition
 // end-to-end: registering Suspend on a 3-counter card produces (1) a
 // recurring upkeep-tick that decrements counters and (2) a one-shot
 // cast-when-zero. Three upkeep events tick down, after which the

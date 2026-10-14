@@ -9,8 +9,11 @@ import (
 // keywords_gated_state_batch.go — Round-33 batch of gated-state riders.
 //
 // Adds five Threshold/Metalcraft/Hellbent-shaped gating mechanics in a
-// single file: Delirium (§702.151), Coven (§702.152), Ferocious
-// (§702.135), Raid (§702.128), and Revolt (§702.146). Each follows the
+// single file: Delirium, Coven, Ferocious, Raid and Revolt. All five are
+// ABILITY WORDS, which per CR §207.2c "have no special rules meaning and
+// no individual entries in the Comprehensive Rules" — so they get no
+// §702.x number. The numbers previously cited here belonged to
+// Reconfigure, Afterlife, Embalm and Disturb. Each follows the
 // exact pattern established by Threshold:
 //
 //   - HasXxx(card) bool           detector. Matches an AST Keyword

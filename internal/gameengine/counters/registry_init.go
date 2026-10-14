@@ -5,7 +5,7 @@ package counters
 // docs/counter-types-catalog-r60.md). Phase 2+ extends with the keyword
 // counter family and the long-tail 242 remaining types.
 func init() {
-	// CR §122 stat-modifier counters. Pair-removal per §704.5r runs in the
+	// CR §122 stat-modifier counters. Pair-removal per §704.5q runs in the
 	// SBA pass (wired in Phase 3). DoublingApplies=true so Hardened Scales /
 	// Doubling Season / Primal Vigor amplify the placement once the Phase 6
 	// replacement-effect pipeline is live.
@@ -18,7 +18,7 @@ func init() {
 		DoublingApplies:  true,
 		Proliferate:      true,
 		StackingBehavior: PairsWith("-1/-1"),
-		Notes:            "CR §122 base counter; §704.5r pair-removal with -1/-1",
+		Notes:            "CR §122 base counter; §704.5q pair-removal with -1/-1",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "-1/-1",
@@ -29,7 +29,7 @@ func init() {
 		DoublingApplies:  true,
 		Proliferate:      true,
 		StackingBehavior: PairsWith("+1/+1"),
-		Notes:            "CR §122 base counter; §704.5r pair-removal with +1/+1; infect/wither sources place these",
+		Notes:            "CR §122 base counter; §704.5q pair-removal with +1/+1; infect/wither sources place these",
 	})
 
 	// CR §122.1b keyword counters. The presence of the counter grants the
@@ -123,7 +123,7 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		GrantedAbility:   &AbilityRef{Keyword: "menace"},
-		Notes:            "CR §122.1b keyword counter; CR §702.110 menace grant",
+		Notes:            "CR §122.1b keyword counter; CR §702.111 menace grant",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "reach",
@@ -213,7 +213,7 @@ func init() {
 		Notes:            "CR §714 (Sagas); chapter abilities trigger on placement",
 	})
 
-	// CR §702.61 time counters. Suspended cards in exile tick down at the
+	// CR §702.62 time counters. Suspended cards in exile tick down at the
 	// upkeep step; vanishing/fading creatures self-tick.
 	registerDefinition(&CounterTypeDef{
 		Name:             "time",
@@ -223,7 +223,7 @@ func init() {
 		DoublingApplies:  false,
 		Proliferate:      true,
 		StackingBehavior: NoPair,
-		Notes:            "CR §702.61 (suspend) / §702.131 (vanishing); ticks down at controller's upkeep",
+		Notes:            "CR §702.62 (suspend) / §702.63 (vanishing); ticks down at controller's upkeep",
 	})
 
 	// Oil counters — Phyrexia: All Will Be One mechanic. §122 generic
@@ -239,9 +239,9 @@ func init() {
 		Notes:            "CR §122; ONE-block tracker (Skrelv, Defector Mite; Mondrak, Glory Dominus interactions)",
 	})
 
-	// CR §701.55 stun counters. "If a permanent with a stun counter would
+	// CR §122.1d stun counters. "If a permanent with a stun counter would
 	// become untapped, remove one from it instead." Modeled as a tracker
-	// here; the §701.55 untap-replacement plumb lands in Phase 6 alongside
+	// here; the §122.1d untap-replacement plumb lands in Phase 6 alongside
 	// the rest of the replacement-effect work.
 	registerDefinition(&CounterTypeDef{
 		Name:             "stun",
@@ -251,10 +251,10 @@ func init() {
 		DoublingApplies:  true,
 		Proliferate:      true,
 		StackingBehavior: NoPair,
-		Notes:            "CR §701.55 (stun counters); intercepts untap as a replacement effect (Phase 6 wiring)",
+		Notes:            "CR §122.1d (stun counters); intercepts untap as a replacement effect (Phase 6 wiring)",
 	})
 
-	// CR §701.58 shield counters. "If a permanent with a shield counter
+	// CR §122.1c shield counters. "If a permanent with a shield counter
 	// would be destroyed or dealt damage, remove a shield counter from it
 	// instead." Same Phase 6 replacement-effect wiring as stun.
 	registerDefinition(&CounterTypeDef{
@@ -265,13 +265,13 @@ func init() {
 		DoublingApplies:  true,
 		Proliferate:      true,
 		StackingBehavior: NoPair,
-		Notes:            "CR §701.58 (shield counters); intercepts destruction/damage as a replacement effect (Phase 6 wiring)",
+		Notes:            "CR §122.1c (shield counters); intercepts destruction/damage as a replacement effect (Phase 6 wiring)",
 	})
 
 	// Counter DB Phase 4 + Phase 8 — player counter types (CR §122 + §810).
 	// Poison (§122.1d / §810) and rad (§122 generic, March of the Machine
 	// mechanic) are §122 counters placed on PLAYERS, proliferate-eligible
-	// per CR §701.23.
+	// per CR §701.34.
 	//
 	// Energy (CR §106.11) is intentionally absent — energy is a RESOURCE
 	// POOL, not a §122 counter, so proliferate cannot grant {E} and

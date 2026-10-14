@@ -1,16 +1,16 @@
 package gameengine
 
-// keywords_disguise.go — CR §702.166 Disguise (Murders at Karlov Manor, 2024).
+// keywords_disguise.go — CR §702.168 Disguise (Murders at Karlov Manor, 2024).
 //
 // Disguise is the modern (post-2024) Morph variant. A card with disguise
-// has two new abilities, per §702.166a:
+// has two new abilities, per §702.168a:
 //
 //   1. "You may cast this card face down for {3} as a 2/2 creature with
-//      ward {2}."                                                — §702.166a
+//      ward {2}."                                                — §702.168a
 //   2. "You may turn this permanent face up any time for its disguise
-//      cost."                                                    — §702.166b
+//      cost."                                                    — §702.168b
 //
-// Differences from Morph (§702.36 / §702.37):
+// Differences from Morph (§702.37):
 //
 //   - The face-down creature has ward {2} (Morph face-downs have no
 //     abilities at all).
@@ -31,7 +31,7 @@ package gameengine
 //     in stack.go sees the ward without needing AST surgery (which would
 //     be wrong because §613.2b strips the AST keywords from the face-down
 //     characteristics in the layers system). The ward keyword on a
-//     face-down disguise creature is granted by §702.166a, not by the
+//     face-down disguise creature is granted by §702.168a, not by the
 //     card's own AST, so the runtime-flag path is the correct seat for it.
 //
 //   - TurnFaceUpDisguise pays the disguise cost (extracted from the
@@ -49,11 +49,11 @@ package gameengine
 // MoveCard's existing FaceDown reset on zone change in phases.go.
 
 // DisguiseFaceDownCost is the alternative cast cost for a disguise spell
-// cast face down — {3}, per §702.166a.
+// cast face down — {3}, per §702.168a.
 const DisguiseFaceDownCost = 3
 
 // DisguiseFaceDownWardCost is the ward cost granted to a face-down disguise
-// creature — ward {2}, per §702.166a.
+// creature — ward {2}, per §702.168a.
 const DisguiseFaceDownWardCost = 2
 
 // HasDisguise reports whether the card carries the disguise keyword.
@@ -72,13 +72,13 @@ func DisguiseCost(card *Card) int {
 }
 
 // CastDisguiseFaceDown casts `card` from `seatIdx`'s hand face-down for
-// the disguise alt cost of {3}. CR §702.166a + §601.2f.
+// the disguise alt cost of {3}. CR §702.168a + §601.2f.
 //
 // On success:
 //   - Pays {3} from `seatIdx`'s mana pool.
 //   - Removes `card` from hand.
 //   - Sets `card.FaceDown = true` (so the layers system applies the
-//     §707.2 / §613.2b face-down characteristic override).
+//     §708.2 / §613.2b face-down characteristic override).
 //   - Pushes a StackItem flagged with CostMeta["disguise_face_down"]=true
 //     and CostMeta["alt_cost"]="disguise" — the alt-cost trail per
 //     §601.2f. The item is then resolved immediately into a face-down 2/2
@@ -89,7 +89,7 @@ func DisguiseCost(card *Card) int {
 //
 // The cast does NOT enforce sorcery speed: face-down disguise spells are
 // cast as the card's normal type (so an instant printed with disguise
-// could be cast face-down at instant speed); §702.166a inherits the
+// could be cast face-down at instant speed); §702.168a inherits the
 // timing of the card's true type. Callers that need sorcery-speed gating
 // (the most common case for creature-printed disguise) must enforce it
 // before calling.
@@ -176,7 +176,7 @@ func CastDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) (*Permanent, e
 		Amount: DisguiseFaceDownCost,
 		Details: map[string]interface{}{
 			"alt_cost": "disguise",
-			"rule":     "702.166a",
+			"rule":     "702.168a",
 		},
 	})
 
@@ -211,7 +211,7 @@ func materializeDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) *Perman
 }
 
 // TurnFaceUpDisguise pays the disguise cost and turns `perm` face-up.
-// CR §702.166b: "You may turn this permanent face up any time for its
+// CR §702.168d: "You may turn this permanent face up any time for its
 // disguise cost."
 //
 // Validates that:
@@ -231,7 +231,7 @@ func materializeDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) *Perman
 //   - Pays `cost`.
 //   - Clears the disguise-specific runtime flags: "kw:ward",
 //     "ward_cost", "disguise_face_down", "face_down", "morph_creature".
-//     The ward {2} granted by §702.166a only applies while face-down,
+//     The ward {2} granted by §702.168a only applies while face-down,
 //     so it must come off the moment the permanent flips face-up; the
 //     printed ward (if any) on the AST will continue to be detected by
 //     HasKeyword via the standard AST path.
@@ -285,7 +285,7 @@ func TurnFaceUpDisguise(gs *GameState, perm *Permanent, cost int) bool {
 
 	// Flip via the canonical TurnFaceUp helper (dfc.go). It clears
 	// Card.FaceDown, bumps the timestamp, invalidates the cache, and
-	// emits the "turn_face_up" event with rule 702.36e. We then log a
+	// emits the "turn_face_up" event with rule 702.37e. We then log a
 	// disguise-specific event so analytics / hat can distinguish a
 	// disguise flip from a morph flip.
 	if !TurnFaceUp(gs, perm, "disguise") {
@@ -299,7 +299,7 @@ func TurnFaceUpDisguise(gs *GameState, perm *Permanent, cost int) bool {
 		Source: perm.Card.DisplayName(),
 		Amount: cost,
 		Details: map[string]interface{}{
-			"rule": "702.166b",
+			"rule": "702.168d",
 		},
 	})
 	return true

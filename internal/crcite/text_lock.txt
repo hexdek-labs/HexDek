@@ -290,6 +290,7 @@
 616.2	d06a57146702	A replacement or prevention effect can become applicable to an event as the result of another replacement or prevention effect that modifies the event.
 700.10	97c6e51aa140	Some cards refer to a permanent “that was activated this turn.” This means that the permanent was the source of an ability that was activated this turn, regardless of whether that permanent still has that activated ability or the player who activated it is still in the game.
 700.13	920e60df30fa	Some cards refer to committing a crime. A player commits a crime as that player casts a spell, activates an ability, or puts a triggered ability on the stack and that spell or ability targets at least one opponent; at least one permanent, spell, or ability an opponent controls; and/or at least one card in an opponent’s graveyard.
+700.16	e4f06e5d6e1c	Some cards refer to worthy creatures. A creature is worthy if it’s legendary, isn’t a Villain, and is red and/or white.
 700.4	053de2097679	The term dies means “is put into a graveyard from the battlefield.”
 700.5	33acfa323d8a	A player’s devotion to [color] is equal to the number of mana symbols of that color among the mana costs of permanents that player controls. A player’s devotion to [color 1] and [color 2] is equal to the number of mana symbols among the mana costs of permanents that player controls that are [color 1], [color 2], or both colors.
 700.5a	ac9f308b0e16	A player’s devotion to [color] is equal to the number of mana symbols of that color among the mana costs of permanents that player controls. A player’s devotion to [color 1] and [color 2] is equal to the number of mana symbols among the mana costs of permanents that player controls that are [color 1], [color 2], or both colors.
@@ -356,6 +357,7 @@
 701.57	8cac857cb453	Discover
 701.57a	a9cc0edb930c	Discover
 701.58	8c7710b00838	Cloak
+701.58a	6c8501aa74bd	Cloak
 701.59	401d49517f31	Collect Evidence
 701.5a	e12d8d9147e9	Cast
 701.60	a77af0f2f073	Suspect
@@ -369,9 +371,12 @@
 701.64	35083c238559	Harness
 701.65	60a97e44c4bb	Airbend
 701.66	d57cdfb19dd9	Earthbend
+701.69a	38429bf556fb	Heal
 701.7	736825cca466	Create
+701.70a	ffc143976e44	Recruit
 701.7a	260d36f6c95b	Create
 701.8	1e5ebe078b51	Destroy
+701.9a	153d9397b0a1	Discard
 702.10	d07403e90e5f	Haste
 702.100	7ae27b765416	Evolve
 702.100b	98ba2f08e4cf	Evolve
@@ -392,6 +397,7 @@
 702.11	3c8ed45954d4	Hexproof
 702.110	deda3f8aaf0b	Exploit
 702.110b	f8a3bd932a32	Exploit
+702.111	a06aaed4fe90	Menace
 702.112	8ab96a4d8e65	Renown
 702.112a	9ee7a1973088	Renown
 702.112b	c5f6396ad14a	Renown
@@ -509,6 +515,8 @@
 702.167	04bf579f9322	Craft
 702.168	b0fa47d1a4ae	Disguise
 702.168a	5313f133b6b3	Disguise
+702.168b	c2258d7bc6b0	Disguise
+702.168d	881bde3ca58b	Disguise
 702.169	6f82e0278a91	Solved
 702.169a	341e5a1a2cf8	Solved
 702.169b	fe48e5878866	Solved
@@ -560,6 +568,14 @@
 702.190	5bc95811dff4	Sneak
 702.190a	f12448f2e924	Sneak
 702.190b	5f922da31ef9	Sneak
+702.191	9ed8d4130140	Increment
+702.191a	ee491bbf5e6d	Increment
+702.193	2c63d7d1656d	Power-up
+702.194	71917258e434	Teamwork
+702.194a	bb4e36ad3138	Teamwork
+702.195	acd540d02f4d	Storied
+702.195a	626a25ff86c1	Storied
+702.195b	1fdb69884243	Storied
 702.19c	7da91f060a2a	Trample
 702.1a	d7789c4324da	Most abilities describe exactly what they do in the card’s rules text. Some, though, are very common or would require too much space to define on the card. In these cases, the object lists only the name of the ability as a “keyword”; sometimes reminder text summarizes the game rule.
 702.2	b4ff2437336b	Deathtouch
@@ -590,8 +606,10 @@
 702.29e	d023ce0cfe47	Cycling
 702.2b	a0a66f6d81c2	Deathtouch
 702.2c	6c18497127ff	Deathtouch
+702.3	06474f851e0a	Defender
 702.30	6d154007310a	Echo
 702.30a	05312a9da07a	Echo
+702.31	5c443e0ae707	Horsemanship
 702.32	8a5e7d283c10	Fading
 702.32a	5f75d570fc66	Fading
 702.33	321298310d27	Kicker
@@ -649,7 +667,7 @@
 702.59	ff7305958521	Recover
 702.6	26dbd1f5686f	Equip
 702.60	f972e0489de4	Ripple
-702.61	a7bb94583ec2	Split Second
+702.60a	586d9bd7c0b2	Ripple
 702.61a	c47fa2e62c52	Split Second
 702.61b	3edf2f3c321c	Split Second
 702.61c	8769fe9c425d	Split Second
@@ -698,6 +716,7 @@
 702.85b	651bd2bf2bc4	Cascade
 702.85c	c735355cb05b	Cascade
 702.86	44ab7f4074d3	Annihilator
+702.86a	f66da8a1aad9	Annihilator
 702.87	7e2e5358ba21	Level Up
 702.87a	9160c3e3bc78	Level Up
 702.88	cec354697233	Rebound
@@ -755,7 +774,6 @@
 704.6d	f88730a2c5ac	Some variant games include additional state-based actions that aren’t normally applicable:
 704.7	97a0744bf714	If multiple state-based actions would have the same result at the same time, a single replacement effect will replace all of them.
 706.2	2299219053f7	After the roll, the number indicated on the top face of the die before any modifiers is the natural result. The instruction may include modifiers to the roll which add to or subtract from the natural result. Modifiers may also come from other sources. After considering all applicable modifiers, the final number is the result of the die roll.
-706.3	b3bcbc36feb5	Some abilities that instruct a player to roll one or more dice include a results table.
 707.1	ea93f6b05961	Some objects become or turn another object into a “copy” of a spell, permanent, or card. Some effects create a token that’s a copy of another object. (Certain older cards were printed with the phrase “search for a copy.” This section doesn’t cover those cards, which have received new text in the Oracle card reference.)
 707.10	960c6d6e54af	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.10a	1190a6d1add5	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
@@ -764,10 +782,10 @@
 707.10f	255260b43f23	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.10g	9a1fa761de9c	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.2	a26bb1cc05ff	When copying an object, the copy acquires the copiable values of the original object’s characteristics and, for an object on the stack, choices made when casting or activating it (mode, targets, the value of X, whether it was kicked, how it will affect multiple targets, and so on). The copiable values are the values derived from the text printed on the object (that text being name, mana cost, color indicator, card type, subtype, supertype, rules text, power, toughness, and/or loyalty), as modified by other copy effects, by its face-down status, and by “as . . . enters” and “as . . . is turned face up” abilities that set power and toughness (and may also set additional characteristics). Other effects (including type-changing and text-changing effects), status, counters, and stickers are not copied.
-707.4	9e979ec4d72b	Some effects cause a permanent that’s copying a permanent to copy a different object while remaining on the battlefield. The change doesn’t cause enters-the-battlefield or leaves-the-battlefield abilities to trigger. This also doesn’t change any noncopy effects presently affecting the permanent.
+707.3	9ac180531e95	The copy’s copiable values become the copied information, as modified by the copy’s status (see rule 110.5). Objects that copy the object will use the new copiable values.
 707.5	33bde85332f6	An object that enters the battlefield “as a copy” or “that’s a copy” of another object becomes a copy as it enters the battlefield. It doesn’t enter the battlefield, and then become a copy of that permanent. If the text that’s being copied includes any abilities that replace the enters-the-battlefield event (such as “enters with” or “as [this] enters” abilities), those abilities will take effect. Also, any enters-the-battlefield triggered abilities of the copy will have a chance to trigger.
 708.2	262400e3b4b5	Face-down spells and face-down permanents have no characteristics other than those listed by the ability or rules that allowed the spell or permanent to be face down. Any listed characteristics are the copiable values of that object’s characteristics. (See rule 613, “Interaction of Continuous Effects,” and rule 707, “Copying Objects.”)
-708.4	f6063059564e	Objects that are cast face down are turned face down before they are put onto the stack, so effects that care about the characteristics of a spell will see only the face-down spell’s characteristics. Any effects or prohibitions that would apply to casting an object with these characteristics (and not the face-up object’s characteristics) are applied to casting this object. The permanent the spell becomes will be a face-down permanent.
+708.9	f30e0d21b21d	If a face-down permanent or a face-down component of a merged permanent moves from the battlefield to any other zone, its owner must reveal it to all players as they move it. If a face-down spell moves from the stack to any zone other than the battlefield, its owner must reveal it to all players as they move it. If a player leaves the game, all face-down permanents, face-down components of merged permanents, and face-down spells owned by that player must be revealed to all players. At the end of each game, all face-down permanents, face-down components of merged permanents, and face-down spells must be revealed to all players.
 711.2	df65f45b8553	A level symbol is a keyword ability that represents a static ability. The level symbol includes either a range of numbers, indicated here as “N1-N2,” or a single number followed by a plus sign, indicated here as “N3+.” Any abilities printed within the same text box striation as a level symbol are part of its static ability. The same is true of the power/toughness box printed within that striation, indicated here as “[P/T].”
 711.2a	1af5251889f3	A level symbol is a keyword ability that represents a static ability. The level symbol includes either a range of numbers, indicated here as “N1-N2,” or a single number followed by a plus sign, indicated here as “N3+.” Any abilities printed within the same text box striation as a level symbol are part of its static ability. The same is true of the power/toughness box printed within that striation, indicated here as “[P/T].”
 711.2b	813c0a8f9787	A level symbol is a keyword ability that represents a static ability. The level symbol includes either a range of numbers, indicated here as “N1-N2,” or a single number followed by a plus sign, indicated here as “N3+.” Any abilities printed within the same text box striation as a level symbol are part of its static ability. The same is true of the power/toughness box printed within that striation, indicated here as “[P/T].”

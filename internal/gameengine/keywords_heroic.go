@@ -106,7 +106,7 @@ func FireHeroicTriggers(gs *GameState, item *StackItem) {
 		if !HasHeroic(perm.Card) {
 			continue
 		}
-		// Face-down permanents have no abilities per §708.4.
+		// Face-down permanents have no abilities per §708.2.
 		if perm.Flags != nil && perm.Flags["face_down"] == 1 {
 			continue
 		}

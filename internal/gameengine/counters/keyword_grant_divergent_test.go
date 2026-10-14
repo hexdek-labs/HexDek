@@ -12,12 +12,12 @@ func (t *stackTarget) SetCounterStacks(s []CounterStack) { t.stacks = s }
 
 // TestGrantsKeyword_DivergentName pins CR §122.1b for the one registered
 // keyword counter whose TYPE NAME differs from the keyword it grants: a
-// phyresis counter grants infect (§702.91). The pre-r63 name-only lookup
+// phyresis counter grants infect (§702.90). The pre-r63 name-only lookup
 // asked the registry for a counter literally named "infect" and found
 // none, silently dropping the grant.
 func TestGrantsKeyword_DivergentName(t *testing.T) {
 	if !GrantsKeyword("phyresis", "infect") {
-		t.Error("a phyresis counter must grant infect (CR §122.1b / §702.91)")
+		t.Error("a phyresis counter must grant infect (CR §122.1b / §702.90)")
 	}
 	// It must NOT grant infect under the wrong query, nor grant unrelated
 	// keywords.

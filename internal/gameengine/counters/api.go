@@ -217,7 +217,7 @@ func HasKeywordCounter(target Target, keyword string) bool {
 // name IS the keyword (a flying counter grants flying, a haste counter
 // grants haste) and when a KeywordGrant counter confers a keyword whose
 // name DIFFERS from the counter's own — a phyresis counter grants infect
-// (§702.91), the one registered case where the two names diverge. The
+// (§702.90), the one registered case where the two names diverge. The
 // pre-r63 name-only lookup silently dropped that divergent grant.
 //
 // Alias-aware on the keyword side: a query for a legacy alias (e.g.

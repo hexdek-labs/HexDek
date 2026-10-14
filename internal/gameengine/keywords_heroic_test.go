@@ -351,7 +351,7 @@ func TestFireHeroicTriggers_AbilityNotSpellNoTrigger(t *testing.T) {
 }
 
 // ===========================================================================
-// Face-down heroic source is skipped (CR §708.4)
+// Face-down heroic source is skipped (CR §708.2)
 // ===========================================================================
 
 func TestFireHeroicTriggers_FaceDownHeroicSkipped(t *testing.T) {

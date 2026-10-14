@@ -4,7 +4,7 @@ package per_card
 // long-tail bug (longtail-sweep cluster #2, seed 39340043): a permanent
 // that ENTERS as a copy of a creature with an "enters with N +1/+1
 // counters" self-replacement (Scourge of Skola Vale) must enter WITH those
-// counters (CR §706.2 copiable values + §614.1c as-enters self-replacement).
+// counters (CR §707.2 copiable values + §614.1c as-enters self-replacement).
 //
 // Root cause: the "enters as a copy" paths swap perm.Card to the copy
 // AFTER the stock cast-path ApplyStaticETBCounters (stack.go) already ran
@@ -68,7 +68,7 @@ func TestPhantasmalImage_CopyOfEntersWithCounters(t *testing.T) {
 		t.Fatalf("Image did not become a copy of Scourge, got %q", image.Card.DisplayName())
 	}
 	if got := image.Counters["+1/+1"]; got != 2 {
-		t.Fatalf("copy of an enters-with-2-counters creature has %d +1/+1 counter(s), want 2 (CR 706.2/614.1c)", got)
+		t.Fatalf("copy of an enters-with-2-counters creature has %d +1/+1 counter(s), want 2 (CR 707.2/614.1c)", got)
 	}
 }
 
@@ -100,6 +100,6 @@ func TestCloneVariant_CopyOfEntersWithCounters(t *testing.T) {
 		t.Fatalf("Clone did not become a copy of Scourge, got %q", clone.Card.DisplayName())
 	}
 	if got := clone.Counters["+1/+1"]; got != 2 {
-		t.Fatalf("clone of an enters-with-2-counters creature has %d +1/+1 counter(s), want 2 (CR 706.2/614.1c)", got)
+		t.Fatalf("clone of an enters-with-2-counters creature has %d +1/+1 counter(s), want 2 (CR 707.2/614.1c)", got)
 	}
 }

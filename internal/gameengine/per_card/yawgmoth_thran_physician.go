@@ -25,7 +25,7 @@ import (
 //     Gate: life > 1 (don't self-kill) + another creature on battlefield.
 //   - abilityIdx 1: {B}{B} + discard a card: Proliferate. Discard the
 //     worst card in hand (highest-CMC non-land, then lowest-CMC land).
-//     Full CR §701.27 proliferate: all own permanents' counters, own
+//     Full CR §701.34 proliferate: all own permanents' counters, own
 //     beneficial player counters, opponent poison/rad counters.
 //     Gate: ManaPool >= 2 + at least 1 card in hand.
 func registerYawgmothThranPhysician(r *Registry) {
@@ -157,7 +157,7 @@ func yawgmothProliferate(gs *gameengine.GameState, src *gameengine.Permanent, ct
 	discardedName := discardTarget.DisplayName()
 	gameengine.DiscardCard(gs, discardTarget, seat)
 
-	// --- Effect: Proliferate (CR §701.27) ---
+	// --- Effect: Proliferate (CR §701.34) ---
 	// "Choose any number of permanents and/or players, then give each
 	// another counter of each kind already there."
 	//

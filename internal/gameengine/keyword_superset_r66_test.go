@@ -75,7 +75,7 @@ func TestKeywordSupersetR66_CounterStackKeywordReachesLayerQuery(t *testing.T) {
 }
 
 // C — a DIVERGENT grant in that same store: a phyresis counter confers
-// infect (CR §702.91), a keyword whose name differs from the counter's.
+// infect (CR §702.90), a keyword whose name differs from the counter's.
 // Only a registry lookup finds it; a name match does not.
 func TestKeywordSupersetR66_DivergentCounterStackGrantReachesLayerQuery(t *testing.T) {
 	gs := NewGameState(2, nil, nil)

@@ -4,7 +4,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
 )
 
-// Counter DB Phase 4 — gameengine-level Proliferate wrapper per CR §701.23.
+// Counter DB Phase 4 — gameengine-level Proliferate wrapper per CR §701.34.
 //
 // Lifts the primitive in internal/gameengine/counters/proliferate.go into
 // engine context: adapts *Permanent and *Seat to counters.Target,
@@ -26,7 +26,7 @@ type ProliferateTarget struct {
 	CounterType string
 }
 
-// Proliferate applies the targets list per CR §701.23. Returns the
+// Proliferate applies the targets list per CR §701.34. Returns the
 // number of counters actually placed plus any error from the underlying
 // counters primitive. Logs a single "proliferate" event with the total
 // count and fires the "proliferate" trigger once at the end so observer

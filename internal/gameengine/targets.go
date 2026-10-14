@@ -680,7 +680,7 @@ func matchesPermanent(f gameast.Filter, p *Permanent) bool {
 		}
 	}
 
-	// CR §707.2: Face-down permanents are 2/2 colorless creatures with no
+	// CR §708.2: Face-down permanents are 2/2 colorless creatures with no
 	// name, no subtypes, and no abilities. Targeting checks must use the
 	// face-down characteristics, not the real card data.
 	if p != nil && p.Card != nil && p.Card.FaceDown {
@@ -711,7 +711,7 @@ func matchesPermanent(f gameast.Filter, p *Permanent) bool {
 				return false
 			}
 		}
-		// CR §707.2 — a face-down permanent has mana value 0 (the real
+		// CR §708.2 — a face-down permanent has mana value 0 (the real
 		// card's CMC isn't visible while face down). Apply a mana-value
 		// constraint against 0 rather than skipping it: "mana value 2 or
 		// less" matches a face-down creature, "mana value 1 or greater" does

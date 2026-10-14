@@ -10,7 +10,7 @@ import (
 
 // The core grant-retention regression: a keyword GRANTED to a face-down
 // creature (recorded on Permanent.GrantedAbilities) must survive the
-// §707.2 override. Before the fix the face-down branch nulled Keywords and
+// §708.2 override. Before the fix the face-down branch nulled Keywords and
 // returned early, wiping the grant.
 func TestFaceDown_GrantedAbilitiesSurvive(t *testing.T) {
 	gs := newFixtureGame(t)
@@ -100,7 +100,7 @@ func TestFaceDown_CyberTemplate(t *testing.T) {
 		t.Errorf("cyber face-down should be colorless, got %v", chars.Colors)
 	}
 	if chars.CMC != 0 {
-		t.Errorf("face-down mana value should be 0 (§707.2), got %d", chars.CMC)
+		t.Errorf("face-down mana value should be 0 (§708.2), got %d", chars.CMC)
 	}
 }
 

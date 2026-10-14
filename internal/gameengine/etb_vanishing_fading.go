@@ -37,7 +37,7 @@ import (
 //     (Thor parsed the reminder text) -> ApplyStaticETBCounters owns it
 //   - card has a per-card ETB hook (e.g. Chronozoa adds its own time
 //     counters) -> the snowflake owns it
-//   - face-down permanent (CR §708.4) -> no abilities
+//   - face-down permanent (CR §708.2) -> no abilities
 //   - keyword count missing / non-positive -> skip
 func ApplyVanishingFadingETBCounters(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil || perm.Card.AST == nil {

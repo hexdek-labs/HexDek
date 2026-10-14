@@ -3303,7 +3303,7 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 		})
 		return
 	}
-	// §706.2 / §613.1a — src becomes a copy of the target.
+	// §707.2 / §613.1a — src becomes a copy of the target.
 	CopyPermanentLayered(gs, src, copySource, DurationPermanent)
 }
 

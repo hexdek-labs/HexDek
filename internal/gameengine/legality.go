@@ -1281,7 +1281,7 @@ func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []Lega
 		return nil
 	}
 	p := obs.Perm
-	// Face-down permanents have no abilities (CR §708.4).
+	// Face-down permanents have no abilities (CR §708.2).
 	if p.Flags != nil && p.Flags["face_down"] != 0 {
 		return nil
 	}

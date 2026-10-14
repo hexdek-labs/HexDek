@@ -16,7 +16,7 @@ package gameengine
 //   §613.4c           — layer 7c post-pass for counters
 //   §613.7            — timestamp tiebreak
 //   §305.7            — Blood Moon land-subtype replacement
-//   §707.2 / §613.2b  — face-down characteristic-defining override
+//   §708.2 / §613.2b  — face-down characteristic-defining override
 
 import (
 	"testing"
@@ -594,7 +594,7 @@ func TestLayer_HandlerID_Idempotent(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------------
-// Face-down (§707.2 / §613.2b) — 2/2 colorless no-abilities.
+// Face-down (§708.2 / §613.2b) — 2/2 colorless no-abilities.
 // -----------------------------------------------------------------------------
 
 func TestLayer_FaceDown_CharacteristicOverride(t *testing.T) {

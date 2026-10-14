@@ -5,7 +5,7 @@ package gameengine
 // Per CR §106.11, energy is a RESOURCE POOL, not a §122 counter. The
 // distinction is load-bearing for the Phase 8 carveout:
 //
-//  - Energy is NOT a §122 counter, so proliferate (CR §701.27) does
+//  - Energy is NOT a §122 counter, so proliferate (CR §701.34) does
 //    NOT add {E} — the counters package registry intentionally has no
 //    "energy" entry; IsProliferateEligibleType("energy") = false.
 //  - Doubling Season (CR §122.1g) does NOT double energy gain because

@@ -5,7 +5,7 @@ package gameengine
 //   702.40a  "Storm is a triggered ability. 'Storm' means 'When you cast
 //            this spell, copy it for each other spell cast before it this
 //            turn. You may choose new targets for the copies.'"
-//   706.10   A copy of a spell is NOT cast — it doesn't trigger cast-based
+//   707.10   A copy of a spell is NOT cast — it doesn't trigger cast-based
 //            abilities, doesn't trigger Storm again, doesn't pay costs, and
 //            doesn't go through §601.
 //

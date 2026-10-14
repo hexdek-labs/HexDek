@@ -60,7 +60,7 @@ func InScopeTurnedFaceUpTrigger(t *gameast.Triggered) bool {
 // produce its effect's delta exactly once. PHANTOM — a vanilla face-down
 // bystander is turned face up instead; the bearer's trigger must stay
 // silent. The bearer is pinned to a 2/2 so the face-down → face-up
-// transition is P/T-neutral (a face-down creature is a 2/2 by CR §707.2),
+// transition is P/T-neutral (a face-down creature is a 2/2 by CR §708.2),
 // isolating the trigger's own delta.
 func CheckTurnedFaceUpTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 	if !InScopeTurnedFaceUpTrigger(t) {
@@ -78,7 +78,7 @@ func CheckTurnedFaceUpTrigger(cardName string, t *gameast.Triggered) ([]*Finding
 	var findings []*Finding
 
 	// FIRE: the bearer is face-down, then turned face up through the engine
-	// chokepoint. A face-down creature is a 2/2 (CR §707.2) while the
+	// chokepoint. A face-down creature is a 2/2 (CR §708.2) while the
 	// harness source is a 4/4, so the face-down → face-up transition
 	// understates the bearer's P/T contribution by exactly 2 versus the
 	// 4/4 the effect-expectation assumes — subtract it so only the trigger's

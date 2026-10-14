@@ -27,7 +27,7 @@ import (
 // written in maxPerCardInlineResolveDepth's own doc comment about its
 // sibling guards.
 //
-// THE FIX IS ALSO THE RULES-CORRECT READING. CR §701.8a: discarding a
+// THE FIX IS ALSO THE RULES-CORRECT READING. CR §701.9a: discarding a
 // hand means discarding the cards that are in that hand as the effect is
 // applied. A card drawn or returned to hand by a trigger that this very
 // discard caused was never part of "their hand" for this effect, so it

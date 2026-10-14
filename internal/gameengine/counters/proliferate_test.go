@@ -27,7 +27,7 @@ func seedStack(m *mockTarget, kind string, count int) {
 	})
 }
 
-// TestProliferate_PoisonOnPlayer pins CR §701.23 against the canonical
+// TestProliferate_PoisonOnPlayer pins CR §701.34 against the canonical
 // "Atraxa proliferates poison on an opponent" case. Seat with 3 poison
 // counters → after proliferate the count must be 4.
 func TestProliferate_PoisonOnPlayer(t *testing.T) {
@@ -67,7 +67,7 @@ func TestProliferate_PlusPlusOnCreature(t *testing.T) {
 
 // TestProliferate_PermanentAndPlayerTogether pins that a single
 // proliferate call may target a permanent AND a player simultaneously —
-// the §701.23 "any number of permanents and/or players" clause.
+// the §701.34 "any number of permanents and/or players" clause.
 func TestProliferate_PermanentAndPlayerTogether(t *testing.T) {
 	creature := &mockTarget{cardTypes: []string{"creature"}}
 	if _, err := AddCounters(creature, "+1/+1", 1, "seed", 1); err != nil {
@@ -148,7 +148,7 @@ func TestProliferate_ExperienceExcluded(t *testing.T) {
 	}
 }
 
-// TestProliferate_ChoiceConstraintRejectsAbsentKind pins the §701.23
+// TestProliferate_ChoiceConstraintRejectsAbsentKind pins the §701.34
 // "of a kind already there" rule — choosing a counter type the target
 // does not currently carry returns ErrCounterTypeNotPresent. Defends
 // against per_card handlers that build a choice list from stale state
@@ -169,7 +169,7 @@ func TestProliferate_ChoiceConstraintRejectsAbsentKind(t *testing.T) {
 }
 
 // TestProliferate_EmptyChoicesNoOp pins that an empty choices slice
-// returns (0, nil) cleanly — CR §701.23 permits "any number" including
+// returns (0, nil) cleanly — CR §701.34 permits "any number" including
 // zero (controller chose to proliferate nothing).
 func TestProliferate_EmptyChoicesNoOp(t *testing.T) {
 	applied, err := Proliferate(nil, "src", 0)

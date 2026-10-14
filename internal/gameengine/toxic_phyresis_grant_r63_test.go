@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// TestPhyresisCounter_GrantsInfectInCombat pins CR §122.1b / §702.91: a
+// TestPhyresisCounter_GrantsInfectInCombat pins CR §122.1b / §702.90: a
 // phyresis counter grants infect, so a creature carrying one deals its
 // combat damage to a player as poison counters instead of life loss.
 //
@@ -24,7 +24,7 @@ func TestPhyresisCounter_GrantsInfectInCombat(t *testing.T) {
 	attacker.AddCounter("phyresis", 1)
 
 	if !HasInfect(gs, attacker) {
-		t.Fatal("a phyresis counter must grant infect (CR §122.1b / §702.91)")
+		t.Fatal("a phyresis counter must grant infect (CR §122.1b / §702.90)")
 	}
 
 	startingLife := gs.Seats[1].Life

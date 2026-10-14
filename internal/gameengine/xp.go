@@ -7,7 +7,7 @@ package gameengine
 // cumulative trackers), but HexDek treats them as a Seat-resource analog
 // of energy (CR §106.11):
 //
-//  - Proliferate (CR §701.27) does NOT add experience — the counters
+//  - Proliferate (CR §701.34) does NOT add experience — the counters
 //    package registry intentionally has no "experience" entry as of
 //    Counter DB Phase 8; IsProliferateEligibleType("experience") = false.
 //  - Doubling Season (CR §122.1g) does NOT double XP gain because the

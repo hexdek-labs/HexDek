@@ -2958,7 +2958,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			}
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "proliferate"):
-			// CR §701.27: delegate to the canonical "proliferate"
+			// CR §701.34: delegate to the canonical "proliferate"
 			// resolver above (which already walks every perm's full
 			// counter set with the GreedyHat opponent-counter policy
 			// and dispatches the post-proliferate trigger). The

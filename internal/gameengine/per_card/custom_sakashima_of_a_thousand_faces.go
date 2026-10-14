@@ -73,6 +73,6 @@ func sakashimaCopyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"power":  perm.Power(),
 	})
 	// Batch AL upgrade: delegate to full DeepCopy + legend-rule-suppression
-	// rider so Sakashima copies abilities/types, not just P/T. CR §706.2.
+	// rider so Sakashima copies abilities/types, not just P/T. CR §707.2.
 	sakashimaFullCopyUpgrade(gs, perm, target)
 }

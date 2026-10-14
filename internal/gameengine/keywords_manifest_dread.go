@@ -176,7 +176,7 @@ func makeManifestDreadPermanent(gs *GameState, seatIdx int, chosen *Card) *Perma
 	// Stamp the manifest overlay (FaceDownTemplate="manifest") via the
 	// unified primitive, preserving the manifest-dread markers + "face_down"
 	// so the ETB / replacement face-down gates treat the real card's
-	// abilities as absent (§708.4).
+	// abilities as absent (§708.2).
 	makeFaceDown(gs, perm, "manifest", faceDownOpts{
 		Markers: []string{"manifested", "manifest_dread", "face_down", "manifest_real_card_exists"},
 	})

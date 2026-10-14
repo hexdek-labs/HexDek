@@ -257,7 +257,7 @@ func castOneRippleFree(gs *GameState, casterSeat int, sourceCard, card *Card, n 
 	PushStackItem(gs, item)
 
 	// Cast-side bookkeeping + trigger dispatch. A ripple cast IS a cast
-	// (CR §702.19a — "you may cast any cards revealed this way"), but
+	// (CR §702.60a — "you may cast any cards revealed this way"), but
 	// this path builds its StackItem directly and so bypassed every
 	// cast-side helper: no storm/magecraft count, no "whenever you cast
 	// a spell" family, no cast observers, no cast hook. Identical class
@@ -266,7 +266,7 @@ func castOneRippleFree(gs *GameState, casterSeat int, sourceCard, card *Card, n 
 	// route through fireCastTriggers*. The cast is from the library, so
 	// the zone-aware variant is threaded with ZoneLibrary.
 	//
-	// The free cast pays {0} (CR §702.19a casts "without paying its mana
+	// The free cast pays {0} (CR §702.60a casts "without paying its mana
 	// cost"), so RecordCast books 0 like the plot path does.
 	IncrementCastCount(gs, casterSeat)
 	RecordCast(gs, casterSeat, card, 0)

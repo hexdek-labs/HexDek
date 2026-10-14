@@ -1856,7 +1856,7 @@ func placeFaceDownCreature(gs *gameengine.GameState) {
 		Types:         []string{"creature"},
 		BasePower:     3,
 		BaseToughness: 3,
-		// CR §707.2: the canonical "face-down" state lives on Card.FaceDown
+		// CR §708.2: the canonical "face-down" state lives on Card.FaceDown
 		// (Permanent.Flags["face_down"] is a separate scaffold-only marker
 		// used by some condition probes). resolveTurnFaceUp / TurnFaceUp
 		// consult Card.FaceDown, so set it here too — without this, "turn

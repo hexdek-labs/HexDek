@@ -20,7 +20,7 @@ import "strings"
 //	   only the legacy Permanent.Counters map; HasKeyword additionally
 //	   consults HasKeywordCounter, which reads the CounterStacks store.
 //	C  Divergent grants in that same store (a phyresis counter grants
-//	   infect, CR §702.91) — same root as B, listed separately because
+//	   infect, CR §702.90) — same root as B, listed separately because
 //	   it needs the registry rather than a name match.
 //	D  HasKeyword's raw `p.Counters[want] > 0` check, which answers
 //	   true for ANY counter kind queried by its own name — including

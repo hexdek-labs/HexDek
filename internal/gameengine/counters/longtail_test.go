@@ -12,7 +12,7 @@ import (
 //
 // The list is split by Probe F catalog section to make audit easier.
 var phase5LongtailNames = []string{
-	// Section A — §704.5r non-pairing P/T variants
+	// Section A — §704.5q non-pairing P/T variants
 	"+1/+0", "+2/+2", "+0/+1", "+1/+2", "+0/+2",
 	"-0/-1", "-0/-2", "-1/-0", "-2/-1", "-2/-2",
 
@@ -173,7 +173,7 @@ func TestPhase5EnergyStillExcluded(t *testing.T) {
 // Per-type semantic tests for non-obvious counter types.
 // ---------------------------------------------------------------------------
 
-// TestStatModifierVariantsNoPair pins that none of the §704.5r non-pairing
+// TestStatModifierVariantsNoPair pins that none of the §704.5q non-pairing
 // variants register a pair-cancel relationship. Only +1/+1 and -1/-1 do.
 func TestStatModifierVariantsNoPair(t *testing.T) {
 	variants := []string{
@@ -259,7 +259,7 @@ func TestSagaLoreAutoUpkeepOnly(t *testing.T) {
 	}
 }
 
-// TestTimeCounterMultiTarget pins §702.61/§702.63 — time counters live
+// TestTimeCounterMultiTarget pins §702.62/§702.63 — time counters live
 // on suspended cards (any card type, since exile cards lose creature/etc
 // type while suspended), vanishing permanents (any type), and Tarrasque-
 // style creatures. ValidTargets must cover the full permanent surface.
@@ -393,7 +393,7 @@ func TestLevelCounterRule711(t *testing.T) {
 		t.Error("level must allow ability-counter placement — level-up activation is the source")
 	}
 	if !def.Proliferate {
-		t.Error("level must be proliferate-eligible per §701.27")
+		t.Error("level must be proliferate-eligible per §701.34")
 	}
 	if !def.DoublingApplies {
 		t.Error("level must allow §122.1g doubling (Doubling Season + level up)")
@@ -402,7 +402,7 @@ func TestLevelCounterRule711(t *testing.T) {
 
 // TestAltWinCountersAreProliferateEligible — quest/tower/filibuster/luck
 // are all alt-win threshold counters. All MUST be proliferate-eligible
-// per §701.27 (Rimefeather Owl + Helix Pinnacle is a real engine).
+// per §701.34 (Rimefeather Owl + Helix Pinnacle is a real engine).
 func TestAltWinCountersAreProliferateEligible(t *testing.T) {
 	for _, name := range []string{"quest", "tower", "filibuster", "luck"} {
 		def := Lookup(name)
@@ -411,7 +411,7 @@ func TestAltWinCountersAreProliferateEligible(t *testing.T) {
 			continue
 		}
 		if !def.Proliferate {
-			t.Errorf("%q Proliferate = false — alt-win counters MUST proliferate per §701.27", name)
+			t.Errorf("%q Proliferate = false — alt-win counters MUST proliferate per §701.34", name)
 		}
 	}
 }
@@ -431,9 +431,9 @@ func TestPlayerCountersNoDoubling(t *testing.T) {
 		if def.DoublingApplies {
 			t.Errorf("%q DoublingApplies = true — player counters must NOT double per engine ruling (Doubling Season scopes to permanents)", name)
 		}
-		// Player counters still proliferate per §701.27.
+		// Player counters still proliferate per §701.34.
 		if !def.Proliferate {
-			t.Errorf("%q Proliferate = false — player counters MUST proliferate per §701.27", name)
+			t.Errorf("%q Proliferate = false — player counters MUST proliferate per §701.34", name)
 		}
 	}
 }

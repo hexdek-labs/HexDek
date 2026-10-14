@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// CR §707.2 — a face-down permanent has mana value 0. Target-filter mana-value
+// CR §708.2 — a face-down permanent has mana value 0. Target-filter mana-value
 // constraints must use 0 for a face-down creature, not the (hidden) real card's
 // CMC. Before r63 the face-down branch of matchesPermanent returned true for any
 // creature filter, ignoring the mana-value constraint entirely.
