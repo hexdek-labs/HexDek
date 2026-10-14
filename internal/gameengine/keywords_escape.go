@@ -1,16 +1,23 @@
 package gameengine
 
-// keywords_escape.go — Escape (CR §702.148, Theros Beyond Death 2020).
+// keywords_escape.go — Escape (CR §702.138, Theros Beyond Death 2020).
 //
-// CR §702.148a: Escape is a static ability that functions while the
+// CR §702.138a: Escape is a static ability that functions while the
 //               card with escape is in a player's graveyard.
 //               "Escape — [cost], Exile N other cards from your
 //               graveyard" means "You may cast this card from your
 //               graveyard by paying [cost] and exiling N other cards
 //               from your graveyard rather than paying its mana cost."
-// CR §702.148b: A spell cast for its escape cost is exiled when it
-//               leaves the stack rather than going to its owner's
-//               graveyard.
+// NOT IN THE CR:  the engine ALSO exiles an escape-cast spell when it
+//               leaves the stack. §702.138 has no such clause — a is the
+//               alternative cost, b is the "escaped" marker, c and d are
+//               the escapes-with riders. A countered or resolved escape
+//               spell belongs in its owner's graveyard (§701.6a / §608.2g),
+//               where it can escape again. This looks like flashback's
+//               §702.34a carveout generalised onto every zone-cast
+//               keyword; Underworld Breach, checked, carries no exile
+//               rider of its own, so there is no card-level source for
+//               it. Filed as open issue (8); behaviour NOT changed in r95.
 //
 // Engine model
 // ------------
@@ -26,13 +33,13 @@ package gameengine
 //     readers.
 //   - CastWithEscape validates the spell is in the caster's
 //     graveyard, validates each exile target is in the same
-//     graveyard AND is not the spell itself (§702.148a "other"),
+//     graveyard AND is not the spell itself (§702.138a "other"),
 //     pays the mana cost, exiles the chosen fodder, and pushes a
 //     StackItem flagged with CostMeta{"escape_cast": true,
 //     "escape_exile_count": N, "exile_on_resolve": true,
 //     "zone_cast_keyword": "escape"} so the existing
 //     ShouldExileOnResolve branch in stack.go routes the spell to
-//     exile on resolution per §702.148b.
+//     exile on resolution — see the NOT-IN-THE-CR note above (issue (8)).
 //   - A ZoneCastPermission with Zone=graveyard, Keyword="escape",
 //     ManaCost=escapeCost, ExileOnResolve=true is registered on the
 //     card pointer at cast time for any AI/Hat or replay layer that
@@ -147,13 +154,13 @@ func EscapeExileCount(card *Card) int {
 // CastWithEscape casts a card from `seatIdx`'s graveyard for its
 // escape cost: pays `escapeManaCost` mana AND exiles `exileTargets`
 // (which must all be in seat's graveyard and must NOT include the
-// spell being cast — §702.148a "other"). CR §702.148.
+// spell being cast — §702.138a "other"). CR §702.138.
 //
 // Preconditions enforced here:
 //   - card has the escape keyword
 //   - card is in seat's graveyard
 //   - exileTargets are all in seat's graveyard
-//   - exileTargets does not contain `card` (§702.148a "other")
+//   - exileTargets does not contain `card` (§702.138a "other")
 //   - exileTargets are unique (no double-counting one card)
 //   - len(exileTargets) >= EscapeExileCount(card) — the spec wording
 //     is "exile N cards"; the caller may pay strictly the required
@@ -302,7 +309,7 @@ func CastWithEscape(
 				"target":  target.DisplayName(),
 				"reason":  "escape_exile_tax",
 				"keyword": "escape",
-				"rule":    "702.148a",
+				"rule":    "702.138a",
 			},
 		})
 	}
@@ -310,7 +317,8 @@ func CastWithEscape(
 	// Push onto the stack with the full escape CostMeta stamps. The
 	// exile_on_resolve flag hands off to stack.go's
 	// ShouldExileOnResolve branch so the spell is routed to exile on
-	// resolution per §702.148b.
+	// resolution. NOTE: this has no CR basis under escape — see the
+	// file header and open issue (8).
 	item := &StackItem{
 		Card:       card,
 		Controller: seatIdx,
@@ -345,7 +353,7 @@ func CastWithEscape(
 		Source: card.DisplayName(),
 		Amount: escapeManaCost,
 		Details: map[string]interface{}{
-			"rule":         "702.148a",
+			"rule":         "702.138a",
 			"exile_count":  requiredExile,
 			"exiled_names": exileTargetNames(exiled),
 		},

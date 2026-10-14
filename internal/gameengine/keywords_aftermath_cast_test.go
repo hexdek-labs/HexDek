@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Aftermath cast helper tests — CR §702.128 (Amonkhet 2017)
+// Aftermath cast helper tests — CR §702.127 (Amonkhet 2017)
 // ---------------------------------------------------------------------------
 
 func newAftermathGame(t *testing.T) *GameState {
@@ -249,7 +249,7 @@ func TestCastWithAftermath_ResolveRoutesCardToExile(t *testing.T) {
 		}
 	}
 	if !inExile {
-		t.Errorf("after resolution, aftermath card should be in exile (§702.128b); exile=%v graveyard=%v",
+		t.Errorf("after resolution, aftermath card should be in exile (§702.127a); exile=%v graveyard=%v",
 			gs.Seats[0].Exile, gs.Seats[0].Graveyard)
 	}
 	for _, c := range gs.Seats[0].Graveyard {

@@ -20,7 +20,7 @@ import (
 //   - smellerbee_rebel_fighter.go — discard entire hand on attack
 //   - per_card_batch_k_r60.go — discard-on-draw generic
 //
-// Each silently bypassed CR §702.34a Madness replacement, CR §702.187
+// Each silently bypassed CR §702.35a Madness replacement, CR §702.187
 // Mayhem tracking, Necropotence skip-draw rerouting, the
 // `card_discarded` trigger (Liliana's Caress / Waste Not / Tergrid),
 // and Turn.Discarded stat. This file pins the post-refactor behavior
@@ -129,7 +129,7 @@ func TestEmetSelch_DiscardRoutesMadnessReplacement(t *testing.T) {
 	gameengine.InvokeETBHook(gs, emet)
 
 	if graveyardContains(gs.Seats[0], madness) {
-		t.Errorf("Madness card must NOT go to graveyard — §702.34a routes to exile via DiscardCard")
+		t.Errorf("Madness card must NOT go to graveyard — §702.35a routes to exile via DiscardCard")
 	}
 	if !exileContains(gs.Seats[0], madness) {
 		t.Errorf("Madness card should be in exile after Emet-Selch loot")
@@ -142,7 +142,7 @@ func TestEmetSelch_DiscardRoutesMadnessReplacement(t *testing.T) {
 // TestSmellerbee_BulkDiscardRoutesThroughCanonical pins the
 // Smellerbee-discards-entire-hand path: every card must increment
 // Turn.Discarded individually, and a madness card in the hand must
-// be exiled (CR §702.34a), not graveyard-dumped.
+// be exiled (CR §702.35a), not graveyard-dumped.
 func TestSmellerbee_BulkDiscardRoutesThroughCanonical(t *testing.T) {
 	gs := newGame(t, 2)
 	smellerbee := addPerm(gs, 0, "Smellerbee, Rebel Fighter", "creature")
@@ -173,7 +173,7 @@ func TestSmellerbee_BulkDiscardRoutesThroughCanonical(t *testing.T) {
 		t.Errorf("Plain card should be in graveyard after Smellerbee discard")
 	}
 	if graveyardContains(gs.Seats[0], madness) {
-		t.Errorf("Madness card must NOT be in graveyard — §702.34a routes to exile via DiscardCard")
+		t.Errorf("Madness card must NOT be in graveyard — §702.35a routes to exile via DiscardCard")
 	}
 	if !exileContains(gs.Seats[0], madness) {
 		t.Errorf("Madness card should be in exile (%d cards present)", len(gs.Seats[0].Exile))

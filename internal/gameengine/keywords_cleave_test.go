@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Test helpers — Cleave (CR §702.158)
+// Test helpers — Cleave (CR §702.148)
 // ---------------------------------------------------------------------------
 
 func newCleaveGame(t *testing.T) *GameState {
@@ -222,14 +222,14 @@ func TestCastWithCleave_StampsFlagAndSwapsEffect(t *testing.T) {
 	sawCleaveCast := false
 	for _, ev := range gs.EventLog {
 		if ev.Kind == "cleave_cast" && ev.Amount == 3 {
-			if rule, _ := ev.Details["rule"].(string); rule == "702.158a" {
+			if rule, _ := ev.Details["rule"].(string); rule == "702.148a" {
 				sawCleaveCast = true
 				break
 			}
 		}
 	}
 	if !sawCleaveCast {
-		t.Error("expected a cleave_cast event with rule 702.158a and amount 3")
+		t.Error("expected a cleave_cast event with rule 702.148a and amount 3")
 	}
 	if !SpellCleaveThisTurn(gs, 0) {
 		t.Error("SpellCleaveThisTurn should be true after a cleave cast")

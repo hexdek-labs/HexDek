@@ -22,7 +22,7 @@ package gameengine
 //       removes it.
 //
 //   - UnsuspectCreature(gs, perm)
-//       Removes the designation: deletes both flags. The §701.62b
+//       Removes the designation: deletes both flags. The §701.60a
 //       "investigate this creature" payoff lands here; per-card handlers
 //       invoke UnsuspectCreature when their investigate-the-suspect
 //       trigger resolves.
@@ -42,7 +42,7 @@ package gameengine
 // ---------------------------------------------------------------------------
 
 // IsSuspected reports whether the permanent carries the suspected
-// designation. CR §701.62a.
+// designation. CR §701.60a.
 func IsSuspected(perm *Permanent) bool {
 	if perm == nil || perm.Flags == nil {
 		return false
@@ -55,7 +55,7 @@ func IsSuspected(perm *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // SuspectCreature stamps the suspected designation on `perm` and grants
-// it menace via the runtime-keyword flag channel. CR §701.62a.
+// it menace via the runtime-keyword flag channel. CR §701.60c.
 //
 // Storage:
 //   - perm.Flags["suspected"] = 1 — the designation itself
@@ -70,7 +70,7 @@ func IsSuspected(perm *Permanent) bool {
 // is a no-op (no second event emitted).
 //
 // No-op when `perm` is nil or not a creature — suspecting a non-creature
-// is meaningless per §701.62a.
+// is meaningless per §701.60a.
 func SuspectCreature(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
 		return
@@ -97,7 +97,7 @@ func SuspectCreature(gs *GameState, perm *Permanent) {
 		Seat:   perm.Controller,
 		Source: name,
 		Details: map[string]interface{}{
-			"rule": "701.62a",
+			"rule": "701.60a",
 		},
 	})
 	FireCardTrigger(gs, "suspected", map[string]interface{}{
@@ -112,7 +112,7 @@ func SuspectCreature(gs *GameState, perm *Permanent) {
 // ---------------------------------------------------------------------------
 
 // UnsuspectCreature removes the suspected designation and the menace
-// grant that came with it. CR §701.62b — investigating a suspected
+// grant that came with it. CR §701.60a — investigating a suspected
 // creature is the canonical clear.
 //
 // Idempotent: calling on a non-suspected permanent is a no-op.
@@ -141,7 +141,7 @@ func UnsuspectCreature(gs *GameState, perm *Permanent) {
 		Seat:   perm.Controller,
 		Source: name,
 		Details: map[string]interface{}{
-			"rule": "701.62b",
+			"rule": "701.60a",
 		},
 	})
 	FireCardTrigger(gs, "unsuspected", map[string]interface{}{

@@ -5,8 +5,8 @@ package hat
 // LAYER-GRANTED menace (anthem / continuous keyword grant) was invisible
 // to the Hat. The Hat declared a SINGLE blocker against such an attacker;
 // the engine's block sanitizer (layer-aware keywordActive) then dropped
-// the illegal block (§702.110b), leaving the menace creature unblocked —
-// 54 §702.110b hits across the 4000-game max-turns-90 sweep, every one a
+// the illegal block (§702.111b), leaving the menace creature unblocked —
+// 54 §702.111b hits across the 4000-game max-turns-90 sweep, every one a
 // granted-menace attacker. The fix makes the Hat's menace check
 // layer-aware (gs.HasKeywordOf) to match the engine.
 
@@ -63,7 +63,7 @@ func assertNeverSingleBlockOnGrantedMenace(t *testing.T, label string, h gameeng
 	out := h.AssignBlockers(gs, 1, []*gameengine.Permanent{atk})
 	n := len(out[atk])
 	if n == 1 {
-		t.Fatalf("%s: assigned exactly ONE blocker to a granted-menace attacker — illegal (§702.110b), engine would drop it leaving the creature unblocked", label)
+		t.Fatalf("%s: assigned exactly ONE blocker to a granted-menace attacker — illegal (§702.111b), engine would drop it leaving the creature unblocked", label)
 	}
 	// With three survivors available it should pair two (the correct play),
 	// not bail.

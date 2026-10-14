@@ -1832,9 +1832,10 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // illegal targets). The successful-resolve path in ResolveStackTop calls
 // ShouldExileOnResolve / ShouldReturnToHandOnResolve directly; this
 // helper centralizes the same precedence for the failure paths so a
-// countered or fizzled flashback spell still honors CR §702.33a's
+// countered or fizzled flashback spell still honors CR §702.34a's
 // "exile this card instead of putting it anywhere else any time it
-// would leave the stack" carveout (same for escape per §702.143b).
+// would leave the stack" carveout. The engine applies the same routing
+// to escape, which the CR does NOT support — see open issue (8).
 //
 // Buyback is intentionally NOT honored here: CR §702.27a applies only
 // "as it resolves" — a countered or fizzled buyback spell goes to the
@@ -1845,7 +1846,7 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) (string, string) {
 	if ShouldExileOnResolve(item) {
 		// flashback / escape — exile instead of any other zone.
-		return "exile", "702.33a"
+		return "exile", "702.34a"
 	}
 	return defaultZone, defaultRule
 }
@@ -2108,7 +2109,7 @@ func ResolveStackTop(gs *GameState) {
 		// Abilities aren't cards so the "graveyard move" only applies to
 		// spells (items with Card set and Source unset).
 		if isSpell && item.Card != nil {
-			// CR §702.33a (flashback) / §702.143b (escape): "exile this
+			// CR §702.34a (flashback; escape is engine-only, issue (8)): "exile this
 			// card instead of putting it anywhere else any time it would
 			// leave the stack." A countered flashback/escape spell still
 			// triggers the exile-instead self-replacement — only the
@@ -2146,7 +2147,7 @@ func ResolveStackTop(gs *GameState) {
 				},
 			})
 			// Countered on resolution — spell leaves the stack. Same
-			// CR §702.33a / §702.143b carveout as the explicit-counter
+			// CR §702.34a carveout as the explicit-counter
 			// branch above: flashback/escape send to exile, not graveyard.
 			if isSpell && item.Card != nil {
 				toZone, _ := postStackZoneForOffboard(item, "graveyard", "608.2b")

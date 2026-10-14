@@ -112,7 +112,7 @@ func TestDiscardMadness_ExilesInsteadOfGraveyard(t *testing.T) {
 		t.Fatal("card should be removed from hand after discard")
 	}
 	if graveyardHas(gs.Seats[0], card) {
-		t.Fatal("madness card must NOT go to graveyard on discard (§702.34a)")
+		t.Fatal("madness card must NOT go to graveyard on discard (§702.35a)")
 	}
 	if !exileHas(gs.Seats[0], card) {
 		t.Fatal("madness card should be in exile after discard")
@@ -309,7 +309,7 @@ func TestResolveMadnessWindow_DeclineRoutesToGraveyard(t *testing.T) {
 		t.Fatal("card should no longer be in exile after the window closes")
 	}
 	if !graveyardHas(gs.Seats[0], card) {
-		t.Fatal("declined madness card must be routed to graveyard (§702.34a)")
+		t.Fatal("declined madness card must be routed to graveyard (§702.35a)")
 	}
 	if HasOpenMadnessWindow(gs, 0, card) {
 		t.Fatal("madness window should be cleared after ResolveMadnessWindow")

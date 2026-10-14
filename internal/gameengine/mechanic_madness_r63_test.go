@@ -1,6 +1,6 @@
 package gameengine
 
-// r63 — Madness (CR §702.34) audit. Ties to the discard-was-mill find: a
+// r63 — Madness (CR §702.35) audit. Ties to the discard-was-mill find: a
 // madness discard must STILL count as a discard (replace the destination with
 // exile, not skip the discard), and the window must resolve.
 

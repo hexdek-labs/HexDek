@@ -1,12 +1,12 @@
 package gameengine
 
-// keywords_aftermath_cast.go — Aftermath cast helper (CR §702.128,
+// keywords_aftermath_cast.go — Aftermath cast helper (CR §702.127,
 // Amonkhet 2017).
 //
-// CR §702.128a: Aftermath is an ability word found on the back half
+// CR §702.127a: Aftermath is an ability word found on the back half
 //               of certain split cards. "Aftermath" means "Cast this
 //               half of this split card only from your graveyard."
-// CR §702.128b: If a spell with aftermath would be put into a
+// CR §702.127a: If a spell with aftermath would be put into a
 //               graveyard from anywhere, exile it instead. This
 //               replacement applies whether the aftermath half was
 //               cast or not — the exile-on-resolve routing is the
@@ -23,7 +23,7 @@ package gameengine
 // What this file adds: CastWithAftermath, a thin entry point that
 // mirrors CastFlashback / CastMayhem / CastFreerunning — it pays the
 // printed mana cost, removes the card from the graveyard, and pushes
-// a StackItem flagged for resolve-time exile (CR §702.128b). The
+// a StackItem flagged for resolve-time exile (CR §702.127a). The
 // "alt-cost" framing applies even though aftermath is technically a
 // PERMISSION rather than an alternative cost: the player pays the
 // card's printed mana cost, which is the only legal way to cast the
@@ -31,15 +31,15 @@ package gameengine
 // in events to keep the rules semantics accurate.
 //
 // Sorcery-speed enforcement: aftermath cards (the back halves) are
-// always sorceries (CR §702.128a — "this half" refers to the printed
+// always sorceries (CR §702.127a — "this half" refers to the printed
 // type of the back face, which is always sorcery). CastWithAftermath
 // enforces sorcery-speed timing via isSorceryTiming so callers don't
 // silently slip an instant-speed cast through.
 
 // CastWithAftermath casts the aftermath back half of a split card
-// from `seatIdx`'s graveyard. CR §702.128a — pay the printed mana
+// from `seatIdx`'s graveyard. CR §702.127a — pay the printed mana
 // cost; the aftermath ability is the permission. Resolution routes
-// the card to exile per §702.128b.
+// the card to exile per §702.127a.
 //
 // Preconditions enforced here:
 //   - card has the aftermath keyword
@@ -54,7 +54,7 @@ package gameengine
 //   - mana is paid
 //   - a StackItem is pushed with CostMeta:
 //       aftermath_cast    = true
-//       exile_on_resolve  = true   (CR §702.128b — canonical handoff
+//       exile_on_resolve  = true   (CR §702.127a — canonical handoff
 //                                   to ShouldExileOnResolve in stack.go)
 //       zone_cast_keyword = "aftermath"
 //       aftermath_cost    = int (the amount actually paid)
@@ -84,7 +84,7 @@ func CastWithAftermath(gs *GameState, seatIdx int, card *Card, manaCost int) (*C
 		return nil, &CastError{Reason: "nil seat"}
 	}
 
-	// Sorcery-speed gate. CR §702.128a — the aftermath half is a
+	// Sorcery-speed gate. CR §702.127a — the aftermath half is a
 	// sorcery, so the standard sorcery-speed timing restriction
 	// applies. Enforced here (defense in depth) even though the
 	// upstream cast pipeline also enforces it, because
@@ -173,7 +173,7 @@ func CastWithAftermath(gs *GameState, seatIdx int, card *Card, manaCost int) (*C
 		Source: card.DisplayName(),
 		Amount: manaCost,
 		Details: map[string]interface{}{
-			"rule": "702.128a",
+			"rule": "702.127a",
 		},
 	})
 

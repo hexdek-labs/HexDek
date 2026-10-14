@@ -13,7 +13,7 @@ package gameengine
 //              your graveyard." If the spell would be put into the
 //              graveyard from the stack, exile it instead (same as
 //              flashback).
-//   §702.34    Madness — (future, not in this pass)
+//   §702.35    Madness — (future, not in this pass)
 //   rule 601.2    Static: "you may cast this card from exile"
 //              (Misthollow Griffin, Squee the Immortal, Torrent
 //              Elemental).

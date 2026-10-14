@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Manifest tests — CR §701.34
+// Manifest tests — CR §701.40
 // ---------------------------------------------------------------------------
 
 func newManifestGame(t *testing.T) *GameState {
@@ -290,7 +290,7 @@ func TestManifestedFaceUp_RejectsNonManifested(t *testing.T) {
 func TestManifestedFaceUp_RejectsNonCreatureUnderlying(t *testing.T) {
 	gs := newManifestGame(t)
 	// A sorcery on top of the library — manifests as a 2/2 but can't
-	// be flipped face up by the manifest right (§701.34b creature-only).
+	// be flipped face up by the manifest right (§701.40b creature-only).
 	gs.Seats[0].Library = append(gs.Seats[0].Library, libraryNonCreature("Wrath", 4))
 	gs.Seats[0].ManaPool = 10
 	ApplyManifestTop(gs, 0, 1)
@@ -333,7 +333,7 @@ func TestApplyManifestTop_ManifestedActsAs2x2Creature(t *testing.T) {
 	perm := gs.Seats[0].Battlefield[0]
 
 	if !perm.IsCreature() {
-		t.Fatal("manifested perm should be a creature (§701.34a — 2/2 creature)")
+		t.Fatal("manifested perm should be a creature (§701.40a — 2/2 creature)")
 	}
 	if got := perm.Power(); got != 2 {
 		t.Fatalf("face-down Power() = %d, want 2", got)

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// soulbond_behavior_r63_test.go — behavioral probe for Soulbond (CR §702.97).
+// soulbond_behavior_r63_test.go — behavioral probe for Soulbond (CR §702.95).
 // The pairing primitive (PairSoulbond / IsPaired, mutual paired_timestamp)
 // existed but NOTHING ever broke a pairing — a survivor kept a stale
 // paired_timestamp after its partner left, leaving it permanently "paired" and
@@ -114,7 +114,7 @@ func TestSoulbond_UnpairOnLeaveClearsBoth(t *testing.T) {
 	}
 }
 
-// PairSoulbond refuses cross-controller pairing (CR §702.97 — "a creature you
+// PairSoulbond refuses cross-controller pairing (CR §702.95a — "a creature you
 // control").
 func TestSoulbond_RefusesCrossController(t *testing.T) {
 	gs := newSoulbondGame(t)

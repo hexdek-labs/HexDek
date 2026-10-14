@@ -1,15 +1,15 @@
 package gameengine
 
-// keywords_freerunning.go — Freerunning (CR §702.169, OTJ Outlaws of
+// keywords_freerunning.go — Freerunning (CR §702.173, OTJ Outlaws of
 // Thunder Junction) as a real alt-cost cast helper.
 //
-// CR §702.169a: Freerunning is a static ability that functions while
+// CR §702.173a: Freerunning is a static ability that functions while
 //               the card is in any zone from which it could be cast.
 //               "Freerunning [cost]" means "You may cast this spell by
 //               paying [cost] rather than paying its mana cost if a
 //               creature with an Outlaw type you controlled dealt
 //               combat damage to a player this turn."
-// CR §702.169b: Casting a spell using its freerunning ability follows
+// CR §702.173a: Casting a spell using its freerunning ability follows
 //               the rules for paying alternative costs in §601.2b and
 //               §601.2f-h.
 //
@@ -21,7 +21,7 @@ package gameengine
 //
 // Scope note: the existing CanCastForFreerunning predicate in
 // keywords_batch6.go gates on the seat flag
-// "creature_dealt_combat_damage_to_player". CR §702.169 strictly
+// "creature_dealt_combat_damage_to_player". CR §702.173 strictly
 // requires the damage-dealer to have an Outlaw type (Assassin,
 // Mercenary, Pirate, Rogue, Warlock). The engine currently tracks the
 // broader signal and we use it here per the task brief; an outlaw-type
@@ -101,7 +101,7 @@ func IsFreerunningCast(item *StackItem) bool {
 // ---------------------------------------------------------------------------
 
 // CastWithFreerunning casts a card from `seatIdx`'s hand using its
-// freerunning alternative cost. CR §702.169a — pay `freerunningCost`
+// freerunning alternative cost. CR §702.173a — pay `freerunningCost`
 // rather than the printed mana cost.
 //
 // Preconditions enforced here:
@@ -142,7 +142,7 @@ func CastWithFreerunning(gs *GameState, seatIdx int, card *Card, freerunningCost
 	if !HasFreerunning(card) {
 		return nil, &CastError{Reason: "no_freerunning_keyword"}
 	}
-	// CR §702.169a — gated on "an Outlaw you controlled dealt combat damage
+	// CR §702.173a — gated on "an Outlaw you controlled dealt combat damage
 	// to a player this turn." Implemented via the existing seat-flag
 	// predicate (see top-of-file scope note).
 	if !CanCastForFreerunning(gs, seatIdx) {
@@ -213,7 +213,7 @@ func CastWithFreerunning(gs *GameState, seatIdx int, card *Card, freerunningCost
 		Source: card.DisplayName(),
 		Amount: freerunningCost,
 		Details: map[string]interface{}{
-			"rule": "702.169a",
+			"rule": "702.173a",
 		},
 	})
 

@@ -8,7 +8,7 @@ import (
 
 // deadeye_soulbond_canonical_r63_test.go — pins that Deadeye Navigator's ETB
 // auto-pair routes through the canonical gameengine.PairSoulbond primitive
-// (CR §702.97) instead of re-implementing the mutual paired_timestamp wiring
+// (CR §702.95) instead of re-implementing the mutual paired_timestamp wiring
 // inline. The load-bearing consequence: a pair established by the primitive is
 // readable by gameengine.IsPaired, so the engine's LTB / control-change
 // UnpairOnLeave hooks correctly break the pair when a creature leaves — the

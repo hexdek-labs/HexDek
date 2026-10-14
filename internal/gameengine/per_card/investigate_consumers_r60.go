@@ -7,7 +7,7 @@ import (
 )
 
 // investigate_consumers_r60.go — per_card OnTrigger handlers for the
-// investigate / Clue family (CR §701.15, primarily SOI / EMA / MID
+// investigate / Clue family (CR §701.16, primarily SOI / EMA / MID
 // support).
 //
 // Per the Versailles Phase 1B audit (PR #477 §3) `investigate` is one
@@ -70,7 +70,7 @@ func runInvestigate(gs *gameengine.GameState, perm *gameengine.Permanent, seatId
 	}
 	gameengine.ApplyInvestigateEffect(gs, seatIdx, n)
 	// FireInvestigateTriggers fires once per investigate event. Per
-	// CR §701.15 "investigating an additional time" semantics, callers
+	// CR §701.16 "investigating an additional time" semantics, callers
 	// that need to investigate N>1 in one go fire one trigger per
 	// investigate. We mirror that by calling FireInvestigateTriggers
 	// once per Clue minted.

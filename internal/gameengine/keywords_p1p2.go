@@ -236,7 +236,7 @@ func ForetellExile(gs *GameState, seatIdx int, card *Card) bool {
 
 // NewForetellCastPermission creates a ZoneCastPermission for casting a
 // foretold card from exile. The foretellCost is the discounted mana cost.
-// CR §702.143b: "On a later turn, you may cast it from exile for its
+// CR §702.143a: "On a later turn, you may cast it from exile for its
 // foretell cost."
 func NewForetellCastPermission(foretellCost int) *ZoneCastPermission {
 	return &ZoneCastPermission{

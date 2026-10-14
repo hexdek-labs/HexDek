@@ -1,4 +1,4 @@
 # Index-entry comments filing a keyword under another keyword's rule number.
 # Every entry is wrong: the line names the keyword, and the CR gives exactly
 # one number for it. This file only ever SHRINKS — fix a line, delete it.
-internal/gameengine/zone_cast.go:16|702.34|madness	# says "madness", cites §702.34 (Flashback), correct is §702.35
+internal/gameengine/keywords_partner.go:11|702.124m|companion	# CORRECT: Doctor's companion IS §702.124m; all partner variants live under §702.124 (was 702.139 = the unrelated Companion keyword, fixed r95)

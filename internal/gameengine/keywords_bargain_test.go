@@ -205,7 +205,7 @@ func TestCastWithBargain_CreatureTargetRejected(t *testing.T) {
 	creature := addTypePerm(gs, 0, "Grizzly Bears", "creature")
 	err := CastWithBargain(gs, 0, spell, creature)
 	if err == nil {
-		t.Fatal("§702.176a: a creature (not an artifact/enchantment/token) cannot satisfy the bargain cost")
+		t.Fatal("§702.166a: a creature (not an artifact/enchantment/token) cannot satisfy the bargain cost")
 	}
 	// Creature not sacrificed.
 	stillOnBattlefield := false
@@ -243,7 +243,7 @@ func TestCastWithBargain_OpponentArtifactRejected(t *testing.T) {
 	oppArtifact := addTypePerm(gs, 1, "Sol Ring", "artifact")
 	err := CastWithBargain(gs, 0, spell, oppArtifact)
 	if err == nil {
-		t.Fatal("§702.176a: bargain sacrifices a permanent YOU control; opponent's perm must reject")
+		t.Fatal("§702.166a: bargain sacrifices a permanent YOU control; opponent's perm must reject")
 	}
 	// Opponent's artifact stays on battlefield.
 	stillThere := false

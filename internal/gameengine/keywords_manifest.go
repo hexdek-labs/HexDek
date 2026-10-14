@@ -1,14 +1,14 @@
 package gameengine
 
-// keywords_manifest.go — Manifest (CR §701.34, Fate Reforged 2015) as a
+// keywords_manifest.go — Manifest (CR §701.40, Fate Reforged 2015) as a
 // real top-of-library face-down ETB helper with a flip-face-up entry
 // point that restores the underlying card's identity.
 //
-// CR §701.34a: To manifest a card, the player turns it face down (it
+// CR §701.40a: To manifest a card, the player turns it face down (it
 //                becomes a 2/2 face-down creature with no abilities,
 //                name, types, mana cost, or color), then puts it onto
 //                the battlefield under their control.
-// CR §701.34b: If a manifested card is a creature card, the player
+// CR §701.40b: If a manifested card is a creature card, the player
 //                may turn it face up at any time by paying its mana
 //                cost. Turning it face up reveals its full
 //                characteristics.
@@ -88,7 +88,7 @@ func IsManifested(perm *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // ApplyManifestTop manifests the top `n` cards of `seatIdx`'s library
-// per CR §701.34a/c, in the real-card overlay model: each manifested
+// per CR §701.40a, in the real-card overlay model: each manifested
 // card itself becomes the face-down permanent (the permanent of record),
 // so it can move zones, be owned, and fire dies-triggers correctly. Its
 // §708.2 2/2-vanilla shape comes from the "manifest" FaceDownTemplate via
@@ -126,7 +126,7 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 		if underlying == nil {
 			continue
 		}
-		// CR §701.34a — the card itself becomes face down (real-card
+		// CR §701.40a — the card itself becomes face down (real-card
 		// overlay model): the REAL card stays the permanent of record, so
 		// it can move zones, be owned, and fire dies-triggers correctly.
 		// The §707.2 2/2-vanilla characteristics come from the "manifest"
@@ -159,7 +159,7 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 			Source: underlying.DisplayName(),
 			Details: map[string]interface{}{
 				"underlying_name": underlying.DisplayName(),
-				"rule":            "701.34a",
+				"rule":            "701.40a",
 			},
 		})
 	}
@@ -185,14 +185,14 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 // ManifestedFaceUp
 // ---------------------------------------------------------------------------
 
-// ManifestedFaceUp flips a manifested permanent face up. CR §701.34b
+// ManifestedFaceUp flips a manifested permanent face up. CR §701.40b
 // — the controller may turn a manifested creature face up at any time
 // by paying its mana cost (a special action that doesn't use the stack).
 //
 // Validation (atomic — no mutation on failure):
 //   - perm must be non-nil and IsManifested
 //   - the real card (perm.Card, in the overlay model) must be a creature
-//     card (§701.34b — only creature cards can be turned face up via the
+//     card (§701.40b — only creature cards can be turned face up via the
 //     manifest right)
 //   - perm.Controller's ManaPool must cover `cost`
 //
@@ -224,7 +224,7 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 		return &CastError{Reason: "no_underlying_card"}
 	}
 	if !cardHasType(underlying, "creature") {
-		// CR §701.34b — only creature cards can be turned face up via
+		// CR §701.40b — only creature cards can be turned face up via
 		// the manifest right (non-creature manifests stay face-down
 		// until cleared by other effects).
 		return &CastError{Reason: "underlying_not_creature"}
@@ -255,7 +255,7 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 			Source: underlying.DisplayName(),
 			Details: map[string]interface{}{
 				"reason": "manifest_flip_cost",
-				"rule":   "701.34b",
+				"rule":   "701.40b",
 			},
 		})
 	}
@@ -290,7 +290,7 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 		Amount: cost,
 		Details: map[string]interface{}{
 			"revealed": underlying.DisplayName(),
-			"rule":     "701.34b",
+			"rule":     "701.40b",
 		},
 	})
 	FireCardTrigger(gs, "manifest_flipped", map[string]interface{}{

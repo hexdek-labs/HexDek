@@ -153,7 +153,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 
 	// -----------------------------------------------------------------
-	// Investigate (CR §701.36). "investigate" — create a Clue token.
+	// Investigate (CR §701.16). "investigate" — create a Clue token.
 	// Args carry the count (int or "var").
 	// -----------------------------------------------------------------
 	case "investigate":
@@ -951,7 +951,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			GrantRegenerationShield(gs, src)
 		}
 
-	// regenerate_typed — "{cost}: Regenerate <filter>" (CR §701.15).
+	// regenerate_typed — "{cost}: Regenerate <filter>" (CR §701.19a).
 	// 172/200 corpus uses are base="self" ("Regenerate this creature");
 	// the rest are "regenerate target creature" / "regenerate each …".
 	// Grant a regeneration shield (consumed by DestroyPermanent / the SBA

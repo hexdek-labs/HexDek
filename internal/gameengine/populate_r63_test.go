@@ -44,7 +44,7 @@ func TestPopulate_CopiesCopiableValuesResultIsToken(t *testing.T) {
 		t.Fatal("no populated copy found")
 	}
 	if !copyPerm.IsToken() {
-		t.Fatal("the populated copy must itself be a token (CR §701.32)")
+		t.Fatal("the populated copy must itself be a token (CR §701.36a)")
 	}
 	if copyPerm.Card.BasePower != 1 || copyPerm.Card.BaseToughness != 1 {
 		t.Fatalf("copy should use copiable base P/T 1/1, got %d/%d", copyPerm.Card.BasePower, copyPerm.Card.BaseToughness)

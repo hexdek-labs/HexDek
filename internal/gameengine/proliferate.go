@@ -19,7 +19,7 @@ import (
 // ProliferateTarget is the engine-level choice shape — exactly one of
 // Permanent or Player must be non-nil. CounterType names the counter
 // kind the controller chose (must already be present on the target per
-// CR §701.23).
+// CR §701.34a).
 type ProliferateTarget struct {
 	Permanent   *Permanent
 	Player      *Seat
@@ -149,7 +149,7 @@ func Proliferate(gs *GameState, controller int, targets []ProliferateTarget) (in
 		Seat:   controller,
 		Amount: applied,
 		Details: map[string]interface{}{
-			"rule":      "701.23",
+			"rule":      "701.34a",
 			"choices":   len(choices),
 			"source_id": sourceIID,
 		},

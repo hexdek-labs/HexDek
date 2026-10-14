@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// suspect_target_r63_test.go — Suspect (CR §701.62) WHICH-creature wiring.
+// suspect_target_r63_test.go — Suspect (CR §701.60) WHICH-creature wiring.
 //
 // The core designation (menace + can't-block + persistence) was already wired
 // for self-suspect. These pin the target-selection fixes: "suspect enchanted

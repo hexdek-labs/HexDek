@@ -2,10 +2,10 @@ package gameengine
 
 import "github.com/hexdek/hexdek/internal/gameast"
 
-// keywords_cleave.go — CR §702.158 Cleave (Innistrad: Crimson Vow, 2021).
+// keywords_cleave.go — CR §702.148 Cleave (Innistrad: Crimson Vow, 2021).
 //
 // Cleave is a §601.2f ALTERNATIVE cost: "Cleave {cost}: you may pay
-// {cost}. If you do, remove the text in square brackets." Per §702.158a
+// {cost}. If you do, remove the text in square brackets." Per §702.148a
 // the spell still goes on the stack like a normal cast, but its
 // printed text has TWO variants:
 //
@@ -97,7 +97,7 @@ func CleaveEffect(card *Card) gameast.Effect {
 }
 
 // CastWithCleave casts `card` from `seatIdx`'s hand for its cleave
-// alt cost. CR §702.158a + §601.2f.
+// alt cost. CR §702.148a + §601.2f.
 //
 // Preconditions:
 //   - card carries the cleave keyword (HasCleave).
@@ -125,7 +125,7 @@ func CleaveEffect(card *Card) gameast.Effect {
 //     mirrors the flashback / spectacle markers for cards that key
 //     off "if a cleave spell was cast this turn." Cleared in
 //     cleanup with the other per-turn flags.
-//   - A "cleave_cast" event is logged with rule 702.158a.
+//   - A "cleave_cast" event is logged with rule 702.148a.
 //
 // Returns a minimal CostPaymentResult on success, or a CastError
 // naming the failure mode (no_cleave_keyword, no_cleave_variant,
@@ -217,7 +217,7 @@ func CastWithCleave(gs *GameState, seatIdx int, card *Card, cleaveCost int) (*Co
 		Source: card.DisplayName(),
 		Amount: cleaveCost,
 		Details: map[string]interface{}{
-			"rule": "702.158a",
+			"rule": "702.148a",
 		},
 	})
 

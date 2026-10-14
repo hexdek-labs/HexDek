@@ -6,7 +6,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Suspect tests — CR §701.62
+// Suspect tests — CR §701.60
 // ---------------------------------------------------------------------------
 
 func newSuspectGame(t *testing.T) *GameState {
@@ -82,7 +82,7 @@ func TestSuspectCreature_NonCreatureIsNoOp(t *testing.T) {
 	land := addBattlefield(gs, 0, "Plains", 0, 0, "land")
 	SuspectCreature(gs, land)
 	if IsSuspected(land) {
-		t.Fatal("suspecting a non-creature must be a no-op per §701.62a")
+		t.Fatal("suspecting a non-creature must be a no-op per §701.60a")
 	}
 	if land.HasKeyword("menace") {
 		t.Fatal("non-creature must not gain menace")
@@ -107,7 +107,7 @@ func TestSuspectCreature_CannotBlock(t *testing.T) {
 	SuspectCreature(gs, blk)
 
 	if canBlockGS(gs, atk, blk) {
-		t.Fatal("§701.62a: a suspected creature must be rejected as a blocker")
+		t.Fatal("§701.60c: a suspected creature must be rejected as a blocker")
 	}
 }
 
@@ -235,7 +235,7 @@ func TestSuspectCreature_PersistsAcrossEOTCleanup(t *testing.T) {
 	ScanExpiredDurations(gs, "ending", "cleanup")
 
 	if !IsSuspected(p) {
-		t.Fatal("§701.62: suspected designation must persist across EOT cleanup")
+		t.Fatal("§701.60: suspected designation must persist across EOT cleanup")
 	}
 	if !p.HasKeyword("menace") {
 		t.Fatal("menace granted by Suspect must persist across EOT cleanup (Flags channel)")

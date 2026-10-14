@@ -2,7 +2,7 @@ package per_card
 
 // r63 — Fearless Swashbuckler's "draw three cards, then discard two cards" loot
 // routed its discard through a raw hand→graveyard MoveCard instead of the
-// DiscardCard chokepoint, silently bypassing §702.34 Madness, card_discarded
+// DiscardCard chokepoint, silently bypassing §702.35 Madness, card_discarded
 // observer triggers, and the per-turn discard-count stat. A loot's "discard" is
 // a real discard, not a silent zone move.
 

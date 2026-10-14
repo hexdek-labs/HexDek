@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Freerunning tests — CR §702.169 (OTJ Outlaws of Thunder Junction)
+// Freerunning tests — CR §702.173 (OTJ Outlaws of Thunder Junction)
 // ---------------------------------------------------------------------------
 
 func newFreerunningGame(t *testing.T) *GameState {

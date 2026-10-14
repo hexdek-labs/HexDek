@@ -13,7 +13,8 @@ import (
 //   (c) the sacrificed creature's power is checked at cast time
 //   (d) a permanent (creature) casualty spell's COPY resolves as a token
 //   (e) the sacrifice fires its dies/zone-change machinery, AND the copy
-//       fires the magecraft / spell-copied copy triggers (CR §702.137a /
+//       fires the magecraft / spell-copied copy triggers (magecraft is an
+//       ABILITY WORD — per CR §207.2c it has no CR entry of its own;
 //       "whenever you copy a spell")
 
 // creatureCasualtyCard builds a vanilla creature spell carrying casualty N.
@@ -170,7 +171,8 @@ func TestCasualty_Sacrifice_FiresDiesMachinery(t *testing.T) {
 }
 
 // (e, copy-trigger half) The casualty copy of an instant/sorcery spell fires
-// the magecraft trigger (CR §702.137a: "whenever you cast OR COPY an instant
+// the magecraft trigger (ability word, no CR entry per §207.2c; reminder
+// text is "whenever you cast OR COPY an instant
 // or sorcery spell") — exactly as the canonical copy paths (resolveCopySpell,
 // storm) do. The cast itself fires magecraft with is_copy=false; the copy must
 // add an is_copy=true firing.
@@ -192,6 +194,6 @@ func TestCasualty_Copy_FiresMagecraft(t *testing.T) {
 	}
 
 	if got := countMagecraftCopyTriggers(gs); got < 1 {
-		t.Errorf("casualty copy must fire magecraft with is_copy=true (CR §702.137a); got %d copy-firings", got)
+		t.Errorf("casualty copy must fire magecraft with is_copy=true (ability word, §207.2c); got %d copy-firings", got)
 	}
 }

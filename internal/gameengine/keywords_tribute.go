@@ -1,14 +1,14 @@
 package gameengine
 
-// keywords_tribute.go — Tribute N (CR §702.121, Born of the Gods 2014)
+// keywords_tribute.go — Tribute N (CR §702.104, Born of the Gods 2014)
 // as a real two-callback ETB choice with per-card payoff routing.
 //
-// CR §702.121a: "Tribute N" is a static ability that modifies the
+// CR §702.104a: "Tribute N" is a static ability that modifies the
 //                creature's ETB. As the creature enters the battlefield,
 //                the controller chooses an opponent. That opponent
 //                chooses whether N +1/+1 counters are put on the
 //                creature.
-// CR §702.121b: A card with tribute also has an additional ability
+// CR §702.104b: A card with tribute also has an additional ability
 //                that begins "When this creature enters the battlefield,
 //                if tribute wasn't paid …". That ability triggers when
 //                tribute was refused — the "tribute-failed" payoff.
@@ -16,7 +16,7 @@ package gameengine
 // Engine surface (three pieces):
 //
 //   1. ApplyTribute(gs, perm, controllerSeat, chooseOpp, decide) bool
-//        Drives the §702.121a ETB choice. Returns true if tribute was
+//        Drives the §702.104a ETB choice. Returns true if tribute was
 //        accepted (counters added). False if refused; per-card handlers
 //        read WasTributeAccepted == false and fire their punishment
 //        effect.
@@ -111,7 +111,7 @@ func TributeOpponent(perm *Permanent) int {
 }
 
 // ---------------------------------------------------------------------------
-// ApplyTribute — the §702.121a ETB choice
+// ApplyTribute — the §702.104a ETB choice
 // ---------------------------------------------------------------------------
 
 // TributeChooseOpponent is the callback the controller uses to pick
@@ -127,7 +127,7 @@ type TributeChooseOpponent func() int
 // handler).
 type TributeDecide func(opponentSeat int) bool
 
-// ApplyTribute drives the §702.121a ETB choice for a tribute creature.
+// ApplyTribute drives the §702.104a ETB choice for a tribute creature.
 //
 // Flow:
 //   1. Read N from TributeAmount(perm.Card). If N <= 0 (keyword absent
@@ -139,7 +139,7 @@ type TributeDecide func(opponentSeat int) bool
 //      filtering Lost seats. With no eligible opponents the function
 //      records "resolved + refused" and returns false (tribute can't
 //      be paid; the per-card "if tribute wasn't paid" rider may or
-//      may not fire depending on §702.121b interpretation — the
+//      may not fire depending on §702.104b interpretation — the
 //      printed cards all word it as "if tribute wasn't paid," which
 //      includes the no-opponent case).
 //   3. Call chooseOpp() (when non-nil) to pick the deciding opponent.
@@ -153,7 +153,7 @@ type TributeDecide func(opponentSeat int) bool
 // Returns the boolean the decide callback returned (or false when
 // fallback paths short-circuit).
 //
-// CR §702.121b's "tribute wasn't paid" rider lives on the printed
+// CR §702.104b's "tribute wasn't paid" rider lives on the printed
 // card body and is the per-card handler's responsibility — this
 // function only RECORDS the decision. Per-card handlers gate on
 // WasTributeRefused inside their ETB handler.
@@ -188,7 +188,7 @@ func ApplyTribute(
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
 				"reason": "no_tribute_keyword_or_zero_n",
-				"rule":   "702.121a",
+				"rule":   "702.104a",
 			},
 		})
 		return false
@@ -214,14 +214,14 @@ func ApplyTribute(
 				"resolved": true,
 				"accepted": false,
 				"reason":   "no_living_opponents",
-				"rule":     "702.121a",
+				"rule":     "702.104a",
 			},
 		})
 		fireTributeResolved(gs, perm, controllerSeat, -1, n, false)
 		return false
 	}
 
-	// Controller chooses the deciding opponent (CR §702.121a — "an
+	// Controller chooses the deciding opponent (CR §702.104a — "an
 	// opponent of your choice").
 	chosen := eligible[0]
 	if chooseOpp != nil {
@@ -265,7 +265,7 @@ func ApplyTribute(
 			"accepted":      accepted,
 			"opponent_seat": chosen,
 			"counters":      n,
-			"rule":          "702.121a",
+			"rule":          "702.104a",
 		},
 	})
 

@@ -1,6 +1,6 @@
 package gameengine
 
-// keywords_investigate.go — Investigate keyword surface (CR §701.15
+// keywords_investigate.go — Investigate keyword surface (CR §701.16
 // in current Comprehensive Rules numbering; the engine's existing
 // resolve_helpers.go cites it as §701.36, which was the Shadows over
 // Innistrad-era number — the rule text is the same).
@@ -54,7 +54,7 @@ import (
 // in priority order:
 //
 //  1. Keyword AST node with name "investigate" — the cleanest signal.
-//     Investigate is technically a keyword-ACTION (CR §701.15) rather
+//     Investigate is technically a keyword-ACTION (CR §701.16) rather
 //     than a keyword-ABILITY, but corpora that pre-process triggered
 //     abilities into keyword nodes (e.g. "Bygone Bishop's "Whenever
 //     you cast a creature spell with mana value 3 or less, investigate")
@@ -91,7 +91,7 @@ func HasInvestigate(card *Card) bool {
 // ---------------------------------------------------------------------------
 
 // FireInvestigateTriggers fires the "investigate" card trigger for a
-// single investigate event. CR §701.15 — investigating IS the action;
+// single investigate event. CR §701.16 — investigating IS the action;
 // triggers like "When you investigate, ..." (Lonis, Cryptozoologist;
 // Tireless Tracker's clue-on-LTB doubler; Hard Evidence-adjacent
 // effects) listen on this event.
@@ -149,7 +149,7 @@ func FireInvestigateTriggers(
 		Seat:   seatIdx,
 		Source: sourceName,
 		Details: map[string]interface{}{
-			"rule": "701.15",
+			"rule": "701.16",
 		},
 	})
 	FireCardTrigger(gs, "investigate", ctx)
@@ -160,7 +160,7 @@ func FireInvestigateTriggers(
 // ---------------------------------------------------------------------------
 
 // ApplyInvestigateEffect mints `n` Clue tokens for `seatIdx`. CR
-// §701.15a — "To investigate, create a colorless artifact token
+// §701.16a — "To investigate, create a colorless artifact token
 // named Clue with '{2}, Sacrifice this artifact: Draw a card.'"
 //
 // Returns the number of clues actually created (always n on success;
@@ -191,7 +191,7 @@ func ApplyInvestigateEffect(gs *GameState, seatIdx int, n int) int {
 		Seat:   seatIdx,
 		Amount: n,
 		Details: map[string]interface{}{
-			"rule":  "701.15a",
+			"rule":  "701.16a",
 			"clues": n,
 		},
 	})

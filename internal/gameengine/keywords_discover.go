@@ -11,7 +11,7 @@ import "strings"
 //  hand. Then put all other cards exiled this way on the bottom of
 //  your library in a random order."
 //
-// Discover is closely related to Cascade (§702.84) but with three
+// Discover is closely related to Cascade (§702.85) but with three
 // differences:
 //
 //   1. Stop condition is "CMC <= N", not "CMC < spellCMC".
@@ -50,7 +50,7 @@ import "strings"
 // StackItem carries CostMeta["discover_cast"]=true +
 // ["alt_cost"]="discover" + CastZone=ZoneExile.
 
-// DiscoverChoice enumerates the two CR §701.51 dispositions for the
+// DiscoverChoice enumerates the two CR §701.57a dispositions for the
 // hit card.
 type DiscoverChoice int
 
@@ -113,7 +113,7 @@ func ApplyDiscover(gs *GameState, seatIdx, n int) *Card {
 }
 
 // ApplyDiscoverWithChoice runs Discover N and applies the specified
-// disposition to the hit card. CR §701.51.
+// disposition to the hit card. CR §701.57a.
 //
 // Procedure:
 //  1. Log discover_trigger.
@@ -155,7 +155,7 @@ func ApplyDiscoverWithChoice(gs *GameState, seatIdx, n int, choice DiscoverChoic
 		Seat:   seatIdx,
 		Amount: n,
 		Details: map[string]interface{}{
-			"rule": "701.51",
+			"rule": "701.57a",
 		},
 	})
 
@@ -173,7 +173,7 @@ func ApplyDiscoverWithChoice(gs *GameState, seatIdx, n int, choice DiscoverChoic
 		// of treating the in-flight pile as the exile cohort and only
 		// invoking MoveCard for the eventual library-bottom return.
 		// This keeps the temporary exile from spamming zone-change
-		// events that aren't observable per CR §701.51 (discover
+		// events that aren't observable per CR §701.57a (discover
 		// doesn't fire "card exiled" triggers on its way through).
 		seat.Exile = append(seat.Exile, top)
 		exiled = append(exiled, top)
@@ -193,7 +193,7 @@ func ApplyDiscoverWithChoice(gs *GameState, seatIdx, n int, choice DiscoverChoic
 			Details: map[string]interface{}{
 				"discover_n":   n,
 				"cards_exiled": len(exiled),
-				"rule":         "701.51",
+				"rule":         "701.57a",
 			},
 		})
 		returnDiscoverMissesToLibrary(gs, seatIdx, exiled, nil)
@@ -223,7 +223,7 @@ func ApplyDiscoverWithChoice(gs *GameState, seatIdx, n int, choice DiscoverChoic
 			Details: map[string]interface{}{
 				"discover_n":   n,
 				"cards_exiled": len(exiled),
-				"rule":         "701.51",
+				"rule":         "701.57a",
 			},
 		})
 
@@ -267,7 +267,7 @@ func ApplyDiscoverWithChoice(gs *GameState, seatIdx, n int, choice DiscoverChoic
 			Details: map[string]interface{}{
 				"discover_n":   n,
 				"cards_exiled": len(exiled),
-				"rule":         "701.51",
+				"rule":         "701.57a",
 			},
 		})
 	}
@@ -297,7 +297,7 @@ func returnDiscoverMissesToLibrary(gs *GameState, seatIdx int, misses []*Card, h
 	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || len(misses) == 0 {
 		return
 	}
-	// CR §701.51: "Then put all other cards exiled this way on the
+	// CR §701.57a: "Then put all other cards exiled this way on the
 	// bottom of your library in a random order."
 	if gs.Rng != nil && len(misses) > 1 {
 		gs.Rng.Shuffle(len(misses), func(i, j int) {
@@ -321,7 +321,7 @@ func returnDiscoverMissesToLibrary(gs *GameState, seatIdx int, misses []*Card, h
 		Amount: len(misses),
 		Details: map[string]interface{}{
 			"cards_returned": len(misses),
-			"rule":           "701.51",
+			"rule":           "701.57a",
 		},
 	})
 }

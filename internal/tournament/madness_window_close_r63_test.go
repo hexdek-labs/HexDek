@@ -1,6 +1,6 @@
 package tournament
 
-// r63 — CR §702.34a: a madness card the controller doesn't cast is put into the
+// r63 — CR §702.35a: a madness card the controller doesn't cast is put into the
 // graveyard when the window closes. ResolveMadnessWindow had NO production
 // caller, so a declined madness card strayed in exile forever. The turn driver
 // now closes open windows at end of turn. Driving a turn with an open

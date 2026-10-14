@@ -188,7 +188,7 @@ func TestCastWithEscape_RejectsSpellAsOwnFodder(t *testing.T) {
 
 	_, err := CastWithEscape(gs, 0, spell, 1, bad)
 	if err == nil {
-		t.Fatal("CastWithEscape must reject using the spell itself as exile fodder (§702.148a 'other')")
+		t.Fatal("CastWithEscape must reject using the spell itself as exile fodder (§702.138a 'other')")
 	}
 	ce, ok := err.(*CastError)
 	if !ok || ce.Reason != "exile_target_is_spell" {
@@ -318,7 +318,7 @@ func TestCastWithEscape_StampsCostMeta(t *testing.T) {
 		t.Fatalf("CostMeta[\"zone_cast_keyword\"] = %v, want \"escape\"", item.CostMeta["zone_cast_keyword"])
 	}
 	if !ShouldExileOnResolve(item) {
-		t.Fatal("escape cast must stamp exile_on_resolve=true (§702.148b)")
+		t.Fatal("escape cast must stamp exile_on_resolve=true (engine model, no CR basis — open issue (8))")
 	}
 	if !IsEscapeCast(item) {
 		t.Fatal("IsEscapeCast should return true for an escape-cast stack item")
@@ -350,11 +350,12 @@ func TestEscape_ResolveExilesSpellNotToGraveyard(t *testing.T) {
 
 	ResolveStackTop(gs)
 
-	// Spell must NOT be in graveyard (§702.148b replaces the default
-	// §608.2g graveyard destination with exile).
+	// Spell must NOT be in graveyard: the engine replaces the default
+	// §608.2g graveyard destination with exile. This pins CURRENT
+	// behaviour, which has no CR basis under escape — open issue (8).
 	for _, c := range gs.Seats[0].Graveyard {
 		if c == spell {
-			t.Fatal("escape-cast spell must go to exile on resolution, not graveyard (§702.148b)")
+			t.Fatal("escape-cast spell must go to exile on resolution, not graveyard (engine model — open issue (8))")
 		}
 	}
 	// Spell IS in exile.

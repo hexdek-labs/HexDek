@@ -105,7 +105,7 @@ func TestActivationCostDiscard_RoutesThroughDiscardCard(t *testing.T) {
 
 // TestActivationCostDiscard_RoutesMadnessReplacement is the load-
 // bearing rules pin. A Madness card discarded as an activation cost
-// must be exiled (CR §702.34a) and made castable from exile for the
+// must be exiled (CR §702.35a) and made castable from exile for the
 // madness window — pre-fix the direct splice routed it to graveyard
 // and silently broke Madness on every activated-discard-cost ability.
 func TestActivationCostDiscard_RoutesMadnessReplacement(t *testing.T) {
@@ -136,7 +136,7 @@ func TestActivationCostDiscard_RoutesMadnessReplacement(t *testing.T) {
 	}
 
 	if graveyardHas(gs.Seats[0], madness) {
-		t.Errorf("Madness card must NOT go to graveyard (§702.34a should reroute to exile via DiscardCard)")
+		t.Errorf("Madness card must NOT go to graveyard (§702.35a should reroute to exile via DiscardCard)")
 	}
 	if !exileHas(gs.Seats[0], madness) {
 		t.Errorf("Madness card should be in exile after activation-cost discard")

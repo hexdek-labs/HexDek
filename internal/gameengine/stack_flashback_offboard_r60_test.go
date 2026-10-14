@@ -4,11 +4,12 @@ import (
 	"testing"
 )
 
-// stack_flashback_offboard_r60_test.go — CR §702.33a / §702.143b regression.
+// stack_flashback_offboard_r60_test.go — CR §702.34a regression.
 //
-// CR §702.33a (flashback): "If the flashback cost was paid, exile this
+// CR §702.34a (flashback): "If the flashback cost was paid, exile this
 // card instead of putting it anywhere else any time it would leave the
-// stack." CR §702.143b (escape) carries identical language. The phrase
+// stack." The engine applies the same routing to escape, which
+// §702.138 does NOT license — see open issue (8). The phrase
 // "any time it would leave the stack" covers every off-stack path —
 // successful resolution, counterspell, and fizzle-on-illegal-targets.
 //
@@ -38,7 +39,7 @@ func makeFlashbackTargetableInstant(t *testing.T, owner int) *Card {
 }
 
 // TestResolveStackTop_CounteredFlashbackSpellExilesInsteadOfGraveyard
-// pins CR §702.33a's "any time it would leave the stack" carveout on the
+// pins CR §702.34a's "any time it would leave the stack" carveout on the
 // counterspell path. Without the fix the spell goes to graveyard and
 // could be re-flashed; with the fix it exiles.
 func TestResolveStackTop_CounteredFlashbackSpellExilesInsteadOfGraveyard(t *testing.T) {
@@ -68,7 +69,7 @@ func TestResolveStackTop_CounteredFlashbackSpellExilesInsteadOfGraveyard(t *test
 		for _, c := range s.Graveyard {
 			if c == card {
 				t.Fatalf("countered flashback spell landed in seat %d graveyard; "+
-					"CR §702.33a requires exile when the card would leave the stack any way", seatIdx)
+					"CR §702.34a requires exile when the card would leave the stack any way", seatIdx)
 			}
 		}
 	}
@@ -81,14 +82,14 @@ func TestResolveStackTop_CounteredFlashbackSpellExilesInsteadOfGraveyard(t *test
 		}
 	}
 	if !foundInExile {
-		t.Fatal("countered flashback spell should be in owner's exile (CR §702.33a)")
+		t.Fatal("countered flashback spell should be in owner's exile (CR §702.34a)")
 	}
 }
 
 // TestResolveStackTop_FizzledFlashbackSpellExilesInsteadOfGraveyard pins
 // the §608.2b fizzle path — when all targets are illegal at resolution,
 // the spell is countered ("fizzles"); a fizzled flashback spell still
-// honors §702.33a's exile-instead carveout.
+// honors §702.34a's exile-instead carveout.
 func TestResolveStackTop_FizzledFlashbackSpellExilesInsteadOfGraveyard(t *testing.T) {
 	gs := newFlashbackGame(t)
 	gs.Active = 0
@@ -118,7 +119,7 @@ func TestResolveStackTop_FizzledFlashbackSpellExilesInsteadOfGraveyard(t *testin
 		for _, c := range s.Graveyard {
 			if c == card {
 				t.Fatalf("fizzled flashback spell landed in seat %d graveyard; "+
-					"CR §702.33a requires exile when the card would leave the stack any way", seatIdx)
+					"CR §702.34a requires exile when the card would leave the stack any way", seatIdx)
 			}
 		}
 	}
@@ -130,13 +131,13 @@ func TestResolveStackTop_FizzledFlashbackSpellExilesInsteadOfGraveyard(t *testin
 		}
 	}
 	if !foundInExile {
-		t.Fatal("fizzled flashback spell should be in owner's exile (CR §702.33a + §608.2b)")
+		t.Fatal("fizzled flashback spell should be in owner's exile (CR §702.34a + §608.2b)")
 	}
 }
 
 // TestResolveStackTop_CounteredNonFlashbackSpellStillGoesToGraveyard
 // pins the converse — the carveout must NOT apply to a vanilla
-// (non-flashback) spell. CR §701.5a is the default: countered spells
+// (non-flashback) spell. CR §701.6a is the default: countered spells
 // go to their owner's graveyard. Defends against the helper being too
 // aggressive.
 func TestResolveStackTop_CounteredNonFlashbackSpellStillGoesToGraveyard(t *testing.T) {
@@ -162,7 +163,7 @@ func TestResolveStackTop_CounteredNonFlashbackSpellStillGoesToGraveyard(t *testi
 		}
 	}
 	if !foundInGraveyard {
-		t.Fatal("countered vanilla spell should land in owner's graveyard (CR §701.5a)")
+		t.Fatal("countered vanilla spell should land in owner's graveyard (CR §701.6a)")
 	}
 	for _, c := range gs.Seats[0].Exile {
 		if c == card {

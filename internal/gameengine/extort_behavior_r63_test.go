@@ -1,6 +1,6 @@
 package gameengine
 
-// extort_behavior_r63_test.go — r63 probe lock-ins for Extort (CR §702.99).
+// extort_behavior_r63_test.go — r63 probe lock-ins for Extort (CR §702.101).
 // Extort is LIVE and correct (fired from FireCastTriggerObservers, reached by
 // CastSpell/CastFromZone). The existing suite (keywords_flagged_test.go) covers
 // drain/gain, no-mana, multiple-permanents, 4-player, and the copy-guard. These

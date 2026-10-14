@@ -302,6 +302,8 @@
 701.15a	8cb1a41f73c3	Goad
 701.15b	530ba22937fb	Goad
 701.15c	33327633f060	Goad
+701.16	6b62f3e138a1	Investigate
+701.16a	4f3b7062eb4a	Investigate
 701.17	61d25dd6e8d6	Mill
 701.17a	5ebf61fa3fb7	Mill
 701.17b	4a50226ec91b	Mill
@@ -309,6 +311,7 @@
 701.18a	008fdfd891ea	Play
 701.18b	158d99f89f28	Play
 701.19	2007c3582d33	Regenerate
+701.19a	2869c703bb43	Regenerate
 701.19c	9d430aefd402	Regenerate
 701.20	e7077c06d5f2	Reveal
 701.20a	54005920ff25	Reveal
@@ -327,13 +330,14 @@
 701.32	35fa8316355c	Set in Motion
 701.34	aa8660aaad9c	Proliferate
 701.34a	f52f69a42ea0	Proliferate
-701.34b	f72efcbc594e	Proliferate
 701.35	432b865ab76e	Detain
 701.36	2a0d86bfb63c	Populate
+701.36a	113b4aee2692	Populate
 701.38	22b7903081c7	Vote
 701.39	c0d074f91e62	Bolster
 701.4	adfa11858f2d	Behold
 701.40	60abb8dc54cb	Manifest
+701.40a	8b315e077884	Manifest
 701.40b	1a459baae19e	Manifest
 701.40e	62c8abc88148	Manifest
 701.41	d2237179fbc7	Support
@@ -366,12 +370,12 @@
 701.61	fbec7dc13c26	Forage
 701.62	785965c4f035	Manifest Dread
 701.62a	27e019f38baa	Manifest Dread
-701.62b	feb670d8dc21	Manifest Dread
 701.63	535c9db84a66	Endure
 701.64	35083c238559	Harness
 701.65	60a97e44c4bb	Airbend
 701.66	d57cdfb19dd9	Earthbend
 701.69a	38429bf556fb	Heal
+701.6a	c3142ba4935a	Counter
 701.7	736825cca466	Create
 701.70a	ffc143976e44	Recruit
 701.7a	260d36f6c95b	Create
@@ -388,6 +392,7 @@
 702.103a	cac62d64719f	Bestow
 702.103e	bc63d851c213	Bestow
 702.104	107aff7fc14b	Tribute
+702.104a	fd9e765a4f13	Tribute
 702.104b	ef707d18f2b5	Tribute
 702.105	5dc9a331b67c	Dethrone
 702.106	959914eeca25	Hidden Agenda
@@ -398,6 +403,7 @@
 702.110	deda3f8aaf0b	Exploit
 702.110b	f8a3bd932a32	Exploit
 702.111	a06aaed4fe90	Menace
+702.111b	c137b2a5cac4	Menace
 702.112	8ab96a4d8e65	Renown
 702.112a	9ee7a1973088	Renown
 702.112b	c5f6396ad14a	Renown
@@ -430,12 +436,15 @@
 702.124b	597ae6774add	Partner
 702.124e	33958fb06f19	Partner
 702.124g	cbb1db9c37df	Partner
+702.124i	be92c85da2a4	Partner
+702.124j	e093ea839e25	Partner
+702.124m	dfcc2ae191b8	Partner
 702.125	2cbfe2c793ad	Undaunted
 702.126	44e544eebcbb	Improvise
 702.127	6611b823dcad	Aftermath
+702.127a	2cf361411125	Aftermath
 702.128	52dfd35431d2	Embalm
 702.128a	38d79fdd21ce	Embalm
-702.128b	f0cbc9f83b85	Embalm
 702.129	08dd60be2ee5	Eternalize
 702.12b	3c72b30ca93a	Indestructible
 702.13	5ed6e6340604	Intimidate
@@ -452,6 +461,7 @@
 702.137	0bd7cf67b7a4	Spectacle
 702.137a	15f0c3c383c8	Spectacle
 702.138	ea55f4854e46	Escape
+702.138a	a3db94004dfe	Escape
 702.139	7149aa384828	Companion
 702.139a	df4655b1d77e	Companion
 702.139b	e7fd716f5176	Companion
@@ -467,7 +477,6 @@
 702.142	c4e43f2d01dc	Boast
 702.143	e6443172a863	Foretell
 702.143a	3306a271d88e	Foretell
-702.143b	a87ae20dc8b9	Foretell
 702.144	5a2ee0f1cc3c	Demonstrate
 702.144a	93d65c033e29	Demonstrate
 702.145	59bfa3843b99	Daybound and Nightbound
@@ -498,7 +507,6 @@
 702.157	e05b7d73fc2d	Squad
 702.157a	89d733072be8	Squad
 702.158	32e2f1022f31	Space Sculptor
-702.158a	3b9cd89edfe6	Space Sculptor
 702.158b	440ad0b704f2	Space Sculptor
 702.159	26d72e235d86	Visit
 702.16	6b6aa9e7c9aa	Protection
@@ -532,6 +540,7 @@
 702.172a	7dfcaf3dd451	Spree
 702.172b	3302e56e0813	Spree
 702.173	06957cb6ec15	Freerunning
+702.173a	a41547502df0	Freerunning
 702.174	9e00e5c4cad2	Gift
 702.174a	74a1e0431594	Gift
 702.174b	60b2d1129cf5	Gift
@@ -557,8 +566,6 @@
 702.185	86bb6820a48c	Warp
 702.185a	8df4131b092d	Warp
 702.186	1a39b671e3d9	∞ (Infinity)
-702.186a	d3e953ddc599	∞ (Infinity)
-702.186b	a17b75770eba	∞ (Infinity)
 702.187	c72fe94b04ec	Mayhem
 702.187a	3736180317c8	Mayhem
 702.187b	12e9ecab00d7	Mayhem
@@ -613,12 +620,12 @@
 702.32	8a5e7d283c10	Fading
 702.32a	5f75d570fc66	Fading
 702.33	321298310d27	Kicker
-702.33a	53cf3acd0e07	Kicker
 702.33c	9775d01042fe	Kicker
 702.33d	3d62a6122123	Kicker
 702.34	a48696ed3a70	Flashback
 702.34a	f725cad209d4	Flashback
 702.35	bab923afa9bd	Madness
+702.35a	fee3e625cff7	Madness
 702.36	64dd13a7aaca	Fear
 702.37	e8e3c42f0dbd	Morph
 702.37a	d2e0bbffa38e	Morph

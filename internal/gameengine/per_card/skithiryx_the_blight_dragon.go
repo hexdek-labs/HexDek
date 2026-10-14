@@ -23,7 +23,7 @@ import (
 //   - abilityIdx 1 ({B}{B}): check controller has at least 2 mana, spend it,
 //     set regeneration_shield flag on Skithiryx. The engine's SBA loop
 //     checks this flag before destroying a creature; if set, the destroy is
-//     replaced by tap + remove all damage + remove from combat per CR §701.15.
+//     replaced by tap + remove all damage + remove from combat per CR §701.19a.
 //     The flag is consumed (cleared) on redemption by the SBA.
 //
 // Note: the hat's activated-ability evaluator will inspect abilityIdx 0 and 1
@@ -134,7 +134,7 @@ func skithiryxRegenerate(gs *gameengine.GameState, src *gameengine.Permanent) {
 	gameengine.SyncManaAfterSpend(s)
 
 	// Set regeneration shield. The SBA loop checks Flags["regeneration_shield"]
-	// before destroying a creature and applies CR §701.15 replacement:
+	// before destroying a creature and applies CR §701.19a replacement:
 	// tap, remove all damage, remove from combat.
 	if src.Flags == nil {
 		src.Flags = map[string]int{}

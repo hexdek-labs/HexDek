@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Investigate tests — CR §701.15 (keyword surface)
+// Investigate tests — CR §701.16 (keyword surface)
 // ---------------------------------------------------------------------------
 
 func newInvestigateGame(t *testing.T) *GameState {

@@ -1,8 +1,8 @@
 package gameengine
 
-// keywords_madness.go — Madness (CR §702.34, Torment 2002).
+// keywords_madness.go — Madness (CR §702.35, Torment 2002).
 //
-// CR §702.34a: Madness is a keyword that represents two abilities.
+// CR §702.35a: Madness is a keyword that represents two abilities.
 //               The first is a static ability that functions while the
 //               card with madness is in a player's hand. The second is
 //               a triggered ability that functions when the first
@@ -28,7 +28,7 @@ package gameengine
 //
 //   stage 2 — cast-in-window (CastWithMadness)
 //     The owner pays the madness cost (the alt cost — NOT the printed
-//     mana cost, CR §702.34a "rather than putting it into their
+//     mana cost, CR §702.35a "rather than putting it into their
 //     graveyard"). The card moves exile→stack with CostMeta
 //     {"madness_cast": true, "madness_cost": N}. The MadnessExile
 //     entry is removed so ResolveMadnessWindow knows the window has
@@ -111,7 +111,7 @@ func MadnessCostParsed(card *Card) int {
 // OnDiscardMadness — stage-1 discard replacement
 // ---------------------------------------------------------------------------
 
-// OnDiscardMadness implements the §702.34a discard replacement.
+// OnDiscardMadness implements the §702.35a discard replacement.
 // Called by DiscardCard for every discarded card; no-ops and
 // returns false when the card lacks the madness keyword so the
 // normal hand→graveyard path continues unchanged.
@@ -198,7 +198,7 @@ func OnDiscardMadness(gs *GameState, seatIdx int, card *Card) bool {
 		Seat:   seatIdx,
 		Source: card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule":         "702.34a",
+			"rule":         "702.35a",
 			"madness_cost": madnessCost,
 		},
 	})
@@ -210,7 +210,7 @@ func OnDiscardMadness(gs *GameState, seatIdx int, card *Card) bool {
 // ---------------------------------------------------------------------------
 
 // CastWithMadness casts a madness-exiled card from `seatIdx`'s exile
-// for its madness cost. CR §702.34a, second ability.
+// for its madness cost. CR §702.35a, second ability.
 //
 // Preconditions enforced here:
 //   - card has the madness keyword
@@ -326,7 +326,7 @@ func CastWithMadness(gs *GameState, seatIdx int, card *Card, madnessCost int) (*
 		Source: card.DisplayName(),
 		Amount: madnessCost,
 		Details: map[string]interface{}{
-			"rule": "702.34a",
+			"rule": "702.35a",
 		},
 	})
 	return &CostPaymentResult{}, nil
@@ -338,7 +338,7 @@ func CastWithMadness(gs *GameState, seatIdx int, card *Card, madnessCost int) (*
 
 // ResolveMadnessWindow closes any open madness windows for `seatIdx`
 // by routing the still-exiled cards from exile to graveyard per
-// CR §702.34a's "If that player doesn't, they put it into their
+// CR §702.35a's "If that player doesn't, they put it into their
 // graveyard." Cards whose owner declined to cast end up where the
 // original discard would have placed them.
 //
@@ -403,7 +403,7 @@ func ResolveMadnessWindow(gs *GameState, seatIdx int) int {
 			Seat:   p.win.Seat,
 			Source: p.card.DisplayName(),
 			Details: map[string]interface{}{
-				"rule":   "702.34a",
+				"rule":   "702.35a",
 				"reason": "window_closed_without_cast",
 			},
 		})

@@ -1,14 +1,14 @@
 package gameengine
 
-// keywords_solved.go — Solved (CR §702.186) as a real designation toggle.
+// keywords_solved.go — Solved (CR §702.169) as a real designation toggle.
 //
-// CR §702.186a: Solved is a designation that an enchantment with one or
+// CR §702.169a: Solved is a designation that an enchantment with one or
 //               more "To solve" abilities can have. A Case enchantment
 //               (or any object with a "To solve" rider) becomes solved
 //               when its solve condition is met; static abilities printed
 //               on the card that begin "Solved —" (or that key off the
 //               solved state) function only while the object is solved.
-// CR §702.186b: Once solved, an object remains solved for as long as it
+// CR §702.169b: Once solved, an object remains solved for as long as it
 //               stays on the battlefield. Re-entering the battlefield
 //               clears the designation (CR §400.7).
 //
@@ -21,7 +21,7 @@ package gameengine
 // it.
 
 // IsSolved reports whether the permanent has the solved designation.
-// CR §702.186a.
+// CR §702.169a.
 func IsSolved(perm *Permanent) bool {
 	if perm == nil || perm.Flags == nil {
 		return false
@@ -42,7 +42,7 @@ func HasSolveAbility(card *Card) bool {
 // calling MarkSolved on an already-solved permanent is a no-op and emits
 // no second trigger.
 //
-// CR §702.186b — once solved, a permanent stays solved until it leaves
+// CR §702.169b — once solved, a permanent stays solved until it leaves
 // the battlefield. Per-card LTB handlers do not need to clear the flag
 // (the Permanent leaves with the rest of its state); ClearSolved exists
 // only for callers that want to reset a permanent in place (replacement
@@ -68,7 +68,7 @@ func MarkSolved(gs *GameState, perm *Permanent) {
 		Seat:   perm.Controller,
 		Source: name,
 		Details: map[string]interface{}{
-			"rule": "702.186a",
+			"rule": "702.169a",
 		},
 	})
 

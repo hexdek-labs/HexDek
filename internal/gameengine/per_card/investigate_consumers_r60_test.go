@@ -9,7 +9,7 @@ import (
 // -----------------------------------------------------------------------------
 // investigate_consumers_r60 — 8 handlers wired in
 // investigate_consumers_r60.go covering the investigate / Clue family
-// (CR §701.15).
+// (CR §701.16).
 // -----------------------------------------------------------------------------
 
 // countClues returns the number of Clue artifacts on seat's battlefield.

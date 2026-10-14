@@ -6,9 +6,9 @@ import "strings"
 // partner-family commander keywords.
 //
 // CR §702.124  — bare Partner
-// CR §702.124g — Partner with [name]
-// CR §702.131  — Friends Forever (Commander Legends — Battle for Baldur's Gate)
-// CR §702.139  — Doctor's Companion (the version this file does NOT
+// CR §702.124j — Partner with [name]
+// CR §702.124i  — Friends Forever (Commander Legends — Battle for Baldur's Gate)
+// CR §702.124m  — Doctor's Companion (the version this file does NOT
 //                touch — see ReadPartnerInfo for the Doctor case).
 //
 // The PartnerInfo parser + ValidatePartnerPair legality checker already
@@ -23,7 +23,7 @@ import "strings"
 // ---------------------------------------------------------------------------
 
 // HasFriendsForever reports whether the card has the Friends Forever
-// keyword (CR §702.131). Friends Forever is functionally identical to
+// keyword (CR §702.124i). Friends Forever is functionally identical to
 // Partner for commander-pair legality but is its OWN keyword — a
 // Friends-Forever card cannot pair with a bare-Partner card.
 func HasFriendsForever(card *Card) bool {
@@ -60,7 +60,7 @@ func IsBackground(card *Card) bool {
 }
 
 // HasChooseABackground returns true if the card carries the "Choose a
-// Background" commander keyword (CR §702.131 — CLB legendary creatures
+// Background" commander keyword (CR §702.124i — CLB legendary creatures
 // like Wilson, Refined Grizzly). Cards with this keyword may be paired
 // with any Background-subtype enchantment as a second commander.
 func HasChooseABackground(card *Card) bool {
@@ -72,7 +72,7 @@ func HasChooseABackground(card *Card) bool {
 // ---------------------------------------------------------------------------
 
 // CanBeCommandersTogether returns true if `a` and `b` form a legal
-// commander pair under CR §702.124 / §702.131 / §903.3c. Boolean
+// commander pair under CR §702.124 / §702.124i / §903.3c. Boolean
 // wrapper around ValidatePartnerPair, kept here so card-facing code
 // reads naturally:
 //

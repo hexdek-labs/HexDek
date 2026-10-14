@@ -92,7 +92,7 @@ func TestReconfigure_IllegalAttachTargetRejected(t *testing.T) {
 	if ActivateReconfigure(gs, perm, nonCreature, 2) {
 		t.Error("reconfigure must not attach to a non-creature (§702.151a)")
 	}
-	// Self target → rejected (§702.6b — can't equip itself).
+	// Self target → rejected (§702.6a — can't equip itself).
 	if ActivateReconfigure(gs, perm, perm, 2) {
 		t.Error("reconfigure must not attach to itself")
 	}

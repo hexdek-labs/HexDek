@@ -5,7 +5,7 @@ import (
 )
 
 // creature_mutated_consumers_r60.go — per_card OnTrigger handlers for
-// the Ikoria (IKO) Mutate keyword family (CR §702.139).
+// the Ikoria (IKO) Mutate keyword family (CR §702.140).
 //
 // Per the Versailles Phase 1B audit (PR #477 §3) `creature_mutated`
 // is one of 29 engine-emitted events with no per_card consumer wired.

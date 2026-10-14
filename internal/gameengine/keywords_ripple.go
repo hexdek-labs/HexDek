@@ -1,9 +1,9 @@
 package gameengine
 
-// keywords_ripple.go — Ripple (CR §702.92, Coldsnap 2006) as a real
+// keywords_ripple.go — Ripple (CR §702.60, Coldsnap 2006) as a real
 // cast-on-cast cascade-into-free mechanic.
 //
-// CR §702.92a: Ripple is a triggered ability. "Ripple N" means "When
+// CR §702.60a: Ripple is a triggered ability. "Ripple N" means "When
 //              you cast this spell, you may reveal the top N cards of
 //              your library. You may cast any cards revealed this way
 //              with the same name as this spell without paying their
@@ -153,7 +153,7 @@ func ApplyRipple(gs *GameState, casterSeat int, sourceCard *Card, n int) int {
 		Source: sourceCard.DisplayName(),
 		Amount: n,
 		Details: map[string]interface{}{
-			"rule": "702.92a",
+			"rule": "702.60a",
 		},
 	})
 
@@ -204,7 +204,7 @@ func ApplyRipple(gs *GameState, casterSeat int, sourceCard *Card, n int) int {
 			Details: map[string]interface{}{
 				"trigger_source": sourceCard.DisplayName(),
 				"reveal_index":   i,
-				"rule":           "702.92a",
+				"rule":           "702.60a",
 			},
 		})
 		castOneRippleFree(gs, casterSeat, sourceCard, c, n)

@@ -9,7 +9,7 @@ import (
 // -----------------------------------------------------------------------------
 // creature_mutated_consumers_r60 — 6 handlers wired in
 // creature_mutated_consumers_r60.go covering IKO Mutate triggers
-// (CR §702.139).
+// (CR §702.140).
 // -----------------------------------------------------------------------------
 
 func mutatedCtx(merged *gameengine.Permanent) map[string]interface{} {
