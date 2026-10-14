@@ -127,7 +127,7 @@ func admiralBrassBeginCombatReanim(gs *gameengine.GameState, perm *gameengine.Pe
 
 	captured := ent
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: perm.Controller,
 		SourceCardName: perm.Card.DisplayName(),
 		OneShot:        true,

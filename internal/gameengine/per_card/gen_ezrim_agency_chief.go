@@ -105,7 +105,7 @@ func ezrimSacGrantKeyword(gs *gameengine.GameState, src *gameengine.Permanent, a
 	}
 	gameengine.SetKeywordFlags(gs, src, "lifelink")
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "end_of_turn",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seatIdx,
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,

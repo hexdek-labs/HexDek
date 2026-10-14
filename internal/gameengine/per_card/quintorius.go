@@ -196,7 +196,7 @@ func quintoriusMinusFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 		hadDSCap := hadDS
 		hadVigCap := hadVig
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "next_end_step",
+			TriggerAt:      gameengine.CleanupStepTrigger,
 			ControllerSeat: seat,
 			SourceCardName: "Quintorius, History Chaser",
 			EffectFn: func(gs *gameengine.GameState) {

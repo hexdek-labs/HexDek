@@ -119,7 +119,7 @@ func karlachAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if len(firstStrikeGrants) > 0 {
 		grants := firstStrikeGrants
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "next_end_step",
+			TriggerAt:      gameengine.CleanupStepTrigger,
 			ControllerSeat: perm.Controller,
 			SourceCardName: perm.Card.DisplayName(),
 			OneShot:        true,

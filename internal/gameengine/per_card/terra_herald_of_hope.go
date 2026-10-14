@@ -77,7 +77,7 @@ func terraHeraldOfHopeCombatBegin(gs *gameengine.GameState, perm *gameengine.Per
 	gameengine.SetKeywordFlags(gs, perm, "flying")
 	captured := perm
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: perm.Controller,
 		SourceCardName: perm.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {

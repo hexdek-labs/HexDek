@@ -139,7 +139,7 @@ func insurrectionResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	// Schedule the EOT reversal. Mirrors sen_triplets's
 	// RegisterDelayedTrigger end-of-turn cleanup shape.
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "end_of_turn",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seat,
 		SourceCardName: "Insurrection",
 		OneShot:        true,

@@ -92,7 +92,7 @@ func zabazFlying(gs *gameengine.GameState, src *gameengine.Permanent) {
 	src.Flags["kw:flying"] = 1
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: src.Controller,
 		SourceCardName: src.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {

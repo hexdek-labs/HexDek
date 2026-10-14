@@ -102,7 +102,7 @@ func ellieVengefulActivate(gs *gameengine.GameState, src *gameengine.Permanent, 
 	gameengine.SetKeywordFlags(gs, src, "indestructible")
 	captured := src
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seatIdx,
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,

@@ -806,9 +806,7 @@
 712.2	67a59e8bb20d	Nonmodal double-faced cards have a Magic card face on each side and include abilities on one or both of their faces that allow the card to either “transform” or “convert” (turn over to its other face) and/or allow the card to be cast or enter the battlefield “transformed” or “converted” (with its back face up).
 712.3	e0fcbb5f8ad8	Modal double-faced cards have a Magic card face on each side. These faces are usually independent from one another, but they may have an ability that allows them to “transform” or “convert” on either face.
 712.4	0bde3fa5ad91	Meld cards have a Magic card face on one side and half of an oversized card face on the other.
-712.5	4329203838ba	There are seven specific meld pairs.
 712.5b	e148e1bd58f7	There are seven specific meld pairs.
-712.5c	16b92bf13dfc	There are seven specific meld pairs.
 712.6	2ccbd6576d22	Players who are allowed to look at a double-faced card may look at both sides of that card.
 712.8	545833e97468	Each face of a double-faced card that isn’t a meld card has its own set of characteristics. The front face of each meld card and the combined face formed by a meld pair each has its own set of characteristics.
 712.8a	408d69654738	Each face of a double-faced card that isn’t a meld card has its own set of characteristics. The front face of each meld card and the combined face formed by a meld pair each has its own set of characteristics.
@@ -841,6 +839,10 @@
 721.3	5a2dc45b9fe9	The text box striations have no game significance other than clearly demarcating which abilities and which power/toughness box are associated with which station symbol. Station cards each contain only one text box.
 721.4	1ac89ae1466f	Any ability a station card has that isn’t preceded by a station symbol is treated normally. In particular, each station card has its station ability (see rule 702.184) at all times. That ability may be activated regardless of how many charge counters are on it.
 722.1	4c2474034aa3	Preparation cards have a two-part card frame, with a smaller frame inset within their text box.
+724.1	aad3c21a7dda	Some cards end the turn. When an effect ends the turn, follow these steps in order, as they differ from the normal process for resolving spells and abilities (see rule 608, “Resolving Spells and Abilities”).
+724.1b	1198daee7e32	Some cards end the turn. When an effect ends the turn, follow these steps in order, as they differ from the normal process for resolving spells and abilities (see rule 608, “Resolving Spells and Abilities”).
+724.1d	543d42e1238d	Some cards end the turn. When an effect ends the turn, follow these steps in order, as they differ from the normal process for resolving spells and abilities (see rule 608, “Resolving Spells and Abilities”).
+724.1e	02ee51173bc3	Some cards end the turn. When an effect ends the turn, follow these steps in order, as they differ from the normal process for resolving spells and abilities (see rule 608, “Resolving Spells and Abilities”).
 726.1	b9206c768b67	The initiative is a designation a player can have. There is no initiative in a game until an effect instructs a player to take the initiative. A player who currently has the initiative designation is said to have the initiative.
 726.2	a1abb8c36157	There are three inherent triggered abilities associated with having the initiative. These triggered abilities have no source and are controlled by the player who had the initiative at the time the abilities triggered. This is an exception to rule 113.8. The full text of these abilities are “At the beginning of the upkeep of the player who has the initiative, that player ventures into Undercity,” “Whenever one or more creatures a player controls deal combat damage to the player who has the initiative, the controller of those creatures takes the initiative,” and “Whenever a player takes the initiative, that player ventures into Undercity.” See rule 701.49, “Venture into the Dungeon.”
 726.3	a891aec04de6	Only one player can have the initiative at a time. As a player takes the initiative, the player who currently has the initiative ceases to have it.

@@ -150,7 +150,8 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 
 	// turnEndingNow is a local helper that checks + consumes the
 	// "turn_ending_now" flag set by Sundial of the Infinite (or any
-	// "end the turn" effect per CR §712.5). When true, the turn loop
+	// "end the turn" effect per CR §724, Ending Turns and Phases).
+	// When true, the turn loop
 	// must skip remaining phases and jump directly to cleanup.
 	turnEndingNow := func() bool {
 		if gs.Flags != nil && gs.Flags["turn_ending_now"] > 0 {
@@ -159,8 +160,15 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		return false
 	}
 	// fastForwardCleanup runs the cleanup step when "end the turn"
-	// fires mid-turn. CR §712.5b: "any remaining phases/steps are
-	// skipped; the cleanup step happens immediately."
+	// fires mid-turn. CR §724.1d: "The current phase and/or step ends.
+	// ... The game skips straight to the cleanup step; skip any phases
+	// or steps between this phase or step and the cleanup step."
+	//
+	// The number here was §712.5b until r101. That rule exists, which is
+	// why the crcite dangling gate never objected — it is "Hanweir
+	// Garrison and Hanweir Battlements meld to form Hanweir, the
+	// Writhing Township." §712 is Double-Faced Cards; ending the turn is
+	// §724.
 	fastForwardCleanup := func() {
 		// Consume the flag so it doesn't fire again.
 		delete(gs.Flags, "turn_ending_now")
@@ -168,7 +176,7 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 			Kind: "turn_ending_fast_forward",
 			Seat: active,
 			Details: map[string]interface{}{
-				"rule": "712.5b",
+				"rule": "724.1d",
 			},
 		})
 		// §514.1 discard to hand size.

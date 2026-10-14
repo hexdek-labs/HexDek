@@ -130,7 +130,7 @@ func theDestinedWhiteMageActivate(gs *gameengine.GameState, src *gameengine.Perm
 	gameengine.SetKeywordFlags(gs, target, "lifelink")
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seatIdx,
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,

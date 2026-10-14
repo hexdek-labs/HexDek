@@ -183,7 +183,7 @@ func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent)
 	captured := make([]*gameengine.Permanent, len(granted))
 	copy(captured, granted)
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seat,
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,

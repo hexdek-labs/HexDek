@@ -179,7 +179,7 @@ func TestKeywordFlagRefcountR91_HeliodExpiryKeepsLaterGrantor(t *testing.T) {
 	gameengine.GrantKeywordFlag(ally, "lifelink", r89OtherSource)
 	r89Assert(t, ally, "lifelink", 2)
 
-	gameengine.FireDelayedTriggers(gs, "end", "end_step")
+	gameengine.FireCleanupStepExpiries(gs)
 
 	r89Assert(t, ally, "lifelink", 1)
 	r91NoPhantomKeyword(t, gs, ally, "lifelink_from_heliod_ueot")

@@ -130,7 +130,7 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 			// indestructible, bounding the "until end of turn" window.
 			captured := newPerm
 			gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-				TriggerAt:      "next_end_step",
+				TriggerAt:      gameengine.CleanupStepTrigger,
 				ControllerSeat: perm.Controller,
 				SourceCardName: perm.Card.DisplayName() + " (indestructible cleanup)",
 				OneShot:        true,

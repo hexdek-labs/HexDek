@@ -88,7 +88,7 @@ func skithiryxGrantHaste(gs *gameengine.GameState, src *gameengine.Permanent) {
 	if !alreadyHasted {
 		captured := src
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "next_end_step",
+			TriggerAt:      gameengine.CleanupStepTrigger,
 			ControllerSeat: seat,
 			SourceCardName: src.Card.DisplayName(),
 			OneShot:        true,

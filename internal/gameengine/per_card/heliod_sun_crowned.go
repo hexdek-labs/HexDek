@@ -207,7 +207,7 @@ func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanen
 	// Cleanup at end step.
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: src.Controller,
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,

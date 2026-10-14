@@ -104,9 +104,9 @@ func TestBreOfClanStoutarm_ActivatedGrantsFlyingLifelink(t *testing.T) {
 	}
 }
 
-// TestBreOfClanStoutarm_GrantStripsAtEndStep pins the EOT cleanup:
+// TestBreOfClanStoutarm_GrantStripsAtCleanup pins the EOT cleanup:
 // next_end_step delayed trigger fires → granted flags strip.
-func TestBreOfClanStoutarm_GrantStripsAtEndStep(t *testing.T) {
+func TestBreOfClanStoutarm_GrantStripsAtCleanup(t *testing.T) {
 	gs := newGame(t, 2)
 	bre := addPerm(gs, 0, "Bre of Clan Stoutarm", "legendary", "creature", "human")
 	target := addPerm(gs, 0, "Vanilla Bear", "creature", "bear")
@@ -121,13 +121,13 @@ func TestBreOfClanStoutarm_GrantStripsAtEndStep(t *testing.T) {
 	}
 
 	// Fire end_step → delayed-trigger cleanup runs.
-	gameengine.FireDelayedTriggers(gs, "ending", "end_step")
+	gameengine.FireCleanupStepExpiries(gs)
 
 	if target.Flags["kw:flying"] == 1 {
-		t.Errorf("kw:flying should strip at EOT; flags=%+v", target.Flags)
+		t.Errorf("kw:flying should strip at the CR 514.2 cleanup step; flags=%+v", target.Flags)
 	}
 	if target.Flags["kw:lifelink"] == 1 {
-		t.Errorf("kw:lifelink should strip at EOT; flags=%+v", target.Flags)
+		t.Errorf("kw:lifelink should strip at the CR 514.2 cleanup step; flags=%+v", target.Flags)
 	}
 }
 

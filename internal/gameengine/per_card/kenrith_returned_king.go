@@ -87,7 +87,7 @@ func kenrithGrantTrampleHaste(gs *gameengine.GameState, src *gameengine.Permanen
 		}
 	}
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: src.Controller,
 		SourceCardName: "Kenrith, the Returned King",
 		EffectFn: func(gs *gameengine.GameState) {

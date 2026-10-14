@@ -107,7 +107,7 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	captured := target
 	originalOwner := origOwner
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seatIdx,
 		SourceCardName: perm.Card.DisplayName(),
 		OneShot:        true,

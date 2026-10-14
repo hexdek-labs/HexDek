@@ -314,7 +314,7 @@ func dihadaMinusEleven(gs *gameengine.GameState, src *gameengine.Permanent) {
 	copy(capturedStolen, stolen)
 
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: seat,
 		SourceCardName: "Dihada, Binder of Wills",
 		EffectFn: func(gs *gameengine.GameState) {

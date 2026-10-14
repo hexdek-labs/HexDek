@@ -67,7 +67,7 @@ func TestKeywordFlagRefcountR89_NajeelaStripKeepsOtherSource(t *testing.T) {
 	r89Assert(t, attacker, "haste", 2)
 
 	// End step: Najeela's grants expire.
-	gameengine.FireDelayedTriggers(gs, "end", "end_step")
+	gameengine.FireCleanupStepExpiries(gs)
 
 	r89Assert(t, attacker, "haste", 1)
 	r89Assert(t, attacker, "trample", 1)
@@ -94,7 +94,7 @@ func TestKeywordFlagRefcountR89_LeonardoStripKeepsOtherSource(t *testing.T) {
 	}
 	r89Assert(t, ally, "trample", 2)
 
-	gameengine.FireDelayedTriggers(gs, "end", "end_step")
+	gameengine.FireCleanupStepExpiries(gs)
 
 	r89Assert(t, ally, "trample", 1)
 	if ally.HasKeyword("menace") {
@@ -174,7 +174,7 @@ func TestKeywordFlagRefcountR89_DihadaRevertKeepsLaterGrantor(t *testing.T) {
 	gameengine.GrantKeywordFlag(victim, "haste", r89OtherSource)
 	r89Assert(t, victim, "haste", 2)
 
-	gameengine.FireDelayedTriggers(gs, "end", "end_step")
+	gameengine.FireCleanupStepExpiries(gs)
 
 	r89Assert(t, victim, "haste", 1)
 }

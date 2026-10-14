@@ -14,7 +14,7 @@ import (
 // turns.
 //
 // Bisection through the three handlers identified Zidane as the
-// source: its ETB control-steal registers a `next_end_step` delayed
+// source: its ETB control-steal registers a cleanup-step delayed
 // trigger to return the stolen creature. The delayed trigger blindly
 // re-added the captured *Permanent to the original owner's
 // battlefield, with no check for whether the perm had LEFT play in
@@ -77,13 +77,13 @@ func TestZidane_EOTReturn_NoOpWhenCapturedDied(t *testing.T) {
 	// test stays focused.)
 	var trigger *gameengine.DelayedTrigger
 	for _, dt := range gs.DelayedTriggers {
-		if dt != nil && dt.TriggerAt == "next_end_step" && dt.SourceCardName == "Zidane, Tantalus Thief" {
+		if dt != nil && dt.TriggerAt == gameengine.CleanupStepTrigger && dt.SourceCardName == "Zidane, Tantalus Thief" {
 			trigger = dt
 			break
 		}
 	}
 	if trigger == nil {
-		t.Fatal("expected Zidane to have registered a next_end_step delayed trigger")
+		t.Fatal("expected Zidane to have registered a cleanup-step delayed trigger")
 	}
 	trigger.EffectFn(gs)
 
@@ -143,13 +143,13 @@ func TestZidane_EOTReturn_NormalPathStillReturnsLiveCreature(t *testing.T) {
 	// Dragon is alive on seat 0's battlefield at end of turn.
 	var trigger *gameengine.DelayedTrigger
 	for _, dt := range gs.DelayedTriggers {
-		if dt != nil && dt.TriggerAt == "next_end_step" && dt.SourceCardName == "Zidane, Tantalus Thief" {
+		if dt != nil && dt.TriggerAt == gameengine.CleanupStepTrigger && dt.SourceCardName == "Zidane, Tantalus Thief" {
 			trigger = dt
 			break
 		}
 	}
 	if trigger == nil {
-		t.Fatal("expected a next_end_step delayed trigger from Zidane")
+		t.Fatal("expected a cleanup-step delayed trigger from Zidane")
 	}
 	trigger.EffectFn(gs)
 
@@ -208,13 +208,13 @@ func TestZidane_EOTReturn_NoOpWhenCapturedExiled(t *testing.T) {
 
 	var trigger *gameengine.DelayedTrigger
 	for _, dt := range gs.DelayedTriggers {
-		if dt != nil && dt.TriggerAt == "next_end_step" && dt.SourceCardName == "Zidane, Tantalus Thief" {
+		if dt != nil && dt.TriggerAt == gameengine.CleanupStepTrigger && dt.SourceCardName == "Zidane, Tantalus Thief" {
 			trigger = dt
 			break
 		}
 	}
 	if trigger == nil {
-		t.Fatal("expected a next_end_step delayed trigger")
+		t.Fatal("expected a cleanup-step delayed trigger")
 	}
 	trigger.EffectFn(gs)
 

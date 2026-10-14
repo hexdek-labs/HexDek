@@ -76,7 +76,7 @@ func xenagosCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	best.Flags["kw:haste"] = 1
 	captured := best
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: perm.Controller,
 		SourceCardName: perm.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {

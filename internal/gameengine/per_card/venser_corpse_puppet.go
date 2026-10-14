@@ -95,7 +95,7 @@ func venserCorpsePuppetProliferate(gs *gameengine.GameState, perm *gameengine.Pe
 	best.Flags["kw:lifelink"] = 1
 	captured := best
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: perm.Controller,
 		SourceCardName: perm.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {

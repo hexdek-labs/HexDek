@@ -70,7 +70,7 @@ func balmorTeamPump(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if len(granted) > 0 {
 		captured := granted
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "next_end_step",
+			TriggerAt:      gameengine.CleanupStepTrigger,
 			ControllerSeat: perm.Controller,
 			SourceCardName: perm.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {

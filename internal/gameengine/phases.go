@@ -476,6 +476,14 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 			}
 		}
 
+		// CR §514.2 — the handler-scheduled "until end of turn" undos
+		// (keyword grants, control reversions) run here, at the start of
+		// the cleanup step. They were previously scheduled for the §513
+		// END step, one priority window early, and were skipped entirely
+		// when an effect ended the turn (§724.1d). See
+		// keyword_grant_expiry_cleanup_r101.go.
+		FireCleanupStepExpiries(gs)
+
 		// CR §514.2 — until-EOT keyword grants recorded on Permanent.Flags
 		// (the other surface HasKeyword reads) expire here. The sweep above
 		// only clears GrantedAbilities and Modifications, so before this
@@ -655,6 +663,11 @@ func FireDelayedTriggers(gs *GameState, phase, step string) int {
 
 func delayedTriggerMatches(dt *DelayedTrigger, gs *GameState, phase, step string) bool {
 	switch dt.TriggerAt {
+	case CleanupStepTrigger:
+		// CR 514.2 — "until end of turn" effects end as the CLEANUP step
+		// begins, after the end step and its priority window. See
+		// keyword_grant_expiry_cleanup_r101.go.
+		return step == "cleanup"
 	case "end_of_turn", "next_end_step":
 		return step == "end" || step == "end_step"
 	case "your_next_end_step":

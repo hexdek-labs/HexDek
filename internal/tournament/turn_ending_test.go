@@ -11,7 +11,7 @@ import (
 )
 
 // =============================================================================
-// Turn-ending fast-forward tests (Sundial of the Infinite, CR §712.5).
+// Turn-ending fast-forward tests (Sundial of the Infinite, CR §724.1).
 // =============================================================================
 
 func TestTurnEnding_FlagConsumedByTurnLoop(t *testing.T) {

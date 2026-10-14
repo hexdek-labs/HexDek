@@ -141,7 +141,7 @@ func arahboCatAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 
 	captured := atk
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: perm.Controller,
 		SourceCardName: perm.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {

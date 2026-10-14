@@ -67,7 +67,7 @@ func TestKwInvalidationR97_SkithiryxHasteGoneFromLayerAfterExpiry(t *testing.T) 
 		t.Fatalf("fixture: haste not granted")
 	}
 
-	if n := gameengine.FireDelayedTriggers(gs, "ending", "end_step"); n == 0 {
+	if n := gameengine.FireCleanupStepExpiries(gs); n == 0 {
 		t.Fatalf("fixture: no delayed trigger fired")
 	}
 

@@ -111,7 +111,7 @@ func leonardoFiveColorGrant(gs *gameengine.GameState, src *gameengine.Permanent,
 	}
 	if len(captured) > 0 {
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-			TriggerAt:      "next_end_step",
+			TriggerAt:      gameengine.CleanupStepTrigger,
 			ControllerSeat: src.Controller,
 			SourceCardName: src.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {

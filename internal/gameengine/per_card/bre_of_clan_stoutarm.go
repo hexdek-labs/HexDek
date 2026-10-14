@@ -84,7 +84,7 @@ func breActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx
 	gs.InvalidateCharacteristicsCache()
 	captured := target
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
-		TriggerAt:      "next_end_step",
+		TriggerAt:      gameengine.CleanupStepTrigger,
 		ControllerSeat: src.Controller,
 		SourceCardName: src.Card.DisplayName(),
 		EffectFn: func(gs *gameengine.GameState) {
