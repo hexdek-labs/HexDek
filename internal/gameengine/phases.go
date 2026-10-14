@@ -864,7 +864,7 @@ func UntapAll(gs *GameState, seatIdx int) {
 			sx.Flags = map[string]int{}
 		}
 		sx.Flags["miracle_draws_this_turn"] = 0
-		// CR §702.74 (Prowl) / §702.169 (Freerunning) — both gate on "dealt
+		// CR §702.76 (Prowl) / §702.173a (Freerunning) — both gate on "dealt
 		// combat damage to a player THIS TURN", tracked in TurnCounters
 		// .CombatDamageBy and this seat flag. Both are populated only for the
 		// seat whose creatures attacked (always the active player), but

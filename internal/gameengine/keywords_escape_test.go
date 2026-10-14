@@ -317,8 +317,11 @@ func TestCastWithEscape_StampsCostMeta(t *testing.T) {
 	if v, ok := item.CostMeta["zone_cast_keyword"]; !ok || v != "escape" {
 		t.Fatalf("CostMeta[\"zone_cast_keyword\"] = %v, want \"escape\"", item.CostMeta["zone_cast_keyword"])
 	}
-	if !ShouldExileOnResolve(item) {
-		t.Fatal("escape cast must stamp exile_on_resolve=true (engine model, no CR basis — open issue (8))")
+	if _, present := item.CostMeta["exile_on_resolve"]; present {
+		t.Fatal("escape cast must NOT stamp exile_on_resolve — §702.138 has no exile carveout (r96)")
+	}
+	if ShouldExileOnResolve(item) {
+		t.Fatal("ShouldExileOnResolve must be false for an escape cast (§702.138 has no exile clause)")
 	}
 	if !IsEscapeCast(item) {
 		t.Fatal("IsEscapeCast should return true for an escape-cast stack item")
@@ -329,10 +332,16 @@ func TestCastWithEscape_StampsCostMeta(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// (e) On resolve the spell itself goes to exile, not graveyard
+// (e) On resolve the spell goes to its owner's GRAVEYARD, not exile
+//
+// r96 / old open issue (8). §702.138 grants escape and nothing else —
+// no "exile this card instead of putting it anywhere else" carveout of
+// the kind flashback has at §702.34a. A resolved escape-cast sorcery
+// takes the ordinary §608.2g destination, so it can escape again.
+// Before r96 the engine exiled it; this test asserted exactly that.
 // ---------------------------------------------------------------------------
 
-func TestEscape_ResolveExilesSpellNotToGraveyard(t *testing.T) {
+func TestEscape_ResolvePutsSpellInGraveyardNotExile(t *testing.T) {
 	gs := newEscapeGame(t)
 	gs.Seats[0].ManaPool = 5
 	spell := newEscapeCard("Underworld Breach", 0, 2, "{R}", 3)
@@ -350,24 +359,131 @@ func TestEscape_ResolveExilesSpellNotToGraveyard(t *testing.T) {
 
 	ResolveStackTop(gs)
 
-	// Spell must NOT be in graveyard: the engine replaces the default
-	// §608.2g graveyard destination with exile. This pins CURRENT
-	// behaviour, which has no CR basis under escape — open issue (8).
+	// The POSITIVE assertion is the load-bearing one: a "not in exile"
+	// check alone would also pass if the card vanished entirely.
+	foundInGY := false
 	for _, c := range gs.Seats[0].Graveyard {
 		if c == spell {
-			t.Fatal("escape-cast spell must go to exile on resolution, not graveyard (engine model — open issue (8))")
-		}
-	}
-	// Spell IS in exile.
-	foundInExile := false
-	for _, c := range gs.Seats[0].Exile {
-		if c == spell {
-			foundInExile = true
+			foundInGY = true
 			break
 		}
 	}
-	if !foundInExile {
-		t.Fatal("escape-cast spell should be in owner's exile after resolution")
+	if !foundInGY {
+		t.Fatal("resolved escape-cast sorcery must be in its owner's graveyard (§608.2g) — §702.138 has no exile carveout")
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == spell {
+			t.Fatal("resolved escape-cast spell must NOT be exiled — that was the r96 defect (§702.138 has no such clause)")
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// (e2) A COUNTERED escape spell goes to the graveyard and can escape again
+//
+// This is the concrete case from open issue (8): counter a graveyard-cast
+// Uro and the engine exiled it, so it could never escape a second time.
+// Per §701.6a a countered spell is put into its owner's graveyard, and
+// §702.138 adds no replacement. The off-board routing lives in
+// postStackZoneForOffboard, a DIFFERENT code path from the resolve branch
+// above — before r96 both honored the same flag, so both were wrong.
+// ---------------------------------------------------------------------------
+
+func TestEscape_CounteredSpellReturnsToGraveyardAndCanEscapeAgain(t *testing.T) {
+	gs := newEscapeGame(t)
+	gs.Seats[0].ManaPool = 5
+	spell := newEscapeCard("Uro, Titan of Nature's Wrath", 0, 3, "{G}{G}{U}{U}", 5)
+	fodder := []*Card{
+		newFodderCard("Filler A", 0),
+		newFodderCard("Filler B", 0),
+		newFodderCard("Filler C", 0),
+		newFodderCard("Filler D", 0),
+		newFodderCard("Filler E", 0),
+	}
+	// Two more beyond the exile tax, so the "can escape again" half of
+	// the assertion has something to measure rather than passing vacuously.
+	spare := []*Card{newFodderCard("Filler F", 0), newFodderCard("Filler G", 0)}
+	seedGraveyard(gs, 0, spell)
+	seedGraveyard(gs, 0, fodder...)
+	seedGraveyard(gs, 0, spare...)
+
+	if _, err := CastWithEscape(gs, 0, spell, 4, fodder); err != nil {
+		t.Fatalf("CastWithEscape failed: %v", err)
+	}
+	if len(gs.Stack) != 1 {
+		t.Fatalf("stack size = %d, want 1", len(gs.Stack))
+	}
+
+	// Counter it on the stack, then let the resolver run the
+	// countered-spell branch.
+	gs.Stack[0].Countered = true
+	ResolveStackTop(gs)
+
+	foundInGY := false
+	for _, c := range gs.Seats[0].Graveyard {
+		if c == spell {
+			foundInGY = true
+			break
+		}
+	}
+	if !foundInGY {
+		t.Fatal("countered escape spell must be in its owner's graveyard (§701.6a) — §702.138 adds no exile replacement")
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == spell {
+			t.Fatal("countered escape spell must NOT be exiled — this is the open-issue-(8) defect r96 removed")
+		}
+	}
+
+	// And it can escape AGAIN, which is the gameplay consequence: the
+	// card is back where its escape ability functions (§702.138a) with
+	// enough fodder left to pay the tax a second time.
+	if !HasEscape(spell) {
+		t.Fatal("spell should still have escape")
+	}
+	others := 0
+	for _, c := range gs.Seats[0].Graveyard {
+		if c != spell {
+			others++
+		}
+	}
+	if others < 2 {
+		t.Fatalf("expected the 2 spare cards left in graveyard for a second escape; got %d", others)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// (e3) Flashback is UNCHANGED — the carveout r96 removed from escape is
+// a real rule for flashback (§702.34a), and the off-board path must still
+// honor it. Without this, "fix escape" and "break flashback" look alike.
+// ---------------------------------------------------------------------------
+
+// NOTE: this test passes against a semantics-only revert too, by design —
+// it is an OVER-SUPPRESSION guard. Its job is to stay quiet while the
+// escape change lands, so that removing too much shows up here as a
+// failure. The other seven r96 escape assertions all go red on revert.
+func TestEscape_FlashbackOffboardExileStillHonored_r96(t *testing.T) {
+	item := &StackItem{CostMeta: map[string]interface{}{"exile_on_resolve": true}}
+	zone, rule := postStackZoneForOffboard(item, "graveyard", "701.6a")
+	if zone != "exile" {
+		t.Fatalf("flashback off-board zone = %q, want exile (§702.34a)", zone)
+	}
+	if rule != "702.34a" {
+		t.Fatalf("flashback off-board rule tag = %q, want 702.34a", rule)
+	}
+
+	// An escape item no longer carries the flag, so it falls through to
+	// the default — the countered-spell destination, §701.6a.
+	esc := &StackItem{CostMeta: map[string]interface{}{
+		"escape_cast":       true,
+		"zone_cast_keyword": "escape",
+	}}
+	zone2, rule2 := postStackZoneForOffboard(esc, "graveyard", "701.6a")
+	if zone2 != "graveyard" {
+		t.Fatalf("escape off-board zone = %q, want graveyard", zone2)
+	}
+	if rule2 != "701.6a" {
+		t.Fatalf("escape off-board rule tag = %q, want 701.6a (§701.5 is Cast)", rule2)
 	}
 }
 

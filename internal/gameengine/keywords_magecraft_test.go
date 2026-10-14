@@ -8,7 +8,8 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Magecraft tests — CR §702.137 (Strixhaven 2021)
+// Magecraft tests — ability word, no CR entry per §207.2c
+// (was CR §702.137, which is Spectacle; corrected r96)
 // ---------------------------------------------------------------------------
 
 func newMagecraftGame(t *testing.T) *GameState {

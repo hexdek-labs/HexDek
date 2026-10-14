@@ -8,7 +8,7 @@ package gameengine
 // AbilityInstance-based delayed-trigger pool).
 
 // ---------------------------------------------------------------------------
-// MergedCards / MergeKind primitives — §702.139 (Mutate) + §712 (Meld)
+// MergedCards / MergeKind primitives — §702.140 (Mutate) + §701.42 (Meld)
 // ---------------------------------------------------------------------------
 
 // RecordMutateMerge records that the dying Permanent's card has merged

@@ -662,7 +662,7 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		if byEvent != nil {
 			handlers = append([]TriggerHandler(nil), byEvent[canonical]...)
 		}
-		// CR §702.140 (Mutate) / §702.139 (Meld): a merged permanent has
+		// CR §702.140 (Mutate) / §701.42 (Meld): a merged permanent has
 		// ALL the abilities of every card in the pile, not just the top
 		// card's. The dispatcher above matches handlers by the SURVIVING
 		// (top) card's name only, so a non-top constituent's triggered

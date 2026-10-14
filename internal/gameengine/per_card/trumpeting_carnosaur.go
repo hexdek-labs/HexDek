@@ -18,7 +18,7 @@ import (
 //
 // Implementation:
 //   - Trample handled by AST keyword pipeline.
-//   - OnETB: discover 5 via gameengine.PerformDiscover (CR §701.51).
+//   - OnETB: discover 5 via gameengine.PerformDiscover (CR §701.57a).
 //     Discover exiles cards from the top of the library until exiling
 //     a nonland card with mana value <= N; that card may be cast for
 //     free or put into the hand. The engine helper returns the found

@@ -132,10 +132,11 @@ func TestGYAudit_IntrinsicFlashback_ResolvesToExile(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Escape (§702.148) — exile-N additional cost; spell exiles on resolution.
+// Escape (§702.138) — exile-N additional cost. The spell does NOT exile
+// on resolution: §702.138 has no such clause (r96, was open issue (8)).
 // ---------------------------------------------------------------------------
 
-func TestGYAudit_Escape_ExilesFodderAndResolvesToExile(t *testing.T) {
+func TestGYAudit_Escape_ExilesFodderAndResolvesToGraveyard(t *testing.T) {
 	gs := gyAuditGame(t)
 	gs.Seats[0].ManaPool = 10
 	spell := newEscapeCard("Bond of Flourishing", 0, 3, "{2}{R}", float64(2))
@@ -158,8 +159,15 @@ func TestGYAudit_Escape_ExilesFodderAndResolvesToExile(t *testing.T) {
 		t.Error("un-chosen fodder must stay in the graveyard")
 	}
 	ResolveStackTop(gs)
-	if !inExile(gs.Seats[0], spell) || inGrave(gs.Seats[0], spell) {
-		t.Error("escape spell must end in exile after resolution (§702.148b)")
+	// r96: the spell goes BACK to the graveyard. §702.138 has no exile
+	// carveout — the "§702.148b" this line used to cite does not exist;
+	// §702.148 is Cleave. That was the last surviving copy of the
+	// fabricated citation the behaviour rested on.
+	if !inGrave(gs.Seats[0], spell) {
+		t.Error("escape spell must end in its owner's graveyard after resolution (§608.2g) — §702.138 grants no exile")
+	}
+	if inExile(gs.Seats[0], spell) {
+		t.Error("escape spell must NOT be exiled on resolution (r96)")
 	}
 }
 

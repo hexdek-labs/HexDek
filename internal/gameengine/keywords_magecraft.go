@@ -1,6 +1,11 @@
 package gameengine
 
-// keywords_magecraft.go — Magecraft (CR §702.137, Strixhaven 2021).
+// keywords_magecraft.go — Magecraft (Strixhaven 2021).
+//
+// Magecraft is an ABILITY WORD. Per CR §207.2c ability words "have no
+// special rules meaning and no individual entries in the Comprehensive
+// Rules", so there is no number to cite. This file carried §702.137
+// until r96 — that is Spectacle.
 //
 // CR §702.137a: Magecraft is an ability word. It indicates a triggered
 //               ability of the form "Whenever you cast or copy an

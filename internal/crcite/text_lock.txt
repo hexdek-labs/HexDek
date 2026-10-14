@@ -363,7 +363,6 @@
 701.58	8c7710b00838	Cloak
 701.58a	6c8501aa74bd	Cloak
 701.59	401d49517f31	Collect Evidence
-701.5a	e12d8d9147e9	Cast
 701.60	a77af0f2f073	Suspect
 701.60a	c5ce5d5be519	Suspect
 701.60c	06bedd65ca01	Suspect
@@ -462,6 +461,7 @@
 702.137a	15f0c3c383c8	Spectacle
 702.138	ea55f4854e46	Escape
 702.138a	a3db94004dfe	Escape
+702.138b	b452921c2897	Escape
 702.139	7149aa384828	Companion
 702.139a	df4655b1d77e	Companion
 702.139b	e7fd716f5176	Companion

@@ -7,7 +7,7 @@ import (
 )
 
 // regeneration_test.go — regression pins for the regeneration
-// replacement (CR §701.15). Before this, regeneration_shield was set but
+// replacement (CR §701.19a). Before this, regeneration_shield was set but
 // never consumed, so regeneration did nothing.
 
 func regenCreature(gs *GameState, seat int) *Permanent {

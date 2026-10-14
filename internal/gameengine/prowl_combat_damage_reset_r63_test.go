@@ -7,7 +7,7 @@ import (
 
 // prowl_combat_damage_reset_r63_test.go — mechanic-probe regressions for the
 // per-turn reset of the shared "dealt combat damage to a player this turn"
-// trackers (CR §702.74 Prowl / §702.169 Freerunning).
+// trackers (CR §702.76 Prowl / §702.173a Freerunning).
 //
 // Both facts are populated in applyCombatDamageToPlayer (combat.go) ONLY for
 // the seat whose creatures attacked — always the active player. But the

@@ -24,8 +24,9 @@ import (
 //     for X=0 or the cost wasn't routed through the cast pipeline).
 //   - Enchantment-escape grant (R58): register a ZoneCastPolicy that
 //     lets the controller cast enchantment cards from their own
-//     graveyard with ExileOnResolve set (so the cast routes the card to
-//     exile per escape's "exile rather than graveyard" rider). The
+//     graveyard. ExileOnResolve is FALSE (r96): escape has no
+//     "exile rather than graveyard" rider — §702.138 carries no such
+//     clause — and this card's own text adds none. The
 //     printed additional cost — "plus exile three other cards from your
 //     graveyard" — isn't representable in the policy primitive's
 //     single-integer ManaCost slot; the mana-cost half is honored
@@ -102,9 +103,10 @@ func theMasterOfKeysETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	seat.Flags["master_of_keys_enchantment_escape_grant"] = 1
 	// R58: register the enchantment-escape grant on the controller's
-	// graveyard. ManaCost=-1 means "use the card's printed mana cost";
-	// ExileOnResolve=true routes the resolved spell to exile per
-	// escape's printed rider.
+	// graveyard. ManaCost=-1 means "use the card's printed mana cost".
+	// ExileOnResolve is false (r96): escape has no printed exile rider
+	// — §702.138 has no exile clause and this card's oracle text adds
+	// none, so an escaped enchantment takes the ordinary routing.
 	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
 		SourcePerm:      perm,
 		HandlerID:       "the_master_of_keys_enchantment_escape",
@@ -114,7 +116,7 @@ func theMasterOfKeysETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		ControllerSeat:  perm.Controller,
 		Predicate:       theMasterOfKeysEnchantmentPredicate,
 		ManaCost:        -1,
-		ExileOnResolve:  true,
+		ExileOnResolve:  false,
 		Duration:        "while_source_on_bf",
 		SourceTimestamp: perm.Timestamp,
 		GrantTurn:       gs.Turn,

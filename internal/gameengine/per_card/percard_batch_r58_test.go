@@ -156,8 +156,8 @@ func TestTheMasterOfKeys_ETBRegistersEnchantmentEscapePolicy(t *testing.T) {
 	if p.Zone != gameengine.ZoneGraveyard {
 		t.Errorf("policy zone should be graveyard; got %s", p.Zone)
 	}
-	if !p.ExileOnResolve {
-		t.Errorf("escape grants ExileOnResolve")
+	if p.ExileOnResolve {
+		t.Errorf("escape must NOT grant ExileOnResolve — §702.138 has no exile clause, and The Master of Keys' oracle text adds none (r96)")
 	}
 	if p.OwnerScope != "self" || p.CasterScope != "controller" {
 		t.Errorf("expected self/controller scopes; got owner=%q caster=%q", p.OwnerScope, p.CasterScope)

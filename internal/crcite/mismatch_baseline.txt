@@ -37,3 +37,6 @@ internal/gameengine/stack_flashback_offboard_r60_test.go|702.138	# correct cross
 internal/gameengine/per_card/skithiryx_the_blight_dragon.go|701.19a	# correct cross-ref: the regeneration shield is §701.19a; the file name is the card's, not a keyword (fixed r95, was 701.15 = Goad)
 internal/gameengine/reconfigure_type_toggle_r63_test.go|702.6a	# correct cross-ref: reconfigure reuses equip's target restriction (fixed r95, was 702.6b = a see-also pointer)
 internal/gameengine/keywords_escape.go|702.34a	# correct cross-ref: names flashback's real exile carveout as the likely source of the escape behaviour that has none, open issue (8)
+internal/gameengine/keywords_escape_test.go|701.6a	# correct cross-ref: §701.6a is where a COUNTERED escape spell goes — the r96 regression asserts exactly that destination
+internal/gameengine/keywords_escape_test.go|701.5	# correct cross-ref: named only to say §701.5 is Cast, i.e. NOT the countered-spell rule the engine used to emit (r96)
+internal/gameengine/keywords_escape_test.go|702.34a	# correct cross-ref: the r96 test pins that flashback's real carveout still fires while escape's does not

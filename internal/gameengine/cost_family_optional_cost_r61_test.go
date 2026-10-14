@@ -445,7 +445,7 @@ func TestCasualty_Declined_NoSacrifice(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Bargain (CR §702.176) — sacrifice an artifact/enchantment/token → flag.
+// Bargain (CR §702.166a) — sacrifice an artifact/enchantment/token → flag.
 // ---------------------------------------------------------------------------
 
 func TestBargain_Paid_SacrificesAndStampsFlag(t *testing.T) {

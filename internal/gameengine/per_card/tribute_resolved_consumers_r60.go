@@ -5,7 +5,7 @@ import (
 )
 
 // tribute_resolved_consumers_r60.go — per_card OnTrigger handlers for
-// the Born of the Gods "Tribute N" mechanic (CR §702.121, BNG 2014).
+// the Born of the Gods "Tribute N" mechanic (CR §702.104, BNG 2014).
 //
 // Per the Versailles Phase 1B audit, `tribute_resolved` is the last
 // Phase 1B engine-emitted event with no per_card consumer wired. The

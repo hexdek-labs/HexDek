@@ -36,7 +36,7 @@ package gameengine
 //   - Max Speed            — §702.178
 //   - Tiered               — §702.182
 //   - Job Select           — §702.183
-//   - Solved               — §702.186
+//   - Solved               — §702.169
 //   - Mayhem               — §702.187
 //   - Infinity             — §702.190
 //   - Exhaust (already in keywords_misc.go; this adds HasExhaust)

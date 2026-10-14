@@ -85,7 +85,7 @@ var faceDownTemplates = map[string]FaceDownTemplate{
 		Types: []string{"creature"}, Ward: CloakFaceDownWardCost,
 		Hidden: true, TurnUp: "mana",
 	},
-	// CR §701.34 — Manifest: 2/2 colorless creature, no ward; turn up for
+	// CR §701.40 — Manifest: 2/2 colorless creature, no ward; turn up for
 	// the underlying card's mana cost (if it's a creature card).
 	"manifest": {
 		Key: "manifest", Power: 2, Toughness: 2,

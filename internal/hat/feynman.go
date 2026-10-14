@@ -271,7 +271,7 @@ func checkPermanentTypes(gs *gameengine.GameState, r *OracleResult) {
 			// down, so reading Card.Types here says nothing about the
 			// permanent that is actually on the battlefield.
 			//
-			// This matters because manifest (CR §701.34) puts ANY card
+			// This matters because manifest (CR §701.40) puts ANY card
 			// face down as a 2/2 — including an instant or a sorcery,
 			// entirely legally. The engine implements that
 			// (keywords_manifest.go, "each manifested card itself

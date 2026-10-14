@@ -8,16 +8,23 @@ package gameengine
 //               graveyard" means "You may cast this card from your
 //               graveyard by paying [cost] and exiling N other cards
 //               from your graveyard rather than paying its mana cost."
-// NOT IN THE CR:  the engine ALSO exiles an escape-cast spell when it
-//               leaves the stack. §702.138 has no such clause — a is the
-//               alternative cost, b is the "escaped" marker, c and d are
-//               the escapes-with riders. A countered or resolved escape
-//               spell belongs in its owner's graveyard (§701.6a / §608.2g),
-//               where it can escape again. This looks like flashback's
-//               §702.34a carveout generalised onto every zone-cast
-//               keyword; Underworld Breach, checked, carries no exile
-//               rider of its own, so there is no card-level source for
-//               it. Filed as open issue (8); behaviour NOT changed in r95.
+// CR §702.138b: a spell or permanent "escaped" if it was cast from a
+//               graveyard with an escape ability. That marker is the
+//               ONLY thing escape leaves on the spell — c and d are the
+//               escapes-with riders that read it.
+// NO EXILE CLAUSE (r96, was open issue (8)): until r96 the engine also
+//               exiled an escape-cast spell any time it left the stack.
+//               §702.138 has no such clause. A countered or fizzled
+//               escape spell is put into its owner's graveyard
+//               (§701.6a), where it can escape again; one that resolves
+//               follows the ordinary §608.2g / §608.3a routing. The
+//               behaviour was flashback's genuine §702.34a carveout
+//               generalised onto a keyword that has none, and its only
+//               stated basis was two citations that pointed at Cleave
+//               and Foretell (both corrected in r95). Neither card that
+//               grants escape at scale carries a rider of its own:
+//               Underworld Breach and The Master of Keys were both
+//               checked against their oracle text. Removed in r96.
 //
 // Engine model
 // ------------
@@ -36,12 +43,12 @@ package gameengine
 //     graveyard AND is not the spell itself (§702.138a "other"),
 //     pays the mana cost, exiles the chosen fodder, and pushes a
 //     StackItem flagged with CostMeta{"escape_cast": true,
-//     "escape_exile_count": N, "exile_on_resolve": true,
-//     "zone_cast_keyword": "escape"} so the existing
-//     ShouldExileOnResolve branch in stack.go routes the spell to
-//     exile on resolution — see the NOT-IN-THE-CR note above (issue (8)).
+//     "escape_exile_count": N, "zone_cast_keyword": "escape"}.
+//     NOTE there is deliberately no "exile_on_resolve" stamp: escape
+//     has no exile carveout, so the spell takes the ordinary
+//     post-stack routing — see the NO-EXILE-CLAUSE note above.
 //   - A ZoneCastPermission with Zone=graveyard, Keyword="escape",
-//     ManaCost=escapeCost, ExileOnResolve=true is registered on the
+//     ManaCost=escapeCost, ExileOnResolve=false is registered on the
 //     card pointer at cast time for any AI/Hat or replay layer that
 //     scans grants. The grant is removed when the cast pipeline
 //     consumes it (single-use).
@@ -174,8 +181,8 @@ func EscapeExileCount(card *Card) int {
 //
 // On success: spell removed from graveyard, mana paid, each exile
 // target moved graveyard→exile, StackItem pushed with full CostMeta
-// stamps (escape_cast, escape_exile_count, exile_on_resolve,
-// zone_cast_keyword), per-turn "spell_escaped_this_turn:<seat>" flag
+// stamps (escape_cast, escape_exile_count, zone_cast_keyword — NOT
+// exile_on_resolve), per-turn "spell_escaped_this_turn:<seat>" flag
 // set, and a ZoneCastPermission registered on the card pointer for
 // observability.
 //
@@ -314,11 +321,12 @@ func CastWithEscape(
 		})
 	}
 
-	// Push onto the stack with the full escape CostMeta stamps. The
-	// exile_on_resolve flag hands off to stack.go's
-	// ShouldExileOnResolve branch so the spell is routed to exile on
-	// resolution. NOTE: this has no CR basis under escape — see the
-	// file header and open issue (8).
+	// Push onto the stack with the escape CostMeta stamps. There is
+	// deliberately NO "exile_on_resolve" key: §702.138 carries no
+	// exile-instead-of-anywhere-else clause, so the spell takes the
+	// ordinary post-stack routing — graveyard on counter or fizzle
+	// (§701.6a), where it can escape again, and the normal §608.2g /
+	// §608.3a destination on resolution. See the file header.
 	item := &StackItem{
 		Card:       card,
 		Controller: seatIdx,
@@ -327,7 +335,6 @@ func CastWithEscape(
 		CostMeta: map[string]interface{}{
 			"escape_cast":        true,
 			"escape_exile_count": requiredExile,
-			"exile_on_resolve":   true,
 			"zone_cast_keyword":  "escape",
 		},
 	}

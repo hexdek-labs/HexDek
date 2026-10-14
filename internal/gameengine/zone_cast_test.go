@@ -231,21 +231,31 @@ func TestZoneCast_Escape_UnderworldBreach(t *testing.T) {
 		t.Errorf("expected 3 exiled cards, got %d", len(result.ExiledCards))
 	}
 
-	// The spell itself should be in exile (escape = exile on resolve).
-	spellInExile := false
-	for _, c := range gs.Seats[0].Exile {
+	// r96 — the spell goes to its owner's GRAVEYARD, not exile.
+	// §702.138 grants escape and nothing else: there is no
+	// "exile this card instead of putting it anywhere else" clause of
+	// the kind flashback carries at §702.34a, and Underworld Breach's
+	// own oracle text adds none. This assertion was inverted until r96.
+	spellInGY := false
+	for _, c := range gs.Seats[0].Graveyard {
 		if c == spell {
-			spellInExile = true
+			spellInGY = true
 			break
 		}
 	}
-	if !spellInExile {
-		t.Error("escape spell should be in exile after resolution")
+	if !spellInGY {
+		t.Error("escape spell should be back in its owner's graveyard after resolution (§608.2g; §702.138 has no exile clause)")
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == spell {
+			t.Error("escape spell must NOT be exiled on resolution — r96 removed that routing")
+		}
 	}
 
-	// Graveyard should have 0 cards (1 spell + 3 fillers all removed).
-	if len(gs.Seats[0].Graveyard) != 0 {
-		t.Errorf("expected 0 cards in graveyard, got %d", len(gs.Seats[0].Graveyard))
+	// Graveyard holds exactly the spell: the 3 fillers were exiled as
+	// the additional cost, the spell came back.
+	if len(gs.Seats[0].Graveyard) != 1 {
+		t.Errorf("expected 1 card in graveyard (the escaped spell), got %d", len(gs.Seats[0].Graveyard))
 	}
 }
 
@@ -462,6 +472,12 @@ func TestZoneCast_PermissionConstructors(t *testing.T) {
 	if esc.Zone != ZoneGraveyard {
 		t.Errorf("escape zone should be graveyard, got %s", esc.Zone)
 	}
+	// r96: escape has no §702.34a-style exile carveout. Flashback above
+	// asserts the true arm; this is the matching false arm, so a blanket
+	// re-flip of the field can't pass both.
+	if esc.ExileOnResolve {
+		t.Error("escape should NOT exile on resolve — §702.138 has no exile clause")
+	}
 	if len(esc.AdditionalCosts) != 1 {
 		t.Fatalf("escape should have 1 additional cost, got %d", len(esc.AdditionalCosts))
 	}
@@ -488,6 +504,9 @@ func TestZoneCast_PermissionConstructors(t *testing.T) {
 	bc := NewBreachEscapePermission(2)
 	if bc.Keyword != "escape" {
 		t.Errorf("breach escape keyword should be 'escape', got %s", bc.Keyword)
+	}
+	if bc.ExileOnResolve {
+		t.Error("Underworld Breach grants escape and nothing else — no exile rider in its oracle text (r96)")
 	}
 	if bc.SourceName != "Underworld Breach" {
 		t.Errorf("breach escape source should be 'Underworld Breach', got %s", bc.SourceName)

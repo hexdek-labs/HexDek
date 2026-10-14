@@ -970,7 +970,7 @@ type TurnCounters struct {
 	// CombatDamageBy is the de-duplicated list of cards controlled by
 	// this seat that dealt combat damage to ANY player (any opponent)
 	// this turn. Populated by applyCombatDamageToPlayer in combat.go;
-	// read by Prowl (§702.74), Freerunning (§702.169), and any other
+	// read by Prowl (§702.76), Freerunning (§702.173a), and any other
 	// "if you dealt combat damage to a player this turn with a [type]
 	// creature" gate. One card appears at most once per turn even if
 	// it dealt combat damage multiple times (e.g. double-strike,
@@ -1840,8 +1840,8 @@ type Permanent struct {
 	// -----------------------------------------------------------------
 
 	// MergedCards is the ordered list of InstanceIDs of every card
-	// currently merged into this permanent. For Mutate (§702.139) the
-	// order is top-of-stack-first; for Meld (§712) it is exactly two
+	// currently merged into this permanent. For Mutate (§702.140) the
+	// order is top-of-stack-first; for Meld (§701.42) it is exactly two
 	// IDs. Unmerge on leave-play walks this slice to route each card
 	// individually to its destination zone with its InstanceID preserved.
 	MergedCards []string

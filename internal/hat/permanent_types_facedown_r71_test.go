@@ -11,7 +11,7 @@ import (
 // Live grinder output carried 91 critical "instants and sorceries
 // cannot be permanents" violations naming ordinary spells — Village
 // Rites, Disallow, Tale's End, Crop Rotation, Rampant Growth. None of
-// them is a bug: manifest (CR §701.34) puts ANY card onto the
+// them is a bug: manifest (CR §701.40) puts ANY card onto the
 // battlefield face down as a 2/2 creature, and a face-down permanent
 // has no types other than creature (CR §707.2). The check was reading
 // the PRINTED type line of a card whose printed characteristics do not
@@ -50,7 +50,7 @@ func TestPermanentTypesR71_ManifestedSorceryIsNotAViolation(t *testing.T) {
 	gs := gameengine.NewGameState(2, nil, nil)
 	r71Perm(gs, "Rampant Growth", true, true)
 	if hits := r71TypeHits(gs); hits != 0 {
-		t.Errorf("a manifested sorcery is legal under CR §701.34/§707.2; got %d permanent_types violation(s)", hits)
+		t.Errorf("a manifested sorcery is legal under CR §701.40/§707.2; got %d permanent_types violation(s)", hits)
 	}
 }
 

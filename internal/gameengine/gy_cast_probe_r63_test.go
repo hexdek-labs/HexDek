@@ -81,8 +81,14 @@ func TestGYCast_Escape_ExilesOthersAndSelf(t *testing.T) {
 			t.Errorf("escape fodder %s must be exiled as a cost", f.Name)
 		}
 	}
-	if !inZone(gs.Seats[0], c, "exile") {
-		t.Error("escape spell itself must end in exile")
+	// r96: the spell itself returns to the graveyard — §702.138 has no
+	// exile clause, so Uro can escape again. The fodder above is the
+	// only thing escape exiles, and that is the additional COST.
+	if !inZone(gs.Seats[0], c, "graveyard") {
+		t.Error("escape spell itself must end in its owner's graveyard, where it can escape again")
+	}
+	if inZone(gs.Seats[0], c, "exile") {
+		t.Error("escape spell must NOT be exiled on resolution (r96)")
 	}
 }
 

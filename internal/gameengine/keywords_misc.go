@@ -32,9 +32,9 @@ package gameengine
 //
 // SET-SPECIFIC mechanics:
 //   - Explore           — CR §701.40
-//   - Connive           — CR §701.48
-//   - Discover N        — CR §701.51
-//   - Cloak             — CR §701.56 (face-down manifest variant)
+//   - Connive           — CR §701.50
+//   - Discover N        — CR §701.57a
+//   - Cloak             — CR §701.58 (face-down manifest variant)
 //   - Venture / Initiative / The Ring (simplified)
 //   - Class levels      — (simplified)
 //   - Sagas             — (simplified)
@@ -1629,7 +1629,7 @@ func PerformConnive(gs *GameState, perm *Permanent) bool {
 }
 
 // ---------------------------------------------------------------------------
-// Discover N — CR §701.51
+// Discover N — CR §701.57a
 // ---------------------------------------------------------------------------
 //
 // Exile cards from the top of your library until you exile a nonland card
@@ -1672,7 +1672,7 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 		// if CMC ≥ 3 (good value), otherwise put into hand for flexibility.
 		castForFree := found.CMC >= 3
 		if castForFree {
-			// CR §701.51: the discovered card is CAST (without paying its mana
+			// CR §701.57a: the discovered card is CAST (without paying its mana
 			// cost). A cast spell must run the full cast-time pipeline, not a
 			// bare stack push: set its spell Effect so instants/sorceries
 			// actually resolve, count toward storm / cast count, fire "whenever
@@ -1710,7 +1710,7 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 					ApplyCascade(gs, seatIdx, foundMV, found.DisplayName())
 				}
 			}
-			// CR §701.51 — a chained discover resolves independently. Prefer the
+			// CR §701.57a — a chained discover resolves independently. Prefer the
 			// discovered card's own discover N from its keyword; fall back to
 			// its mana value when the parser didn't capture an explicit N
 			// (mirrors the cascade entry path's manaCostOf fallback).
@@ -2815,7 +2815,10 @@ func FireAllianceTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 }
 
 // ---------------------------------------------------------------------------
-// Magecraft (CR §702.137) — HasMagecraft + FireMagecraftTriggers live in
+// Magecraft is an ability word: per CR §207.2c it has no individual
+// entry in the Comprehensive Rules, so there is no number to cite.
+// This line carried §702.137 until r96; that number is Spectacle.
+// HasMagecraft + FireMagecraftTriggers live in
 // keywords_magecraft.go where the mechanic is implemented with proper
 // instant/sorcery filtering, own-spells-only scoping, isCopy parameter,
 // and FireCardTrigger fan-out for per_card payoffs.

@@ -564,7 +564,11 @@ func NewEscapePermission(escapeCost int, exileCount int) *ZoneCastPermission {
 				ExileFilter:   "other",
 			},
 		},
-		ExileOnResolve:    true,
+		// CR §702.138 has no exile-instead-of-anywhere-else clause —
+		// only flashback (§702.34a), aftermath, omen, mayhem and
+		// jump-start carry one. An escape-cast spell takes the ordinary
+		// post-stack routing. Was true until r96; see keywords_escape.go.
+		ExileOnResolve:    false,
 		RequireController: -1,
 	}
 }
@@ -723,7 +727,10 @@ func NewBreachEscapePermission(cardManaCost int) *ZoneCastPermission {
 				ExileFilter:   "other",
 			},
 		},
-		ExileOnResolve:    true,
+		// Underworld Breach's oracle text grants escape and nothing
+		// else — no exile rider of its own, checked against the card.
+		// Escape itself has none either (§702.138). False since r96.
+		ExileOnResolve:    false,
 		RequireController: -1,
 		SourceName:        "Underworld Breach",
 	}

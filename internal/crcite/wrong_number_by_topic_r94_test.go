@@ -61,6 +61,46 @@ var r94WrongByTopic = []struct {
 	{"706.2", "clone", "Rolling a Die", "707.2"},
 	{"708.4", "face-down", "cast-face-down timing", "708.2"},
 	{"704.5r", "non-pairing", "the can't-have-more-than-N SBA", "704.5q"},
+
+	// r96 — the pairs r95 fixed, which were NEVER ADDED HERE.
+	//
+	// That omission is the whole reason this block exists. r94 built
+	// this gate to cover what the filename-based mismatch check cannot
+	// see, r95 then found 65 more wrong numbers by reading the
+	// suppression file, and none of them were written into the gate. So
+	// the gate that was built to close the blind spot still did not
+	// cover the bugs found THROUGH it — and two of them survived into
+	// r96 untouched, both in stack.go, both emitted as event DATA:
+	// "701.5a" for a countered spell's destination (§701.5 is Cast) and
+	// "702.33" for flashback's exile carveout (§702.33 is Kicker). r95
+	// had fixed the second number 600 lines earlier in the same file
+	// and not grepped for the rest of it — lesson 32.
+	//
+	// Each number below was read out of MagicCompRules-20260819.txt by
+	// exact section-header match, one at a time, for this table.
+	{"702.33", "flashback", "Kicker", "702.34a"},
+	{"701.5a", "countered", "Cast", "701.6a"},
+	{"702.128", "aftermath", "Embalm", "702.127a"},
+	{"702.158", "cleave", "Space Sculptor", "702.148"},
+	{"701.51", "discover", "Open an Attraction", "701.57a"},
+	{"702.148", "escape", "Cleave", "702.138"},
+	{"702.143", "escape", "Foretell", "702.138"},
+	{"702.169", "freerunning", "Solved", "702.173a"},
+	{"701.15", "investigate", "Goad", "701.16"},
+	{"701.36", "investigate", "Populate", "701.16"},
+	{"701.15", "regenerat", "Goad", "701.19a"},
+	{"702.34", "madness", "Flashback", "702.35"},
+	{"701.34", "manifest", "Proliferate", "701.40"},
+	{"702.92", "ripple", "Living Weapon", "702.60a"},
+	{"702.186", "solved", "the infinity keyword", "702.169"},
+	{"701.62", "suspect", "Manifest Dread", "701.60"},
+	{"702.121", "tribute", "Melee", "702.104"},
+	{"702.99", "extort", "Cipher", "702.101"},
+	{"702.176", "bargain", "Impending", "702.166a"},
+	{"702.139", "mutate", "Companion", "702.140"},
+	{"702.97", "soulbond", "Scavenge", "702.95"},
+	{"701.32", "populate", "Set in Motion", "701.36a"},
+	{"702.137", "magecraft", "Spectacle", "nothing — §207.2c, ability words have no CR entry"},
 }
 
 func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
@@ -85,8 +125,10 @@ func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
 		if err != nil || info.IsDir() || !strings.HasSuffix(p, ".go") {
 			return nil
 		}
-		// This file carries every bad number in its table by design.
-		if filepath.Base(p) == "wrong_number_by_topic_r94_test.go" {
+		// crcite's own files carry bad numbers by design: this table,
+		// and the doc comments in inline.go / inline_test.go that quote
+		// a real past mis-citation as the worked example.
+		if strings.Contains(filepath.ToSlash(p), "/internal/crcite/") {
 			return nil
 		}
 		b, err := os.ReadFile(p)

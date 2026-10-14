@@ -9,7 +9,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// manifestTopOfLibrary implements one CR §701.34 manifest: pops the top
+// manifestTopOfLibrary implements one CR §701.40 manifest: pops the top
 // card of seatIdx's library and puts it onto the battlefield face down as
 // the permanent of record (real-card overlay model — the 2/2 vanilla
 // shape comes from the "manifest" FaceDownTemplate), then fires the
@@ -178,7 +178,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	// -----------------------------------------------------------------
-	// Suspect (CR §701.62). Delegated to SuspectCreature
+	// Suspect (CR §701.60). Delegated to SuspectCreature
 	// (keywords_suspect.go) so the designation is stamped via the
 	// persistent Flags channel (kw:menace + suspected) rather than
 	// the until-EOT GrantedAbilities slice — §701.62 the designation
@@ -3958,7 +3958,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 
 	case "manifest_dread", "manifest":
-		// CR §701.34 — "manifest the top card of your library": put it
+		// CR §701.40 — "manifest the top card of your library": put it
 		// onto the battlefield face down as a 2/2 creature. If it's a
 		// creature card, it can be turned face up for its mana cost.
 		seat := controllerSeat(src)
@@ -4655,7 +4655,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "manifest_n":
-		// CR §701.34 variant — "manifest the top N cards of your library."
+		// CR §701.40 variant — "manifest the top N cards of your library."
 		// Extract count from args, then create N face-down 2/2 creatures.
 		count := 1
 		if len(e.Args) > 0 {

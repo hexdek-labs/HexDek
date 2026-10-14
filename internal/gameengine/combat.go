@@ -2312,7 +2312,7 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 		})
 	}
 	// Track that this controller had a creature deal combat damage to a
-	// player this turn — enables Freerunning (§702.169) and similar.
+	// player this turn — enables Freerunning (§702.173a) and similar.
 	if src.Controller >= 0 && src.Controller < len(gs.Seats) && gs.Seats[src.Controller] != nil {
 		if gs.Seats[src.Controller].Flags == nil {
 			gs.Seats[src.Controller].Flags = map[string]int{}

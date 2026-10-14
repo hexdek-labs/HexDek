@@ -1044,7 +1044,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 
-	// CR §701.51 — discover trigger. Like cascade but card goes to hand.
+	// CR §701.57a — discover trigger. Like cascade but card goes to hand.
 	if cardHasKeyword(card, "discover") {
 		PerformDiscover(gs, seatIdx, manaCostOf(card))
 	}
@@ -1834,8 +1834,8 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // helper centralizes the same precedence for the failure paths so a
 // countered or fizzled flashback spell still honors CR §702.34a's
 // "exile this card instead of putting it anywhere else any time it
-// would leave the stack" carveout. The engine applies the same routing
-// to escape, which the CR does NOT support — see open issue (8).
+// would leave the stack" carveout. Escape does NOT get this routing:
+// §702.138 has no such clause and r96 removed the flag (old issue (8)).
 //
 // Buyback is intentionally NOT honored here: CR §702.27a applies only
 // "as it resolves" — a countered or fizzled buyback spell goes to the
@@ -1845,7 +1845,9 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // the destination, included in the resolve event's "rule" detail.
 func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) (string, string) {
 	if ShouldExileOnResolve(item) {
-		// flashback / escape — exile instead of any other zone.
+		// flashback / aftermath / omen / mayhem / jump-start — exile
+		// instead of any other zone. NOT escape (§702.138 has no
+		// carveout) and not buyback, per the note above.
 		return "exile", "702.34a"
 	}
 	return defaultZone, defaultRule
@@ -2105,16 +2107,20 @@ func ResolveStackTop(gs *GameState) {
 	})
 
 	if item.Countered {
-		// CR §701.5a: a countered spell is put into its owner's graveyard.
+		// CR §701.6a: a countered spell is put into its owner's graveyard.
+		// (§701.5 is Cast — the number here was wrong until r96, and it
+		// was emitted as the resolve event's "rule" field, not just a
+		// comment.)
 		// Abilities aren't cards so the "graveyard move" only applies to
 		// spells (items with Card set and Source unset).
 		if isSpell && item.Card != nil {
-			// CR §702.34a (flashback; escape is engine-only, issue (8)): "exile this
-			// card instead of putting it anywhere else any time it would
-			// leave the stack." A countered flashback/escape spell still
-			// triggers the exile-instead self-replacement — only the
-			// successful-resolve path was honoring it before.
-			toZone, ruleTag := postStackZoneForOffboard(item, "graveyard", "701.5a")
+			// CR §702.34a (flashback): "exile this card instead of
+			// putting it anywhere else any time it would leave the
+			// stack." A countered flashback spell still triggers the
+			// exile-instead self-replacement — only the
+			// successful-resolve path was honoring it before. Escape
+			// is NOT in this set as of r96 (§702.138 has no clause).
+			toZone, ruleTag := postStackZoneForOffboard(item, "graveyard", "701.6a")
 			MoveCard(gs, item.Card, item.Controller, "stack", toZone, "countered")
 			gs.LogEvent(Event{
 				Kind:   "resolve",
@@ -2448,10 +2454,14 @@ func ResolveStackTop(gs *GameState) {
 				MarkInstanceIDCeased(gs, item.Card.InstanceID)
 			}
 		} else if ShouldExileOnResolve(item) {
-			// Wave 2: flashback / escape — exile instead of graveyard.
-			// CR §702.33: "If the flashback cost was paid, exile this
-			// card instead of putting it anywhere else any time it would
-			// leave the stack."
+			// Wave 2: flashback / aftermath / omen / mayhem /
+			// jump-start — exile instead of graveyard. NOT escape as
+			// of r96.
+			// CR §702.34a: "If the flashback cost was paid, exile this
+			// card instead of putting it anywhere else any time it
+			// would leave the stack." (§702.33 is Kicker — the number
+			// here was wrong until r96, and it was emitted as the
+			// resolve event's "rule" field.)
 			// CR §400.7c: the card moves to the OWNER's exile, not the
 			// caster's. Pass item.Card.Owner explicitly so the call is
 			// structurally correct and doesn't rely on the moveToZone
@@ -2465,7 +2475,7 @@ func ResolveStackTop(gs *GameState) {
 					"to":        "exile",
 					"reason":    "zone_cast_exile_on_resolve",
 					"cast_zone": item.CastZone,
-					"rule":      "702.33",
+					"rule":      "702.34a",
 				},
 			})
 		} else if ShouldReturnToHandOnResolve(item) {

@@ -7,7 +7,7 @@ import (
 )
 
 // regeneration_scope_r63_test.go — scope-boundary pins for the
-// regeneration replacement (CR §701.15). Regeneration replaces
+// regeneration replacement (CR §701.19a). Regeneration replaces
 // DESTRUCTION only. These tests pin that it does NOT save against exile
 // or sacrifice, that a single shield is consumed exactly once (survive
 // the first destroy, die to the second), and that the

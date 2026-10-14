@@ -19,7 +19,7 @@ package outcome
 //	    N +1/+1 counters and the monstrous designation. On the scaffold
 //	    the source is a non-monstrous 4/4 creature, so the delta is
 //	    exactly +N counters / +N power / +N toughness.
-//	INVESTIGATE  "investigate N" (CR §701.36): N Clue artifact tokens
+//	INVESTIGATE  "investigate N" (CR §701.16): N Clue artifact tokens
 //	    enter under the controller. Clue tokens are 0/0 noncreature
 //	    artifacts, so only the battlefield count moves (+N).
 //	INCUBATE     "incubate N" (CR §701.46): one Incubator artifact token
@@ -136,8 +136,8 @@ func leafPhase8(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 		"choose_opponent", "plot":
 		// Flag/log-only resolutions with confirmed explicit engine
 		// handlers, each changing no snapshot-observable count:
-		//   regenerate     — regeneration shield flag (CR §701.15)
-		//   goad           — goad designation on a target (CR §701.38)
+		//   regenerate     — regeneration shield flag (CR §701.19a)
+		//   goad           — goad designation on a target (CR §701.15)
 		//   take_initiative— "has_initiative" seat designation (CR §722)
 		//   no_life_gained — a "gain no life this turn" replacement marker
 		//   choose_opponent— records a chosen opponent (no state change)

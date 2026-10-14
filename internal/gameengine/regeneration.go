@@ -2,7 +2,7 @@ package gameengine
 
 import "github.com/hexdek/hexdek/internal/gameast"
 
-// regeneration.go — the regeneration replacement effect (CR §701.15).
+// regeneration.go — the regeneration replacement effect (CR §701.19a).
 //
 // BACKGROUND / WHY THIS EXISTS
 //
