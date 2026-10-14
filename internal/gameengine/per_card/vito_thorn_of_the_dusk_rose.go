@@ -97,6 +97,19 @@ func vitoThornActivated(gs *gameengine.GameState, src *gameengine.Permanent, abi
 
 // vitoThornGrantLifelink implements {3}{B}{B}: Creatures you control
 // gain lifelink until end of turn.
+// vitoLifelinkUEOTMarker is this activated ability's source identity in
+// the r87 refcount (keyword_flag_grants_r87.go). It replaces the raw
+// Flags["kw:lifelink"] stamp, which is one shared boolean with no notion
+// of how many sources hold it.
+//
+// One marker per effect, not per activation: two activations in the same
+// turn both expire at the same end step, so the first cleanup to run
+// withdraws the shared grant and the second is a no-op. Two Vitos (only
+// reachable through a clone) collapse the same way, and still strictly
+// better than today, where either one's cleanup deletes the flag
+// outright.
+const vitoLifelinkUEOTMarker = "vito_thorn_lifelink_ueot"
+
 func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent) {
 	const slug = "vito_thorn_3bb_lifelink_grant"
 	seat := src.Controller
@@ -125,6 +138,7 @@ func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent)
 	// Grant lifelink to every creature the controller controls.
 	// Track which creatures we granted it to so we only strip flags we set.
 	var granted []*gameengine.Permanent
+	changed := 0
 	for _, p := range s.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
@@ -132,14 +146,19 @@ func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent)
 		if !p.IsCreature() {
 			continue
 		}
-		// Skip creatures that already have lifelink (from AST or prior grant).
-		if p.HasKeyword("lifelink") {
-			continue
+		// r93: the guard here used to be `if p.HasKeyword("lifelink")
+		// { continue }` — skip anything that already shows lifelink.
+		// That is the self-defeating guard r87's doc names: it made
+		// Vito decline to RECORD its own grant whenever another source
+		// had already set the shared flag, so when that source stripped
+		// the flag at its own cleanup the creature lost lifelink with
+		// Vito's until-end-of-turn grant still live. The refcount makes
+		// the guard unnecessary: granting over a printed keyword is
+		// harmless (AST keywords do not live in Flags) and the shared
+		// flag survives until the last holder revokes.
+		if gameengine.GrantKeywordFlag(p, "lifelink", vitoLifelinkUEOTMarker) {
+			changed++
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["kw:lifelink"] = 1
 		granted = append(granted, p)
 	}
 
@@ -148,12 +167,19 @@ func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent)
 			"seat":          seat,
 			"cost_paid":     cost,
 			"granted_count": 0,
-			"note":          "no_creatures_or_all_already_have_lifelink",
+			"note":          "no_creatures",
 		})
 		return
 	}
 
-	// Schedule end-of-turn cleanup to remove granted lifelink flags.
+	if changed > 0 {
+		// r93: the grant path never invalidated. The strip below did not
+		// either, so the layer-aware authority could answer from an entry
+		// taken before the grant for the whole of the turn it covers.
+		gs.InvalidateCharacteristicsCache()
+	}
+
+	// Schedule end-of-turn cleanup to withdraw this source's grant.
 	captured := make([]*gameengine.Permanent, len(granted))
 	copy(captured, granted)
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
@@ -162,11 +188,14 @@ func vitoThornGrantLifelink(gs *gameengine.GameState, src *gameengine.Permanent)
 		SourceCardName: src.Card.DisplayName(),
 		OneShot:        true,
 		EffectFn: func(gs *gameengine.GameState) {
+			dropped := 0
 			for _, p := range captured {
-				if p == nil || p.Flags == nil {
-					continue
+				if gameengine.RevokeKeywordFlag(p, "lifelink", vitoLifelinkUEOTMarker) {
+					dropped++
 				}
-				delete(p.Flags, "kw:lifelink")
+			}
+			if dropped > 0 {
+				gs.InvalidateCharacteristicsCache()
 			}
 		},
 	})

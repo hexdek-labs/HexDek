@@ -49,21 +49,35 @@ func lyseHextSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if perm.Flags["lyse_count_turn"] != gs.Turn {
 		perm.Flags["lyse_count_turn"] = gs.Turn
 		perm.Flags["lyse_noncreature_count"] = 0
-		// Also clear any double-strike grant from a prior turn, in case
-		// the delayed-trigger cleanup didn't fire.
-		delete(perm.Flags, "kw:double_strike")
+		// Also withdraw a double-strike grant left over from a prior
+		// turn, in case the delayed-trigger cleanup didn't fire.
+		//
+		// r93: this used to be a bare delete of the shared
+		// Flags["kw:double_strike"], which took away ANY source's
+		// double strike — including one that had nothing to do with
+		// Lyse and was not stale at all. Revoking only Lyse's own
+		// marker is the whole difference.
+		if gameengine.RevokeKeywordFlag(perm, "double_strike", lyseDoubleStrikeMarker) {
+			gs.InvalidateCharacteristicsCache()
+		}
 	}
 	perm.Flags["lyse_noncreature_count"]++
-	if perm.Flags["lyse_noncreature_count"] >= 2 && perm.Flags["kw:double_strike"] == 0 {
-		perm.Flags["kw:double_strike"] = 1
-		gs.InvalidateCharacteristicsCache()
+	if perm.Flags["lyse_noncreature_count"] >= 2 && !gameengine.HasKeywordFlagGrant(perm, "double_strike", lyseDoubleStrikeMarker) {
+		// r93: the guard was `perm.Flags["kw:double_strike"] == 0` —
+		// "has anyone granted this?" — which both suppressed Lyse's own
+		// grant behind an unrelated source and let the stale-clear paths
+		// below delete that source's flag. Asking the refcount whether
+		// LYSE holds a grant keeps the once-per-turn emit while making
+		// the two sources independent.
+		if gameengine.GrantKeywordFlag(perm, "double_strike", lyseDoubleStrikeMarker) {
+			gs.InvalidateCharacteristicsCache()
+		}
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 			TriggerAt:      "next_end_step",
 			ControllerSeat: perm.Controller,
 			SourceCardName: perm.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {
-				if perm != nil && perm.Flags != nil {
-					delete(perm.Flags, "kw:double_strike")
+				if gameengine.RevokeKeywordFlag(perm, "double_strike", lyseDoubleStrikeMarker) {
 					gs.InvalidateCharacteristicsCache()
 				}
 			},
@@ -78,6 +92,12 @@ func lyseHextSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	// counts noncreature casts for the double-strike threshold.
 }
 
+// lyseDoubleStrikeMarker is this trigger's source identity in the r87
+// refcount (keyword_flag_grants_r87.go). Lyse grants to herself only,
+// so one marker is one source; what the refcount buys here is that the
+// three separate cleanup paths stop deleting other sources' grants.
+const lyseDoubleStrikeMarker = "lyse_hext_double_strike"
+
 func lyseHextResetIfStale(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil || perm.Flags == nil {
 		return
@@ -85,6 +105,9 @@ func lyseHextResetIfStale(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if perm.Flags["lyse_count_turn"] != gs.Turn {
 		perm.Flags["lyse_count_turn"] = gs.Turn
 		perm.Flags["lyse_noncreature_count"] = 0
-		delete(perm.Flags, "kw:double_strike")
+		// r93: same bare delete as the reset above, same fix.
+		if gameengine.RevokeKeywordFlag(perm, "double_strike", lyseDoubleStrikeMarker) {
+			gs.InvalidateCharacteristicsCache()
+		}
 	}
 }

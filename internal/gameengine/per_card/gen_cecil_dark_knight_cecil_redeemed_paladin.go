@@ -91,6 +91,11 @@ func cecilDamageHook(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	})
 }
 
+// cecilIndestructibleUEOTMarker is this trigger's source identity in
+// the r87 refcount (keyword_flag_grants_r87.go), replacing the raw
+// shared Flags["kw:indestructible"] stamp.
+const cecilIndestructibleUEOTMarker = "cecil_redeemed_paladin_indestructible_ueot"
+
 func cecilAttackProtect(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "cecil_protect_indestructible"
 	if gs == nil || perm == nil || ctx == nil {
@@ -109,30 +114,44 @@ func cecilAttackProtect(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		return
 	}
 	var granted []*gameengine.Permanent
+	changed := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p == perm || !p.IsCreature() || !p.IsAttacking() {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
+		// r93: the guard here used to be
+		// `if p.Flags["kw:indestructible"] == 0` — skip anything the
+		// shared flag already covers, which made Cecil decline to
+		// record its own grant behind another source's. That source
+		// then strips at its own cleanup and the attacker loses
+		// indestructible mid-combat with Cecil's grant still live. The
+		// r87 refcount holds the shared flag until the last source
+		// revokes, so no guard is needed.
+		if gameengine.GrantKeywordFlag(p, "indestructible", cecilIndestructibleUEOTMarker) {
+			changed++
 		}
-		if p.Flags["kw:indestructible"] == 0 {
-			p.Flags["kw:indestructible"] = 1
-			granted = append(granted, p)
-		}
+		granted = append(granted, p)
+	}
+	if changed > 0 {
+		gs.InvalidateCharacteristicsCache()
 	}
 	if len(granted) > 0 {
-		gs.InvalidateCharacteristicsCache()
 		captured := granted
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 			TriggerAt:      "next_end_step",
 			ControllerSeat: perm.Controller,
 			SourceCardName: perm.Card.DisplayName(),
 			EffectFn: func(gs *gameengine.GameState) {
+				// r93: the strip side never invalidated; neither
+				// delayed-trigger runner does it for the EffectFn.
+				dropped := 0
 				for _, p := range captured {
-					if p != nil && p.Flags != nil {
-						delete(p.Flags, "kw:indestructible")
+					if gameengine.RevokeKeywordFlag(p, "indestructible", cecilIndestructibleUEOTMarker) {
+						dropped++
 					}
+				}
+				if dropped > 0 {
+					gs.InvalidateCharacteristicsCache()
 				}
 			},
 		})

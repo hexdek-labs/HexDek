@@ -75,12 +75,22 @@ func archpriestOfShadowsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 
 	grantedDeathtouch := false
 	if target != perm {
-		if target.Flags == nil {
-			target.Flags = map[string]int{}
-		}
-		if !target.HasKeyword("deathtouch") && target.Flags["kw:deathtouch"] == 0 {
-			target.Flags["kw:deathtouch"] = 1
-			grantedDeathtouch = true
+		// r93: the guard here used to be `!target.HasKeyword("deathtouch")
+		// && target.Flags["kw:deathtouch"] == 0` — skip anything that
+		// already shows deathtouch from any source. That made Archpriest
+		// decline to record its own grant behind another source's, so
+		// that source's cleanup took deathtouch away with Archpriest's
+		// until-end-of-turn grant still live. The r87 refcount holds the
+		// shared flag until the last source revokes.
+		//
+		// Note the grant path never invalidated either: the only reason
+		// a layer-aware read saw the deathtouch at all is that
+		// PutCountersTriggered above invalidates as a side effect of
+		// placing the +1/+1 counter. That is an upstream call doing this
+		// grant's work for it, so it is made explicit here.
+		grantedDeathtouch = gameengine.GrantKeywordFlag(target, "deathtouch", archpriestDeathtouchUEOTMarker)
+		if grantedDeathtouch {
+			gs.InvalidateCharacteristicsCache()
 		}
 		captured := target
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
@@ -89,11 +99,8 @@ func archpriestOfShadowsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 			SourceCardName: perm.Card.DisplayName(),
 			OneShot:        true,
 			EffectFn: func(gs *gameengine.GameState) {
-				if captured == nil || captured.Flags == nil {
-					return
-				}
-				if grantedDeathtouch {
-					delete(captured.Flags, "kw:deathtouch")
+				if gameengine.RevokeKeywordFlag(captured, "deathtouch", archpriestDeathtouchUEOTMarker) {
+					gs.InvalidateCharacteristicsCache()
 				}
 			},
 		})
@@ -107,6 +114,11 @@ func archpriestOfShadowsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"granted_combat_damage_reanimate_trigger_to_backup_target_unwired_pending_transient_trigger_registration")
 }
+
+// archpriestDeathtouchUEOTMarker is this trigger's source identity in
+// the r87 refcount (keyword_flag_grants_r87.go), replacing the raw
+// shared Flags["kw:deathtouch"] stamp.
+const archpriestDeathtouchUEOTMarker = "archpriest_of_shadows_deathtouch_ueot"
 
 func archpriestOfShadowsCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "archpriest_of_shadows_reanimate"

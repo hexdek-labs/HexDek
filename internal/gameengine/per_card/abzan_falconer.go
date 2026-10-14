@@ -57,6 +57,13 @@ func abzanFalconerPermETB(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	abzanFalconerGrantSweep(gs, perm)
 }
 
+// abzanFalconerFlyingMarker is this anthem's source identity in the r87
+// refcount (keyword_flag_grants_r87.go). The private
+// "abzan_falconer_grant" boolean stays as the per-permanent bookkeeping
+// the LTB sweep iterates on; the refcount is what makes the shared
+// Flags["kw:flying"] safe to share with another granting source.
+const abzanFalconerFlyingMarker = "abzan_falconer_flying"
+
 func abzanFalconerOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil || ctx == nil {
 		return
@@ -74,11 +81,15 @@ func abzanFalconerOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		if p == nil || p == perm || p.Flags == nil {
 			continue
 		}
-		if p.Flags["abzan_falconer_grant"] == 1 {
-			delete(p.Flags, "kw:flying")
-			delete(p.Flags, "abzan_falconer_grant")
+		// r93: the private "abzan_falconer_grant" boolean was correct
+		// provenance but the delete beside it was not — it removed the
+		// SHARED Flags["kw:flying"], taking away any other source's
+		// flying grant too. RevokeKeywordFlag drops only this source's
+		// marker and deletes the shared flag only when it was the last.
+		if gameengine.RevokeKeywordFlag(p, "flying", abzanFalconerFlyingMarker) {
 			stripped++
 		}
+		delete(p.Flags, "abzan_falconer_grant")
 	}
 	gs.InvalidateCharacteristicsCache()
 	emit(gs, "abzan_falconer_grant_strip", perm.Card.DisplayName(), map[string]interface{}{
@@ -101,18 +112,22 @@ func abzanFalconerGrantSweep(gs *gameengine.GameState, perm *gameengine.Permanen
 		if p.Counters == nil || p.Counters["+1/+1"] <= 0 {
 			continue
 		}
-		if p.HasKeyword("flying") {
-			continue
-		}
+		// r93: two guards used to sit here — `p.HasKeyword("flying")`
+		// and `p.Flags["kw:flying"] == 1` — both of which made Abzan
+		// decline to RECORD its own grant whenever anything else had
+		// got to the shared flag first. That other source then strips
+		// and the creature loses flying with Abzan still on the
+		// battlefield and the +1/+1 counter still on the creature. The
+		// refcount makes both guards unnecessary: granting twice under
+		// one marker is idempotent, and a printed AST keyword is not in
+		// Flags for the revoke to reach.
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		if p.Flags["kw:flying"] == 1 {
-			continue
+		if gameengine.GrantKeywordFlag(p, "flying", abzanFalconerFlyingMarker) {
+			granted++
 		}
-		p.Flags["kw:flying"] = 1
 		p.Flags["abzan_falconer_grant"] = 1
-		granted++
 	}
 	if granted > 0 {
 		gs.InvalidateCharacteristicsCache()

@@ -52,6 +52,11 @@ func fearlessSwashbucklerPermETB(gs *gameengine.GameState, perm *gameengine.Perm
 	fearlessSwashbucklerHasteSweep(gs, perm)
 }
 
+// fearlessSwashbucklerHasteMarker is this sweep's source identity in
+// the r87 refcount (keyword_flag_grants_r87.go), replacing the raw
+// shared Flags["kw:haste"] stamp.
+const fearlessSwashbucklerHasteMarker = "fearless_swashbuckler_vehicle_haste"
+
 func fearlessSwashbucklerOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "fearless_swashbuckler_haste_strip"
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
@@ -73,9 +78,13 @@ func fearlessSwashbucklerOwnLTB(gs *gameengine.GameState, perm *gameengine.Perma
 		if p.Flags["fearless_swashbuckler_haste_grant"] != 1 {
 			continue
 		}
-		delete(p.Flags, "kw:haste")
+		// r93: the delete beside the provenance boolean removed the
+		// SHARED Flags["kw:haste"], taking any other source's haste
+		// with it. Revoke drops only this source's marker.
+		if gameengine.RevokeKeywordFlag(p, "haste", fearlessSwashbucklerHasteMarker) {
+			stripped++
+		}
 		delete(p.Flags, "fearless_swashbuckler_haste_grant")
-		stripped++
 	}
 	if stripped > 0 {
 		gs.InvalidateCharacteristicsCache()
@@ -109,12 +118,17 @@ func fearlessSwashbucklerHasteSweep(gs *gameengine.GameState, perm *gameengine.P
 		if p.Flags["fearless_swashbuckler_haste_grant"] == 1 {
 			continue
 		}
-		if p.HasKeyword("haste") {
-			continue
+		// r93: the `p.HasKeyword("haste")` guard made this sweep
+		// decline to record its own grant behind another source's
+		// shared flag, so that source's cleanup took haste away with
+		// the Swashbuckler still out. Skipping a Vehicle we have
+		// ALREADY granted to (the line above) is the legitimate half of
+		// the guard and stays; skipping one someone else granted to is
+		// the self-defeating half and goes.
+		if gameengine.GrantKeywordFlag(p, "haste", fearlessSwashbucklerHasteMarker) {
+			granted++
 		}
-		p.Flags["kw:haste"] = 1
 		p.Flags["fearless_swashbuckler_haste_grant"] = 1
-		granted++
 	}
 	if granted > 0 {
 		gs.InvalidateCharacteristicsCache()
