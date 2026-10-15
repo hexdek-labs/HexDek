@@ -1777,22 +1777,60 @@ func sba704_5x(gs *GameState) bool {
 // (CR §704.5y, rules file line 5497.)
 func sba704_5y(gs *GameState) bool {
 	changed := false
+
+	// r112 — PERFORMANCE, semantics unchanged. This used to rescan every
+	// seat's entire battlefield once per permanent to find that permanent's
+	// Roles: O(n^2) in board size, paid on every SBA pass, and paid in full
+	// even in the overwhelmingly common case of a game containing no Roles
+	// at all.
+	//
+	// Measured: StateBasedActions was ~O(n^1.8) in board size, and a CPU
+	// profile at n=1280 put 85% of all SBA time in this function with 80%
+	// of total in the Permanent.hasType call behind IsRole. r111 had just
+	// shown the pathological grinder games are not longer in turns (+24%)
+	// but ~24x more expensive PER TURN, which is what sent me here.
+	//
+	// Index the Roles once instead, in the same seat/battlefield order the
+	// old nested scan visited them, so grouping and destruction order — and
+	// therefore the event log — are unchanged.
+	rolesByHolder := map[*Permanent][]*Permanent{}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, r := range s.Battlefield {
+			if r == nil || r.AttachedTo == nil || !r.IsRole() {
+				continue
+			}
+			rolesByHolder[r.AttachedTo] = append(rolesByHolder[r.AttachedTo], r)
+		}
+	}
+	if len(rolesByHolder) == 0 {
+		return false
+	}
+
+	// destroyPermSBA mutates battlefields while we iterate, and a Role can
+	// in principle be attached to another Role, so a holder visited later
+	// could carry an entry this pass already destroyed. The index is built
+	// once, so guard explicitly rather than relying on a rescan.
+	destroyed := map[*Permanent]bool{}
+
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
 		for _, holder := range s.Battlefield {
-			// Find Roles attached to holder, grouped by controller.
+			attached := rolesByHolder[holder]
+			if len(attached) < 2 {
+				continue
+			}
+			// Roles attached to holder, grouped by controller.
 			rolesByCtrl := map[int][]*Permanent{}
-			for _, s2 := range gs.Seats {
-				if s2 == nil {
+			for _, r := range attached {
+				if destroyed[r] {
 					continue
 				}
-				for _, r := range s2.Battlefield {
-					if r.IsRole() && r.AttachedTo == holder {
-						rolesByCtrl[r.Controller] = append(rolesByCtrl[r.Controller], r)
-					}
-				}
+				rolesByCtrl[r.Controller] = append(rolesByCtrl[r.Controller], r)
 			}
 			for _, roles := range rolesByCtrl {
 				if len(roles) < 2 {
@@ -1810,6 +1848,7 @@ func sba704_5y(gs *GameState) bool {
 						continue
 					}
 					destroyPermSBA(gs, r, "role_uniqueness", "704.5y")
+					destroyed[r] = true
 					changed = true
 				}
 			}
