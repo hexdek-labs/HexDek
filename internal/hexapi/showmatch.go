@@ -350,6 +350,68 @@ const maintenanceMessage = "Gauntlets & live games are paused for maintenance �
 // inMaintenance reads the maintenance flag under the state lock. Game
 // loops poll this between turns (r62, report 06 C3) so a flip mid-game
 // halts the game cleanly without recording a rated result.
+// ---------------------------------------------------------------------------
+// r129 — grinder heap guard.
+//
+// The guard meant to kill a runaway game before it kills the server
+// sampled ONLY every tenth turn. Every heap abort in the log is at a turn
+// that is a multiple of ten (20, 30, 40, 50, 60), and on 2026-10-15 the
+// process went from ~940MB to 15216MB inside one 30-second window and
+// took the server AND its supervising wrapper down with it, twice in one
+// day. A guard that looks every ten turns cannot bound anything that
+// grows faster than ten turns.
+//
+// Two distinct defects, needing separate remedies.
+//
+//  1. SAMPLING RATE. Past half the budget the guard now samples EVERY
+//     turn; below that the cheap 1-in-10 cadence is kept, so a normal
+//     game pays nothing extra. runtime.ReadMemStats stops the world, so
+//     the escalation has to be conditional, not unconditional.
+//
+//  2. ATTRIBUTION — why the delta cannot be trusted on its own.
+//     ReadMemStats reports the WHOLE PROCESS and the grinder runs 2
+//     workers inside it, so HeapAlloc-baseline is NOT this game's
+//     allocation: it includes the other worker's growth, and the baseline
+//     was itself captured while the other worker held memory. One runaway
+//     game therefore aborts the INNOCENT game on the other worker — the
+//     four aborts in 26 seconds on 10/15 were four different games at
+//     four different turns — while the guilty one runs on to its own next
+//     checkpoint. Go exposes no per-goroutine allocation counter, so the
+//     delta stays a coarse pressure signal and maxProcessHeap is the
+//     attribution-free backstop that actually has to hold.
+const (
+	maxHeapPerGame = 2 * 1024 * 1024 * 1024 // 2GB, per-game delta (coarse)
+	// The box has 15.8GB and the grinder runs under memlimit=8GB; a live
+	// heap past 6GB is pathological under any attribution.
+	maxProcessHeap = 6 * 1024 * 1024 * 1024
+
+	heapAbortDelta   = "delta"
+	heapAbortCeiling = "ceiling"
+)
+
+// heapGuardSamples reports whether this turn should pay for a
+// runtime.ReadMemStats: cheap cadence normally, every turn once watching.
+func heapGuardSamples(turn int, watching bool) bool {
+	return turn%10 == 0 || watching
+}
+
+// heapGuardEvaluate turns one heap reading into the guard's decision —
+// the per-game delta, whether to escalate sampling, and which abort (if
+// any) fires. Pure, so the thresholds are testable without a game.
+func heapGuardEvaluate(heapAlloc, baseline uint64) (delta uint64, watch bool, abort string) {
+	if heapAlloc > baseline {
+		delta = heapAlloc - baseline
+	}
+	watch = delta > maxHeapPerGame/2
+	switch {
+	case delta > maxHeapPerGame:
+		abort = heapAbortDelta
+	case heapAlloc > maxProcessHeap:
+		abort = heapAbortCeiling
+	}
+	return delta, watch, abort
+}
+
 func (sm *Showmatch) inMaintenance() bool {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -1878,7 +1940,9 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 		runtime.ReadMemStats(&m)
 		heapBaseline = m.HeapAlloc
 	}
-	const maxHeapPerGame = 2 * 1024 * 1024 * 1024 // 2GB per game
+	// r129 — heapWatch escalates heap sampling to every turn once this
+	// game is already pushing the budget. See heapGuardSamples.
+	heapWatch := false
 	for turn := 1; turn <= showmatchMaxTurn; turn++ {
 		// r62 (report 06 C3): abort unrated on a mid-game maintenance flip
 		// (same contract as the fishtank loop — see runOneGame).
@@ -1904,11 +1968,21 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 		if gs.CheckEnd() {
 			break
 		}
-		if turn%10 == 0 {
+		// r129 — see heapGuardSamples / heapGuardEvaluate. This used to
+		// sample only every tenth turn and could not bound anything that
+		// grew faster than that.
+		if heapGuardSamples(turn, heapWatch) {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-			if m.HeapAlloc > heapBaseline+maxHeapPerGame {
-				log.Printf("grinder: aborting game at turn %d — heap delta %.0fMB exceeds budget", turn, float64(m.HeapAlloc-heapBaseline)/1e6)
+			delta, watch, abort := heapGuardEvaluate(m.HeapAlloc, heapBaseline)
+			heapWatch = watch
+			switch abort {
+			case heapAbortDelta:
+				log.Printf("grinder: aborting game at turn %d — heap delta %.0fMB exceeds budget", turn, float64(delta)/1e6)
+			case heapAbortCeiling:
+				log.Printf("grinder: aborting game at turn %d — process heap %.0fMB exceeds the %.0fMB ceiling", turn, float64(m.HeapAlloc)/1e6, float64(maxProcessHeap)/1e6)
+			}
+			if abort != "" {
 				break
 			}
 		}
