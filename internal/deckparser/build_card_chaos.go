@@ -64,6 +64,18 @@ func BuildCardFromName(name string, corpus *astload.Corpus, meta *MetaDB) *gamee
 		}
 		c.CMC = md.CMC
 		c.TypeLine = md.TypeLine
+		// r124 — THE ONE ASSIGNMENT THAT WAS MISSING.
+		// Card.ManaCostString's own doc comment says "the corpus loader
+		// populates this when available". It did not: every assignment in
+		// the tree was in a _test.go, so for every real card in every
+		// production game the field was "". CardMeta.ManaCost carries the
+		// printed cost (32,791 of 38,754 oracle cards have one) and both
+		// card builders copied Name/Types/P/T/Colors/CMC/TypeLine and the
+		// MDFC back face while dropping this one field on the floor.
+		// Every consumer guards on != "" and so was inert in production:
+		// devotion, the Jegantha companion check, colour-specific cost
+		// modifiers, and the AI's colour-requirement and mulligan signals.
+		c.ManaCostString = md.ManaCost
 		// MDFC back-face metadata (mdfc-backface r63): without these,
 		// IsMDFC() is false and every battlefield-entry face-cleanup
 		// hook (EnsureBattlefieldFrontFace / SwapToBackFace) is blind,
