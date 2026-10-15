@@ -1451,6 +1451,14 @@ type Card struct {
 	BackFaceTypeLine string
 	CastingBackFace  bool // transient: set by casting logic when back face chosen
 
+	// CastingFlashback is a transient marker, same shape as
+	// CastingBackFace: the cast-candidate enumerator sets it when it
+	// offers this card as a FLASHBACK cast from the graveyard (CR
+	// §702.34a / §118.9), so the driver routes to CastFlashback instead
+	// of CastSpell. r127 — until then CastFlashback had zero production
+	// callers and flashback was unreachable in 760 of 1,758 live decks.
+	CastingFlashback bool
+
 	// IsCopy is true for card objects that were created as copies of other
 	// cards (Fork, Twinflame, storm copies). CR §707.10: a copy of a spell
 	// ceases to exist in any zone other than the stack. CR §704.5e: a copy

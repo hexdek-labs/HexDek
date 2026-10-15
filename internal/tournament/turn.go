@@ -996,9 +996,22 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 		if chosen == lastFailed {
 			break
 		}
-		before := len(seat.Hand)
-		err := gameengine.CastSpell(gs, seatIdx, chosen, nil)
-		if err != nil || len(seat.Hand) == before {
+		// r127 — a flashback cast leaves the GRAVEYARD, so the "did the
+		// hand shrink" success test cannot see it. Route on the marker
+		// and measure the zone the card actually left.
+		var err error
+		var moved bool
+		if chosen.CastingFlashback {
+			beforeGY := len(seat.Graveyard)
+			_, err = gameengine.CastFlashback(gs, seatIdx, chosen, -1)
+			moved = err == nil && len(seat.Graveyard) < beforeGY
+			chosen.CastingFlashback = false
+		} else {
+			before := len(seat.Hand)
+			err = gameengine.CastSpell(gs, seatIdx, chosen, nil)
+			moved = err == nil && len(seat.Hand) != before
+		}
+		if !moved {
 			lastFailed = chosen
 			continue // try again with a different card
 		}
@@ -1323,7 +1336,10 @@ func runSuspendPass(gs *gameengine.GameState, seatIdx int) {
 
 func buildCastableList(gs *gameengine.GameState, seatIdx int) []*gameengine.Card {
 	seat := gs.Seats[seatIdx]
-	if len(seat.Hand) == 0 {
+	// r127 — an empty hand is NOT an empty set of castable spells. The
+	// graveyard can offer flashback (CR §702.34a), and this early return
+	// was one of the two reasons CastFlashback had no production caller.
+	if len(seat.Hand) == 0 && len(seat.Graveyard) == 0 {
 		return nil
 	}
 	// Ensure the typed pool is initialized and bridges any legacy
@@ -1408,6 +1424,51 @@ func buildCastableList(gs *gameengine.GameState, seatIdx int) []*gameengine.Card
 		if needsTargetCreature(c) && !hasTargetCreature(gs, seatIdx) {
 			continue
 		}
+		out = append(out, c)
+	}
+	out = append(out, flashbackCandidates(gs, seatIdx, availableMana)...)
+	return out
+}
+
+// flashbackCandidates enumerates the seat's own graveyard for cards
+// castable via flashback (CR §702.34a; §118.9 — an alternative cost is
+// one the controller "may pay rather than paying the spell's mana
+// cost").
+//
+// r127 — THE DRIVER WAS THE MISSING PIECE, NOT THE MECHANIC.
+// CastFlashback is fully built: it checks intrinsic flashback, per-card
+// grants (Snapcaster) and graveyard-wide grants (Lier), resolves the
+// cost, and exiles on resolve. It had ZERO production callers, because
+// buildCastableList walks seat.Hand only. Flashback appears in 760 of
+// 1,758 live decks — the largest single reachability gap measured, and
+// 28 of 34 Cast* entry points are in the same position.
+//
+// Each candidate is marked with the transient CastingFlashback so the
+// driver routes it to CastFlashback rather than CastSpell; the marker is
+// cleared on every pass so a card that stops qualifying is not left set.
+func flashbackCandidates(gs *gameengine.GameState, seatIdx, availableMana int) []*gameengine.Card {
+	seat := gs.Seats[seatIdx]
+	var out []*gameengine.Card
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		c.CastingFlashback = false
+		if isLand(c) || !gameengine.HasFlashback(c) {
+			// Grants (Snapcaster / Lier) are CastFlashback's business;
+			// offering only the intrinsic keyword keeps r127 to one
+			// reachability fix rather than also changing what grants do.
+			continue
+		}
+		cost := gameengine.FlashbackCost(c)
+		if cost < 0 || cost > availableMana {
+			continue
+		}
+		// §202.1a — an alternative cost must be payable IN TYPE too.
+		if !gameengine.CanSupplyColoredPips(seat.Mana, c) {
+			continue
+		}
+		c.CastingFlashback = true
 		out = append(out, c)
 	}
 	return out
