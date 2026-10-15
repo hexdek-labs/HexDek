@@ -1978,9 +1978,15 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			heapWatch = watch
 			switch abort {
 			case heapAbortDelta:
-				log.Printf("grinder: aborting game at turn %d — heap delta %.0fMB exceeds budget", turn, float64(delta)/1e6)
+				// r131 — the abort now names its own game and its own
+				// shape. r130 could only identify the decks for 2 of 18
+				// historical aborts, by joining to a SLOW GAME line that
+				// 16 of them never emitted.
+				log.Printf("grinder: aborting game at turn %d — heap delta %.0fMB exceeds budget (%s) %s",
+					turn, float64(delta)/1e6, abortContext(gameSeed, deckKeys), gameCensus(gs))
 			case heapAbortCeiling:
-				log.Printf("grinder: aborting game at turn %d — process heap %.0fMB exceeds the %.0fMB ceiling", turn, float64(m.HeapAlloc)/1e6, float64(maxProcessHeap)/1e6)
+				log.Printf("grinder: aborting game at turn %d — process heap %.0fMB exceeds the %.0fMB ceiling (%s) %s",
+					turn, float64(m.HeapAlloc)/1e6, float64(maxProcessHeap)/1e6, abortContext(gameSeed, deckKeys), gameCensus(gs))
 			}
 			if abort != "" {
 				break
