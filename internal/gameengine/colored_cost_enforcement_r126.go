@@ -38,16 +38,31 @@ package gameengine
 //   - Phyrexian and twobrid pips -> not required in colour (life and
 //     generic pay them); CostRequirements.Soft carries the count
 func CanSupplyColoredPips(pool *ColoredManaPool, card *Card) bool {
-	if card == nil || pool == nil {
+	if card == nil {
 		return true
 	}
-	if card.ManaCostString == "" {
+	return CanSupplyColoredPipsForCost(pool, card.ManaCostString)
+}
+
+// CanSupplyColoredPipsForCost is the cost-string form of
+// CanSupplyColoredPips. r128 — an ALTERNATIVE cost (overload, surge,
+// spectacle, blitz, prototype) is a different cost string from the one
+// printed on the card, and §202.1a governs it exactly the same way:
+// §601.2f makes the total cost "the mana cost or alternative cost",
+// and §107.4a then demands the appropriate colour for every coloured
+// symbol in whichever one was chosen. The card form delegates here, so
+// both answers come from one implementation and one carve-out list.
+func CanSupplyColoredPipsForCost(pool *ColoredManaPool, costString string) bool {
+	if pool == nil {
+		return true
+	}
+	if costString == "" {
 		return true
 	}
 	if len(pool.Restricted) > 0 {
 		return true
 	}
-	req := ParseCostRequirements(card.ManaCostString)
+	req := ParseCostRequirements(costString)
 
 	avail := [6]int{pool.W, pool.U, pool.B, pool.R, pool.G, pool.C}
 	any := pool.Any

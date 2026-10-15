@@ -527,7 +527,11 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		// rawOC == 0 means the parser didn't capture the printed overload
 		// cost — decline rather than overload for free (no printed
 		// overload cost is {0}).
-		if rawOC > 0 && avail >= oc {
+		// r128 — §202.1a applies to the ALTERNATIVE cost too, and the
+		// overload cost can demand colour the printed cost never did
+		// (Mizzium Mortars {1}{R} -> {3}{R}{R}{R}). Declining here casts
+		// the spell normally; it is never a cast failure.
+		if rawOC > 0 && avail >= oc && altCostKeywordColourOK(seat, card, "overload") {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -551,7 +555,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		maxPay := 0
 		// rawSC == 0 means the parser didn't capture the printed surge cost
 		// — decline rather than surge for free.
-		if rawSC > 0 && avail >= sc {
+		if rawSC > 0 && avail >= sc && altCostKeywordColourOK(seat, card, "surge") { // r128 §202.1a
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -568,7 +572,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		maxPay := 0
 		// rawSpc == 0 means the parser didn't capture the printed spectacle
 		// cost — decline rather than cast for free.
-		if rawSpc > 0 && avail >= spc {
+		if rawSpc > 0 && avail >= spc && altCostKeywordColourOK(seat, card, "spectacle") { // r128 §202.1a
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -589,7 +593,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		if haveBC && rawBC > 0 {
 			bc := EffectiveAlternativeCost(gs, card, seatIdx, rawBC, CastContext{})
 			avail := EnsureTypedPool(seat).Total()
-			if avail >= bc && seat.Hat != nil &&
+			if avail >= bc && altCostKeywordColourOK(seat, card, "blitz") && seat.Hat != nil && // r128 §202.1a
 				seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "blitz", bc, 1) > 0 {
 				baseCost = bc
 				altCostMeta["blitz_cast"] = true
@@ -613,7 +617,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		if profile, ok := PrototypeProfile(card); ok && len(altCostMeta) == 0 {
 			pc := EffectiveAlternativeCost(gs, card, seatIdx, profile.CMC, CastContext{})
 			avail := EnsureTypedPool(seat).Total()
-			if avail >= pc && seat.Hat != nil &&
+			// r128 — every prototype card has a COLOURLESS printed cost and
+			// a COLOURED prototype cost, so the r126 printed-cost check has
+			// no pips to object to. §202.1a governs this cost all the same.
+			if avail >= pc && altCostColourOK(seat, profile.ManaCostString) && seat.Hat != nil &&
 				seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "prototype", pc, 1) > 0 {
 				baseCost = pc
 				card.Proto = profile
