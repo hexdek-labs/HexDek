@@ -87,7 +87,7 @@ func mendicantMaxSpeedCopy(gs *gameengine.GameState, perm *gameengine.Permanent,
 		copyItem.Targets = append([]gameengine.Target(nil), target.Targets...)
 	}
 	gameengine.PushStackItem(gs, copyItem)
-	// CR §702.137a / "whenever you copy a spell" — Mendicant Core's copy fires
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — Mendicant Core's copy fires
 	// the canonical copy-trigger fan-out (magecraft + spell_copied).
 	gameengine.FireSpellCopyTriggers(gs, target.Controller, copyCard, target.Card)
 

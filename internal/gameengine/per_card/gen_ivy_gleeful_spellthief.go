@@ -87,7 +87,7 @@ func ivySpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		},
 	}
 	gameengine.PushStackItem(gs, copyItem)
-	// CR §702.137a / "whenever you copy a spell" — Ivy's copy fires the
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — Ivy's copy fires the
 	// canonical copy-trigger fan-out (magecraft + spell_copied).
 	gameengine.FireSpellCopyTriggers(gs, perm.Controller, copyCard, originItem.Card)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

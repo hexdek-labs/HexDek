@@ -5,7 +5,7 @@ import (
 )
 
 // magecraft_consumers_r60.go — per_card OnTrigger handlers for magecraft
-// payoffs (Strixhaven, CR §702.137a). The engine fires
+// payoffs (Strixhaven, CR §207.2c). The engine fires
 // FireCardTrigger("magecraft", ctx) from keywords_magecraft.go whenever
 // the controller of a magecraft permanent casts or copies an instant or
 // sorcery spell.

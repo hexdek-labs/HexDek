@@ -1198,7 +1198,7 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 				// (unless its text allows more), or §509.1b evasion via
 				// canBlockGS (flying / menace / landwalk / protection /
 				// fear / shadow / skulk / horsemanship / Sidar Kondo);
-				// then enforce §702.110b menace pairing on the survivors.
+				// then enforce §702.111b menace pairing on the survivors.
 				blockers = sanitizeDeclaredBlockers(gs, defenderSeat, a, blockers)
 				for _, b := range blockers {
 					commitBlock(b)
@@ -1442,7 +1442,7 @@ func canBlockProfiled(gs *GameState, prof attackerBlockProfile, attacker, blocke
 	if blocker.Tapped {
 		return false
 	}
-	// CR §701.62a: a suspected creature can't block. The designation
+	// CR §701.60a: a suspected creature can't block. The designation
 	// persists across turns until UnsuspectCreature (investigate) clears
 	// it, so this gate fires every block-declaration check independent
 	// of the until-EOT cleanup pass.
@@ -1593,7 +1593,7 @@ func dropDeclaredAttacker(gs *GameState, seatIdx int, p *Permanent, reason, rule
 //   - §509.1b: canBlockGS evasion/restriction gate (flying, menace
 //     count handled below, landwalk, protection, fear/intimidate,
 //     shadow, skulk, horsemanship, Sidar Kondo, unblockable);
-//   - §702.110b: if the attacker has menace (printed or layer-granted)
+//   - §702.111b: if the attacker has menace (printed or layer-granted)
 //     and exactly one blocker survives the filters, the single block is
 //     illegal as a whole and is dropped too.
 //
@@ -1644,9 +1644,9 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 		}
 		seen[b] = true
 	}
-	// §702.110b — menace: can't be blocked except by two or more.
+	// §702.111b — menace: can't be blocked except by two or more.
 	if len(kept) == 1 && keywordActive(gs, attacker, "menace") {
-		dropDeclaredBlocker(gs, defenderSeat, attacker, kept[0], "menace attacker blocked by exactly one creature", "702.110b")
+		dropDeclaredBlocker(gs, defenderSeat, attacker, kept[0], "menace attacker blocked by exactly one creature", "702.111b")
 		kept = kept[:0]
 	}
 	if len(kept) == 0 {

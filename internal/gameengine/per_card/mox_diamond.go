@@ -61,7 +61,7 @@ func moxDiamondETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 
 	card := s.Hand[landIdx]
-	// Route through DiscardCard for §702.34a Madness / §702.187 Mayhem /
+	// Route through DiscardCard for §702.35a Madness / §702.187 Mayhem /
 	// Necropotence reroute / card_discarded trigger / Turn.Discarded
 	// stat. Pre-r60-normalize Mox Diamond's "discard a land" cost direct-
 	// MoveCarded the land to graveyard and bypassed each one — Liliana's

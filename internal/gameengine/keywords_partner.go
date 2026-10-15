@@ -162,7 +162,7 @@ func OnPartnerWithETB(gs *GameState, perm *Permanent) *Card {
 		Seat:   seatIdx,
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule":          "702.124g",
+			"rule":          "702.124j",
 			"partner_named": target,
 		},
 	})
@@ -184,7 +184,7 @@ func OnPartnerWithETB(gs *GameState, perm *Permanent) *Card {
 			Source: found.DisplayName(),
 			Details: map[string]interface{}{
 				"reason": "partner_with",
-				"rule":   "702.124g",
+				"rule":   "702.124j",
 			},
 		})
 		MoveCard(gs, found, seatIdx, ZoneLibrary, ZoneHand, "partner_with")
@@ -194,7 +194,7 @@ func OnPartnerWithETB(gs *GameState, perm *Permanent) *Card {
 			Seat:   seatIdx,
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"rule":          "702.124g",
+				"rule":          "702.124j",
 				"partner_named": target,
 			},
 		})
@@ -213,7 +213,7 @@ func OnPartnerWithETB(gs *GameState, perm *Permanent) *Card {
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"reason": "partner_with",
-			"rule":   "702.124g",
+			"rule":   "702.124j",
 		},
 	})
 

@@ -11,7 +11,7 @@ import (
 //
 // All cases drive the trigger via gameengine.FireCardTrigger("magecraft",
 // ctx) — the same path the engine's FireMagecraftTriggers
-// (keywords_magecraft.go:164) uses after CR §702.137a filtering.
+// (keywords_magecraft.go:164) uses after CR §207.2c (ability word — no entry of its own) filtering.
 // Tests assume the engine-side filter has already run (only instant/sorcery
 // reaches here, only friendly perms get fanned out), and pin the per_card
 // payoff itself.

@@ -8,7 +8,7 @@ import (
 
 // copy_triggers_sweep_r63_test.go — regressions for the r63 consolidated
 // copy-trigger sweep. Every spell-copy maker must route through the canonical
-// FireSpellCopyTriggers chokepoint so a magecraft permanent (CR §702.137a:
+// FireSpellCopyTriggers chokepoint so a magecraft permanent (CR §207.2c (ability word — no entry of its own):
 // "cast OR COPY an instant or sorcery") and "whenever you copy a spell"
 // payoffs see the copy. Each test puts a magecraft creature on the copier's
 // battlefield and asserts a magecraft_trigger with is_copy=true fires — the

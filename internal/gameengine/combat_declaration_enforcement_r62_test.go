@@ -10,7 +10,7 @@ package gameengine
 //   2. An off-pool attacker (tapped here; the pool encodes all of
 //      canAttack) is dropped while its legal sibling still attacks.
 //   3. Illegal blocks — flyer vs groundling (§509.1b), menace blocked by
-//      one (§702.110b), islandwalk vs Island controller (§702.14),
+//      one (§702.111b), islandwalk vs Island controller (§702.14),
 //      tapped blocker (§509.1a) — are dropped while a legal block in
 //      the SAME combat survives untouched.
 //   4. One blocker committed to two attackers keeps only the first
@@ -143,7 +143,7 @@ func TestCombatEnforcement_IllegalBlocksDropped(t *testing.T) {
 
 	gs.Seats[1].Hat = &scriptedCombatHat{blockMap: map[*Permanent][]*Permanent{
 		flyer:   {groundling},        // §509.1b — no flying/reach
-		menacer: {lone},              // §702.110b — menace needs 2
+		menacer: {lone},              // §702.111b — menace needs 2
 		walker:  {wallish},           // §702.14 — defender controls an Island
 		vanilla: {legalB, tappedB},   // legal + a tapped tag-along (§509.1a)
 	}}
@@ -155,7 +155,7 @@ func TestCombatEnforcement_IllegalBlocksDropped(t *testing.T) {
 		t.Error("groundling block on flyer executed — §509.1b not enforced")
 	}
 	if len(out[menacer]) != 0 || lone.IsBlocking() {
-		t.Error("single block on menace executed — §702.110b not enforced")
+		t.Error("single block on menace executed — §702.111b not enforced")
 	}
 	if len(out[walker]) != 0 || wallish.IsBlocking() {
 		t.Error("block on islandwalker executed — §702.14 not enforced")
@@ -175,7 +175,7 @@ func TestCombatEnforcement_IllegalBlocksDropped(t *testing.T) {
 	for _, v := range gs.Legality.Violations {
 		rules[v.Rule] = true
 	}
-	for _, want := range []string{"509.1b", "702.110b", "509.1a"} {
+	for _, want := range []string{"509.1b", "702.111b", "509.1a"} {
 		if !rules[want] {
 			t.Errorf("validator lost the %s raw-map violation; got rules=%v", want, rules)
 		}

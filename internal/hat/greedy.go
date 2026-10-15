@@ -972,9 +972,9 @@ func (h *GreedyHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attack
 		// invisible to HasKeyword but real to the engine's block
 		// sanitizer (keywordActive). Without gs.HasKeywordOf the Hat
 		// declared a single illegal blocker that the engine then dropped
-		// (§702.110b), leaving the menace creature unblocked. (Deep loki
-		// sweep r63b: 54 §702.110b hits, all granted-menace attackers.)
-		// §702.110b needs 2+ distinct blockers; exclude EVERY creature
+		// (§702.111b), leaving the menace creature unblocked. (Deep loki
+		// sweep r63b: 54 §702.111b hits, all granted-menace attackers.)
+		// §702.111b needs 2+ distinct blockers; exclude EVERY creature
 		// already in chosen so a second blocker is never a duplicate of one
 		// we committed (§509.1). GreedyHat's chosen is single here today, so
 		// this matches the old `b != chosen[0]` exactly — it's a guard

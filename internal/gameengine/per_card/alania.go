@@ -129,7 +129,7 @@ func alaniaSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 		copyItem.Targets = append([]gameengine.Target(nil), stackItem.Targets...)
 	}
 	gameengine.PushStackItem(gs, copyItem)
-	// CR §702.137a / "whenever you copy a spell" — Alania's copy fires the
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — Alania's copy fires the
 	// canonical copy-trigger fan-out (magecraft + spell_copied).
 	gameengine.FireSpellCopyTriggers(gs, perm.Controller, copyCard, card)
 

@@ -828,7 +828,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 			paidSacrifice = victim
 		}
 		// Discard cost — discard N cards from hand. Routes through
-		// DiscardCard so CR §702.34a Madness replacement, §702.187
+		// DiscardCard so CR §702.35a Madness replacement, §702.187
 		// Mayhem tracking, Necropotence skip-draw rerouting, the
 		// card_discarded trigger (Liliana's Caress / Waste Not /
 		// Tergrid), and Turn.Discarded stat all see the discard. Pre-

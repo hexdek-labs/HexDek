@@ -186,7 +186,7 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
 		gs.InvalidateCharacteristicsCache()
 		gameengine.StateBasedActions(gs)
-		// CR §702.34a — close any madness windows opened by the cleanup
+		// CR §702.35a — close any madness windows opened by the cleanup
 		// discard so declined cards reach the graveyard (see the end-of-turn
 		// backstop below; this fast-forward path also discards).
 		gameengine.ResolveMadnessWindow(gs, -1)
@@ -628,7 +628,7 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		}
 	}
 
-	// CR §702.34a — close any madness cast windows still open at end of turn.
+	// CR §702.35a — close any madness cast windows still open at end of turn.
 	// OnDiscardMadness exiles a discarded madness card and opens a "you may
 	// cast it for its madness cost" window, but nothing previously CLOSED the
 	// window, so a card the controller didn't cast strayed in exile forever

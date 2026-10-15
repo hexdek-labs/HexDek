@@ -468,7 +468,7 @@ type GameState struct {
 	// so the map doesn't grow unbounded.
 	MayhemDiscards map[*Card]int
 
-	// MadnessExile tracks cards exiled via the Madness §702.34a
+	// MadnessExile tracks cards exiled via the Madness §702.35a
 	// discard replacement. Keyed by the exiled *Card pointer; value
 	// captures the seat that discarded and the turn it happened on.
 	// Written by OnDiscardMadness, read by CastWithMadness +
@@ -1850,7 +1850,7 @@ type Permanent struct {
 	// ordinary permanents.
 	MergeKind MergeKind
 
-	// TopCard tracks the top of a mutate stack (§702.139a) — the
+	// TopCard tracks the top of a mutate stack (§702.140a) — the
 	// permanent's name, characteristics, and type line are taken from
 	// this card while abilities accumulate from every MergedCards entry.
 	// Unused for Meld (a melded result has its own combined card).

@@ -68,7 +68,7 @@ func TestKeywordMigrationR83_LegalityHasteGrantStaysQuiet(t *testing.T) {
 	}
 }
 
-// §702.110b — a menace stripped by Humility must stop demanding two
+// §702.111b — a menace stripped by Humility must stop demanding two
 // blockers, so a single blocker is legal and must not be reported.
 func TestKeywordMigrationR83_LegalityMenaceStripIsNotFlagged(t *testing.T) {
 	gs := newUPGame(t)
@@ -78,13 +78,13 @@ func TestKeywordMigrationR83_LegalityMenaceStripIsNotFlagged(t *testing.T) {
 	blk := upCreature(gs, 1, "Lone Blocker", 2)
 
 	obs := &LegalityObservation{Kind: "block", Seat: 1, Attacker: atk, Blockers: []*Permanent{blk}}
-	if v := checkLegalityBlockDecl(gs, obs); !r83Has(v, "702.110b") {
+	if v := checkLegalityBlockDecl(gs, obs); !r83Has(v, "702.111b") {
 		t.Fatalf("precondition: the stamped menace should flag a single blocker — got %v", r83Rules(v))
 	}
 
 	r70Strip(gs, atk, "r83_legality_menace_strip")
 	v := checkLegalityBlockDecl(gs, obs)
-	if r83Has(v, "702.110b") {
+	if r83Has(v, "702.111b") {
 		t.Errorf("menace survived a layer-6 ability strip — a single blocker was still reported illegal: %v", r83Rules(v))
 	}
 }

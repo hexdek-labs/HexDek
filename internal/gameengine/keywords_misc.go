@@ -17,8 +17,8 @@ package gameengine
 //   - Jump-start        — CR §702.133
 //
 // COUNTER/TOKEN keywords:
-//   - Adapt N           — CR §702.137
-//   - Monstrosity N     — CR §702.94
+//   - Adapt N           — CR §701.46
+//   - Monstrosity N     — CR §701.37
 //   - Fabricate N       — CR §702.123
 //   - Reinforce N       — CR §702.77
 //   - Bolster N         — CR §701.32
@@ -726,7 +726,7 @@ func CastWithJumpStart(gs *GameState, seatIdx int, card *Card, cardToDiscard *Ca
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Adapt N — CR §702.137
+// Adapt N — CR §701.46
 // ---------------------------------------------------------------------------
 //
 // If this creature has no +1/+1 counters on it, put N +1/+1 counters on it.
@@ -761,14 +761,14 @@ func ActivateAdapt(gs *GameState, perm *Permanent, n int, adaptCost int) bool {
 		Amount: n,
 		Details: map[string]interface{}{
 			"cost": adaptCost,
-			"rule": "702.137",
+			"rule": "701.46",
 		},
 	})
 	return true
 }
 
 // ---------------------------------------------------------------------------
-// Monstrosity N — CR §702.94
+// Monstrosity N — CR §701.37
 // ---------------------------------------------------------------------------
 //
 // If this creature isn't monstrous, put N +1/+1 counters on it and it
@@ -807,7 +807,7 @@ func ActivateMonstrosity(gs *GameState, perm *Permanent, n int, monstCost int) b
 		Amount: n,
 		Details: map[string]interface{}{
 			"cost": monstCost,
-			"rule": "702.94",
+			"rule": "701.37",
 		},
 	})
 	return true

@@ -16,7 +16,7 @@ package gameengine
 //   (e) Lifelink with trample — lifelink gains life from every
 //       instance of damage including the trample carry-over
 //   (f) Menace blocker requirement — single-blocker can't satisfy menace,
-//       attacker connects (§702.110b)
+//       attacker connects (§702.111b)
 //   (g) Protection from color — blocking is legal but damage to the
 //       protected blocker is prevented (§702.16 DEBT)
 
@@ -199,12 +199,12 @@ func TestCombat_R40_LifelinkTrample_GainsAllDamageIncludingCarry(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------------
-// (f) Menace blocker requirement — §702.110b
+// (f) Menace blocker requirement — §702.111b
 // -----------------------------------------------------------------------------
 
 func TestCombat_R40_Menace_SoloBlockerFailsRequirement(t *testing.T) {
 	// 2/2 menace attacker into a defender that controls exactly one
-	// untapped creature. Per §702.110b the attacker can't be blocked
+	// untapped creature. Per §702.111b the attacker can't be blocked
 	// except by two or more creatures. With the no-Hat fallback in
 	// DeclareBlockers, the single candidate doesn't satisfy the menace
 	// gate, the block is skipped, and the attacker connects with the

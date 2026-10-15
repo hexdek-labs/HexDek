@@ -250,7 +250,7 @@ func CreateOffspringToken(gs *GameState, parent *Permanent) {
 // WasTributeRefused / TributeResolved / TributeOpponent live in
 // keywords_tribute.go. The ETB choice is implemented as a two-callback
 // flow (controller chooses opponent → opponent decides yes/no) with
-// per-card "tribute_resolved" trigger fan-out for the §702.121b
+// per-card "tribute_resolved" trigger fan-out for the §702.104b
 // "if tribute wasn't paid" payoff.
 
 // ---------------------------------------------------------------------------
@@ -417,7 +417,7 @@ func ApplyConspire(gs *GameState, seatIdx int, item *StackItem) bool {
 			"rule":     "702.78",
 		},
 	})
-	// CR §702.137a / "whenever you copy a spell" — the conspire copy fires
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — the conspire copy fires
 	// the canonical copy-trigger fan-out (magecraft + spell_copied).
 	FireSpellCopyTriggers(gs, seatIdx, copyCard, item.Card)
 	return true

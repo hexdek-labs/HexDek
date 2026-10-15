@@ -172,7 +172,7 @@ func RecordMeldMergeWithCards(gs *GameState, result *Permanent, id1, id2 string,
 
 // UnmergeOnLeavePlay walks a merged permanent's MergedCards slice and
 // routes each constituent Card to destZone as a separate object with
-// its InstanceID preserved. Per §702.139d (Mutate) and §712.3 (Meld)
+// its InstanceID preserved. Per §702.140d (Mutate) and §712.3 (Meld)
 // the merge dissolves the moment the permanent leaves the battlefield;
 // each pre-merge card materializes individually in the destination
 // zone.
@@ -655,7 +655,7 @@ func suspendTickEffect(gs *GameState, ab *AbilityInstance, ev *Event) {
 		Details: map[string]interface{}{
 			"suspend_card_id":    c.InstanceID,
 			"counters_remaining": n,
-			"rule":               "702.61b",
+			"rule":               "702.62a",
 		},
 	})
 	if n == 0 {
@@ -665,7 +665,7 @@ func suspendTickEffect(gs *GameState, ab *AbilityInstance, ev *Event) {
 			Source: c.DisplayName(),
 			Details: map[string]interface{}{
 				"suspend_card_id": c.InstanceID,
-				"rule":            "702.61c",
+				"rule":            "702.62a",
 			},
 		})
 		// Drive the cast-when-zero one-shot from the same pool walk.

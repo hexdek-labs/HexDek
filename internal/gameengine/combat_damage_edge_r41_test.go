@@ -17,7 +17,7 @@ package gameengine
 //       not just the regular damage step.
 //   (e) Lifelink with trample lethal — defender goes below 0; gain equals
 //       damage dealt, not damage required to kill.
-//   (f) Menace satisfied — exactly two blockers meet §702.110b and the
+//   (f) Menace satisfied — exactly two blockers meet §702.111b and the
 //       attacker is contained (does not connect with the player).
 //   (g) Protection from color on the attacker side — a red blocker can't
 //       block an attacker with prot-from-red; fallback skips, attacker
@@ -193,7 +193,7 @@ func TestCombat_R41_LifelinkTrample_GainEqualsDamageDealt(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestCombat_R41_Menace_TwoBlockersSatisfyRequirement(t *testing.T) {
-	// 4/4 menace attacker, defender has two 2/2s. §702.110b is satisfied
+	// 4/4 menace attacker, defender has two 2/2s. §702.111b is satisfied
 	// with two blockers. The attacker is blocked and does not connect.
 	// The blockers absorb 2+2 = 4 damage (lethal split) and the attacker
 	// takes 2+2 = 4 back, dying on SBA.

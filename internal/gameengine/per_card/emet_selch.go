@@ -85,7 +85,7 @@ func emetSelchLoot(gs *gameengine.GameState, perm *gameengine.Permanent, reason 
 		}
 		card := s.Hand[idx]
 		discardName = card.DisplayName()
-		// Route through DiscardCard for §702.34a Madness / §702.187
+		// Route through DiscardCard for §702.35a Madness / §702.187
 		// Mayhem / Necropotence reroute / card_discarded trigger /
 		// Turn.Discarded stat. Pre-r60-normalize Emet-Selch direct-
 		// MoveCarded the highest-CMC card to graveyard, silently

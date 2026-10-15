@@ -237,7 +237,7 @@ func TestFireMagecraftTriggers_ArtifactSpellDoesNotTrigger(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// (c) Copy of an instant also triggers (per §702.137a)
+// (c) Copy of an instant also triggers (per §207.2c)
 // ---------------------------------------------------------------------------
 
 func TestFireMagecraftTriggers_CopyOfInstantTriggers(t *testing.T) {

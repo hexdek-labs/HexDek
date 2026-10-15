@@ -7,7 +7,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// cloak_ward_r63_test.go — Cloak (CR §702.171a). Cloak puts the top library
+// cloak_ward_r63_test.go — Cloak (CR §701.58a). Cloak puts the top library
 // card face down as a 2/2 creature WITH ward {2}. The engine put the 2/2 down
 // but granted no ward — the defining cloak-vs-manifest difference was missing.
 

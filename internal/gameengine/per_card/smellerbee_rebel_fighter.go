@@ -56,7 +56,7 @@ func smellerbeeAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		})
 		return
 	}
-	// Route through DiscardCard per-card so §702.34a Madness /
+	// Route through DiscardCard per-card so §702.35a Madness /
 	// §702.187 Mayhem / Necropotence reroute / card_discarded trigger
 	// (Liliana's Caress / Waste Not / Tergrid) / Turn.Discarded all
 	// see the discards. Pre-r60-normalize this path bulk-spliced

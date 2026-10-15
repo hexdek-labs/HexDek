@@ -7187,9 +7187,9 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 
 		// Menace: need a second blocker. Layer-aware (gs.HasKeywordOf) so
 		// granted menace matches the engine's block sanitizer — see the
-		// greedy.go note (deep loki r63b §702.110b granted-menace cluster).
+		// greedy.go note (deep loki r63b §702.111b granted-menace cluster).
 		//
-		// CR §702.110b is satisfied by ANY 2+ distinct blockers, so the
+		// CR §702.111b is satisfied by ANY 2+ distinct blockers, so the
 		// gang-block branch above may already meet it (chosen has ≥2). Only
 		// reach for a second blocker when chosen still has exactly one, and
 		// pick the extra from creatures NOT already in chosen — excluding

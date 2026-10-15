@@ -1018,7 +1018,7 @@ func blockNumberWord(s string) (int, bool) {
 // text allows more, and must satisfy the attacker's evasion/blocking
 // restrictions (§509.1b — re-derived through canBlockGS: flying,
 // horsemanship, fear/intimidate/shadow/skulk, landwalk, protection,
-// unblockable). Menace (§702.110b) is a set-level requirement: a menace
+// unblockable). Menace (§702.111b) is a set-level requirement: a menace
 // attacker blocked by exactly one creature is an illegal declaration.
 // The engine's hat path (DeclareBlockers → AssignBlockers) applies the
 // returned map with NO validation at all — this check is the only gate
@@ -1087,11 +1087,11 @@ func checkLegalityBlockDecl(gs *GameState, obs *LegalityObservation) []LegalityV
 			add("509.1b", fmt.Sprintf("blocker %q cannot legally block this attacker (evasion/restriction unsatisfied)", name))
 		}
 	}
-	// §702.110b — menace: can't be blocked except by two or more.
+	// §702.111b — menace: can't be blocked except by two or more.
 	// r83 — union dropped, same reasoning as the haste check above: a
 	// menace stripped by Humility must stop demanding two blockers.
 	if live == 1 && gs.HasKeywordOf(obs.Attacker, "menace") {
-		add("702.110b", "menace attacker blocked by exactly one creature")
+		add("702.111b", "menace attacker blocked by exactly one creature")
 	}
 	return out
 }

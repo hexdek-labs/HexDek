@@ -42,7 +42,7 @@ func TestYggdrasil_AssignBlockers_NoDoubleCommit_GangPlusMenace(t *testing.T) {
 }
 
 // The dedup must REJECT the duplicate without suppressing a legitimate menace
-// pairing: a menace attacker still needs 2+ DISTINCT blockers (§702.110b), and
+// pairing: a menace attacker still needs 2+ DISTINCT blockers (§702.111b), and
 // the gang path already provides them. Same board as above — the fix must
 // leave the assignment with at least two distinct creatures (so menace is
 // satisfied) and zero duplicates. (Engine-level multi-block-grant preservation
@@ -74,10 +74,10 @@ func TestYggdrasil_AssignBlockers_MenacePairingStillTwoDistinct(t *testing.T) {
 		}
 		distinct[b] = true
 	}
-	// If the hat blocks a menace attacker at all, §702.110b requires 2+
+	// If the hat blocks a menace attacker at all, §702.111b requires 2+
 	// distinct creatures; a single-blocker menace declaration is illegal.
 	if len(blockers) == 1 {
-		t.Fatalf("menace attacker blocked by exactly one creature (§702.110b)")
+		t.Fatalf("menace attacker blocked by exactly one creature (§702.111b)")
 	}
 	if len(blockers) >= 2 && len(distinct) < 2 {
 		t.Fatalf("menace pairing must be 2+ DISTINCT blockers, got %d distinct of %d", len(distinct), len(blockers))

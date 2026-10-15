@@ -141,7 +141,7 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 			},
 		})
 	}
-	// CR §702.137a / "whenever you copy a spell" — each replicate copy fires
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — each replicate copy fires
 	// the canonical copy-trigger fan-out (magecraft + spell_copied). Fired
 	// after the push loop so the copies stay contiguous on the stack (mirrors
 	// ApplyStormCopy) and the resulting triggers land above them.

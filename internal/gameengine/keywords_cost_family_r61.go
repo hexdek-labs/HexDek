@@ -99,7 +99,7 @@ func ApplyCasualty(gs *GameState, seatIdx int, item *StackItem, minPower int) bo
 			"rule":     "702.153b",
 		},
 	})
-	// CR §702.137a — magecraft + the generic "spell_copied" trigger fire on
+	// CR §207.2c (ability word — no entry of its own) — magecraft + the generic "spell_copied" trigger fire on
 	// the casualty copy via the canonical FireSpellCopyTriggers chokepoint
 	// (FireMagecraftTriggers self-filters to instant/sorcery, so a permanent
 	// casualty spell like Bortuk is a correct no-op).

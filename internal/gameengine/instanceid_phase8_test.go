@@ -119,7 +119,7 @@ func TestPhase8_MutateStackThreeIDs(t *testing.T) {
 	}
 }
 
-// TestPhase8_MutateLeavePlayUnmergeToGraveyard pins §702.139d: when the
+// TestPhase8_MutateLeavePlayUnmergeToGraveyard pins §702.140d: when the
 // merged permanent dies, each MergedCards constituent moves to graveyard
 // individually with its InstanceID preserved.
 func TestPhase8_MutateLeavePlayUnmergeToGraveyard(t *testing.T) {

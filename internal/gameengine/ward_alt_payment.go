@@ -313,7 +313,7 @@ func payWardByDiscard(gs *GameState, caster *Seat, source *Permanent, cost WardC
 		}
 	}
 	card := caster.Hand[idx]
-	// Route through DiscardCard for §702.34a Madness / §702.187 Mayhem /
+	// Route through DiscardCard for §702.35a Madness / §702.187 Mayhem /
 	// Necropotence reroute / card_discarded trigger / Turn.Discarded
 	// stat. Pre-r60-normalize the ward alt-payment path direct-spliced
 	// caster.Hand and silently bypassed every one of those — a ward-

@@ -1161,7 +1161,7 @@ func DiscardCard(gs *GameState, card *Card, seat int) {
 	if NecropotenceSkipsDraw(gs, seat) {
 		dest = "exile"
 	}
-	// CR §702.34a — Madness replacement: if the card has madness and
+	// CR §702.35a — Madness replacement: if the card has madness and
 	// Necropotence isn't already rerouting, exile via OnDiscardMadness
 	// instead of going to the graveyard. OnDiscardMadness does the
 	// zone move + bookkeeping + ZoneCastPermission registration; the
@@ -3215,7 +3215,7 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 			"rule":    "707.2",
 		},
 	})
-	// CR §702.137a — magecraft fires on COPY of an instant/sorcery just as
+	// CR §207.2c (ability word — no entry of its own) — magecraft fires on COPY of an instant/sorcery just as
 	// it does on cast, plus the generic "spell_copied" trigger (The Twelfth
 	// Doctor et al.). Both route through the canonical FireSpellCopyTriggers
 	// chokepoint, which every other copy-maker (storm, conspire, replicate,

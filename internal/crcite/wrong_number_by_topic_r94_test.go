@@ -140,7 +140,11 @@ func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
 		// Those 51 are UNREAD. Baselining unread sites is how
 		// mismatch_baseline.txt became a worklist, so the widening is
 		// recorded here and left off until someone triages them.
-		res[i] = regexp.MustCompile(`\b` + regexp.QuoteMeta(c.badRule) + `([^0-9a-z]|$)`)
+		pat := regexp.QuoteMeta(c.badRule)
+		if !regexp.MustCompile(`[a-z]$`).MatchString(c.badRule) {
+			pat += `[a-z]?`
+		}
+		res[i] = regexp.MustCompile(`\b` + pat + `([^0-9a-z]|$)`)
 		topics[i] = strings.ToLower(c.topic)
 	}
 

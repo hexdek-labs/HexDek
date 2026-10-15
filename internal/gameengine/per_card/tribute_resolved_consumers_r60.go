@@ -37,7 +37,7 @@ import (
 //       the bearer whose ETB drove this ApplyTribute call should fire
 //       its refused-payoff.
 //   (b) accepted == false — when tribute was paid, the engine added the
-//       counters and CR §702.121b's "if tribute wasn't paid" rider
+//       counters and CR §702.104b's "if tribute wasn't paid" rider
 //       explicitly does NOT trigger; the per_card handler must abstain.
 
 func init() {

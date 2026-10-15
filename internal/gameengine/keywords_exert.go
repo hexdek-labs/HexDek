@@ -62,7 +62,7 @@ func ExertCreature(gs *GameState, perm *Permanent) bool {
 		Seat:   perm.Controller,
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule": "702.112",
+			"rule": "701.43",
 		},
 	})
 	// "When you exert this creature, [bonus]" — the you_exert_creature → exert

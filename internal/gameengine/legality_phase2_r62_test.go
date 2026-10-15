@@ -155,8 +155,8 @@ func TestLegalityPhase2_IllegalBlocks_Flagged(t *testing.T) {
 	if got["509.1a"] < 1 {
 		t.Errorf("tapped blocker: want 509.1a, got %v", v.Violations)
 	}
-	if got["702.110b"] < 1 {
-		t.Errorf("menace single-block: want 702.110b, got %v", v.Violations)
+	if got["702.111b"] < 1 {
+		t.Errorf("menace single-block: want 702.111b, got %v", v.Violations)
 	}
 	if got["509.1"] < 1 {
 		t.Errorf("double-committed blocker: want 509.1 multi-block, got %v", v.Violations)

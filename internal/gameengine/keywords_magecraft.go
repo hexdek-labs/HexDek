@@ -7,7 +7,7 @@ package gameengine
 // Rules", so there is no number to cite. This file carried §702.137
 // until r96 — that is Spectacle.
 //
-// CR §702.137a: Magecraft is an ability word. It indicates a triggered
+// CR §207.2c (ability word — no entry of its own): Magecraft is an ability word. It indicates a triggered
 //               ability of the form "Whenever you cast or copy an
 //               instant or sorcery spell, ..." that functions while
 //               the permanent with magecraft is on the battlefield.
@@ -51,7 +51,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // HasMagecraft returns true if the card has the magecraft keyword in
-// its AST. Magecraft is technically an "ability word" (CR §702.137a)
+// its AST. Magecraft is technically an "ability word" (CR §207.2c (ability word — no entry of its own))
 // rather than a keyword in the strict gameast sense, but the engine
 // normalizes both into Keyword AST nodes so the same detector works
 // for either spelling.
@@ -102,13 +102,13 @@ func permanentHasMagecraft(gs *GameState, p *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // FireMagecraftTriggers fires the magecraft trigger for `casterSeat`
-// having just cast or copied `spell`. CR §702.137a.
+// having just cast or copied `spell`. CR §207.2c.
 //
 // Filtering:
 //   - spell must be an instant or sorcery (creature/artifact/enchantment
 //     casts do NOT trigger magecraft — only instant/sorcery does)
 //   - only permanents controlled by `casterSeat` are scanned
-//     (CR §702.137a "Whenever YOU cast or copy ..." — opponent casts
+//     (CR §207.2c "Whenever YOU cast or copy ..." — opponent casts
 //     never trigger another player's magecraft)
 //
 // Side effects:
@@ -136,7 +136,7 @@ func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bo
 	if gs.Seats[casterSeat] == nil {
 		return
 	}
-	// CR §702.137a — only instant or sorcery spells trigger magecraft.
+	// CR §207.2c (ability word — no entry of its own) — only instant or sorcery spells trigger magecraft.
 	if !cardHasType(spell, "instant") && !cardHasType(spell, "sorcery") {
 		return
 	}
@@ -164,7 +164,7 @@ func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bo
 			Details: map[string]interface{}{
 				"spell":   spellName(spell),
 				"is_copy": isCopy,
-				"rule":    "702.137a",
+				"rule":    "207.2c",
 			},
 		})
 		FireCardTrigger(gs, "magecraft", map[string]interface{}{
@@ -183,7 +183,7 @@ func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bo
 // who created the copy as `controllerSeat` (the "you" in both triggers — for a
 // demonstrate opponent-copy that is the opponent). It fires:
 //
-//   - magecraft (CR §702.137a — "whenever you cast OR COPY an instant or
+//   - magecraft (CR §207.2c (ability word — no entry of its own) — "whenever you cast OR COPY an instant or
 //     sorcery spell"). FireMagecraftTriggers self-filters to instant/sorcery,
 //     so a copy of a permanent spell (which resolves to a token) correctly
 //     fires no magecraft here.

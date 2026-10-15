@@ -269,7 +269,7 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 			},
 		})
 	}
-	// CR §702.137a / "whenever you copy a spell" — each tiered copy fires the
+	// CR §207.2c (magecraft is an ability word, no entry of its own) / "whenever you copy a spell" — each tiered copy fires the
 	// canonical copy-trigger fan-out, after the push loop (contiguity).
 	for _, cc := range tieredCopies {
 		FireSpellCopyTriggers(gs, seatIdx, cc, item.Card)

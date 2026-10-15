@@ -224,7 +224,7 @@ func searchLibraryForType(gs *GameState, seatIdx int, cardType string) *Card {
 		}
 	}
 	if found != nil {
-		// §702.29c — reveal the found card, then put it into hand.
+		// §702.29e — reveal the found card, then put it into hand.
 		gs.LogEvent(Event{
 			Kind:   "reveal",
 			Seat:   seatIdx,
@@ -232,7 +232,7 @@ func searchLibraryForType(gs *GameState, seatIdx int, cardType string) *Card {
 			Details: map[string]interface{}{
 				"reason": "typecycling",
 				"type":   cardType,
-				"rule":   "702.29c",
+				"rule":   "702.29e",
 			},
 		})
 		MoveCard(gs, found, seatIdx, "library", "hand", "typecycling-to-hand")
@@ -246,7 +246,7 @@ func searchLibraryForType(gs *GameState, seatIdx int, cardType string) *Card {
 		Target: seatIdx,
 		Details: map[string]interface{}{
 			"reason": "typecycling",
-			"rule":   "702.29c",
+			"rule":   "702.29e",
 		},
 	})
 	return found

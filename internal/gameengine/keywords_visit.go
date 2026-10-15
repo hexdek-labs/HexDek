@@ -60,7 +60,7 @@ func ApplyVisit(gs *GameState, visitorSeat int, perm *Permanent) int {
 			"visitor_seat":    visitorSeat,
 			"controller_seat": perm.Controller,
 			"visit_count":     count,
-			"rule":            "702.177",
+			"rule":            "702.159",
 		},
 	})
 
