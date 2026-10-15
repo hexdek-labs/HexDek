@@ -1241,11 +1241,12 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 		}
 		// Gather candidates.
 		cands := []*Permanent{}
+		atkProf := newAttackerBlockProfile(gs, atk)
 		for _, b := range pool {
 			if used[b] {
 				continue
 			}
-			if !canBlockGS(gs, atk, b) {
+			if !canBlockProfiled(gs, atkProf, atk, b) {
 				continue
 			}
 			cands = append(cands, b)
@@ -1391,7 +1392,50 @@ func canBlock(attacker, blocker *Permanent) bool { return canBlockGS(nil, attack
 
 // canBlockGS mirrors Python can_block() with optional game state for
 // §702.14 landwalk checks — CR §509.1b.
+// attackerBlockProfile holds the parts of a block-legality check that
+// depend on the ATTACKER alone. DeclareBlockers evaluates block legality
+// once per (attacker, blocker) pair but iterates blockers inside a single
+// attacker, so these were recomputed for every blocker (r119).
+//
+// LandwalkType is the expensive member: it asks keywordActive once for each
+// of the five basic landwalk keywords and returns "" for the overwhelming
+// majority of creatures, which made it 50% of all keywordActive time in the
+// r118 DeclareBlockers profile.
+//
+// This is the r118 per-pair-predicate shape, and like r118 it is a CONSTANT
+// FACTOR: it divides the attacker-side work by the blocker count, it does
+// not change the O(pairs) shape, which is correct.
+type attackerBlockProfile struct {
+	flying      bool
+	unblockable bool
+	landwalk    string
+}
+
+func newAttackerBlockProfile(gs *GameState, attacker *Permanent) attackerBlockProfile {
+	if attacker == nil {
+		return attackerBlockProfile{}
+	}
+	prof := attackerBlockProfile{
+		flying:      keywordActive(gs, attacker, "flying"),
+		unblockable: keywordActive(gs, attacker, "unblockable"),
+	}
+	// Landwalk is only consulted on the gs-bearing path; keep the gs-less
+	// legacy CanBlock(nil, …) callers paying nothing for it.
+	if gs != nil {
+		prof.landwalk = LandwalkType(gs, attacker)
+	}
+	return prof
+}
+
 func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
+	return canBlockProfiled(gs, newAttackerBlockProfile(gs, attacker), attacker, blocker)
+}
+
+// canBlockProfiled is canBlockGS with the attacker-only predicates supplied
+// by the caller. Callers that test many blockers against ONE attacker build
+// the profile once and call this; everyone else goes through canBlockGS,
+// which is unchanged in both signature and behaviour.
+func canBlockProfiled(gs *GameState, prof attackerBlockProfile, attacker, blocker *Permanent) bool {
 	if blocker == nil || !blocker.IsCreature() {
 		return false
 	}
@@ -1417,7 +1461,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	// Flying: blocked only by flying or reach. Layer-aware (keywordActive)
 	// so a granted-flying attacker ("creatures you control have flying")
 	// is blockable only by granted/printed flying or reach (r63).
-	if keywordActive(gs, attacker, "flying") {
+	if prof.flying {
 		if !(keywordActive(gs, blocker, "flying") || keywordActive(gs, blocker, "reach")) {
 			return false
 		}
@@ -1451,7 +1495,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 		}
 	}
 	// Unblockable-style effects.
-	if keywordActive(gs, attacker, "unblockable") {
+	if prof.unblockable {
 		return false
 	}
 	// §702.14 — Landwalk: if attacker has landwalk and the blocker's
@@ -1459,8 +1503,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	// blocked by that player's creatures. Requires game state for land
 	// checks — skipped when gs is nil (legacy CanBlock path).
 	if gs != nil && blocker.Controller >= 0 {
-		lt := LandwalkType(gs, attacker)
-		if lt != "" && DefenderControlsLandType(gs, blocker.Controller, lt) {
+		if prof.landwalk != "" && DefenderControlsLandType(gs, blocker.Controller, prof.landwalk) {
 			return false
 		}
 	}
@@ -1568,6 +1611,7 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 	}
 	kept := make([]*Permanent, 0, len(blockers))
 	seen := make(map[*Permanent]bool, len(blockers))
+	sdbProf := newAttackerBlockProfile(gs, attacker)
 	for _, b := range blockers {
 		if b == nil {
 			continue
@@ -1591,7 +1635,7 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 			// already (1 by default; 1+N for "block an additional N"; the
 			// unlimited sentinel for "block any number").
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is already blocking the maximum number of attackers", "509.1")
-		case !canBlockGS(gs, attacker, b):
+		case !canBlockProfiled(gs, sdbProf, attacker, b):
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "evasion/blocking restriction unsatisfied", "509.1b")
 		default:
 			seen[b] = true
