@@ -54,34 +54,47 @@ func RemoveCounterCostSpec(c gameast.Cost) (n int, kind string, ok bool) {
 	return 0, "", false
 }
 
-// parseSmallCountWord parses a small fixed activation-cost count: a positive
-// decimal, or a number word "a"/"an"/"one" through "ten". A variable or
-// explicitly-X count returns ok=false (the caller then declines to enforce).
+// parseSmallCountWord parses a FIXED activation-cost count: a positive
+// decimal, or an English number word. A variable count ("x", "any number",
+// "all") returns ok=false and the caller declines to enforce.
+//
+// r123 — THE WORD LIST WAS THE ENFORCEMENT BOUNDARY, AND IT STOPPED AT TEN.
+// A counter-removal cost this function cannot parse is not paid at all, so
+// the ability becomes FREE — the exact non-termination hazard the comment at
+// the call site in activation.go warns about. Two corpus cards sat outside
+// the list on a fixed count:
+//
+//	Fire Nation Turret     "remove fifty charge counters: deal 50 damage to
+//	                        any target"   — no mana cost, no tap cost
+//	Trenzalore Clocktower  "{1}{U}, {T}, remove twelve time counters …"
+//
+// Measured before the fix: Fire Nation Turret accepted 5 of 5 activations
+// holding ZERO charge counters and took an opponent from 20 to -30 life.
+// It is in 3 of 1,758 live decks.
+//
+// The remaining unparsed shapes are deliberate and counted (r123): 26 "remove
+// X", 18 "remove any number of", 9 "remove all", 20 targeting another
+// permanent. The first two are self-limiting — removing zero is a legal
+// payment and every such effect scales off "counters removed this way", so a
+// free activation does nothing. "remove all" and the other-permanent form
+// need a count this signature cannot see; see the r123 write-up.
 func parseSmallCountWord(w string) (int, bool) {
-	switch w {
-	case "a", "an", "one":
-		return 1, true
-	case "two":
-		return 2, true
-	case "three":
-		return 3, true
-	case "four":
-		return 4, true
-	case "five":
-		return 5, true
-	case "six":
-		return 6, true
-	case "seven":
-		return 7, true
-	case "eight":
-		return 8, true
-	case "nine":
-		return 9, true
-	case "ten":
-		return 10, true
+	if n, ok := englishNumberWords[w]; ok {
+		return n, true
 	}
 	if n, err := strconv.Atoi(w); err == nil && n > 0 {
 		return n, true
 	}
 	return 0, false
+}
+
+// englishNumberWords covers the fixed counts that appear in printed costs.
+// "a"/"an" are the article form of one.
+var englishNumberWords = map[string]int{
+	"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+	"six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+	"eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+	"sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+	"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+	"sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90, "hundred": 100,
 }
