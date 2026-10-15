@@ -87,7 +87,7 @@ func TallyCouncilsDilemma(gs *GameState, controllerSeat int, options []string, c
 				Seat: seatIdx,
 				Details: map[string]interface{}{
 					"reason": "callback_returned_invalid_index",
-					"rule":   "701.20a",
+					"rule":   "701.38a",
 				},
 			})
 			continue
@@ -102,7 +102,7 @@ func TallyCouncilsDilemma(gs *GameState, controllerSeat int, options []string, c
 				"option":          chosen,
 				"option_index":    idx,
 				"running_count":   tally[chosen],
-				"rule":            "701.20a",
+				"rule":            "701.38a",
 			},
 		})
 	}
@@ -117,7 +117,7 @@ func TallyCouncilsDilemma(gs *GameState, controllerSeat int, options []string, c
 		Details: map[string]interface{}{
 			"options": append([]string(nil), options...),
 			"tally":   finalSnapshot,
-			"rule":    "701.20",
+			"rule":    "701.38",
 		},
 	})
 	return tally
@@ -159,7 +159,7 @@ func ApplyCouncilsDilemma(gs *GameState, options []string, tally map[string]int,
 			Details: map[string]interface{}{
 				"option": opt,
 				"votes":  votes,
-				"rule":   "701.20b",
+				"rule":   "701.38b",
 			},
 		})
 	}

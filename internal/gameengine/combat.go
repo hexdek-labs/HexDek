@@ -2954,7 +2954,7 @@ func enforceGoadMustAttack(gs *GameState, chosen, legal []*Permanent) []*Permane
 			Seat:   p.Controller,
 			Source: p.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"rule":   "701.39",
+				"rule":   "701.15",
 				"reason": "must_attack_if_able",
 			},
 		})

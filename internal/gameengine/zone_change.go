@@ -10,16 +10,16 @@ package gameengine
 //   §603.6    A trigger fires whenever the specified event occurs.
 //   §603.10   Zone-change triggers "look back in time" to the game state
 //             just before the event to determine if the trigger fires.
-//   §701.7    "Destroy" = battlefield → graveyard (indestructible stops it).
-//   §701.17   "Sacrifice" = battlefield → graveyard (ignores indestructible).
+//   §701.8    "Destroy" = battlefield → graveyard (indestructible stops it).
+//   §701.21   "Sacrifice" = battlefield → graveyard (ignores indestructible).
 //   §614      Replacement effects modify zone changes.
 //   §903.9a/b Commander zone redirect.
 //
 // This file provides:
 //
-//   DestroyPermanent(gs, perm, source)   — §701.7 destroy
+//   DestroyPermanent(gs, perm, source)   — §701.8 destroy
 //   ExilePermanent(gs, perm, source)     — §406.3 exile
-//   sacrificePermanentImpl(gs, perm, source, reason) — §701.17 sacrifice (internal)
+//   sacrificePermanentImpl(gs, perm, source, reason) — §701.21 sacrifice (internal)
 //   BouncePermanent(gs, perm, source, dest) — return to hand
 //   FireZoneChangeTriggers(gs, perm, card, fromZone, toZone) — observer triggers
 
@@ -30,18 +30,18 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// DestroyPermanent — CR §701.7
+// DestroyPermanent — CR §701.8
 // ---------------------------------------------------------------------------
 
 // DestroyPermanent handles a destroy effect from a spell or ability (NOT an
-// SBA). Per CR §701.7a: "To destroy a permanent, move it from the battlefield
+// SBA). Per CR §701.8a: "To destroy a permanent, move it from the battlefield
 // to its owner's graveyard." Per §702.12b, indestructible permanents can't be
 // destroyed. Replacement effects (Rest in Peace, Anafenza, etc.) may redirect
 // the destination. Commander redirect (§903.9a/b) is applied via FireZoneChange.
 //
 // Returns true if the permanent was actually removed from the battlefield.
 // DestroyPermanent destroys `perm` via the normal "destroy" event, honoring
-// indestructible, shield counters, regeneration (§701.15a), and §614 die
+// indestructible, shield counters, regeneration (§701.19a), and §614 die
 // replacements. Returns true if the permanent was actually put into a
 // graveyard (false when prevented/regenerated/redirected).
 func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
@@ -98,7 +98,7 @@ func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, all
 		return false
 	}
 
-	// §701.15a: a regeneration shield replaces the destruction — tap,
+	// §701.19a: a regeneration shield replaces the destruction — tap,
 	// remove from combat, and clear marked damage instead of destroying.
 	// Skipped for "can't be regenerated" destruction (regeneration restriction, Wrath of
 	// God / Damnation), which routes through DestroyPermanentNoRegen.
@@ -132,7 +132,7 @@ func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, all
 		Details: map[string]interface{}{
 			"target_card": perm.Card.DisplayName(),
 			"to_zone":     destZone,
-			"rule":        "701.7",
+			"rule":        "701.8",
 		},
 	})
 
@@ -269,18 +269,18 @@ func fireExileEvent(gs *GameState, perm *Permanent, src *Permanent) *ReplEvent {
 }
 
 // ---------------------------------------------------------------------------
-// sacrificePermanentImpl — CR §701.17 (internal, called by SacrificePermanent)
+// sacrificePermanentImpl — CR §701.21 (internal, called by SacrificePermanent)
 // ---------------------------------------------------------------------------
 
-// sacrificePermanentImpl handles sacrifice. Per CR §701.17a: "To sacrifice a
+// sacrificePermanentImpl handles sacrifice. Per CR §701.21a: "To sacrifice a
 // permanent, its controller moves it from the battlefield directly to its
-// owner's graveyard." §701.17b: sacrifice ignores indestructible.
+// owner's graveyard." §701.21a: sacrifice ignores indestructible.
 // Replacement effects (Rest in Peace, etc.) still apply.
 func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, reason string) bool {
 	if gs == nil || perm == nil {
 		return false
 	}
-	// NOTE: sacrifice does NOT check indestructible (CR §701.17b).
+	// NOTE: sacrifice does NOT check indestructible (CR §701.21a).
 
 	// §614 "would die" replacement chain — sacrifice is still a "dies" event.
 	repl := FireDieEvent(gs, perm)
@@ -312,7 +312,7 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 			"target_card":  cardName,
 			"to_zone":      destZone,
 			"reason":       reason,
-			"rule":         "701.17",
+			"rule":         "701.21",
 			"was_creature": perm.IsCreature(),
 		},
 	})

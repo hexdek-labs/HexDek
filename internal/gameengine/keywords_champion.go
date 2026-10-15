@@ -8,10 +8,13 @@ import (
 
 // keywords_champion.go — Champion a [type] (CR §702.72, Lorwyn 2007).
 //
-// CR §702.72b: "When this permanent enters the battlefield, sacrifice it unless
-//                you exile another [quality] permanent you control."
-// CR §702.72c: "When this permanent leaves the battlefield, return the exiled
-//                card to the battlefield under its owner's control."
+// CR §702.72a: champion represents TWO triggered abilities —
+//                "When this permanent enters, sacrifice it unless you exile
+//                another [quality] permanent you control." and
+//                "When this permanent leaves the battlefield, return the
+//                exiled card to the battlefield under its owner's control."
+// CR §702.72b: those two abilities are linked (see rule 607).
+// CR §702.72c: a permanent is "championed" by the one that exiled it.
 //
 // Champion is the canonical CR §406.7 "exile until ~ leaves" linked-exile shape
 // (same machinery as Banisher Priest), with two twists: the exiled permanent is
@@ -71,7 +74,7 @@ func parseChampionTypeFromRaw(raw string) string {
 }
 
 // championMatches reports whether `p` is a legal championing target for the
-// champion permanent: ANOTHER creature you control (CR §702.72b) whose types/
+// champion permanent: ANOTHER creature you control (CR §702.72a) whose types/
 // subtypes include `typ` (any creature when typ == "").
 func championMatches(p, champion *Permanent, typ string) bool {
 	if p == nil || p == champion || p.Card == nil || !p.IsCreature() {
@@ -88,7 +91,7 @@ func championMatches(p, champion *Permanent, typ string) bool {
 	return false
 }
 
-// ApplyChampion resolves a champion permanent's ETB (CR §702.72b): exile
+// ApplyChampion resolves a champion permanent's ETB (CR §702.72a): exile
 // another [type] creature you control — linked to the champion, to be returned
 // when the champion leaves (ChampionReturnOnLTB) — or, if you control no
 // eligible creature, SACRIFICE the champion (you can't keep it unchampioned).
@@ -125,13 +128,13 @@ func ApplyChampion(gs *GameState, perm *Permanent) *Card {
 	}
 
 	if victim == nil {
-		// CR §702.72b — sacrifice the champion if you don't exile one.
+		// CR §702.72a — sacrifice the champion if you don't exile one.
 		gs.LogEvent(Event{
 			Kind:   "champion_sacrifice",
 			Seat:   seatIdx,
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"rule":   "702.72b",
+				"rule":   "702.72a",
 				"reason": "no_eligible_permanent_to_champion",
 			},
 		})
@@ -157,14 +160,14 @@ func ApplyChampion(gs *GameState, perm *Permanent) *Card {
 		Details: map[string]interface{}{
 			"championed": victimCard.DisplayName(),
 			"type":       typ,
-			"rule":       "702.72b",
+			"rule":       "702.72a",
 		},
 	})
 	return victimCard
 }
 
 // ChampionReturnOnLTB returns the championed card to the battlefield when the
-// champion leaves (CR §702.72c). Reuses the canonical ReturnLinkedExile, so the
+// champion leaves (CR §702.72a). Reuses the canonical ReturnLinkedExile, so the
 // return happens even if the champion and championed would leave simultaneously
 // (the linked card is in exile, returned off the champion's LTB).
 func ChampionReturnOnLTB(gs *GameState, perm *Permanent) {

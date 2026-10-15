@@ -4,13 +4,19 @@ package gameengine
 // alt-cost mechanic, gated on "you discarded this card this turn."
 //
 // CR §702.187a: Mayhem is a static ability that functions while the card
-//               with mayhem is in a player's graveyard. "Mayhem [cost]"
-//               means "You may cast this card from your graveyard for its
-//               mayhem cost if you discarded it this turn."
-// CR §702.187b: Casting a spell using its mayhem ability follows the rules
-//               for paying alternative costs in §601.2b and §601.2f-h.
-// CR §702.187c: If a spell with mayhem would be put into a graveyard from
-//               the stack, exile it instead.
+//               with mayhem is in a player's graveyard.
+// CR §702.187b: "Mayhem [cost]" means "As long as you discarded this card
+//               this turn, you may cast it from your graveyard by paying
+//               [cost] rather than paying its mana cost."
+// CR §702.187c: "Mayhem" without a cost means "You may play this card from
+//               your graveyard if you discarded it this turn."
+//
+// NOTE (r121): this header previously attributed an alternative-cost note
+// (§601.2b/f-h) to §702.187b and a put-into-graveyard-from-the-stack exile
+// replacement to §702.187c. Neither clause exists in §702.187 — the exile
+// replacement is flashback's (§702.34a), not mayhem's. Mayhem is an
+// alternative cost by §601.2b because every alternative cost is; the rule
+// does not say so itself.
 //
 // Implementation mirrors keywords_flashback.go: a thin permission check
 // (HasMayhem + MayhemDiscards[card] == gs.Turn), MayhemCost reads the

@@ -998,7 +998,7 @@ func ApplyBolster(gs *GameState, seatIdx int, n int) *Permanent {
 		Amount: n,
 		Details: map[string]interface{}{
 			"target_toughness": lowestTough,
-			"rule":             "701.32",
+			"rule":             "701.39",
 		},
 	})
 	return lowest
@@ -1037,7 +1037,7 @@ func ApplySupport(gs *GameState, seatIdx int, n int) int {
 			Amount: count,
 			Details: map[string]interface{}{
 				"max_targets": n,
-				"rule":        "701.35",
+				"rule":        "701.41",
 			},
 		})
 	}
@@ -1527,7 +1527,7 @@ func PerformExplore(gs *GameState, perm *Permanent) (bool, *Card) {
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
 				"revealed": revealed.DisplayName(),
-				"rule":     "701.40",
+				"rule":     "701.44",
 			},
 		})
 	} else {
@@ -1542,7 +1542,7 @@ func PerformExplore(gs *GameState, perm *Permanent) (bool, *Card) {
 			Details: map[string]interface{}{
 				"revealed": revealed.DisplayName(),
 				"counter":  "+1/+1",
-				"rule":     "701.40",
+				"rule":     "701.44",
 			},
 		})
 	}
@@ -1622,7 +1622,7 @@ func PerformConnive(gs *GameState, perm *Permanent) bool {
 			"drawn":     drawn.DisplayName(),
 			"discarded": discarded.DisplayName(),
 			"nonland":   isNonland,
-			"rule":      "701.48",
+			"rule":      "701.50",
 		},
 	})
 	return true
@@ -1730,7 +1730,7 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 				Details: map[string]interface{}{
 					"action":       "cast_for_free",
 					"exiled_count": len(exiled),
-					"rule":         "701.51",
+					"rule":         "701.57",
 				},
 			})
 			// CR §117.3 / §117.4 — opponents receive priority before the
@@ -1751,7 +1751,7 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 				Details: map[string]interface{}{
 					"action":       "put_into_hand",
 					"exiled_count": len(exiled),
-					"rule":         "701.51",
+					"rule":         "701.57",
 				},
 			})
 		}
@@ -1811,7 +1811,7 @@ func PerformCloak(gs *GameState, seatIdx int, card *Card) *Permanent {
 		Seat:   seatIdx,
 		Source: card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule": "701.56",
+			"rule": "701.58",
 		},
 	})
 	return perm
@@ -2023,7 +2023,7 @@ func TheRingTemptsYou(gs *GameState, seatIdx int) {
 		Seat:   seatIdx,
 		Amount: level,
 		Details: map[string]interface{}{
-			"rule": "701.52",
+			"rule": "701.54",
 		},
 	})
 	FireCardTrigger(gs, "ring_tempt", map[string]interface{}{

@@ -1,23 +1,23 @@
 package gameengine
 
-// Scry and Surveil — CR §701.18 / §701.46 with real library reorder.
+// Scry and Surveil — CR §701.22 / §701.25 with real library reorder.
 //
 // Comp-rules citations:
 //
-//   §701.18a — "To scry N means to look at the top N cards of your
+//   §701.22a — "To scry N means to look at the top N cards of your
 //              library, then put any number of them on the bottom of
 //              your library in any order and the rest on top of your
 //              library in any order."
-//   §701.18b — "If a player is instructed to scry 0, no scry event
+//   §701.22b — "If a player is instructed to scry 0, no scry event
 //              occurs."
-//   §701.46a — "To surveil N means to look at the top N cards of your
+//   §701.25a — "To surveil N means to look at the top N cards of your
 //              library, then put any number of them into your graveyard
 //              and the rest on top of your library in any order."
 //
 // These functions mutate the library in place, using the seat's Hat to
 // make the top/bottom/graveyard decision.
 
-// Scry implements CR §701.18 — look at top N, Hat decides which go on
+// Scry implements CR §701.22 — look at top N, Hat decides which go on
 // top (in order) and which go on bottom (in order).
 func Scry(gs *GameState, seatIdx int, count int) {
 	if gs == nil || count <= 0 || seatIdx < 0 || seatIdx >= len(gs.Seats) {
@@ -75,7 +75,7 @@ func Scry(gs *GameState, seatIdx int, count int) {
 			"looked":      n,
 			"kept_on_top": len(top),
 			"to_bottom":   len(bottom),
-			"rule":        "701.18",
+			"rule":        "701.22",
 		},
 	})
 
@@ -87,7 +87,7 @@ func Scry(gs *GameState, seatIdx int, count int) {
 	})
 }
 
-// Surveil implements CR §701.46 — look at top N, Hat decides which go
+// Surveil implements CR §701.25 — look at top N, Hat decides which go
 // to graveyard and which stay on top (in order).
 func Surveil(gs *GameState, seatIdx int, count int) {
 	if gs == nil || count <= 0 || seatIdx < 0 || seatIdx >= len(gs.Seats) {
@@ -147,7 +147,7 @@ func Surveil(gs *GameState, seatIdx int, count int) {
 			"looked":      n,
 			"to_graveyard": len(graveyard),
 			"kept_on_top":  len(top),
-			"rule":         "701.46",
+			"rule":         "701.25",
 		},
 	})
 }
@@ -157,7 +157,7 @@ func Surveil(gs *GameState, seatIdx int, count int) {
 // neither top nor bottom contains a card absent from looked. Pointer-identity
 // based (the scry split moves the same *Card pointers). Guards Scry against a
 // Hat returning a duplicated / overlapping split that would double-insert a
-// card into the library (CR §701.18 — scry reorders, never duplicates).
+// card into the library (CR §701.22 — scry reorders, never duplicates).
 func scryValidPartition(looked, top, bottom []*Card) bool {
 	if len(top)+len(bottom) != len(looked) {
 		return false

@@ -116,7 +116,7 @@ func RecordMutateMerge(gs *GameState, surviving, dying *Permanent, asTop bool) {
 				"as_top":     asTop,
 				"stack_size": len(surviving.MergedCards),
 				"top_card":   topCardName(surviving),
-				"rule":       "702.139",
+				"rule":       "702.140",
 			},
 		})
 	}

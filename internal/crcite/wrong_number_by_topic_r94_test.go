@@ -103,6 +103,15 @@ var r94WrongByTopic = []struct {
 	{"702.137", "magecraft", "Spectacle", "nothing — §207.2c, ability words have no CR entry"},
 }
 
+// r121 — an event-log citation and the Kind naming its action sit in the
+// same composite literal but never on the same line.
+const maxEventBlockLines = 45
+
+var (
+	ruleLiteralRE = regexp.MustCompile(`"rule"\s*:\s*"\d`)
+	kindLineRE    = regexp.MustCompile(`Kind:\s*"`)
+)
+
 func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
 	root := repoRootForR94(t)
 	type hit struct {
@@ -117,6 +126,20 @@ func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
 	res := make([]*regexp.Regexp, len(r94WrongByTopic))
 	topics := make([]string, len(r94WrongByTopic))
 	for i, c := range r94WrongByTopic {
+		// r121 — MEASURED, DELIBERATELY NOT APPLIED.
+		//
+		// A bare table entry does not match its own subrules: "701.15"
+		// never matched the live "701.15a" in regeneration.go, so
+		// {701.15, regenerat} sat here while the engine emitted
+		// §701.15a (Goad) on every regenerate event. r121 fixed that
+		// site by hand; this gate still cannot see it.
+		//
+		// Appending `[a-z]?` here closes the gap and takes the gate
+		// from 0 violations to 51 — e.g. hat/greedy.go citing §702.110b
+		// for menace and tournament/turn.go citing §702.34a for madness.
+		// Those 51 are UNREAD. Baselining unread sites is how
+		// mismatch_baseline.txt became a worklist, so the widening is
+		// recorded here and left off until someone triages them.
 		res[i] = regexp.MustCompile(`\b` + regexp.QuoteMeta(c.badRule) + `([^0-9a-z]|$)`)
 		topics[i] = strings.ToLower(c.topic)
 	}
@@ -136,10 +159,36 @@ func TestCRCitations_NoWrongNumberForTopic_R94(t *testing.T) {
 			return nil
 		}
 		rel, _ := filepath.Rel(root, p)
-		for ln, line := range strings.Split(string(b), "\n") {
-			low := strings.ToLower(line)
+		lines := strings.Split(string(b), "\n")
+		for ln, line := range lines {
+			// r121 — WIDEN THE WINDOW TO THE ENCLOSING EVENT BLOCK.
+			//
+			// This gate matched the number and the topic word on ONE
+			// line. An event-log citation does not have that shape:
+			//
+			//	gs.LogEvent(Event{
+			//		Kind: "proliferate",     <- the topic word
+			//		Details: map[string]interface{}{
+			//			"rule": "701.27",    <- the number
+			//
+			// so the pair {701.27, proliferate} sat in the table above
+			// from r94 while yawgmoth_thran_physician.go emitted it
+			// unchallenged. Six of the 34 wrong event-log citations
+			// r121 fixed were already named in this table and were
+			// invisible for exactly this reason. For a `"rule": "..."`
+			// literal, scan back to the nearest Kind: line and treat
+			// the whole block as the context.
+			topicCtx := strings.ToLower(line)
+			if ruleLiteralRE.MatchString(line) {
+				for j := ln; j >= 0 && j > ln-maxEventBlockLines; j-- {
+					topicCtx += "\n" + strings.ToLower(lines[j])
+					if kindLineRE.MatchString(lines[j]) {
+						break
+					}
+				}
+			}
 			for ci := range r94WrongByTopic {
-				if strings.Contains(low, topics[ci]) && res[ci].MatchString(line) {
+				if strings.Contains(topicCtx, topics[ci]) && res[ci].MatchString(line) {
 					hits = append(hits, hit{rel, strings.TrimSpace(line), ln + 1, ci})
 				}
 			}

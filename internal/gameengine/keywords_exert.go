@@ -1,10 +1,10 @@
 package gameengine
 
-// keywords_exert.go — Exert (CR §702.112, Amonkhet 2017).
+// keywords_exert.go — Exert (CR §701.43, Amonkhet 2017).
 //
-// CR §702.112a: "You may exert [this creature] as it attacks" is a special
+// CR §701.43d: "You may exert [this creature] as it attacks" is a special
 //                action a player may take as they declare attackers.
-// CR §702.112b: "An exerted creature won't untap during your next untap step."
+// CR §701.43a: "An exerted creature won't untap during your next untap step."
 //                (A one-time skip, consumed by exactly that one untap step;
 //                it untaps normally thereafter.)
 // Cards with exert grant a bonus or trigger an ability when exerted.
@@ -28,7 +28,7 @@ func HasExert(card *Card) bool {
 	return cardHasKeywordByName(card, "exert")
 }
 
-// ExertCreature exerts `perm` as it attacks (CR §702.112). Only an attacking
+// ExertCreature exerts `perm` as it attacks (CR §701.43). Only an attacking
 // creature can be exerted (the action is taken "as it attacks"); exert is
 // optional, so the caller decides whether to call this. On success the
 // creature is flagged to skip its controller's next untap step (one-shot) and
@@ -41,7 +41,7 @@ func ExertCreature(gs *GameState, perm *Permanent) bool {
 	if !perm.IsCreature() {
 		return false
 	}
-	// CR §702.112a — a creature can only be exerted as it attacks.
+	// CR §701.43d — a creature can only be exerted as it attacks.
 	if !perm.IsAttacking() {
 		return false
 	}

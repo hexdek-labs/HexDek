@@ -230,7 +230,7 @@ func yawgmothProliferate(gs *gameengine.GameState, src *gameengine.Permanent, ct
 		Source: "Yawgmoth, Thran Physician",
 		Amount: proliferatedCount,
 		Details: map[string]interface{}{
-			"rule": "701.27",
+			"rule": "701.34",
 		},
 	})
 

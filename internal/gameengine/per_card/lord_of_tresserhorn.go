@@ -14,7 +14,7 @@ import (
 // two creatures" — pick the two lowest-Power non-self creatures on
 // controller's battlefield (the typical "sac fodder" pick); if only Lord
 // of Tresserhorn is available, sacrifice him as the second pick (CR
-// 701.16d — Lord can be one of the two). Target opponent for the draw:
+// 701.21a — Lord can be one of the two). Target opponent for the draw:
 // pick the lowest-life non-Lost opponent (don't fuel a runaway leader).
 // Regenerate ability is engine keyword-pipeline territory.
 

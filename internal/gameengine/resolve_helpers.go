@@ -1042,7 +1042,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 							"toughness": bestToken.Card.BaseToughness,
 							"count":     len(created),
 							"reason":    "populate",
-							"rule":      "701.30",
+							"rule":      "701.7",
 						},
 					})
 					// token_created trigger ("whenever you create a token" /
@@ -1069,7 +1069,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Source: sourceName(src),
 			Details: map[string]interface{}{
 				"created_copy": populated,
-				"rule":         "701.30",
+				"rule":         "701.36",
 			},
 		})
 
@@ -1101,7 +1101,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Amount: amassN,
 			Details: map[string]interface{}{
 				"creature_type": amassType,
-				"rule":          "701.43",
+				"rule":          "701.47",
 			},
 		})
 
@@ -1179,7 +1179,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					}
 					return 0
 				}(),
-				"rule": "701.46",
+				"rule": "701.49",
 			},
 		})
 
@@ -2783,7 +2783,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					Source: sourceName(src),
 					Amount: n,
 					Details: map[string]interface{}{
-						"rule": "701.31",
+						"rule": "701.37",
 					},
 				})
 				// CR §701.31c — "When this creature becomes monstrous" triggers
@@ -3079,7 +3079,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					Source: sourceName(src),
 					Amount: n,
 					Details: map[string]interface{}{
-						"rule": "701.43",
+						"rule": "701.46",
 					},
 				})
 			}
@@ -3496,7 +3496,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Amount: discN,
 			Details: map[string]interface{}{
 				"found": discFound,
-				"rule":  "701.55",
+				"rule":  "701.57",
 			},
 		})
 
@@ -3969,7 +3969,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Source: sourceName(src),
 			Details: map[string]interface{}{
 				"sub_kind": e.ModKind,
-				"rule":     "701.34",
+				"rule":     "701.40",
 			},
 		})
 
@@ -4187,7 +4187,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Source: sourceName(src),
 			Details: map[string]interface{}{
 				"mode": "rummage",
-				"rule": "701.45",
+				"rule": "701.48",
 			},
 		})
 
@@ -4679,7 +4679,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Details: map[string]interface{}{
 				"sub_kind":  "manifest_n",
 				"requested": count,
-				"rule":      "701.34",
+				"rule":      "701.40",
 			},
 		})
 

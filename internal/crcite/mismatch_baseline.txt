@@ -40,3 +40,4 @@ internal/gameengine/keywords_escape.go|702.34a	# correct cross-ref: names flashb
 internal/gameengine/keywords_escape_test.go|701.6a	# correct cross-ref: §701.6a is where a COUNTERED escape spell goes — the r96 regression asserts exactly that destination
 internal/gameengine/keywords_escape_test.go|701.5	# correct cross-ref: named only to say §701.5 is Cast, i.e. NOT the countered-spell rule the engine used to emit (r96)
 internal/gameengine/keywords_escape_test.go|702.34a	# correct cross-ref: the r96 test pins that flashback's real carveout still fires while escape's does not
+internal/gameengine/keywords_mayhem.go|702.34a	# r121: deliberate contrast. The header previously attributed a "put into a graveyard from the stack -> exile it instead" replacement to §702.187c. That clause is flashback's (§702.34a); §702.187 has no such rule. The note names the real owner so the wrong attribution cannot come back.

@@ -142,7 +142,7 @@ func ApplyBargain(gs *GameState, seatIdx int, item *StackItem) bool {
 		Source: item.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"sacrificed": name,
-			"rule":       "702.176",
+			"rule":       "702.166a",
 		},
 	})
 	FireCardTrigger(gs, "bargain_paid", map[string]interface{}{

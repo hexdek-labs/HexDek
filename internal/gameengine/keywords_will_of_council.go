@@ -136,7 +136,7 @@ func TallyWillOfCouncil(
 				Kind: "will_of_council_abstain",
 				Seat: seat,
 				Details: map[string]interface{}{
-					"rule":       "701.18a",
+					"rule":       "701.38a",
 					"controller": controllerSeat,
 				},
 			})
@@ -152,7 +152,7 @@ func TallyWillOfCouncil(
 				"option_a":   optionA,
 				"option_b":   optionB,
 				"controller": controllerSeat,
-				"rule":       "701.18a",
+				"rule":       "701.38a",
 			},
 		})
 	}
@@ -178,7 +178,7 @@ func TallyWillOfCouncil(
 			"winner":    winner,
 			"tied":      winner == "",
 			"voter_count": len(order),
-			"rule":      "701.18b",
+			"rule":      "701.38b",
 		},
 	})
 

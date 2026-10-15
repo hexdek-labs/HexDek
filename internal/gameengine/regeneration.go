@@ -13,7 +13,7 @@ import "github.com/hexdek/hexdek/internal/gameast"
 // creature anyway. So "{B}: Regenerate this creature" and every
 // `regenerate` / `regenerate_typed` ability was cosmetic.
 //
-// CR §701.15a: "If the effect of a resolving spell or ability
+// CR §701.19a: "If the effect of a resolving spell or ability
 // regenerates a permanent, it creates a shield for that permanent. …
 // The next time that permanent would be destroyed this turn, instead
 // its controller … removes it from combat, taps it, and removes all
@@ -30,7 +30,7 @@ import "github.com/hexdek/hexdek/internal/gameast"
 // cards plus the existing `regenerate` effects.
 
 // GrantRegenerationShield adds one regeneration shield to perm (CR
-// §701.15a). Shields stack; each replaces one would-be destruction this
+// §701.19a). Shields stack; each replaces one would-be destruction this
 // turn. Safe on nil.
 func GrantRegenerationShield(gs *GameState, perm *Permanent) {
 	if perm == nil {
@@ -47,7 +47,7 @@ func GrantRegenerationShield(gs *GameState, perm *Permanent) {
 			Source: sourceName(perm),
 			Details: map[string]interface{}{
 				"shields": perm.Flags["regeneration_shield"],
-				"rule":    "701.15a",
+				"rule":    "701.19a",
 			},
 		})
 	}
@@ -101,7 +101,7 @@ func regenerateTypedSubjects(gs *GameState, src *Permanent, e *gameast.Modificat
 	return nil
 }
 
-// TryRegenerate applies the regeneration replacement (CR §701.15a) if
+// TryRegenerate applies the regeneration replacement (CR §701.19a) if
 // perm holds a shield: consume one shield, tap the permanent, remove it
 // from combat, and clear all marked damage. Returns true when the
 // destruction was replaced (caller must NOT destroy), false otherwise.
@@ -114,7 +114,7 @@ func TryRegenerate(gs *GameState, perm *Permanent) bool {
 		delete(perm.Flags, "regeneration_shield")
 	}
 
-	// §701.15a: tap it, remove it from combat, remove all marked damage.
+	// §701.19a: tap it, remove it from combat, remove all marked damage.
 	perm.Tapped = true
 	perm.MarkedDamage = 0
 	if perm.IsAttacking() || perm.IsBlocking() {
@@ -130,7 +130,7 @@ func TryRegenerate(gs *GameState, perm *Permanent) bool {
 			Details: map[string]interface{}{
 				"card":              perm.Card.DisplayName(),
 				"shields_remaining": perm.Flags["regeneration_shield"],
-				"rule":              "701.15a",
+				"rule":              "701.19a",
 			},
 		})
 	}

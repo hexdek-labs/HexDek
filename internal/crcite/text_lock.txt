@@ -306,7 +306,6 @@
 701.16	6b62f3e138a1	Investigate
 701.16a	4f3b7062eb4a	Investigate
 701.17	61d25dd6e8d6	Mill
-701.17a	5ebf61fa3fb7	Mill
 701.17b	4a50226ec91b	Mill
 701.18	297ee47335fe	Play
 701.18a	008fdfd891ea	Play
@@ -316,11 +315,15 @@
 701.19c	9d430aefd402	Regenerate
 701.20	e7077c06d5f2	Reveal
 701.20a	54005920ff25	Reveal
-701.20b	33d53526b4d1	Reveal
 701.21	af5e4fb12129	Sacrifice
 701.21a	9c1c1c256c5f	Sacrifice
+701.22	26f04035a143	Scry
+701.22a	d982368711a0	Scry
+701.22b	12875d803f28	Scry
 701.23	765efa6dd313	Search
 701.24b	6d9375a9097c	Shuffle
+701.25	ad90f7f2194f	Surveil
+701.25a	335754b1bfac	Surveil
 701.27	a44971fe7c2e	Transform
 701.28	dac7f007a5e1	Convert
 701.29	3ff94556be33	Fateseal
@@ -334,7 +337,10 @@
 701.35	432b865ab76e	Detain
 701.36	2a0d86bfb63c	Populate
 701.36a	113b4aee2692	Populate
+701.37	719d65acb0a9	Monstrosity
 701.38	22b7903081c7	Vote
+701.38a	d33f94fa4415	Vote
+701.38b	e67ed4f40d8d	Vote
 701.39	c0d074f91e62	Bolster
 701.4	adfa11858f2d	Behold
 701.40	60abb8dc54cb	Manifest
@@ -344,12 +350,15 @@
 701.41	d2237179fbc7	Support
 701.42	e34e9c69d0b3	Meld
 701.43	277efcba4190	Exert
+701.43a	6df135be210d	Exert
 701.43c	e400d10c2e7e	Exert
+701.43d	f51b99c2ba20	Exert
 701.44	6f107d9838dc	Explore
 701.45	ae1949b0e94b	Assemble
 701.46	53242315dba0	Adapt
-701.46a	0de22ac396bb	Adapt
+701.47	f36864535d0f	Amass
 701.48	a2d2cb3bbd11	Learn
+701.49	99aad1974ce9	Venture into the Dungeon
 701.4a	3533fe7f1d31	Behold
 701.5	4a671cba53d2	Cast
 701.50	5f19d4c897c6	Connive
@@ -357,6 +366,7 @@
 701.51	4864c049975a	Open an Attraction
 701.52	358e6946373d	Roll to Visit Your Attractions
 701.52a	002470db9259	Roll to Visit Your Attractions
+701.54	e9aabb9b7722	The Ring Tempts You
 701.55	1a83e6b41586	Face a Villainous Choice
 701.56	ea58c6a7eab4	Time Travel
 701.57	8cac857cb453	Discover
@@ -378,8 +388,8 @@
 701.6a	c3142ba4935a	Counter
 701.7	736825cca466	Create
 701.70a	ffc143976e44	Recruit
-701.7a	260d36f6c95b	Create
 701.8	1e5ebe078b51	Destroy
+701.8a	8b1e29d305c1	Destroy
 701.9a	153d9397b0a1	Discard
 702.10	d07403e90e5f	Haste
 702.100	7ae27b765416	Evolve
@@ -403,6 +413,7 @@
 702.10c	b8bd7dc0cbe0	Haste
 702.11	3c8ed45954d4	Hexproof
 702.110	deda3f8aaf0b	Exploit
+702.110a	0b2e17672368	Exploit
 702.110b	f8a3bd932a32	Exploit
 702.111	a06aaed4fe90	Menace
 702.111b	c137b2a5cac4	Menace
