@@ -26,19 +26,24 @@ import (
 // `seat.Mana.Total()` (an int). This probe asks the entry point directly
 // rather than concluding from the read (lesson 1).
 //
-// Characterization only: the positive control is asserted so an all-pass run
-// cannot masquerade as a result; the colour rows LOG.
-// NOTE the shape of this constructor — it IS the finding. The runtime
-// gameengine.Card has NO mana-cost string: only `CMC int` and
-// `Colors []string`. There is nowhere to put "{2}{R}" versus "{2}{U}", so
-// the cast path structurally cannot compare pips against a pool. The
-// `cost` argument below is a comment to the reader, not data the engine
-// can see.
+// r126 — THIS PROBE WAS A CHARACTERIZATION AND IS NOW A REGRESSION, AND
+// ITS ORIGINAL HEADER CONTAINED A CLAIM THAT WAS FALSE WHEN WRITTEN.
+//
+// It used to say: "The runtime gameengine.Card has NO mana-cost string:
+// only CMC int and Colors []string. There is nowhere to put {2}{R} versus
+// {2}{U}, so the cast path structurally cannot compare pips against a
+// pool." That was wrong. Card.ManaCostString already existed; r124 found
+// that no card builder ever ASSIGNED it, which is a different and much
+// smaller problem. The constructor below discarded its `cost` argument on
+// the strength of that wrong claim, which is why this probe could only
+// ever log.
+//
+// It now populates the cost, and the colour rows ASSERT.
 func r117Card(name, cost string, cmc int, colors ...string) *gameengine.Card {
-	_ = cost
 	return &gameengine.Card{
 		Name: name, CMC: cmc, Colors: colors,
-		Types: []string{"sorcery"},
+		ManaCostString: cost,
+		Types:          []string{"sorcery"},
 	}
 }
 
@@ -88,11 +93,13 @@ func TestColourEnforcementProbe_r117(t *testing.T) {
 	for _, r := range rows {
 		gs, s := mk(3, r117Card(r.name, r.cost, r.cmc, r.colors...))
 		got := offered(buildCastableList(gs, s), r.name)
-		verdict := "offered"
-		if !got {
-			verdict = "not offered"
+		if got != r.legal {
+			verdict := "offered"
+			if !got {
+				verdict = "NOT offered"
+			}
+			t.Errorf("%-22s %-16s on {R}{R}{R} -> %s, want colour-legal=%v (§202.1a)",
+				r.name, r.cost, verdict, r.legal)
 		}
-		t.Logf("%-22s %-16s on {R}{R}{R} -> %-11s  (colour-legal: %v)",
-			r.name, r.cost, verdict, r.legal)
 	}
 }

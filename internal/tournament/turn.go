@@ -1363,6 +1363,14 @@ func buildCastableList(gs *gameengine.GameState, seatIdx int) []*gameengine.Card
 			continue
 		}
 		c.CastingBackFace = false
+		// r126 — CR §202.1a: the pool must be able to MATCH THE TYPE of
+		// every coloured/colorless pip, not merely cover the total. The
+		// quantity question stays with the `cost > availableMana` check
+		// below, which uses the REDUCED total; pips are not reduced, so
+		// they are read off the printed cost. See CanSupplyColoredPips.
+		if !gameengine.CanSupplyColoredPips(seat.Mana, c) {
+			continue
+		}
 		cost := gameengine.CalculateTotalCost(gs, c, seatIdx)
 		if cost > availableMana {
 			// Front face too expensive — try back face if MDFC.

@@ -278,6 +278,22 @@ type CostRequirements struct {
 	Pure    [6]int
 	Hybrid  []uint8
 	Generic int
+
+	// Soft counts, per colour slot, how many of the Pure pips above can
+	// legally be paid WITHOUT mana of that colour (r126):
+	//
+	//   Phyrexian {U/P} — payable with 2 life (CR §107.4f)
+	//   twobrid   {2/W} — payable with 2 generic (CR §107.4e)
+	//
+	// ParseCostRequirements folds both into Pure on purpose: it was
+	// written as a PERMISSIVE payability estimate for the AI, where
+	// assuming you need the colour is the safe direction. For ENFORCEMENT
+	// the safe direction is the opposite one — treating these as hard
+	// colour requirements would wrongly BLOCK a legal cast of all 62 such
+	// cards in the corpus (40 Phyrexian, 22 twobrid). Enforcement reads
+	// Pure[i]-Soft[i]; every existing consumer keeps reading Pure and is
+	// unaffected.
+	Soft [6]int
 }
 
 // CanPayColoredCost returns true if the seat can pay card's printed
@@ -491,6 +507,7 @@ func ParseCostRequirements(cost string) CostRequirements {
 				slot := colorBitToSlot(mask)
 				if slot >= 0 {
 					req.Pure[slot]++
+					req.Soft[slot]++ // r126: life pays this instead
 					continue
 				}
 			}
@@ -506,6 +523,7 @@ func ParseCostRequirements(cost string) CostRequirements {
 				slot := colorBitToSlot(mask)
 				if slot >= 0 {
 					req.Pure[slot]++
+					req.Soft[slot]++ // r126: generic pays this instead
 					continue
 				}
 			}
