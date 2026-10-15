@@ -1848,49 +1848,8 @@ func IsOverloadActive(gs *GameState) bool {
 // ProtectionTypes extracts what types a permanent has protection from.
 // Returns a set of type strings (lowercased).
 func ProtectionTypes(p *Permanent) map[string]struct{} {
-	out := map[string]struct{}{}
-	if p == nil {
-		return out
-	}
-	// Check flags: "prot_type:creature", "prot_type:instant", etc.
-	if p.Flags != nil {
-		for k := range p.Flags {
-			if strings.HasPrefix(k, "prot_type:") {
-				out[strings.TrimPrefix(k, "prot_type:")] = struct{}{}
-			}
-		}
-	}
-	// Check AST keywords.
-	if p.Card != nil && p.Card.AST != nil {
-		for _, ab := range p.Card.AST.Abilities {
-			kw, ok := ab.(*gameast.Keyword)
-			if !ok || strings.ToLower(kw.Name) != "protection" {
-				continue
-			}
-			raw := kw.Raw
-			// Check for type-based protection: "protection from creatures",
-			// "protection from instants", etc.
-			for _, typeName := range []string{"creature", "creatures", "instant", "instants",
-				"sorcery", "sorceries", "enchantment", "enchantments", "artifact", "artifacts",
-				"planeswalker", "planeswalkers", "land", "lands"} {
-				if strings.Contains(raw, "from "+typeName) {
-					// Normalize plural to singular.
-					singular := strings.TrimSuffix(typeName, "s")
-					if singular == "creature" || singular == "sorcerie" {
-						singular = strings.TrimSuffix(typeName, "es")
-						if singular == "creatur" {
-							singular = "creature"
-						}
-						if singular == "sorceri" {
-							singular = "sorcery"
-						}
-					}
-					out[singular] = struct{}{}
-				}
-			}
-		}
-	}
-	return out
+	_, types := protectionProfile(p)
+	return types
 }
 
 // HasProtectionFromType checks if a permanent has protection from a

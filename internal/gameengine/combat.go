@@ -1713,7 +1713,7 @@ func attackerHasProtectionFromGS(gs *GameState, protected, source *Permanent) bo
 	if protected == nil || source == nil {
 		return false
 	}
-	prot := protectionColors(protected)
+	prot, protTypes := protectionProfile(protected)
 	if _, any := prot["*"]; any {
 		return true
 	}
@@ -1736,7 +1736,7 @@ func attackerHasProtectionFromGS(gs *GameState, protected, source *Permanent) bo
 	// Type-based protection (§702.16): protection from creatures /
 	// artifacts / enchantments / planeswalkers / lands. Combat-relevant
 	// types only — instant/sorcery never appear as combat sources.
-	if types := ProtectionTypes(protected); len(types) > 0 {
+	if types := protTypes; len(types) > 0 {
 		if _, ok := types["creature"]; ok && source.IsCreature() {
 			return true
 		}
@@ -1764,56 +1764,122 @@ func attackerHasProtectionFromGS(gs *GameState, protected, source *Permanent) bo
 // W, U, B, R, G — plus the sentinel "*" meaning "protection from
 // everything".
 func protectionColors(p *Permanent) map[string]struct{} {
-	out := map[string]struct{}{}
+	colors, _ := protectionProfile(p)
+	return colors
+}
+
+// protectionProfile reads BOTH protection axes — colors (§702.16, plus the
+// "*" everything sentinel) and card types — in a single pass over the
+// permanent's Flags map and AST ability list, allocating nothing when the
+// permanent has no protection at all.
+//
+// r118: DeclareBlockers evaluates attackerHasProtectionFromGS once per
+// (attacker, blocker) PAIR — in canBlockGS, and again in scoreBlock ->
+// incomingIsLethal with the roles swapped — but protection is a property of
+// ONE permanent, not of the pair. Each call used to allocate two maps and
+// walk Flags and the AST twice over. That is the r112/r116 shape (a
+// per-permanent predicate evaluated per pair) with one difference worth
+// stating plainly: the inner work here is O(flags), not O(board), so this
+// was a CONSTANT FACTOR on an inherently quadratic path, never an exponent.
+// Measured at 36% of DeclareBlockers before the change.
+//
+// Either returned map may be nil, which every caller handles: reading a nil
+// map yields the zero value, len is 0 and range is empty. Callers must not
+// write to them.
+func protectionProfile(p *Permanent) (colors, types map[string]struct{}) {
 	if p == nil {
-		return out
+		return nil, nil
 	}
-	if p.Flags != nil {
-		for k := range p.Flags {
-			if p.Flags[k] <= 0 {
-				continue
-			}
-			// Combat representation: prot:<LETTER> (Akroma, Animar,
-			// Progenitus' prot:*).
-			if strings.HasPrefix(k, "prot:") {
-				out[strings.TrimPrefix(k, "prot:")] = struct{}{}
-				continue
-			}
-			// Targeting representation: protection_from_<colorname>
-			// (Mother of Runes, Akroma's Will). Before r63 these two flag
-			// vocabularies were read by DIFFERENT code paths (combat read
-			// prot:*, targeting read protection_from_*), so a card that set
-			// only one was protected on only some of the DEBT axes — Akroma
-			// (prot:R/B) was targetable by red/black, Mother-of-Runes grants
-			// (protection_from_red) didn't stop combat damage. Fold both
-			// into the canonical color set so every axis agrees.
-			if rest, ok := strings.CutPrefix(k, "protection_from_"); ok {
-				if rest == "everything" {
-					out["*"] = struct{}{}
-				} else if letter := colorWords[rest]; letter != "" {
-					out[letter] = struct{}{}
-				}
+	addColor := func(k string) {
+		if colors == nil {
+			colors = map[string]struct{}{}
+		}
+		colors[k] = struct{}{}
+	}
+	addType := func(k string) {
+		if types == nil {
+			types = map[string]struct{}{}
+		}
+		types[k] = struct{}{}
+	}
+
+	for k, v := range p.Flags {
+		// Type-based protection: "prot_type:creature". Note this axis has
+		// never been gated on a positive value; preserved exactly.
+		if rest, ok := strings.CutPrefix(k, "prot_type:"); ok {
+			addType(rest)
+			continue
+		}
+		if v <= 0 {
+			continue
+		}
+		// Combat representation: prot:<LETTER> (Akroma, Animar,
+		// Progenitus' prot:*).
+		if rest, ok := strings.CutPrefix(k, "prot:"); ok {
+			addColor(rest)
+			continue
+		}
+		// Targeting representation: protection_from_<colorname>
+		// (Mother of Runes, Akroma's Will). Before r63 these two flag
+		// vocabularies were read by DIFFERENT code paths (combat read
+		// prot:*, targeting read protection_from_*), so a card that set
+		// only one was protected on only some of the axes — Akroma
+		// (prot:R/B) was targetable by red/black, Mother-of-Runes grants
+		// (protection_from_red) didn't stop combat damage. Fold both
+		// into the canonical color set so every axis agrees.
+		if rest, ok := strings.CutPrefix(k, "protection_from_"); ok {
+			if rest == "everything" {
+				addColor("*")
+			} else if letter := colorWords[rest]; letter != "" {
+				addColor(letter)
 			}
 		}
 	}
-	if p.Card != nil && p.Card.AST != nil {
-		for _, ab := range p.Card.AST.Abilities {
-			kw, ok := ab.(*gameast.Keyword)
-			if !ok || strings.ToLower(kw.Name) != "protection" {
-				continue
-			}
-			if strings.Contains(kw.Raw, "from everything") {
-				out["*"] = struct{}{}
-				continue
-			}
+
+	if p.Card == nil || p.Card.AST == nil {
+		return colors, types
+	}
+	for _, ab := range p.Card.AST.Abilities {
+		kw, ok := ab.(*gameast.Keyword)
+		if !ok || strings.ToLower(kw.Name) != "protection" {
+			continue
+		}
+		raw := kw.Raw
+		if strings.Contains(raw, "from everything") {
+			addColor("*")
+		} else {
 			for word, letter := range colorWords {
-				if strings.Contains(kw.Raw, word) {
-					out[letter] = struct{}{}
+				if strings.Contains(raw, word) {
+					addColor(letter)
 				}
 			}
 		}
+		// Combat-relevant types only — instant/sorcery never appear as
+		// combat sources, but they are read on the targeting axis.
+		for _, tw := range protectionTypeWords {
+			if strings.Contains(raw, "from "+tw.printed) {
+				addType(tw.key)
+			}
+		}
 	}
-	return out
+	return colors, types
+}
+
+// protectionTypeWords maps each printed type word to the singular key
+// callers look up. The pre-r118 code scanned both forms and derived the
+// singular with a chain of TrimSuffix special cases
+// ("creatures"->"creatur"->"creature", "sorceries"->"sorceri"->"sorcery");
+// the table states the result directly. Both forms are still listed because
+// substring containment does NOT fold them in general: "from sorceries"
+// does not contain "from sorcery".
+var protectionTypeWords = []struct{ printed, key string }{
+	{"creature", "creature"}, {"creatures", "creature"},
+	{"instant", "instant"}, {"instants", "instant"},
+	{"sorcery", "sorcery"}, {"sorceries", "sorcery"},
+	{"enchantment", "enchantment"}, {"enchantments", "enchantment"},
+	{"artifact", "artifact"}, {"artifacts", "artifact"},
+	{"planeswalker", "planeswalker"}, {"planeswalkers", "planeswalker"},
+	{"land", "land"}, {"lands", "land"},
 }
 
 var colorWords = map[string]string{
