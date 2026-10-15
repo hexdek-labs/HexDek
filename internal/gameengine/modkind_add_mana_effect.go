@@ -2,6 +2,7 @@ package gameengine
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -41,6 +42,70 @@ func addManaEffectVariable(text string) bool {
 	return false
 }
 
+// r109 — addManaEffectVariable is a COLOUR-blind quantity guard with a
+// colour phrase in its marker list: "any combination" describes how the
+// mana may be SPLIT, not whether the amount is variable. Relic of Sauron
+// prints "add TWO mana in any combination of {U}, {B}, and/or {R}" — a
+// literal count — and was bailing to the one-generic fallback because of
+// it (CR §107.4c pips; lesson 60).
+//
+// resolveAddManaVariableCount resolves the quantity for the shapes that
+// ARE derivable at resolution time. ok=false means "still not derivable"
+// and the caller keeps the legacy fallback.
+//
+// NOTE ON ORDER (r109): the count must be resolved BEFORE any colour is
+// emitted. The fallback's single mana lands in the typed pool's `Any`
+// bucket, and `Any` is a UNIVERSAL WILDCARD — CanPayColored adds it to
+// every colour's availability and PayColoredPip spends it for any pip.
+// So emitting the printed colours while leaving the count at 1 makes
+// these cards STRICTLY WORSE than the bug does. Colour is only an
+// improvement when it arrives with the count.
+var reAddManaCountWord = regexp.MustCompile(`add (one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) mana`)
+
+var addManaCountWords = map[string]int{
+	"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+	"six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+func resolveAddManaVariableCount(gs *GameState, src *Permanent, text string) (int, bool) {
+	// (a) A literal count sitting in the text ("add two mana in any
+	// combination of …"). Not variable at all — only the colour phrase
+	// dragged it into the bailout.
+	if m := reAddManaCountWord.FindStringSubmatch(text); m != nil {
+		if n, ok := addManaCountWords[m[1]]; ok {
+			return n, true
+		}
+		if n, err := strconv.Atoi(m[1]); err == nil {
+			return n, true
+		}
+	}
+	if !strings.Contains(text, "where x is") {
+		return 0, false
+	}
+	// (b) "where X is <self>'s power" (Vivi Ornitier, A-Vivi Ornitier).
+	// Require the possessive to name THIS permanent — "the greatest power
+	// among creatures you control" (Selvala) and "the total power of
+	// attacking creatures" (Klauth) are different bases and must not match.
+	//
+	// The Alchemy rebalances keep the ORIGINAL card's name in their own
+	// oracle text — A-Vivi Ornitier reads "where X is Vivi Ornitier's
+	// power" — so strip the "a-" prefix before comparing. Measured: the
+	// corpus coverage ledger caught A-Vivi falling through without this.
+	self := strings.TrimPrefix(strings.ToLower(sourceName(src)), "a-") + "'s power"
+	if strings.Contains(text, self) || strings.Contains(text, "~'s power") {
+		pow := gs.PowerOf(src)
+		if pow < 0 {
+			pow = 0
+		}
+		return pow, true
+	}
+	// (c) "where X is the number of creatures you control" (Xenagos).
+	if strings.Contains(text, "the number of creatures you control") {
+		return countCreaturesControlled(gs, controllerSeat(src)), true
+	}
+	return 0, false
+}
+
 // resolveAddManaEffect handles one add_mana_effect ModificationEffect.
 // Returns true if it produced structured colored mana from the args text;
 // false to signal the caller to fall back to the legacy one-generic add.
@@ -53,24 +118,43 @@ func resolveAddManaEffect(gs *GameState, src *Permanent, e *gameast.Modification
 		return false
 	}
 	text := strings.ToLower(strings.TrimSpace(modArgString(e.Args, 0)))
-	if text == "" || addManaEffectVariable(text) {
+	if text == "" {
 		return false
 	}
 	if !reAddManaEffectSymbol.MatchString(text) {
 		return false
 	}
 
-	// Mode width = the most pips in any one comma/"or"-separated segment.
-	// "add {w}{w}, {w}{u}, or {u}{u}" → 3 segments, each 2 pips → 2 mana.
-	segments := regexp.MustCompile(`,| or | and/or `).Split(text, -1)
 	width := 0
-	for _, seg := range segments {
-		if n := len(reAddManaEffectSymbol.FindAllString(seg, -1)); n > width {
-			width = n
+	if addManaEffectVariable(text) {
+		// r109 — a variable-quantity shape. Resolve the COUNT first; if it
+		// can't be resolved, keep the legacy fallback rather than narrowing
+		// the colour (see resolveAddManaVariableCount's order note).
+		//
+		// A printed spend restriction (CR §106.6) is not modelled on this
+		// path, so decline rather than mint a larger amount of UNRESTRICTED
+		// mana than the fallback already does. Leyline Immersion is the
+		// corpus case.
+		if strings.Contains(text, "spend this mana only") {
+			return false
 		}
-	}
-	if width <= 0 {
-		return false
+		n, ok := resolveAddManaVariableCount(gs, src, text)
+		if !ok || n <= 0 {
+			return false
+		}
+		width = n
+	} else {
+		// Mode width = the most pips in any one comma/"or"-separated segment.
+		// "add {w}{w}, {w}{u}, or {u}{u}" → 3 segments, each 2 pips → 2 mana.
+		segments := regexp.MustCompile(`,| or | and/or `).Split(text, -1)
+		for _, seg := range segments {
+			if n := len(reAddManaEffectSymbol.FindAllString(seg, -1)); n > width {
+				width = n
+			}
+		}
+		if width <= 0 {
+			return false
+		}
 	}
 
 	// Distinct colors in first-appearance order — deterministic output.

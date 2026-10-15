@@ -1,0 +1,102 @@
+[
+ {
+  "name": "A-Vivi Ornitier",
+  "text": "add x mana in any combination of {u} and/or {r}, where x is vivi ornitier's power"
+ },
+ {
+  "name": "Axebane Guardian",
+  "text": "add x mana in any combination of colors, where x is the number of creatures you control with defender"
+ },
+ {
+  "name": "Black Mana Battery",
+  "text": "add {b}, then add an additional {b} for each charge counter removed this way"
+ },
+ {
+  "name": "Blue Mana Battery",
+  "text": "add {u}, then add an additional {u} for each charge counter removed this way"
+ },
+ {
+  "name": "Calciform Pools",
+  "text": "add x mana in any combination of {w} and/or {u}"
+ },
+ {
+  "name": "Dreadship Reef",
+  "text": "add x mana in any combination of {u} and/or {b}"
+ },
+ {
+  "name": "Elemental Resonance",
+  "text": "add mana equal to enchanted permanent's mana cost"
+ },
+ {
+  "name": "Fungal Reaches",
+  "text": "add x mana in any combination of {r} and/or {g}"
+ },
+ {
+  "name": "Grand Warlord Radha",
+  "text": "add that much mana in any combination of {r} and/or {g}"
+ },
+ {
+  "name": "Green Mana Battery",
+  "text": "add {g}, then add an additional {g} for each charge counter removed this way"
+ },
+ {
+  "name": "Klauth, Unrivaled Ancient",
+  "text": "add x mana in any combination of colors, where x is the total power of attacking creatures"
+ },
+ {
+  "name": "Leyline Immersion",
+  "text": "add five mana in any combination of colors. spend this mana only to cast spells.\""
+ },
+ {
+  "name": "Megatron, Tyrant // Megatron, Destructive Force",
+  "text": "add {c} for each 1 life your opponents have lost this turn"
+ },
+ {
+  "name": "Molten Slagheap",
+  "text": "add x mana in any combination of {b} and/or {r}"
+ },
+ {
+  "name": "Muerra, Trash Tactician",
+  "text": "add {r} or {g} for each raccoon you control"
+ },
+ {
+  "name": "Omnath, Locus of All",
+  "text": "add three mana in any combination of its colors and put it into your hand"
+ },
+ {
+  "name": "Prismatic Geoscope",
+  "text": "add x mana in any combination of colors, where x is the number of basic land types among lands you control"
+ },
+ {
+  "name": "Red Mana Battery",
+  "text": "add {r}, then add an additional {r} for each charge counter removed this way"
+ },
+ {
+  "name": "Relic of Sauron",
+  "text": "add two mana in any combination of {u}, {b}, and/or {r}"
+ },
+ {
+  "name": "Saltcrusted Steppe",
+  "text": "add x mana in any combination of {g} and/or {w}"
+ },
+ {
+  "name": "Sasaya, Orochi Ascendant // Sasaya's Essence",
+  "text": "add an additional one mana of any type that land produced for each other land you control with the same name as it"
+ },
+ {
+  "name": "Selvala, Heart of the Wilds",
+  "text": "add x mana in any combination of colors, where x is the greatest power among creatures you control"
+ },
+ {
+  "name": "Vivi Ornitier",
+  "text": "add x mana in any combination of {u} and/or {r}, where x is ~'s power"
+ },
+ {
+  "name": "White Mana Battery",
+  "text": "add {w}, then add an additional {w} for each charge counter removed this way"
+ },
+ {
+  "name": "Xenagos, the Reveler",
+  "text": "add x mana in any combination of {r} and/or {g}, where x is the number of creatures you control"
+ }
+]
