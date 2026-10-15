@@ -104,7 +104,7 @@ func BenchmarkR112_StateBasedActionsByBoardSize(b *testing.B) {
 
 // SBA is the one that came back superlinear in the first sweep, so it gets
 // a longer arm to pin the exponent rather than reading it off five points.
-var r112BigSizes = []int{40, 80, 160, 320, 640, 1280}
+var r112BigSizes = []int{40, 80, 160, 320, 640, 1280, 2560}
 
 func BenchmarkR112_StateBasedActionsDeep(b *testing.B) {
 	for _, n := range r112BigSizes {
