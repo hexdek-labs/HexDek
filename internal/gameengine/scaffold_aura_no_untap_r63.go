@@ -28,24 +28,46 @@ import (
 // auraHoldsDownUntap reports whether some Aura currently attached to p
 // carries the aura_no_untap static — i.e. p "doesn't untap during its
 // controller's untap step." Called from UntapAll.
-func auraHoldsDownUntap(gs *GameState, p *Permanent) bool {
-	if gs == nil || p == nil {
-		return false
+// collectAuraNoUntapHosts returns the set of permanents currently held down
+// by an attached `aura_no_untap` Aura, in ONE pass over the battlefields.
+//
+// r116 — PERFORMANCE, semantics unchanged. This replaces a per-permanent
+// predicate (`auraHoldsDownUntap`) that walked every seat's entire
+// battlefield on each call. `UntapAll` called it once per permanent,
+// UNGATED, so the untap step was O(n^2) in board size — every turn of every
+// game, and paid in full on the overwhelming majority of boards that contain
+// no such Aura at all. Measured before the change: UntapAll ~n^1.97 at the
+// large end, 7.4ms per untap step at n=2560, with allocations linear (so the
+// cost was CPU in the scan). See docs/untap-step-quadratic-r116.md.
+//
+// Same shape as r112's sba704_5y fix, and found by the static detector
+// written to enforce that round's SBA SCAN CONTRACT.
+//
+// Returns nil when no such Aura is on the battlefield, which is the common
+// case; a nil map reads as empty, so the caller needs no special case.
+func collectAuraNoUntapHosts(gs *GameState) map[*Permanent]bool {
+	if gs == nil {
+		return nil
 	}
+	var held map[*Permanent]bool
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue
 		}
 		for _, a := range seat.Battlefield {
-			if a == nil || a.AttachedTo != p {
+			if a == nil || a.AttachedTo == nil {
 				continue
 			}
-			if cardASTHasStaticKind(a.Card, "aura_no_untap") {
-				return true
+			if !cardASTHasStaticKind(a.Card, "aura_no_untap") {
+				continue
 			}
+			if held == nil {
+				held = map[*Permanent]bool{}
+			}
+			held[a.AttachedTo] = true
 		}
 	}
-	return false
+	return held
 }
 
 // cardASTHasStaticKind reports whether card's AST declares a Static

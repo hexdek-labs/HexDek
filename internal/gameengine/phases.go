@@ -926,6 +926,12 @@ func UntapAll(gs *GameState, seatIdx int) {
 		return
 	}
 
+	// r116 — build the aura_no_untap host set ONCE. This used to be a
+	// per-permanent predicate that rescanned every seat's battlefield,
+	// making the untap step O(n^2) in board size on every turn of every
+	// game. nil map reads as empty, which is the common case.
+	auraNoUntapHosts := collectAuraNoUntapHosts(gs)
+
 	for _, p := range seat.Battlefield {
 		if p == nil || p.PhasedOut {
 			continue
@@ -991,7 +997,7 @@ func UntapAll(gs *GameState, seatIdx int) {
 		// untap during its controller's untap step" (Waterknot, Shackles,
 		// Capture Sphere, …). Dynamic check, no stale flag. See
 		// scaffold_aura_no_untap_r63.go.
-		if auraHoldsDownUntap(gs, p) {
+		if auraNoUntapHosts[p] {
 			if p.Tapped {
 				cardName := "<unknown>"
 				if p.Card != nil {

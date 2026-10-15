@@ -1,0 +1,147 @@
+// r116 — static detector for NESTED BATTLEFIELD WALKS, direct and INDIRECT.
+//
+// r112 found sba704_5y rescanning every seat's whole battlefield once per
+// permanent — O(n^2) in board size on a per-turn path. The SBA SCAN CONTRACT
+// forbids that shape; nothing enforced it. This is the enforcement.
+//
+// Pass 1 (DIRECT): inside one function, a `for ... range X.Battlefield` whose
+// body transitively contains another `for ... range Y.Battlefield`.
+// Pass 2 (INDIRECT): the shape that would hide from pass 1 — a
+// `range X.Battlefield` loop whose body CALLS a function that itself walks
+// the battlefield. r112's defect would have been caught by pass 1; a defect
+// one call-hop away would not.
+package main
+
+import (
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+func isBFRange(r *ast.RangeStmt) bool {
+	sel, ok := r.X.(*ast.SelectorExpr)
+	return ok && sel.Sel != nil && sel.Sel.Name == "Battlefield"
+}
+
+func innerBFRange(n ast.Node) *ast.RangeStmt {
+	var found *ast.RangeStmt
+	ast.Inspect(n, func(x ast.Node) bool {
+		if found != nil {
+			return false
+		}
+		if _, ok := x.(*ast.FuncLit); ok {
+			return false
+		}
+		if r, ok := x.(*ast.RangeStmt); ok && isBFRange(r) {
+			found = r
+		}
+		return true
+	})
+	return found
+}
+
+func calleeName(c *ast.CallExpr) string {
+	switch f := c.Fun.(type) {
+	case *ast.Ident:
+		return f.Name
+	case *ast.SelectorExpr:
+		if f.Sel != nil {
+			return f.Sel.Name
+		}
+	}
+	return ""
+}
+
+type fileFn struct{ file, fn string; line int }
+
+func main() {
+	root := os.Args[1]
+	fset := token.NewFileSet()
+
+	type fnInfo struct {
+		file string
+		body *ast.FuncDecl
+	}
+	all := map[string][]fnInfo{} // name -> decls
+	var files []*ast.File
+	paths := map[*ast.File]string{}
+
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
+			strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return nil
+		}
+		files = append(files, f)
+		paths[f] = strings.TrimPrefix(path, root+"/")
+		for _, d := range f.Decls {
+			if fd, ok := d.(*ast.FuncDecl); ok && fd.Body != nil {
+				all[fd.Name.Name] = append(all[fd.Name.Name], fnInfo{paths[f], fd})
+			}
+		}
+		return nil
+	})
+
+	// Which functions walk the battlefield at all?
+	walks := map[string]bool{}
+	for name, decls := range all {
+		for _, d := range decls {
+			if innerBFRange(d.body.Body) != nil {
+				walks[name] = true
+			}
+		}
+	}
+
+	var direct, indirect []string
+	for _, f := range files {
+		for _, d := range f.Decls {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok || fd.Body == nil {
+				continue
+			}
+			ast.Inspect(fd.Body, func(x ast.Node) bool {
+				r, ok := x.(*ast.RangeStmt)
+				if !ok || !isBFRange(r) {
+					return true
+				}
+				if in := innerBFRange(r.Body); in != nil {
+					direct = append(direct, fmt.Sprintf("  %-46s %-32s outer L%-6d inner L%d",
+						paths[f], fd.Name.Name, fset.Position(r.Pos()).Line, fset.Position(in.Pos()).Line))
+				}
+				// indirect: a call to a battlefield-walking function
+				ast.Inspect(r.Body, func(y ast.Node) bool {
+					c, ok := y.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					n := calleeName(c)
+					if n != "" && walks[n] && n != fd.Name.Name {
+						indirect = append(indirect, fmt.Sprintf("  %-46s %-32s L%-6d calls %s()",
+							paths[f], fd.Name.Name, fset.Position(c.Pos()).Line, n))
+					}
+					return true
+				})
+				return true
+			})
+		}
+	}
+	sort.Strings(direct)
+	sort.Strings(indirect)
+	fmt.Printf("functions that walk the battlefield: %d\n", len(walks))
+	fmt.Printf("\nDIRECT nested battlefield walks: %d\n", len(direct))
+	for _, s := range direct {
+		fmt.Println(s)
+	}
+	fmt.Printf("\nINDIRECT (battlefield loop calling a battlefield-walker): %d\n", len(indirect))
+	for _, s := range indirect {
+		fmt.Println(s)
+	}
+}
