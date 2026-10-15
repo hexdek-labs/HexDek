@@ -92,15 +92,39 @@ trip. Those caps are live and reset per turn in
 
 ## Reproduction attempts so far — both negative, reported as such
 
-| run | games | wall | peak RSS | loop guards |
-|---|---|---|---|---|
-| sorin + the 3 decks from the 10/14 abort | 25 | 1:25 | 146MB | none |
-| sorin + the 3 decks from the 10/13 abort | 400 | in flight | — | — |
+| run | games | wall | peak RSS | loop guards | draws |
+|---|---|---|---|---|---|
+| sorin + the 3 decks from the 10/14 abort | 25 | 1:25 | 146MB | none | — |
+| sorin + the 3 decks from the 10/13 abort | 400 | 26:46 | 159MB | **0** | **0** |
 
-25 games at 146MB is nowhere near an explosion. The event is rare — 18
-aborts across weeks and hundreds of thousands of games — so a negative
-at n=25 says almost nothing, and is recorded here only so the next round
-doesn't repeat it.
+425 games, peak 159MB. Nowhere near the 2GB per-game budget, let alone
+15GB. No loop guard fired and no game ended as a draw.
+
+**That negative is close to uninformative about the explosion** and
+should not be read as exoneration: 18 aborts against an order of 10^5–10^6
+games is roughly 1 in 30,000, so 425 games had a ~1% chance of catching
+one. It is recorded so the next round doesn't repeat it.
+
+## What the run did establish, against a proper control
+
+The A/B control run from r129 is the right comparison — same binary,
+same `--workers 1`, same box, same server contention, decks chosen for
+an unrelated reason:
+
+```
+A/B control table   200 games /   55.2s  =  0.276 s/game
+sorin table         400 games / 1606.2s  =  4.016 s/game
+                                            14.5x slower per game
+```
+
+So the deck's reputation is real and it is a **time** problem, measured
+rather than inferred: a table containing it runs ~15× slower per game
+under identical conditions. What it is *not*, across 425 games, is a
+**memory** problem — and the heap explosion is what we were chasing.
+
+Those two may still be the same underlying thing seen at different
+magnitudes, but on this evidence they are separate findings, and the
+15× slowdown is the one that is now measured.
 
 ## Next, in order
 
