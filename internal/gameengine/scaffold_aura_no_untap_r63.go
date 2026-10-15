@@ -40,7 +40,7 @@ import (
 // large end, 7.4ms per untap step at n=2560, with allocations linear (so the
 // cost was CPU in the scan). See docs/untap-step-quadratic-r116.md.
 //
-// Same shape as r112's sba704_5y fix, and found by the static detector
+// Same shape as r112's sba704_5z fix, and found by the static detector
 // written to enforce that round's SBA SCAN CONTRACT.
 //
 // Returns nil when no such Aura is on the battlefield, which is the common

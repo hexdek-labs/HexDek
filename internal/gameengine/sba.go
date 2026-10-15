@@ -17,7 +17,7 @@ import (
 // a single event (see rule 704.3), then repeats this process until no state-
 // based actions are performed."
 //
-// The 2026-02-27 file lists sub-letters §704.5a–§704.5z (skipping l/o per
+// The 2026-02-27 file lists sub-letters §704.5a–§704.5aa (skipping l/o per
 // the note in the preamble at line 7). Commander-variant SBAs live at
 // §704.6c (21-commander-damage loss) and §704.6d (commander return from
 // graveyard/exile).
@@ -104,8 +104,8 @@ func StateBasedActions(gs *GameState) bool {
 		// `// stub — ...` comments below were authored when these
 		// helpers really were no-ops; the helpers were later wired to
 		// real implementations (sba704_5h deathtouch tracking, sba704_5t
-		// dungeon-completion, sba704_5w battle-protector assignment,
-		// sba704_5x siege protector reset, sba704_5z start-your-engines
+		// dungeon-completion, sba704_5x battle-protector assignment,
+		// sba704_5y siege protector reset, sba704_5aa start-your-engines
 		// speed init) but the call sites still dropped their bool
 		// returns, so a pass in which ONLY one of these helpers mutated
 		// state would terminate the SBA loop early — missing cascading
@@ -159,7 +159,7 @@ func StateBasedActions(gs *GameState) bool {
 			changed = true
 		}
 
-		// Saga / Dungeon / Battle / Role / Speed (§704.5s–§704.5z).
+		// Saga / Dungeon / Battle / Role / Speed (§704.5s–§704.5aa).
 		if sba704_5s(gs) {
 			changed = true
 		}
@@ -180,6 +180,9 @@ func StateBasedActions(gs *GameState) bool {
 			changed = true
 		}
 		if sba704_5z(gs) {
+			changed = true
+		}
+		if sba704_5aa(gs) {
 			changed = true
 		}
 
@@ -1566,12 +1569,47 @@ func sba704_5u(gs *GameState) bool {
 }
 
 // -----------------------------------------------------------------------------
-// §704.5v — battle with 0 defense → graveyard.
+// §704.5v / §704.5w — battle with 0 defense → graveyard.
 // -----------------------------------------------------------------------------
 
-// sba704_5v: "If a battle has defense 0 and it isn't the source of an
+// permIsSiege reports whether a battle carries the Siege battle type. The
+// runtime Card has no Subtypes field, so battle types live in Card.Types
+// alongside the card types (r119).
+func permIsSiege(p *Permanent) bool {
+	if p == nil || p.Card == nil {
+		return false
+	}
+	for _, t := range p.Card.Types {
+		if strings.EqualFold(t, "siege") {
+			return true
+		}
+	}
+	return false
+}
+
+// battleDefenseZero reports whether a non-phased-out battle is at defense 0.
+func battleDefenseZero(p *Permanent) bool {
+	if !p.IsBattle() || p.PhasedOut {
+		return false // §702.26
+	}
+	if p.Counters == nil {
+		return true
+	}
+	return p.Counters["defense"] <= 0
+}
+
+// sba704_5v: "If a Siege battle has defense 0 and it isn't the source of an
 // ability that has triggered but not yet left the stack, it's put into its
-// owner's graveyard." (CR §704.5v, rules file line 5491.)
+// owner's graveyard." (CR §704.5v, rules file line 5547.)
+//
+// r120 — this used to be ONE function covering every battle, quoting a
+// single rule that no longer exists. The CR split defense-0 into Siege
+// (§704.5v, which keeps the triggered-ability clause) and non-Siege
+// (§704.5w, which has NO such clause), and that split is what pushed every
+// later subrule letter up by one. Merging them was not harmless: a
+// non-Siege battle at defense 0 that is the source of a triggered ability
+// still on the stack was kept on the battlefield, where the CR puts it into
+// the graveyard immediately.
 func sba704_5v(gs *GameState) bool {
 	changed := false
 	for _, s := range gs.Seats {
@@ -1579,21 +1617,11 @@ func sba704_5v(gs *GameState) bool {
 			continue
 		}
 		for _, p := range snapshotBattlefield(s) {
-			if !p.IsBattle() {
-				continue
-			}
-			if p.PhasedOut {
-				continue // §702.26
-			}
-			def := 0
-			if p.Counters != nil {
-				def = p.Counters["defense"]
-			}
-			if def > 0 {
+			if !battleDefenseZero(p) || !permIsSiege(p) {
 				continue
 			}
 			// R38: CR §704.5v clause "isn't the source of an ability that
-			// has triggered but not yet left the stack."
+			// has triggered but not yet left the stack." Siege only.
 			if isSourceOfStackAbility(gs, p) {
 				continue
 			}
@@ -1604,20 +1632,44 @@ func sba704_5v(gs *GameState) bool {
 	return changed
 }
 
+// sba704_5w: "If a non-Siege battle has defense 0, it's put into its owner's
+// graveyard." (CR §704.5w, rules file line 5549.)
+//
+// Note the absence of the triggered-ability clause — that is the whole
+// difference from §704.5v and the reason the CR separated them. Reachable:
+// the corpus holds two non-Siege battles, Occupation of Kulrath and
+// Occupation of Llanowar, both Battle — Control Point.
+func sba704_5w(gs *GameState) bool {
+	changed := false
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range snapshotBattlefield(s) {
+			if !battleDefenseZero(p) || permIsSiege(p) {
+				continue
+			}
+			destroyPermSBA(gs, p, "battle_defense_zero", "704.5w")
+			changed = true
+		}
+	}
+	return changed
+}
+
 // -----------------------------------------------------------------------------
-// §704.5w — battle without protector.
+// §704.5x — battle without protector.
 // -----------------------------------------------------------------------------
 
-// sba704_5w: "If a battle has no player in the game designated as its
+// sba704_5x: "If a battle has no player in the game designated as its
 // protector and no attacking creatures are currently attacking that battle,
 // that battle's controller chooses an appropriate player to be its
 // protector based on its battle type. If no player can be chosen this way,
-// the battle is put into its owner's graveyard." (CR §704.5w, rules file
+// the battle is put into its owner's graveyard." (CR §704.5x, rules file
 // line 5493.)
 //
 // STUB — battle protectors aren't modeled yet. Mirrors Python stub
 // (_sba_704_5w).
-func sba704_5w(gs *GameState) bool {
+func sba704_5x(gs *GameState) bool {
 	if gs == nil {
 		return false
 	}
@@ -1668,7 +1720,7 @@ func sba704_5w(gs *GameState) bool {
 					Target: opp,
 					Source: p.Card.DisplayName(),
 					Details: map[string]interface{}{
-						"rule": "704.5w",
+						"rule": "704.5x",
 					},
 				})
 				assigned = true
@@ -1677,7 +1729,7 @@ func sba704_5w(gs *GameState) bool {
 			}
 			if !assigned {
 				// No opponent can be chosen — sacrifice the battle.
-				destroyPermSBA(gs, p, "battle_no_protector", "704.5w")
+				destroyPermSBA(gs, p, "battle_no_protector", "704.5x")
 				changed = true
 			}
 		}
@@ -1686,17 +1738,17 @@ func sba704_5w(gs *GameState) bool {
 }
 
 // -----------------------------------------------------------------------------
-// §704.5x — siege controller = protector reset.
+// §704.5y — siege controller = protector reset.
 // -----------------------------------------------------------------------------
 
-// sba704_5x: "If a Siege's controller is also its designated protector,
+// sba704_5y: "If a Siege's controller is also its designated protector,
 // that player chooses an opponent to become its protector. If no player
 // can be chosen this way, the battle is put into its owner's graveyard."
-// (CR §704.5x, rules file line 5495.)
+// (CR §704.5y, rules file line 5495.)
 //
 // STUB — Siege subtype + protector state not modeled. Mirrors Python stub
 // (_sba_704_5x).
-func sba704_5x(gs *GameState) bool {
+func sba704_5y(gs *GameState) bool {
 	if gs == nil {
 		return false
 	}
@@ -1709,15 +1761,8 @@ func sba704_5x(gs *GameState) bool {
 			if !p.IsBattle() || p.Card == nil {
 				continue
 			}
-			// Check if this is a Siege (subtype).
-			isSiege := false
-			for _, t := range p.Card.Types {
-				if t == "siege" || t == "Siege" {
-					isSiege = true
-					break
-				}
-			}
-			if !isSiege {
+			// Check if this is a Siege (battle type).
+			if !permIsSiege(p) {
 				continue
 			}
 			if p.Flags == nil {
@@ -1726,7 +1771,7 @@ func sba704_5x(gs *GameState) bool {
 			if p.Flags["has_protector"] == 0 {
 				continue
 			}
-			// §704.5x: if the Siege's controller is also its protector,
+			// §704.5y: if the Siege's controller is also its protector,
 			// reassign protector to an opponent.
 			if p.Flags["protector_seat"] != p.Controller {
 				continue
@@ -1750,7 +1795,7 @@ func sba704_5x(gs *GameState) bool {
 					Target: opp,
 					Source: p.Card.DisplayName(),
 					Details: map[string]interface{}{
-						"rule": "704.5x",
+						"rule": "704.5y",
 					},
 				})
 				reassigned = true
@@ -1759,7 +1804,7 @@ func sba704_5x(gs *GameState) bool {
 			}
 			if !reassigned {
 				// No opponent available — sacrifice the siege.
-				destroyPermSBA(gs, p, "siege_no_valid_protector", "704.5x")
+				destroyPermSBA(gs, p, "siege_no_valid_protector", "704.5y")
 				changed = true
 			}
 		}
@@ -1768,14 +1813,14 @@ func sba704_5x(gs *GameState) bool {
 }
 
 // -----------------------------------------------------------------------------
-// §704.5y — Role uniqueness (keep newest timestamp per controller).
+// §704.5z — Role uniqueness (keep newest timestamp per controller).
 // -----------------------------------------------------------------------------
 
-// sba704_5y: "If a permanent has more than one Role controlled by the same
+// sba704_5z: "If a permanent has more than one Role controlled by the same
 // player attached to it, each of those Roles except the one with the most
 // recent timestamp is put into its owner's graveyard."
-// (CR §704.5y, rules file line 5497.)
-func sba704_5y(gs *GameState) bool {
+// (CR §704.5z, rules file line 5497.)
+func sba704_5z(gs *GameState) bool {
 	changed := false
 
 	// r112 — PERFORMANCE, semantics unchanged. This used to rescan every
@@ -1847,7 +1892,7 @@ func sba704_5y(gs *GameState) bool {
 					if r == newest {
 						continue
 					}
-					destroyPermSBA(gs, r, "role_uniqueness", "704.5y")
+					destroyPermSBA(gs, r, "role_uniqueness", "704.5z")
 					destroyed[r] = true
 					changed = true
 				}
@@ -1858,19 +1903,19 @@ func sba704_5y(gs *GameState) bool {
 }
 
 // -----------------------------------------------------------------------------
-// §704.5z — Start Your Engines speed initialization.
+// §704.5aa — Start Your Engines speed initialization.
 // -----------------------------------------------------------------------------
 
-// sba704_5z: "If a player controls a permanent with start your engines! and
+// sba704_5aa: "If a player controls a permanent with start your engines! and
 // that player has no speed, that player's speed becomes 1."
-// (CR §704.5z, rules file line 5499.)
+// (CR §704.5aa, rules file line 5499.)
 //
 // STUB — Speed mechanic not modeled. Mirrors Python stub (_sba_704_5z).
-func sba704_5z(gs *GameState) bool {
+func sba704_5aa(gs *GameState) bool {
 	if gs == nil {
 		return false
 	}
-	// §704.5z: "If a player controls a permanent with start your engines!
+	// §704.5aa: "If a player controls a permanent with start your engines!
 	// and that player has no speed, that player's speed becomes 1."
 	//
 	// MVP: check gs.Flags["start_your_engines"] or scan for any permanent
@@ -1909,7 +1954,7 @@ func sba704_5z(gs *GameState) bool {
 				Kind: "speed_initialized",
 				Seat: s.Idx,
 				Details: map[string]interface{}{
-					"rule":  "704.5z",
+					"rule":  "704.5aa",
 					"speed": 1,
 				},
 			})
@@ -1931,7 +1976,7 @@ func sba704_5z(gs *GameState) bool {
 					Kind: "speed_initialized",
 					Seat: s.Idx,
 					Details: map[string]interface{}{
-						"rule":  "704.5z",
+						"rule":  "704.5aa",
 						"speed": 1,
 					},
 				})

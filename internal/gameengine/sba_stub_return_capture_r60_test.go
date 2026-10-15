@@ -12,8 +12,8 @@ import (
 //
 // The StateBasedActions outer loop relied on each helper's bool return to
 // keep the loop alive. Five helpers (§704.5h deathtouch tracking, §704.5t
-// dungeon completion, §704.5w battle protector assignment, §704.5x siege
-// protector reset, §704.5z Start Your Engines speed init) were marked as
+// dungeon completion, §704.5x battle protector assignment, §704.5y siege
+// protector reset, §704.5aa Start Your Engines speed init) were marked as
 // "stubs" at their call sites — comments dated from when the helpers
 // really were no-ops — but the helpers were later wired to real
 // implementations. The call sites still dropped the bool return, so a
@@ -28,11 +28,11 @@ import (
 //    StateBasedActions returns false and the caller has no way to know
 //    state mutated.
 //
-// 2. TestSBA_LoopAlive_BattleSacrificeCascadesToAuraIllegalAttach — §704.5w
-//    sacrifices a battle whose Aura then orphans. §704.5w runs AFTER
+// 2. TestSBA_LoopAlive_BattleSacrificeCascadesToAuraIllegalAttach — §704.5x
+//    sacrifices a battle whose Aura then orphans. §704.5x runs AFTER
 //    §704.5m in the pass list, so the Aura cleanup requires a SECOND
 //    SBA pass. Without the fix, the outer loop exits after pass 1
-//    because §704.5w's return was dropped; the orphan Aura sits on the
+//    because §704.5x's return was dropped; the orphan Aura sits on the
 //    battlefield with AttachedTo=nil, violating §704.5m.
 
 func TestSBA_LoopAlive_DeathtouchAloneReportsChange(t *testing.T) {
@@ -75,25 +75,25 @@ func TestSBA_LoopAlive_DeathtouchAloneReportsChange(t *testing.T) {
 func TestSBA_LoopAlive_BattleSacrificeCascadesToAuraIllegalAttach(t *testing.T) {
 	gs := newFixtureGame(t)
 	// Seat 1 is the only opponent in a 2-seat fixture; mark it lost so
-	// §704.5w cannot find a living opponent for the battle, forcing the
+	// §704.5x cannot find a living opponent for the battle, forcing the
 	// "no valid protector → sacrifice" branch (sba.go:1451-1455).
 	gs.Seats[1].Lost = true
 
-	// Place a battle on seat 0 with no current protector. §704.5w tries
+	// Place a battle on seat 0 with no current protector. §704.5x tries
 	// to assign a protector from gs.Opponents(0); the only opponent is
 	// Lost, so the battle gets sacrificed.
 	//
 	// Give the battle defense=3 so §704.5v ("battle with 0 defense →
-	// graveyard") doesn't pre-empt §704.5w. That ordering matters: with
+	// graveyard") doesn't pre-empt §704.5x. That ordering matters: with
 	// defense=0 the battle dies via §704.5v earlier in the same pass and
-	// §704.5w never gets a chance to fire, defeating the test's purpose.
+	// §704.5x never gets a chance to fire, defeating the test's purpose.
 	battle := addBattlefield(gs, 0, "Test Battle", 0, 0, "battle")
 	battle.Counters["defense"] = 3
 	battle.Flags["has_protector"] = 0
 
-	// Attach an Aura to the battle. After §704.5w sacrifices the battle,
+	// Attach an Aura to the battle. After §704.5x sacrifices the battle,
 	// destroyPermSBA → detachAll clears the Aura's AttachedTo, which
-	// §704.5m would catch — but §704.5m runs BEFORE §704.5w in the same
+	// §704.5m would catch — but §704.5m runs BEFORE §704.5x in the same
 	// pass (see sba.go ordering: 5m at line 93, 5w at line 120), so the
 	// Aura's orphan state needs a SECOND SBA pass.
 	aura := addBattlefield(gs, 0, "Test Aura", 0, 0, "enchantment", "aura")
@@ -101,24 +101,24 @@ func TestSBA_LoopAlive_BattleSacrificeCascadesToAuraIllegalAttach(t *testing.T) 
 
 	changed := StateBasedActions(gs)
 	if !changed {
-		t.Fatal("StateBasedActions must report changed=true after §704.5w sacrifice")
+		t.Fatal("StateBasedActions must report changed=true after §704.5x sacrifice")
 	}
 
 	// Battle should be sacrificed.
 	for _, p := range gs.Seats[0].Battlefield {
 		if p == battle {
-			t.Fatal("battle should have been sacrificed by §704.5w (no valid protector)")
+			t.Fatal("battle should have been sacrificed by §704.5x (no valid protector)")
 		}
 	}
 
 	// CRITICAL: the orphaned Aura must also have been destroyed by
 	// §704.5m on a second SBA pass. Before the fix, the outer loop
-	// exited after pass 1 because sba704_5w's return was dropped, so
+	// exited after pass 1 because sba704_5x's return was dropped, so
 	// §704.5m never got a second pass to see the orphan Aura.
 	for _, p := range gs.Seats[0].Battlefield {
 		if p == aura {
 			t.Fatal("orphaned Aura should have been destroyed by §704.5m on the second SBA pass; " +
-				"the outer loop exited early because §704.5w's return was dropped")
+				"the outer loop exited early because §704.5x's return was dropped")
 		}
 	}
 

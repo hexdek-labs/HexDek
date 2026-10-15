@@ -2,14 +2,14 @@ package gameengine
 
 import "testing"
 
-// r112 — semantic cover for the sba704_5y O(n^2) rewrite.
+// r112 — semantic cover for the sba704_5z O(n^2) rewrite.
 //
 // The rewrite indexes Roles once instead of rescanning every seat's whole
 // battlefield per permanent. TestSBA_704_5y_RoleUniquenessKeepsNewest
 // already pins the same-controller case; these pin the directions it does
 // not, which are exactly the ones an indexing mistake would break:
 //
-//	- Roles controlled by DIFFERENT players must BOTH survive. CR §704.5z
+//	- Roles controlled by DIFFERENT players must BOTH survive. CR §704.5aa
 //	  (the rule this function implements — see the citation note in the
 //	  r112 write-up) says "more than one Role controlled by the SAME player".
 //	  Grouping by holder without re-splitting by controller would kill one.
@@ -46,10 +46,10 @@ func TestRoleUniqueness_DifferentControllersBothSurvive_r112(t *testing.T) {
 	StateBasedActions(gs)
 
 	if !r112OnBattlefield(gs, mine) {
-		t.Error("seat 0's Role died — §704.5z only removes Roles controlled by the SAME player")
+		t.Error("seat 0's Role died — §704.5aa only removes Roles controlled by the SAME player")
 	}
 	if !r112OnBattlefield(gs, theirs) {
-		t.Error("seat 1's Role died — §704.5z only removes Roles controlled by the SAME player")
+		t.Error("seat 1's Role died — §704.5aa only removes Roles controlled by the SAME player")
 	}
 }
 
@@ -109,6 +109,6 @@ func TestRoleUniqueness_ThreeSameControllerKeepsNewest_r112(t *testing.T) {
 		t.Error("middle Role survived")
 	}
 	if !r112OnBattlefield(gs, r3) {
-		t.Error("newest Role died — §704.5z keeps the most recent timestamp")
+		t.Error("newest Role died — §704.5aa keeps the most recent timestamp")
 	}
 }

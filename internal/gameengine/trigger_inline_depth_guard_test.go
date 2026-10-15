@@ -4,7 +4,7 @@ import "testing"
 
 // TestPerCardInlineResolveDepthGuard pins the recursion-depth guard in
 // PushPerCardTrigger. A handler that re-entrantly pushes another per-card
-// trigger from inside its own resolution models the sba704_5y crash
+// trigger from inside its own resolution models the sba704_5z crash
 // family: StateBasedActions → destroy → FireCardTrigger →
 // PushPerCardTrigger → ResolveStackTop → handler → (re-grant) →
 // StateBasedActions → … Each cycle nests a fresh Go frame, so without a

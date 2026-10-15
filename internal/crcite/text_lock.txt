@@ -756,6 +756,7 @@
 704.3	af9d4c6d9584	Whenever a player would get priority (see rule 117, “Timing and Priority”), the game checks for any of the listed conditions for state-based actions, then performs all applicable state-based actions simultaneously as a single event. If any state-based actions are performed as a result of a check, the check is repeated; otherwise all triggered abilities that are waiting to be put on the stack are put on the stack, then the check is repeated. Once no more state-based actions have been performed as the result of a check and no triggered abilities are waiting to be put on the stack, the appropriate player gets priority. This process also occurs during the cleanup step (see rule 514), except that if no state-based actions are performed as the result of the step’s first check and no triggered abilities are waiting to be put on the stack, then no player gets priority and the step ends.
 704.5	814d9536469b	The state-based actions are as follows:
 704.5a	c7194366d1f4	The state-based actions are as follows:
+704.5aa	d6475c1dd87c	The state-based actions are as follows:
 704.5b	189a248e4c12	The state-based actions are as follows:
 704.5c	cd58a424245a	The state-based actions are as follows:
 704.5d	652b9cd8a669	The state-based actions are as follows:

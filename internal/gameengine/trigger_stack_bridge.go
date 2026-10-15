@@ -22,14 +22,14 @@ type TriggerHandlerStackItem struct {
 // maxPerCardInlineResolveDepth bounds how many PushPerCardTrigger frames
 // may nest on the Go call stack at once. The inline resolve below
 // (PriorityRound + ResolveStackTop) re-enters StateBasedActions, and an
-// SBA↔trigger feedback loop (e.g. §704.5y role-uniqueness destroying a
+// SBA↔trigger feedback loop (e.g. §704.5z role-uniqueness destroying a
 // Role whose death trigger re-grants a Role) nests a fresh
 // PushPerCardTrigger frame per cycle. The sibling guards bound the wrong
 // dimension for that failure: maxTriggerFiresPerTurn (stack.go:67) caps
 // the COUNT of fires at 1000, but 1000 NESTED cycles overflow the
 // goroutine stack first — a Go stack overflow is fatal and not
 // recover()-able, so one degenerate game killed the whole server
-// (the sba704_5y / sba704_5g / sba704_5j DARKSTAR crash family).
+// (the sba704_5z / sba704_5g / sba704_5j DARKSTAR crash family).
 // Legitimate nesting is shallow — fireTrigger's own dispatch-depth cap is
 // 8 — so 25 is comfortably above real play and far below stack
 // exhaustion. Past the bound the game is aborted as a draw via the same
