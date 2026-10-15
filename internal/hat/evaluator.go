@@ -24,27 +24,27 @@ type GameStateEvaluator struct {
 
 // EvalResult holds the per-dimension breakdown alongside the final score.
 type EvalResult struct {
-	Score              float64
-	BoardPresence      float64
-	CardAdvantage      float64
-	ManaAdvantage      float64
-	LifeResource       float64
-	ComboProximity     float64
-	ThreatExposure     float64
-	CommanderProgress  float64
-	GraveyardValue     float64
-	DrainEngine        float64
-	ArtifactSynergy    float64
+	Score                   float64
+	BoardPresence           float64
+	CardAdvantage           float64
+	ManaAdvantage           float64
+	LifeResource            float64
+	ComboProximity          float64
+	ThreatExposure          float64
+	CommanderProgress       float64
+	GraveyardValue          float64
+	DrainEngine             float64
+	ArtifactSynergy         float64
 	EnchantmentSynergy      float64
 	OpponentGraveyardThreat float64
-	PartnerSynergy     float64
-	ActivationTempo    float64
-	ToolboxBreadth        float64
-	ThreatTrajectory      float64
-	StackInteraction      float64
-	PlaneswalkerProgress  float64
-	ExileZoneAssets       float64
-	StaxLockProgress      float64
+	PartnerSynergy          float64
+	ActivationTempo         float64
+	ToolboxBreadth          float64
+	ThreatTrajectory        float64
+	StackInteraction        float64
+	PlaneswalkerProgress    float64
+	ExileZoneAssets         float64
+	StaxLockProgress        float64
 }
 
 func (r EvalResult) AsArray() [NumDimensions]float64 {
@@ -985,14 +985,31 @@ func handColorScrewPenalty(seat *gameengine.Seat) float64 {
 		}
 	}
 	// Map each demanded color slot to its untapped source count.
-	slotColor := [5]string{"W", "U", "B", "R", "G"}
+	//
+	// r125 — ONE battlefield walk for all five colours, and only when
+	// something is actually demanded. The per-colour helper walks the
+	// whole battlefield, and r124 (which populated Card.ManaCostString
+	// for the first time) turned this loop from "always zero demand, never
+	// walks" into "up to five walks per evaluation". That halved grinder
+	// throughput; see untappedFieldColorSourcesAll.
+	anyDemand := false
+	for slot := 0; slot < 5; slot++ {
+		if handDemand[slot] > 0 {
+			anyDemand = true
+			break
+		}
+	}
+	if !anyDemand {
+		return 0
+	}
+	sources := untappedFieldColorSourcesAll(seat)
 	penalty := 0.0
 	for slot := 0; slot < 5; slot++ {
 		demand := handDemand[slot]
 		if demand <= 0 {
 			continue
 		}
-		untapped := untappedFieldColorSources(seat, slotColor[slot])
+		untapped := sources[slot]
 		if untapped < demand {
 			shortfall := demand - untapped
 			penalty -= 0.15 * float64(shortfall)
@@ -1165,14 +1182,14 @@ func ritualFuelBonus(seat *gameengine.Seat) float64 {
 // shape (one-time tempo spike, not steady mana), covered separately
 // by the existing ritualFuelBonus model when chained.
 var fastManaExtraYieldByName = map[string]int{
-	"sol ring":         1,
-	"mana crypt":       1,
-	"mana vault":       2,
-	"grim monolith":    2,
-	"basalt monolith":  2,
-	"thran dynamo":     1, // {4} cost, taps for {3} → +2 yield but high cost; conservative +1
-	"worn powerstone":  1, // ETB tapped, then taps for {2}; net +1
-	"gilded lotus":     2, // {5}, taps for {3} of any one color; +2 yield
+	"sol ring":        1,
+	"mana crypt":      1,
+	"mana vault":      2,
+	"grim monolith":   2,
+	"basalt monolith": 2,
+	"thran dynamo":    1, // {4} cost, taps for {3} → +2 yield but high cost; conservative +1
+	"worn powerstone": 1, // ETB tapped, then taps for {2}; net +1
+	"gilded lotus":    2, // {5}, taps for {3} of any one color; +2 yield
 }
 
 // fastManaExtraYield returns the sum of per-turn extra mana above

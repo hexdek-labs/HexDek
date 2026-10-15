@@ -11878,6 +11878,57 @@ func fieldColorSources(seat *gameengine.Seat, color string) int {
 // detector (handColorScrewPenalty) — a tapped Island can't help cast
 // the {UU} spell in your hand THIS turn, so the binding constraint on
 // playability is untapped-only count, not total count.
+// untappedFieldColorSourcesAll returns the untapped source count for all
+// five colours in ONE battlefield walk, in manaSlot order (W,U,B,R,G).
+//
+// r124/r125 — WHY THIS EXISTS. The per-colour function below is called
+// once per DEMANDED colour slot. Until r124 it was called ZERO times in
+// production: the demand it is gated on is derived from
+// Card.ManaCostString, which no card builder ever populated, so handDemand
+// was all zeros and every slot was skipped. r124 fixed that assignment —
+// correctly — and in doing so switched on up to FIVE full battlefield
+// walks per evaluation on the AI's hot path.
+//
+// Measured on prod: grinder throughput 408 -> 208 g/min cumulative and
+// gc/game 0.07-0.10 -> 0.15-0.20, sustained over 3,027 games with a single
+// trivial slow game, so not the known bimodal capture class.
+//
+// This is the BATTLEFIELD SCAN contract (r112, widened r116) and the
+// per-pair-predicate shape (r118/r119): hoist the repeated scan, compute
+// every colour in one pass, leave the semantics alone.
+func untappedFieldColorSourcesAll(seat *gameengine.Seat) [5]int {
+	var out [5]int
+	if seat == nil {
+		return out
+	}
+	bits := [5]uint8{
+		colorSymBit("W"), colorSymBit("U"), colorSymBit("B"),
+		colorSymBit("R"), colorSymBit("G"),
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || p.Tapped {
+			continue
+		}
+		isLand := false
+		for _, t := range p.Card.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if !isLand {
+			continue
+		}
+		mask := landProducesColorsMask(p.Card)
+		for i, b := range bits {
+			if b != 0 && mask&b != 0 {
+				out[i]++
+			}
+		}
+	}
+	return out
+}
+
 func untappedFieldColorSources(seat *gameengine.Seat, color string) int {
 	bit := colorSymBit(color)
 	if bit == 0 || seat == nil {
