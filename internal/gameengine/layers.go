@@ -522,6 +522,10 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	applyLayer(gs, perm, chars, LayerControl, "")
 	applyLayer(gs, perm, chars, LayerText, "")
 	applyLayer(gs, perm, chars, LayerType, "")
+	// CR §702.103a / §702.151b / §702.176 — bestow, reconfigure and
+	// impending remove the creature type. They are §613.1d type-changing
+	// effects, so they close the layer-4 pass (r107).
+	applyCreatureTypeSuppression(perm, chars)
 	applyLayer(gs, perm, chars, LayerColor, "")
 	applyLayer(gs, perm, chars, LayerAbility, "")
 	// Incarnation graveyard statics (Anger/Brawn/Filth/Wonder/Valor) grant a

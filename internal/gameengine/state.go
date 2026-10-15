@@ -2020,23 +2020,13 @@ func (p *Permanent) ManaValue() int {
 // Per CR §702.176: while impending (has time counters), the permanent
 // is NOT a creature even if it has the creature type.
 func (p *Permanent) IsCreature() bool {
-	if p != nil && p.Flags != nil && p.Flags["not_creature_while_impending"] == 1 {
-		return false
-	}
-	// CR §702.103a — while a bestow permanent is attached as an Aura it is
-	// an enchantment — Aura and is NOT a creature (so it can't attack/block
-	// and "destroy target creature" can't hit it). The flag is cleared on
-	// falloff (BestowFalloff), reverting it to its printed creature type.
-	if p != nil && p.Flags != nil && p.Flags["bestowed"] == 1 {
-		return false
-	}
-	// CR §702.151b — while a reconfigure permanent is attached to a creature
-	// it's just an Equipment and stops being a creature: it can't attack or
-	// block, isn't a legal "target creature", and isn't seen by creature SBAs.
-	// ActivateReconfigure sets the flag on attach and clears it on detach,
-	// reverting it to its printed artifact-creature type. Mirrors the bestow
-	// (§702.103a) and impending toggles above.
-	if p != nil && p.Flags != nil && p.Flags["reconfigured"] == 1 {
+	// CR §702.103a (bestow), §702.151b (reconfigure) and §702.176
+	// (impending) each remove the creature type. The check lives in
+	// permSuppressesCreatureType so that this layer-BLIND reader and the
+	// layer-aware GameState.IsCreatureOf share one source of truth —
+	// before r107 only this one implemented them, and the creature SBAs
+	// call the other one.
+	if permSuppressesCreatureType(p) {
 		return false
 	}
 	return p.hasType("creature")
