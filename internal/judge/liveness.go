@@ -152,11 +152,39 @@ func CheckLiveness(snap LivenessSnapshot) []ValidationViolation {
 	return out
 }
 
+// seedReproducesShuffleOnly is the machine-readable form of the repro
+// caveat documented on WatchdogViolation: a logged seed fixes the
+// shuffle, not the play.
+const seedReproducesShuffleOnly = "shuffle_only"
+
 // WatchdogViolation builds (and routes) the violation a DRIVER emits
 // when a game exceeds its wall-clock budget while still running — the
 // hung game cannot snapshot itself, so this is the preemptive form of
 // liveness/wall_clock. The driver should abandon the game's goroutine
 // (an accepted leak in an offline auditing run) and continue the sweep.
+//
+// REPRO HONESTY — r134. This message used to end "repro and
+// sample-profile this seed". That instruction cannot be followed, and
+// it had been sitting in every liveness record telling whoever read one
+// to go and do an impossible thing.
+//
+// The seed does seed the game RNG, so it fixes the shuffle, the
+// mulligans and the opening seat. It does NOT fix the PLAY: each seat's
+// hat is built from Curse DNA drawn out of a mutable, evolving pool
+// using a DIFFERENT RNG than the game seed (see
+// getOrCreateCursePool(...).SelectForGame() in the grinder), and that
+// pool's contents change as the run proceeds. Replaying a seed gives
+// you the same opening and a differently-played game.
+//
+// Logging the DNA *index* alongside the seed would not fix it either —
+// it would be a second false promise, because index N addresses a
+// different DNA once the pool has evolved. Making these games genuinely
+// replayable needs deterministic DNA selection derived from the game
+// seed, which is a design change and is filed, not done here.
+//
+// So the message now states what the seed is actually good for, and
+// seedReproduces records the same thing machine-readably for anything
+// that triages these records later.
 func WatchdogViolation(seed int64, gameIdx int, budget time.Duration) ValidationViolation {
 	v := ValidationViolation{
 		Surface:   SurfaceLiveness,
@@ -164,12 +192,15 @@ func WatchdogViolation(seed int64, gameIdx int, budget time.Duration) Validation
 		Name:      "wall_clock",
 		Severity:  SeverityCritical,
 		Message: fmt.Sprintf(
-			"game STILL RUNNING at the %s liveness budget (seed=%d game=%d) — abandoned by watchdog; repro and sample-profile this seed",
+			"game STILL RUNNING at the %s liveness budget (seed=%d game=%d) — abandoned by watchdog; "+
+				"the seed reproduces the SHUFFLE but NOT the play (hat DNA comes from a mutable pool on a different RNG), "+
+				"so a replay is a different game — triage from deck_keys and the abort census instead",
 			budget, seed, gameIdx),
 		Context: map[string]interface{}{
-			"seed":     seed,
-			"game_idx": gameIdx,
-			"hung":     true,
+			"seed":            seed,
+			"game_idx":        gameIdx,
+			"hung":            true,
+			"seed_reproduces": seedReproducesShuffleOnly,
 		},
 	}
 	LogViolation(v)
