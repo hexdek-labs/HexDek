@@ -73,3 +73,84 @@ Also still untouched and now visible:
 
 None of those are measured as fixes yet. They are named by the profile, which
 is the only reason to believe they are worth the time.
+
+---
+
+# r149 — the fix worked exactly as designed at the site, and I cannot show it end to end
+
+## What shipped
+
+`collectPresentInstanceIDsForSweep` built its id set from an **empty** map and
+then filled it with every card in every zone of every seat. The insert line was
+**17.82GB, 8.58% of all allocation** — second only to the layers system.
+Pre-sized from `countCardsForSweep(gs)`, which walks slice lengths only.
+
+## Measured at the site — unambiguous
+
+```
+  before   present[c.InstanceID] = struct{}{}      17.82GB   8.58%
+           present := map[string]struct{}{}        44.50MB
+  after    present := make(..., countCards(gs))     1.52GB   4.24%
+           (the insert line is GONE from the profile entirely)
+```
+
+The growth-and-rehash allocation is eliminated. What remains is one correctly
+sized allocation. In-package the same population costs **4 allocations instead
+of 11**.
+
+## Not measured end to end, and I am not going to pretend otherwise
+
+Per-game allocation went **16.88 → 16.73 MB/game, about 1%**. I predicted ~4%,
+and the site arithmetic says ~4.4% should have been available.
+
+**The two numbers do not reconcile and I cannot currently say why.** The honest
+candidates: the two profiles cover very different durations (~1.5h versus
+~6min), so their percentage shares have different denominators and are not
+safely comparable at this precision; and a ~1% per-game difference is inside
+the noise of comparing a handful of 30-second windows.
+
+**So the claim is the site measurement, not the total.** r148's 17% was large
+enough to clear that noise. This is not, and saying "r149 cut allocation 4%"
+would be reporting arithmetic as though it were a measurement.
+
+**Methodology limit for future rounds: whole-process per-game comparison does
+not resolve a single site worth under ~5%.** To attribute a change that small,
+compare two profiles of the same duration under the same workload, or do not
+claim the aggregate at all.
+
+Prod after: 562 g/min cum, turns/game 56.5, gc/game 0.06, heap 664–871MB,
+0 aborts, 0 panics, no SLOW GAME.
+
+## The layers system — investigated, deliberately not touched
+
+`BaseCharacteristics` is the real top at **24.48%, 50.84GB cum**, and line 326
+(`c := &Characteristics{`) alone is 27.75GB.
+
+**It is not missing a cache.** `GetEffectiveCharacteristics` already has one —
+`gs.charCache`, keyed by permanent pointer, epoch-guarded. It is invalidated
+**globally** by `InvalidateCharacteristicsCache` on any counter add/remove,
+modification append/expire, effect register/unregister, keyword stamp,
+face-down toggle or attachment change. On a 100-permanent board that happens
+constantly, so every permanent's characteristics get rebuilt over and over.
+
+The real fix is splitting **base** invalidation (depends only on that
+permanent's own state) from **layered** invalidation (depends on global state).
+That is a correctness-critical redesign of the layers system — getting
+invalidation wrong silently corrupts every characteristic in the engine — and
+it is not something to start at the end of a round.
+
+## One trap, recorded so the next attempt does not lose a round to it
+
+**`cardColors` cannot be memoized by `*Card`.** It is 9.88GB under
+`BaseCharacteristics` and looks like a textbook pure function of an immutable
+card. `Card.Colors` is **reassigned at runtime** — `endure.go:66`,
+`keywords_misc.go:1348`, `keywords_cr_aug_r64.go:73`, `keywords_p0.go:1055` —
+so a cache keyed by the card pointer would serve stale colors into combat
+protection and hexproof checks.
+
+The right shape is a **WUBRG bitmask** instead of `map[string]struct{}`: all
+seven call sites only range over it or test membership, so a bitmask allocates
+nothing and needs no immutability assumption at all. Scoped, not started.
+
+I checked that assumption instead of trusting it, which is the only reason this
+is a note and not a bug.
