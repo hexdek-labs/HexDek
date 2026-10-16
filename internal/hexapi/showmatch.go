@@ -403,11 +403,21 @@ func heapGuardEvaluate(heapAlloc, baseline uint64) (delta uint64, watch bool, ab
 		delta = heapAlloc - baseline
 	}
 	watch = delta > maxHeapPerGame/2
+	// r136 — THE CEILING IS TESTED FIRST. It used to be second, and a
+	// `switch` takes the first matching case: once delta passed 2GB the
+	// result was ALWAYS heapAbortDelta, so heapAbortCeiling could only
+	// fire for a game whose own baseline was captured while the process
+	// was already huge. That inverted the guard. heapAbortDelta is the
+	// deferrable one (r133), so on 2026-10-16 05:18 a game printed
+	// "deferring the abort" while the process heap stood at ~12GB —
+	// double the ceiling the comment in shouldDeferAbort promises is
+	// "NEVER deferred" — and the games that died instead were 557
+	// freshly-started ones aborted at turn 10 with perms=13..16.
 	switch {
-	case delta > maxHeapPerGame:
-		abort = heapAbortDelta
 	case heapAlloc > maxProcessHeap:
 		abort = heapAbortCeiling
+	case delta > maxHeapPerGame:
+		abort = heapAbortDelta
 	}
 	return delta, watch, abort
 }
@@ -1947,6 +1957,8 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	// can tell which of the two in-flight games is the real suspect.
 	weightSlot, releaseWeight := registerInflightGame()
 	defer releaseWeight()
+	// r136 — a deferral that does not relieve the heap is not repeated.
+	var deferrals deferralMemo
 	for turn := 1; turn <= showmatchMaxTurn; turn++ {
 		// r62 (report 06 C3): abort unrated on a mid-game maintenance flip
 		// (same contract as the fishtank loop — see runOneGame).
@@ -1986,7 +1998,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			// while a 715.7s game on the other worker ran on untouched.
 			selfWeight := gameWeight(gs)
 			weightSlot.Store(selfWeight)
-			if shouldDeferAbort(abort, weightSlot, selfWeight) {
+			if deferrals.allow(abort, weightSlot, selfWeight, m.HeapAlloc) {
 				log.Printf("grinder: heap delta %.0fMB at turn %d, but a peer game is larger (self weight %d) — deferring the abort to it",
 					float64(delta)/1e6, turn, selfWeight)
 				abort = ""

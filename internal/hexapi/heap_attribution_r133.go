@@ -122,3 +122,38 @@ func shouldDeferAbort(abort string, self *atomic.Int64, selfWeight int64) bool {
 	}
 	return heaviestPeerWeight(self) > selfWeight
 }
+
+// deferralMemo remembers the heap reading at this game's most recent
+// deferral so the guard can tell whether deferring actually worked.
+//
+// r136. r133's deferral rests on an assumption stated in the comment
+// above: "the peer that is actually big will reach its own check
+// shortly." On 2026-10-16 05:18 that assumption failed in production.
+// Across the whole run the log carries dozens of "deferring the abort"
+// lines and ZERO heapAbortDelta aborts — every game that tripped the
+// per-game budget deferred, none of them ever aborted, and the heap ran
+// from 1404MB to 12426MB in 33 seconds.
+//
+// The rule here needs no new threshold, only a comparison, which is the
+// same discipline r133 used to pick its suspect: if this game defers and
+// the heap has NOT come down by its next check, the deferral demonstrably
+// did not relieve anything, so it does not get to defer again. One
+// game's politeness must not be unbounded.
+type deferralMemo struct {
+	last  uint64
+	armed bool
+}
+
+// allow reports whether this game may stand down in favour of a larger
+// peer. It is shouldDeferAbort plus the "and it worked last time"
+// condition, and it is the only form the grinder should call.
+func (d *deferralMemo) allow(abort string, self *atomic.Int64, selfWeight int64, heapAlloc uint64) bool {
+	if !shouldDeferAbort(abort, self, selfWeight) {
+		return false
+	}
+	if d.armed && heapAlloc >= d.last {
+		return false
+	}
+	d.last, d.armed = heapAlloc, true
+	return true
+}
