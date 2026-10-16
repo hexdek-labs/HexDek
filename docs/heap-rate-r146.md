@@ -102,3 +102,59 @@ The three infrastructure asks are unchanged and now have four events behind them
 rather than one: `run-server.sh` is a `while true` inside the process group that
 dies; there is no kernel log access, so an OOM kill still cannot be confirmed;
 and there is no liveness monitoring.
+
+---
+
+## CORRECTION, same round: the rollout hypothesis is dead
+
+The instrumentation killed it on its first reading, which is what it was built to
+be able to do.
+
+**Six consecutive windows, 1,635 games, `clones=0`.** Not low — zero.
+
+The reason is structural, and one grep would have found it before I wrote the
+mechanism down. The grinder builds every hat through
+`NewYggdrasilHatWithPool(..., 50, ...)` at all three sites in `showmatch.go`
+(:1337, :1967, :2270), and `canRollout()` requires `Budget >= rolloutBudgetGe`,
+which is **200**. The grinder is structurally incapable of rolling out.
+`CloneForRollout` is never called in the workload that produces the excursions.
+
+So high `s/turn` in the grinder is **not** rollout cost, and clone churn is not
+the allocation source. That is the third hypothesis this event has killed —
+tokens, then the trigger cascade, now rollouts.
+
+**What survives untouched:** the s/turn correlation itself (3 of 3, zero false
+positives in ten), the retirement of the deck hypothesis, the `sys` ratchet, and
+the abort-burst-looks-like-a-spike finding. Those are measurements. Only the
+mechanism was wrong.
+
+**I repeated the r145 mistake in a new costume.** r145's lesson was to check the
+order of magnitude of the evidence. I did check the magnitude this time and it
+passed — but I never checked whether the mechanism was *reachable* in the
+workload at all. A plausible size is not a live code path. **Before proposing a
+mechanism, grep whether the workload can even execute it.**
+
+## What `alloc=` is actually showing, and the fork it sets up
+
+Baseline is **~5,500MB per 30s window ≈ 185MB/s of steady-state churn** at
+perfect health (heap flat ~800MB, gc/game 0.07). That is a much higher floor
+than expected and it reframes the excursion: GC is already reclaiming ~185MB/s
+continuously, so an excursion does not require a 100x anomaly.
+
+Note the first `alloc=` reading after a restart is **not** a window — `prevAlloc`
+starts at zero, so it reports everything since process start (8,921MB, including
+the AST dataset load). Discard the first line.
+
+The next excursion now splits cleanly, and the two branches mean opposite things:
+
+- **`alloc=` spikes with it** → more garbage is being created. A rate event, and
+  the question becomes which code path produces it.
+- **`alloc=` stays flat while heap climbs** → the same bytes are being *retained*
+  rather than churned. That is a within-game leak, GC has nothing it is allowed
+  to reclaim, and the guard's abort is what finally frees it.
+
+The second branch would also explain the thing that has never fit: why
+`GOMEMLIMIT` was powerless. A soft limit cannot collect what is still reachable.
+
+**This is the first instrument that can tell those two apart**, and it costs one
+subtraction per window.
