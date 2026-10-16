@@ -1943,6 +1943,10 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	// r129 — heapWatch escalates heap sampling to every turn once this
 	// game is already pushing the budget. See heapGuardSamples.
 	heapWatch := false
+	// r133 — publish this game's object weight so a peer worker's guard
+	// can tell which of the two in-flight games is the real suspect.
+	weightSlot, releaseWeight := registerInflightGame()
+	defer releaseWeight()
 	for turn := 1; turn <= showmatchMaxTurn; turn++ {
 		// r62 (report 06 C3): abort unrated on a mid-game maintenance flip
 		// (same contract as the fishtank loop — see runOneGame).
@@ -1976,6 +1980,17 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			runtime.ReadMemStats(&m)
 			delta, watch, abort := heapGuardEvaluate(m.HeapAlloc, heapBaseline)
 			heapWatch = watch
+			// r133 — the delta is process-wide, so publish what THIS
+			// game actually contains and stand down if a peer is
+			// visibly larger. On 10/15 23:27 a 13.8s game was aborted
+			// while a 715.7s game on the other worker ran on untouched.
+			selfWeight := gameWeight(gs)
+			weightSlot.Store(selfWeight)
+			if shouldDeferAbort(abort, weightSlot, selfWeight) {
+				log.Printf("grinder: heap delta %.0fMB at turn %d, but a peer game is larger (self weight %d) — deferring the abort to it",
+					float64(delta)/1e6, turn, selfWeight)
+				abort = ""
+			}
 			switch abort {
 			case heapAbortDelta:
 				// r131 — the abort now names its own game and its own
