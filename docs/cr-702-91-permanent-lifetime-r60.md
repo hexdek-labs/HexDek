@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **109**
-- Primitives × handlers attempted: **436**
+- Handlers exercised (cards subscribed to an exit event): **144**
+- Primitives × handlers attempted: **576**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -68,20 +68,27 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 ## Handler list (subscribed to exit events)
 
 - `abzan falconer`
+- `aether revolt`
 - `alier disciple of the drowned`
 - `alpharael stonechosen`
 - `aluren`
 - `aminatou veil piercer`
+- `angraths marauders`
+- `anthem of rakdos`
 - `anticausal vestige`
 - `archangel of tithes`
 - `archelos lagoon mystic`
 - `ashling flame dancer`
 - `azors elocutors`
 - `banisher priest`
+- `benevolent unicorn`
 - `bloodchief ascension`
 - `brudiclad telchor engineer`
+- `calamity bearer`
 - `carmen cruel skymarcher`
 - `cecily haunted mage`
+- `charging tuskodon`
+- `city on fire`
 - `cloud midgar mercenary`
 - `commander mustard`
 - `curse of bloodletting`
@@ -89,18 +96,32 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `darksteel reactor`
 - `detention sphere`
 - `dictate of the twin gods`
+- `divine presence`
+- `embermaw hellion`
 - `faceless butcher`
+- `far fortune end boss`
+- `fated firepower`
 - `fearless swashbuckler`
+- `fiendish duo`
+- `fiery emancipation`
 - `fire lord zuko`
+- `fire servant`
+- `forethought amulet`
 - `furnace of rath`
+- `ghosts of the innocent`
 - `gisa the hellraiser`
 - `gisela blade of goldnight`
+- `goldnight castigator`
+- `gratuitous violence`
 - `hearthhull the worldseed`
 - `helix pinnacle`
+- `horizon stone`
 - `hostage taker`
+- `inquisitors flail`
 - `iroh grand lotus`
 - `it that betrays`
 - `jaws relentless predator`
+- `jaya venerated firemage`
 - `jodah the unifier`
 - `karn the great creator`
 - `kess dissident mage`
@@ -113,6 +134,8 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `kuja genome sorcerer`
 - `kuja genome sorcerer // trance kuja fate defied`
 - `lara croft tomb raider`
+- `lashknife barrier`
+- `leyline tyrant`
 - `lier disciple of the drowned`
 - `lightning army of one`
 - `lurrus of the dreamden`
@@ -120,6 +143,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `maestros ascendancy`
 - `marisi breaker of the coil`
 - `mazirek kraul death priest`
+- `mechanized warfare`
 - `minthara merciless soul`
 - `momo playful pet`
 - `myrel shield of argive`
@@ -129,15 +153,19 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `neriv heart of the storm`
 - `noctis prince of lucis`
 - `oblivion ring`
+- `obosh the preypiercer`
 - `old one eye`
 - `omnath locus of mana`
 - `ozai the phoenix king`
 - `phoenix fleet airship`
 - `phylactery lich`
+- `pyromancers gauntlet`
+- `pyromancers swath`
 - `quest for pure flame`
 - `quest for ulas temple`
 - `ragost deft gastronaut`
 - `raphael ninja destroyer`
+- `rem karolus stalwart slayer`
 - `return the past`
 - `rienne angel of rebirth`
 - `samut the driving force`
@@ -149,6 +177,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `sokrates athenian teacher`
 - `solphim mayhem dominus`
 - `storm force of nature`
+- `sulfuric vapors`
 - `syr vondam sunstar exemplar`
 - `szarel genesis shepherd`
 - `tannuk steadfast second`
@@ -158,15 +187,21 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `the master multiplied`
 - `the master of keys`
 - `the reality chip`
+- `the rollercrusher ride`
 - `the second doctor`
+- `the sound of drums`
 - `the war doctor`
 - `tireless tracker`
 - `tombstone stairwell`
+- `tor wauki the younger`
 - `torbran thane of red fell`
+- `twinflame tyrant`
 - `ty lee chi blocker`
+- `uncivil unrest`
 - `underworld breach`
 - `upwelling`
 - `uril the miststalker`
+- `valley flamecaller`
 - `vihaan goldwaker`
 - `vishgraz the doomhive`
 - `yawgmoths agenda`

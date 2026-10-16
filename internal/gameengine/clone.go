@@ -16,6 +16,9 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 	if gs == nil {
 		return nil
 	}
+	// r146 — see rollout_clone_counter_r146.go. Counted here rather than
+	// at the call sites so a new caller cannot silently escape the census.
+	rolloutClones.Add(1)
 
 	// Phase 1: clone all cards, build identity map.
 	cardMap := make(map[*Card]*Card, 256)

@@ -1081,6 +1081,7 @@ func (sm *Showmatch) runGrinder() {
 	// to compare; they are what this window actually did.
 	prevGames, prevTurns, prevGC := int64(0), int64(0), uint32(0)
 	prevLimited := int64(0)
+	prevClones, prevAlloc := int64(0), uint64(0)
 	prevAt := t0
 	for range ticker.C {
 		n := totalGames.Load()
@@ -1113,10 +1114,26 @@ func (sm *Showmatch) runGrinder() {
 		dLimited := limited - prevLimited
 		prevLimited = limited
 
+		// r146 — the allocation RATE and the rollout clone rate for this
+		// window. The heap excursions are a rate event, and the only
+		// numbers on this line that could have shown one (heap, sys) are
+		// both instantaneous samples taken every 30s; a 35-second spike
+		// to 12GB can pass almost entirely between two of them. TotalAlloc
+		// is monotonic, so its delta is the bytes this window actually
+		// churned regardless of when GC ran. clones= is the suspected
+		// source of that churn, and clones/game is the shape to watch.
+		clones := gameengine.RolloutClones()
+		dClones := clones - prevClones
+		prevClones = clones
+		dAlloc := m.TotalAlloc - prevAlloc
+		prevAlloc = m.TotalAlloc
+
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
-			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d",
+			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
+			"alloc=%.0fMB clones=%d",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
-			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited)
+			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
+			float64(dAlloc)/1e6, dClones)
 
 		if n-lastLogged >= 50 {
 			sm.flushELO()
