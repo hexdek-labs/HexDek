@@ -2101,6 +2101,17 @@ func ResolveStackTop(gs *GameState) {
 		}()
 	}
 
+	// r143 — the same window, but keeping the ITEM rather than only its
+	// Card. Cast-time state (CostMeta, CastZone) lives on the StackItem
+	// and is what an "if this spell was kicked" clause asks about; by the
+	// time a handler runs it only has a *Permanent, synthetic and
+	// CostMeta-less for an instant or sorcery. Unconditional, unlike the
+	// Card push above, because an ability item has no Card. LIFO.
+	gs.resolvingItems = append(gs.resolvingItems, item)
+	defer func() {
+		gs.resolvingItems = gs.resolvingItems[:len(gs.resolvingItems)-1]
+	}()
+
 	// InstanceID enabler context: child objects (token mints, copy mints)
 	// created during this resolution stamp the resolving frame's
 	// AbilityInstance ID as their EnablerInstanceID per

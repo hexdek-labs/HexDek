@@ -2295,14 +2295,40 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 
 	// -----------------------------------------------------------------
 	// if_intervening_tail — "if [condition], [effect]" tail. Args are
-	// (condition_text, body_text). Evaluate the body part as residual
-	// text; the condition is assumed true (GreedyHat policy: the card
-	// is in the deck, so the controller expects the condition to hold).
+	// (condition, body_text).
+	//
+	// The condition USED to be assumed true unconditionally — "GreedyHat
+	// policy: the card is in the deck, so the controller expects the
+	// condition to hold". r143 keeps that default but stops applying it
+	// to the one family the engine can actually evaluate: a
+	// cast_mode_check ("if this spell was kicked", 98 of the 152 corpus
+	// cards carrying the node) is now ASKED, against the real resolving
+	// spell's CostMeta and CastZone, via interveningTailAllows.
+	//
+	// Anything the predicate cannot answer still falls through to the old
+	// assume-true path. An unknown is not a false: answering "no" would
+	// strip effects off cards that earned them, which is strictly worse
+	// than the over-generous default we have lived with.
 	// -----------------------------------------------------------------
 	case "if_intervening_tail":
 		iitCond := modArgString(e.Args, 0)
 		iitBody := modArgString(e.Args, 1)
 		iitResolved := false
+		if allow, decided := interveningTailAllows(gs, src, e.Args); decided && !allow {
+			mode, _ := castModeConditionArg(e.Args[0])
+			gs.LogEvent(Event{
+				Kind:   "if_intervening_tail",
+				Seat:   controllerSeat(src),
+				Source: sourceName(src),
+				Details: map[string]interface{}{
+					"condition": mode,
+					"body":      iitBody,
+					"resolved":  false,
+					"reason":    "cast_mode_not_satisfied",
+				},
+			})
+			return
+		}
 		if iitBody != "" {
 			iitResolved = resolveResidualByText(gs, src, iitBody)
 		}

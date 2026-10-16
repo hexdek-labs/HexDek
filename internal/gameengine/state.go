@@ -207,6 +207,16 @@ type GameState struct {
 	// ResolveStackTop; empty whenever the engine is at rest.
 	ResolvingCards []*Card
 
+	// resolvingItems is the StackItem parallel of ResolvingCards (r143):
+	// the stack item whose resolution is currently executing, LIFO so
+	// nested resolutions stay balanced. ResolvingCards holds *Card, which
+	// carries none of the CAST-TIME state — CostMeta and CastZone live on
+	// the StackItem — so an "if this spell was kicked" clause could not be
+	// answered during resolution without this. Pushed/popped by
+	// ResolveStackTop; read via currentResolvingSpell. See
+	// cast_mode_r137.go, which filed exactly this gap.
+	resolvingItems []*StackItem
+
 	// TokenMintEvents is the Phase 5 audit-trail buffer per
 	// docs/instanceid-system-v2-r60.md §6. Each FireCreateTokenEvent
 	// resolution appends one TokenMintEvent recording the §616
