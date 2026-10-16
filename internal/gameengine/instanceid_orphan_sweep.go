@@ -177,7 +177,17 @@ func SweepOrphanedInstanceIDs(gs *GameState) int {
 //     triggered/activated ability) — ability items reference their source
 //     Card as a log label, not as zone occupancy.
 func collectPresentInstanceIDsForSweep(gs *GameState) map[string]struct{} {
-	present := map[string]struct{}{}
+	// r149 — pre-size. This map is filled with every card in every zone of
+	// every seat: four libraries of ~90, plus hands, graveyards, exile,
+	// command zone and battlefield. Started empty it rehashed its way up
+	// on every sweep, and an allocation profile of a healthy production
+	// run put line "present[c.InstanceID] = struct{}{}" at 17.82GB, 8.58%
+	// of ALL allocation in the process — second only to the layers system.
+	//
+	// Counting first is free: len() on a slice header costs nothing, so
+	// one pass over the zone lengths buys the right capacity up front.
+	// This changes capacity only — the contents are identical.
+	present := make(map[string]struct{}, countCardsForSweep(gs))
 	addID := func(c *Card) {
 		if c == nil || c.InstanceID == "" {
 			return
