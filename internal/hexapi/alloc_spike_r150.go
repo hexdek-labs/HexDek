@@ -61,7 +61,16 @@ const (
 
 	// How often the rolling baseline is refreshed, in windows (30s
 	// each), so the baseline on disk is never more than this old.
-	allocBaselineEvery = 10
+	//
+	// r150.1 — this was 10 (five minutes) and that was too slack to be
+	// useful. The first real capture, within ten minutes of deploying,
+	// differenced a 4.5-minute interval in which only about 60 seconds
+	// was actually spiking: the excess attributable to the spike was
+	// roughly 2-3GB out of 31.5GB differenced, so the result was 90%
+	// steady state and could not support a claim about the spike. At 2
+	// the diff covers at most 90 seconds. A 300KB write per minute is
+	// not worth protecting.
+	allocBaselineEvery = 2
 )
 
 // allocSpikeDetector decides whether one window's allocation is a spike.
@@ -207,7 +216,14 @@ func (r *allocSpikeRecorder) observe(mbPerGame float64) {
 	if spike {
 		stamp := time.Now().UTC().Format("20060102T150405Z")
 		spikePath := filepath.Join(r.dir, "alloc-spike-"+stamp+".pb.gz")
+		// A log line's own text is a claim. This one previously said
+		// "none yet" in both the no-baseline case and the already-frozen
+		// case, which are different situations and send a reader to
+		// different files.
 		base := "none yet"
+		if r.frozen > 0 {
+			base = "already frozen by the preceding spike — use that one"
+		}
 		// Freeze the rotation and move the pre-spike baseline out of the
 		// way of it before writing anything, so that even if the spike
 		// write fails the baseline survives.

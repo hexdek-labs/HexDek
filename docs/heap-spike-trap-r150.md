@@ -182,3 +182,54 @@ reading tea leaves will not.
    by the supervisor dying with the thing it supervises.
 2. No kernel log access on .206 — an OOM kill cannot be confirmed.
 3. No liveness monitoring. Both outages were found by a person looking.
+
+---
+
+## r150.1 — the trap fired nine minutes after deploying, and the first capture tuned it
+
+Deployed 19:06:39. Baseline written 19:11. Fired twice:
+
+```
+19:15:09  ALLOC SPIKE 33.8 MB/game vs median 16.4 (2.07x)  baseline=alloc-baseline-frozen-20261016T191509Z.pb.gz
+19:15:39  ALLOC SPIKE 76.2 MB/game vs median 16.4 (4.66x)  (rotation already frozen)
+```
+
+**The escalation rule earned itself on the first day.** 76.2 is more than
+twice 33.8, so it reported despite being one window inside the cooldown
+— exactly the case control B showed a plain cooldown sleeps through.
+
+Note what this event was *not*: zero aborts, zero slow games, heap never
+above 845MB. The trap catches allocation excursions **below** the
+threshold at which the heap guard notices anything. That is more than
+was asked of it.
+
+The differential reads correctly with the matching binary, which closes
+the loop the round was built to close.
+
+### What the first capture does NOT establish
+
+In the differenced interval the layers system's share rises — flat
+`applyLayer` 10.13% → 16.45%, `BaseCharacteristics` 17.08% → 20.02%,
+with `DependencyOrder` and `partitionTypes` surfacing in the top
+fourteen. That is suggestive and it is **not a claim**, for a reason
+worth recording:
+
+The baseline was 4.5 minutes old and only about 60 seconds of that
+interval was spiking. Summing the window figures, the excess
+attributable to the spike is roughly 2–3GB out of 31.5GB differenced.
+The diff is about ninety percent steady state, so a shift in shares
+across it cannot be attributed to the spike. Same distinction as r149:
+the instrument measured something real, and it is not the thing I want
+to claim.
+
+### The fix is to the instrument, not to the reasoning
+
+`allocBaselineEvery` 10 → **2**. The baseline is now at most one minute
+old, so a differenced interval is at most ninety seconds against a
+thirty-second spike — majority signal instead of a tenth of it. The cost
+is a 300KB write per minute.
+
+Also corrected: the spike line printed `baseline=none yet` both when no
+baseline existed and when the rotation was already frozen by a preceding
+spike. Those are different situations that send a reader to different
+files. A log line's own text is a claim (r147).
