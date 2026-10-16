@@ -367,6 +367,34 @@ func ExtractCommanderZoneVisits(gs *gameengine.GameState) []CommanderZoneVisit {
 	return out
 }
 
+// distinctNames collapses an ETB name list to its distinct names, keeping
+// first-seen order so the pair stream stays deterministic.
+//
+// r151 — co-trigger pairs are keyed on card NAME (CardA/CardB are names), so
+// N copies of one name carry exactly the signal of one copy. Pairing the raw
+// list made ExtractCoTriggers quadratic in CARDS rather than in NAMES: a turn
+// that put 500 Saproling tokens onto the battlefield emitted 124,750 pairs,
+// every one of them ("Saproling","Saproling"). On .206 that single line was
+// 1.89GB — 26.91% of the whole differenced allocation profile — in one 30s
+// window, and the adjacent-turn branch below already skipped those self-pairs
+// by name, so the same-turn branch was also the inconsistent one. Dedup fixes
+// the allocation and the aggregation skew together.
+func distinctNames(names []string) []string {
+	if len(names) < 2 {
+		return names
+	}
+	out := make([]string, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, n := range names {
+		if _, dup := seen[n]; dup {
+			continue
+		}
+		seen[n] = struct{}{}
+		out = append(out, n)
+	}
+	return out
+}
+
 // ExtractCoTriggers finds pairs of cards that entered the battlefield
 // within the same or adjacent turns. This is a simplified approximation
 // of Huginn's full synergy analysis — real co-trigger scoring requires
@@ -387,7 +415,7 @@ func ExtractCoTriggers(turnETBs map[int][]string) []CoTriggerPair {
 	// For each turn, pair cards within the same turn (window=0) and with
 	// cards from the adjacent turn (window=1).
 	for _, t := range turns {
-		cards := turnETBs[t]
+		cards := distinctNames(turnETBs[t])
 		// Same-turn pairs.
 		for i := 0; i < len(cards); i++ {
 			for j := i + 1; j < len(cards); j++ {
@@ -400,7 +428,8 @@ func ExtractCoTriggers(turnETBs map[int][]string) []CoTriggerPair {
 			}
 		}
 		// Adjacent-turn pairs (t and t+1).
-		if nextCards, ok := turnETBs[t+1]; ok {
+		if raw, ok := turnETBs[t+1]; ok {
+			nextCards := distinctNames(raw)
 			for _, a := range cards {
 				for _, b := range nextCards {
 					if a == b {

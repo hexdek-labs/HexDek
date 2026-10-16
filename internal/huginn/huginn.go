@@ -788,9 +788,30 @@ func atomicWriteJSON(path string, data interface{}) error {
 		return fmt.Errorf("huginn: marshal: %w", err)
 	}
 	out = append(out, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+	// r151 — the tmp path used to be a FIXED path+".tmp". The grinder runs
+	// two parallel workers and both reach this writer, so two concurrent
+	// os.WriteFile calls opened the same file with O_TRUNC and then wrote at
+	// their own offsets: the shorter document landed on top of the longer one
+	// and the tail of the longer one survived past its end. That is exactly
+	// the shape of the live corruption found on .206 on 2026-10-16 — a
+	// complete array closing at line 25697 of 32695, followed by the middle
+	// of a longer document. The file had been unparseable since 2026-06-07,
+	// so every co-trigger observation since then was read, failed and
+	// discarded. A per-call unique name makes the rename the only shared
+	// step, which is what "atomic" was supposed to mean.
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("huginn: createtemp for %s: %w", path, err)
+	}
+	tmp := f.Name()
+	if _, err := f.Write(out); err != nil {
+		f.Close() //nolint:errcheck — already failing, the remove below is what matters.
+		os.Remove(tmp)
 		return fmt.Errorf("huginn: write %s: %w", tmp, err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("huginn: close %s: %w", tmp, err)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		os.Remove(tmp)
