@@ -48,13 +48,13 @@ var knownASTTypes = func() map[string]bool {
 func decodeCardLine(line []byte) (*gameast.CardAST, []string, error) {
 	// Top-level row shape from export_ast_dataset.py.
 	var row struct {
-		Name        string          `json:"name"`
-		OracleText  string          `json:"oracle_text"`
-		TypeLine    string          `json:"type_line"`
-		ManaCost    string          `json:"mana_cost"`
-		CMC         json.RawMessage `json:"cmc"`
-		Colors      []string        `json:"colors"`
-		AST         json.RawMessage `json:"ast"`
+		Name       string          `json:"name"`
+		OracleText string          `json:"oracle_text"`
+		TypeLine   string          `json:"type_line"`
+		ManaCost   string          `json:"mana_cost"`
+		CMC        json.RawMessage `json:"cmc"`
+		Colors     []string        `json:"colors"`
+		AST        json.RawMessage `json:"ast"`
 	}
 	if err := json.Unmarshal(line, &row); err != nil {
 		return nil, nil, fmt.Errorf("json: %w", err)
@@ -202,6 +202,22 @@ func (d *decoder) decodeCardAST(raw json.RawMessage) *gameast.CardAST {
 			for _, ab := range items {
 				if decoded := d.decodeAbility(ab); decoded != nil {
 					card.Abilities = append(card.Abilities, decoded)
+				}
+			}
+		}
+	}
+
+	// faces is a tuple[CardAST, ...] → the Adventure / Omen half (CR
+	// §715.2 / §720.2). r135. Absent on every other card, so the loop
+	// simply does not run; recursion terminates because a half never
+	// carries faces of its own (the exporter only ever attaches one
+	// level, and a half has no layout key to trigger attachment).
+	if raw, ok := obj["faces"]; ok && string(raw) != "null" {
+		var items []json.RawMessage
+		if err := json.Unmarshal(raw, &items); err == nil {
+			for _, f := range items {
+				if decoded := d.decodeCardAST(f); decoded != nil {
+					card.Faces = append(card.Faces, decoded)
 				}
 			}
 		}

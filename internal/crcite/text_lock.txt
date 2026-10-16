@@ -828,6 +828,11 @@
 714.2b	d4f810a9cd67	A chapter symbol is a keyword ability that represents a triggered ability referred to as a chapter ability.
 714.2c	fb446a389634	A chapter symbol is a keyword ability that represents a triggered ability referred to as a chapter ability.
 714.3a	0a110b3e7e91	Sagas use lore counters to track their progress.
+715.2	60438f68dde3	The text that appears in the inset frame on the left defines alternative characteristics that the object may have while it’s a spell. The card’s normal characteristics appear as usual, although with a smaller text box on the right.
+715.3	f02fa8760f7e	As a player plays an adventurer card, the player chooses whether they play the card normally or as an Adventure.
+715.3a	85c7a874d45a	As a player plays an adventurer card, the player chooses whether they play the card normally or as an Adventure.
+715.3b	90932da97719	As a player plays an adventurer card, the player chooses whether they play the card normally or as an Adventure.
+715.3d	f559b10e6298	As a player plays an adventurer card, the player chooses whether they play the card normally or as an Adventure.
 715.4	780c3450a20c	In every zone except the stack, and while on the stack not as an Adventure, an adventurer card has only its normal characteristics.
 716.1	3f93b81acbf6	Each Class card has a striated text box containing two class level bars. Its illustration is vertically oriented on the left side of the card, and its type line is along the bottom of the card.
 716.2a	a8c9f8898622	A class level bar is a keyword ability that represents both an activated ability and a static ability. A class level bar includes the activation cost of its activated ability and a level number. Any abilities printed within the same text box section as the class level bar are part of its static ability.

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import dataclasses
 import re
 import sys
 from collections import Counter
@@ -53,14 +54,65 @@ EXTENSIONS_DIR = Path(__file__).resolve().parent / "extensions"
 # Tokenization helpers
 # ============================================================================
 
+# ---------------------------------------------------------------------------
+# Alternative-characteristics halves — CR §715 (Adventurer), §720 (Omen).
+#
+# r135. Scryfall gives these layout="adventure" and a two-entry card_faces
+# list: face 0 is the card proper, face 1 is the Adventure / Omen half
+# (verified 170/170 on the live corpus — the half is NEVER face 0).
+#
+# These are the ONLY layout whose faces are un-concatenated here. transform,
+# modal_dfc, split, flip and prepare still fall through to the historical
+# join below; each has different characteristics-swapping semantics and
+# wants its own pass, and pretending otherwise would be a silent half-fix.
+# ---------------------------------------------------------------------------
+
+def half_face(card: dict) -> tuple[dict | None, str]:
+    """Return (half_face_dict, keyword_name) for an Adventurer/Omen card.
+
+    Returns (None, "") for every other card, including other multi-face
+    layouts. The keyword name is taken from the half's TYPE LINE, which is
+    the only place the words "Adventure" / "Omen" appear — they are not
+    printed in oracle text, which is why the keyword was never emitted
+    before r135 and HasAdventure / HasOmen were dead corpus-wide.
+    """
+    if card.get("layout") != "adventure":
+        return None, ""
+    faces = card.get("card_faces") or []
+    if len(faces) != 2:
+        return None, ""
+    tl = faces[1].get("type_line") or ""
+    if "Adventure" in tl:
+        return faces[1], "adventure"
+    if "Omen" in tl:
+        return faces[1], "omen"
+    return None, ""
+
+
 def normalize(card: dict) -> str:
     """Pull oracle text (concatenating dual-faced card_faces), lowercase,
-    strip reminder text, normalize dashes, replace card name with `~`."""
+    strip reminder text, normalize dashes, replace card name with `~`.
+
+    For an Adventurer / Omen card this returns ONLY the main face's text;
+    the half is parsed separately by parse_card into CardAST.faces.
+    """
+    half, _kw = half_face(card)
+    if half is not None:
+        faces = card["card_faces"]
+        return normalize_text(faces[0].get("oracle_text") or "",
+                              faces[0].get("name") or card.get("name") or "")
     text = card.get("oracle_text") or ""
     if not text and card.get("card_faces"):
         text = "\n".join(f.get("oracle_text") or "" for f in card["card_faces"])
+    return normalize_text(text, card.get("name") or "")
+
+
+def normalize_text(text: str, name: str) -> str:
+    """The body of normalize(), against an explicit (text, name) pair so a
+    single face can be normalised with ITS OWN name tilded rather than the
+    combined "A // B" card name."""
     text = text.lower()
-    name = (card.get("name") or "").lower()
+    name = (name or "").lower()
     if name:
         text = text.replace(name, "~")
         for half in name.split(" // "):
@@ -2794,6 +2846,37 @@ def _substitute_leading_pronoun(sent: str, ante: dict) -> str:
 
 
 def parse_card(card: dict) -> CardAST:
+    """Parse a Scryfall card dict into a typed CardAST.
+
+    For an Adventurer / Omen card (CR §715 / §720) the half is parsed as
+    its own CardAST and attached under ``faces``, and the parent gains a
+    Keyword(name="adventure"|"omen", args=(half_mana_cost,)). See
+    half_face() for why the keyword cannot come from oracle text.
+    """
+    ast = _parse_card_inner(card)
+    half, kw_name = half_face(card)
+    if half is None:
+        return ast
+    half_ast = _parse_card_inner({
+        "name": half.get("name") or "",
+        "oracle_text": half.get("oracle_text") or "",
+        "type_line": half.get("type_line") or "",
+        "mana_cost": half.get("mana_cost") or "",
+        # No layout key -> half_face() declines -> no recursion.
+    })
+    kw = Keyword(
+        name=kw_name,
+        args=(half.get("mana_cost") or "",),
+        raw=(half.get("type_line") or ""),
+    )
+    return dataclasses.replace(
+        ast,
+        abilities=ast.abilities + (kw,),
+        faces=(half_ast,),
+    )
+
+
+def _parse_card_inner(card: dict) -> CardAST:
     name = card.get("name", "?")
     # Per-card hand-written handlers win over the grammar. Cards registered
     # here are "Doomsday-class snowflakes" whose text defies general grammar;

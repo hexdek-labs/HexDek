@@ -9,10 +9,23 @@ import (
 // CardAST is the top-level AST for a single card. Mirrors
 // scripts/mtg_ast.py :: CardAST.
 type CardAST struct {
-	Name         string    `json:"name"`
-	Abilities    []Ability `json:"abilities"`
-	ParseErrors  []string  `json:"parse_errors,omitempty"`
-	FullyParsed  bool      `json:"fully_parsed"`
+	Name        string    `json:"name"`
+	Abilities   []Ability `json:"abilities"`
+	ParseErrors []string  `json:"parse_errors,omitempty"`
+	FullyParsed bool      `json:"fully_parsed"`
+
+	// Faces holds alternative-characteristics halves: the Adventure half
+	// of an Adventurer card (CR §715.2) or the Omen half of an Omen card
+	// (CR §720.2). Empty for every other card, including other multi-face
+	// layouts (transform, modal_dfc, split, flip), whose faces the
+	// exporter still concatenates.
+	//
+	// r135. The half is a DIFFERENT OBJECT with its own name, type line,
+	// mana cost and text, so it is not merged into Abilities. The parent
+	// separately carries Keyword{Name: "adventure" | "omen"} so
+	// HasAdventure / HasOmen / OmenCost can see it — before r135 the
+	// exporter emitted neither, and both readers were false corpus-wide.
+	Faces []*CardAST `json:"faces,omitempty"`
 }
 
 // Signature returns a stable structural fingerprint of the AST. Two cards

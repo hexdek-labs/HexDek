@@ -69,6 +69,15 @@ def card_row(card: dict) -> dict:
         oracle = "\n".join(
             (f.get("oracle_text") or "") for f in card["card_faces"]
         ).strip()
+    # r135 — Adventurer / Omen cards (CR §715, §720). The AST no longer
+    # merges the half into the parent's abilities, so `oracle_text` must
+    # stop merging it too: this row's `oracle_text` -> `ast` pair is a
+    # training target, and a text that carries the half against an AST
+    # that does not is a mislabelled example. The half's own source text
+    # and characteristics ride along under `faces` instead.
+    half, _half_kw = P.half_face(card)
+    if half is not None:
+        oracle = (card["card_faces"][0].get("oracle_text") or "").strip()
     colors = card.get("colors")
     if not colors and card.get("card_faces"):
         seen: list[str] = []
@@ -85,6 +94,12 @@ def card_row(card: dict) -> dict:
         "cmc": card.get("cmc"),
         "colors": colors or [],
         "ast": _tag_ast_types(ast),
+        **({"faces": [{
+            "name": half.get("name") or "",
+            "oracle_text": (half.get("oracle_text") or "").strip(),
+            "type_line": half.get("type_line") or "",
+            "mana_cost": half.get("mana_cost") or "",
+        }]} if half is not None else {}),
     }
 
 

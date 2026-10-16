@@ -36,7 +36,7 @@ package gameengine
 //   - Miracle          — CR §702.94
 //   - Splice           — CR §702.47
 //   - Cipher           — CR §702.99
-//   - Adventure        — CR §702.133
+//   - Adventure        — CR §715 (card frame, NOT a §702 keyword; r135)
 //   - Aftermath        — CR §702.127
 //   - Retrace          — CR §702.81
 //   - Jump-start       — CR §702.133a
@@ -1480,9 +1480,33 @@ func FireCipherTrigger(gs *GameState, host *Permanent) {
 }
 
 // ---------------------------------------------------------------------------
-// Adventure — CR §702.133
-// "Cast as an instant or sorcery from hand (adventure half), then exile.
-// Later cast the creature from exile."
+// Adventure — CR §715 (Adventurer Cards).
+//
+// CORRECTED r135. This block used to cite "CR §702.133", and emitted that
+// number as the `rule` field of the `adventure` event, i.e. as event DATA.
+// §702.133 is JUMP-START. Adventure has no §702 section at all — it is a
+// two-part card frame defined in §715, the same shape as the Omen error
+// r99 corrected in keywords_omen.go.
+//
+// The rules that actually bear on this function:
+//
+//	§715.2   the inset frame defines ALTERNATIVE CHARACTERISTICS the
+//	         object may have while it is a spell
+//	§715.3   as a player plays an adventurer card they choose whether to
+//	         play it normally or as an Adventure
+//	§715.3d  instead of putting a spell cast as an Adventure into its
+//	         owner's graveyard as it resolves, its controller EXILES it;
+//	         for as long as it remains exiled that player may play it,
+//	         but NOT as an Adventure again
+//	§715.4   in every zone except the stack, and on the stack not as an
+//	         Adventure, the card has only its normal characteristics
+//
+// STILL NOT MODELLED, filed: §715.3a/§715.3b alternative characteristics
+// (the engine casts the card itself rather than an object wearing the
+// Adventure half's name, type line and text) and the resolution of the
+// Adventure half's own effect — CastAdventure pays, exiles and grants the
+// recast but never resolves the half. r135 gives the half a parsed AST
+// under CardAST.Faces for the first time, which is what that fix needs.
 // ---------------------------------------------------------------------------
 
 // HasAdventure returns true if the card has the adventure keyword.
@@ -1526,7 +1550,9 @@ func CastAdventure(gs *GameState, seatIdx int, card *Card, adventureCost int) er
 	// Exile (adventure sends to exile, not graveyard).
 	MoveCard(gs, card, seatIdx, "hand", "exile", "replace-to-exile")
 
-	// Grant permission to cast the creature half from exile (CR §715.4).
+	// Grant permission to cast the creature half from exile (CR §715.3d —
+	// "for as long as that card remains exiled, that player may play it",
+	// and not as an Adventure again, hence the creature's printed cost).
 	creaturePerm := NewAdventureCreatureCastPermission(manaCostOf(card))
 	RegisterZoneCastGrant(gs, card, creaturePerm)
 
@@ -1536,7 +1562,7 @@ func CastAdventure(gs *GameState, seatIdx int, card *Card, adventureCost int) er
 		Source: card.DisplayName(),
 		Amount: adventureCost,
 		Details: map[string]interface{}{
-			"rule": "702.133",
+			"rule": "715.3d",
 		},
 	})
 	gs.LogEvent(Event{
@@ -1546,7 +1572,7 @@ func CastAdventure(gs *GameState, seatIdx int, card *Card, adventureCost int) er
 		Details: map[string]interface{}{
 			"adventure_cost": adventureCost,
 			"creature_cost":  manaCostOf(card),
-			"rule":           "715.4",
+			"rule":           "715.3d",
 		},
 	})
 	return nil

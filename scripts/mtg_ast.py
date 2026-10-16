@@ -761,6 +761,23 @@ class CardAST:
     has_morph: bool = False
     has_megamorph: bool = False
     has_disguise: bool = False
+    # ------------------------------------------------------------------
+    # Alternative-characteristics halves (CR §715 Adventurer Cards,
+    # CR §720 Omen Cards). r135 — ADDITIVE, defaults to ().
+    #
+    # Scryfall models these as a two-entry ``card_faces`` list where face 0
+    # is the card proper and face 1 is the half. Before r135 the exporter
+    # joined both faces' oracle text with "\n" and parsed the result as ONE
+    # card, so the half's instant/sorcery text landed in the creature's
+    # top-level ``abilities`` and the half had no separate representation at
+    # all. The half is a DIFFERENT OBJECT with its own name, type line, mana
+    # cost and text (§715.2, §720.2), so it gets its own CardAST here and is
+    # NOT merged into the parent's abilities.
+    #
+    # The parent additionally carries Keyword(name="adventure" | "omen",
+    # args=(half_mana_cost,)) so the engine's HasAdventure / HasOmen /
+    # OmenCost readers — which gate on a Keyword node — can see it.
+    faces: tuple["CardAST", ...] = ()
 
 
 # ============================================================================
