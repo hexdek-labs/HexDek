@@ -698,6 +698,10 @@ class Triggered:
     trigger: Trigger
     effect: Effect
     intervening_if: Optional[Condition] = None
+    # r140 — a "this ability triggers only once each turn" clause, bound to
+    # the ability it limits instead of left as a detached sibling Static.
+    # Same vocabulary as Activated.timing_restriction.
+    timing_restriction: Optional[str] = None
     raw: str = ""
 
     @property

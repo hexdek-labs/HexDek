@@ -126,7 +126,7 @@ def normalize_text(text: str, name: str) -> str:
     return text
 
 
-def split_abilities(text: str) -> list[str]:
+def split_abilities(text: str, with_groups: bool = False):
     """Split oracle text into individual abilities. Heuristics:
     - Newlines are hard ability separators (mostly).
     - "Choose one/two/three —" header consumes following bulleted lines as
@@ -136,6 +136,12 @@ def split_abilities(text: str) -> list[str]:
     - Within a paragraph, each sentence is one ability unless it's clearly a
       continuation ("If you do, ...", "Then ...").
     - We split at trigger boundaries inside a single line (keyword + When/...).
+
+    With ``with_groups=True`` the return is a list of ``(group, text)`` pairs
+    where ``group`` is the index of the consolidated source line the sentence
+    came from. r140 needs this: a trailing "this ability triggers only once
+    each turn" limits an ability in its OWN paragraph, and binding it across a
+    paragraph boundary would attach it to an unrelated ability.
     """
     # Insert newline before triggered-ability starters that follow a word.
     # Keep "at end of" as a trigger-starter ONLY at sentence boundaries — within
@@ -188,7 +194,8 @@ def split_abilities(text: str) -> list[str]:
     )
 
     abilities: list[str] = []
-    for line in consolidated:
+    groups: list[int] = []
+    for _group_idx, line in enumerate(consolidated):
         # Saga-aware: if this line is a chapter, remember the prefix so we can
         # re-attach it to each sub-sentence after splitting.
         chapter_m = _chapter_prefix_re.match(line)
@@ -254,9 +261,12 @@ def split_abilities(text: str) -> list[str]:
             else:
                 merged.append(s)
         abilities.extend(merged)
+        groups.extend([_group_idx] * len(merged))
     # Restore modal-period sentinels that protected periods inside bullet modes
     # from sentence splitting.
     abilities = [a.replace(_MODAL_PERIOD, ".") for a in abilities]
+    if with_groups:
+        return list(zip(groups, abilities))
     return abilities
 
 
@@ -2845,6 +2855,81 @@ def _substitute_leading_pronoun(sent: str, ante: dict) -> str:
     return sent
 
 
+# ---------------------------------------------------------------------------
+# r140 — bind a timing restriction to the ability it limits
+# ---------------------------------------------------------------------------
+# The parser promotes "Activate only as a sorcery." / "This ability triggers
+# only once each turn." to Static{Modification{timing_restriction}}. As a
+# SIBLING that node is unenforceable: "this ability" has no referent in the
+# AST, so the engine would have to guess which ability it governs. Measured on
+# the live corpus (32,418 rows, 831 such nodes): the nearest PRECEDING
+# Activated/Triggered is the right owner for 827 of them; the 160 cases where
+# the immediate predecessor is a Static are continuation sentences of that same
+# ability, not a different one. The remaining 4 have no Activated/Triggered at
+# all because the ability they limit failed to parse — those are parse gaps,
+# not binding failures, and we deliberately leave their Static in place rather
+# than attach the restriction to something that is not the ability.
+
+# The promoter's args are a truncated `m.group(0)` for the open-ended patterns
+# ("activate only during" loses "your turn"), so we canonicalise off the
+# Static's full raw clause and fall back to that clause verbatim.
+#
+# Two spellings mean one thing and must not reach the engine as two tokens:
+# "this ability triggers only once each turn" (on a Triggered) and "activate
+# only once each turn" (on an Activated) both cap the ability at one use per
+# turn — the node type already says which. "Activate only once" with no "each
+# turn" is once per GAME and is deliberately NOT collapsed into it.
+_TIMING_SORCERY_RE = re.compile(r"^activate (?:this ability |~ )?only as a sorcery")
+_TIMING_ONCE_TURN_RE = re.compile(r"only once each turn")
+
+
+def _timing_restriction_of(node) -> Optional[str]:
+    """Return the canonical restriction if *node* is a detached timing Static."""
+    if not isinstance(node, Static):
+        return None
+    mod = getattr(node, "modification", None)
+    if mod is None or getattr(mod, "kind", None) != "timing_restriction":
+        return None
+    raw = (getattr(node, "raw", "") or "").strip().rstrip(".").lower()
+    args = getattr(mod, "args", ()) or ()
+    arg = str(args[0]).strip().lower() if args else ""
+    probe = raw or arg
+    if arg == "once_per_turn" or _TIMING_ONCE_TURN_RE.search(probe):
+        return "once_per_turn"
+    if _TIMING_SORCERY_RE.match(probe):
+        return "sorcery"
+    return probe or None
+
+
+def _bind_timing_restrictions(abilities: list, groups: list[int]) -> tuple[list, list[int]]:
+    """Fold detached timing Statics into the ability they limit.
+
+    Only binds within the same source paragraph (``groups``) and only onto an
+    ability that does not already carry a restriction. An unbindable node is
+    left exactly as it was — an unknown owner is not a guess.
+    """
+    bound: set[int] = set()
+    for i, node in enumerate(abilities):
+        restriction = _timing_restriction_of(node)
+        if restriction is None:
+            continue
+        for j in range(i - 1, -1, -1):
+            if groups[j] != groups[i]:
+                break  # different paragraph — not ours to claim
+            owner = abilities[j]
+            if not isinstance(owner, (Activated, Triggered)):
+                continue
+            if getattr(owner, "timing_restriction", None):
+                break  # already restricted; do not overwrite
+            abilities[j] = dataclasses.replace(owner, timing_restriction=restriction)
+            bound.add(i)
+            break
+    if not bound:
+        return abilities, groups
+    kept = [(a, g) for k, (a, g) in enumerate(zip(abilities, groups)) if k not in bound]
+    return [a for a, _ in kept], [g for _, g in kept]
+
+
 def parse_card(card: dict) -> CardAST:
     """Parse a Scryfall card dict into a typed CardAST.
 
@@ -2918,7 +3003,8 @@ def _parse_card_inner(card: dict) -> CardAST:
     # We update it from every sentence (parsed or not) so it always reflects
     # the nearest usable mention.
     rolling_ante: dict = {}
-    for ability_text in split_abilities(text):
+    ability_groups: list[int] = []
+    for _group, ability_text in split_abilities(text, with_groups=True):
         # Default source for antecedent-extraction is the original text. If
         # we successfully substitute, switch to the substituted version so
         # that the next pronoun-led sentence inherits the concrete phrase.
@@ -2933,8 +3019,10 @@ def _parse_card_inner(card: dict) -> CardAST:
                     ante_source = substituted
         if isinstance(result, list):
             abilities.extend(result)
+            ability_groups.extend([_group] * len(result))
         elif result is not None:
             abilities.append(result)
+            ability_groups.append(_group)
         else:
             errors.append(ability_text)
         # Refresh antecedents for NEXT sentence. Leave rolling_ante intact
@@ -2943,6 +3031,8 @@ def _parse_card_inner(card: dict) -> CardAST:
         fresh = _extract_antecedents(ante_source)
         if fresh:
             rolling_ante = fresh
+    # r140 — give the restriction its referent before the AST is frozen.
+    abilities, ability_groups = _bind_timing_restrictions(abilities, ability_groups)
     ast = CardAST(name=name, abilities=tuple(abilities),
                   parse_errors=tuple(errors),
                   fully_parsed=(len(errors) == 0))

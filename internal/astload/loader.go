@@ -305,6 +305,12 @@ func (d *decoder) decodeTriggered(obj map[string]json.RawMessage) *gameast.Trigg
 	if cond := d.decodeCondition(obj["intervening_if"]); cond != nil {
 		t.InterveningIf = cond
 	}
+	// r140 — the exporter now binds "this ability triggers only once each
+	// turn" to the ability it limits. This decoder is field-by-field, so
+	// without this line the restriction would be written by the exporter
+	// and silently dropped on load: a write-only store, the exact class
+	// the backlog already tracks four instances of.
+	_ = jsonString(obj["timing_restriction"], &t.TimingRestriction)
 	return t
 }
 

@@ -50,10 +50,10 @@ func (Static) Kind() string { return "static" }
 // Activated is a "cost: effect" ability.
 type Activated struct {
 	baseAbility
-	Cost               Cost   `json:"cost"`
-	Effect             Effect `json:"effect"`
-	TimingRestriction  string `json:"timing_restriction,omitempty"` // "sorcery" / "once_per_turn" / etc.
-	Raw                string `json:"raw,omitempty"`
+	Cost              Cost   `json:"cost"`
+	Effect            Effect `json:"effect"`
+	TimingRestriction string `json:"timing_restriction,omitempty"` // "sorcery" / "once_per_turn" / etc.
+	Raw               string `json:"raw,omitempty"`
 }
 
 func (Activated) Kind() string { return "activated" }
@@ -61,10 +61,16 @@ func (Activated) Kind() string { return "activated" }
 // Triggered is a When/Whenever/At-the-beginning-of ability.
 type Triggered struct {
 	baseAbility
-	Trigger        Trigger    `json:"trigger"`
-	Effect         Effect     `json:"effect"`
-	InterveningIf  *Condition `json:"intervening_if,omitempty"`
-	Raw            string     `json:"raw,omitempty"`
+	Trigger       Trigger    `json:"trigger"`
+	Effect        Effect     `json:"effect"`
+	InterveningIf *Condition `json:"intervening_if,omitempty"`
+	// TimingRestriction carries a "this ability triggers only once each turn"
+	// clause that the exporter bound to this ability (r140). Before r140 the
+	// clause was emitted as a detached sibling Static whose "this ability"
+	// had no referent, so it could not be enforced. Same vocabulary as
+	// Activated.TimingRestriction. Empty means unrestricted.
+	TimingRestriction string `json:"timing_restriction,omitempty"`
+	Raw               string `json:"raw,omitempty"`
 }
 
 func (Triggered) Kind() string { return "triggered" }
