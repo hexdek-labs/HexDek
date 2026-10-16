@@ -1049,7 +1049,16 @@ func (sm *Showmatch) runGrinder() {
 	workers := grinderWorkerCount(runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
 	debug.SetGCPercent(50)
-	debug.SetMemoryLimit(8 * 1024 * 1024 * 1024) // 8 GB hard cap
+	// r147: 8 GiB, and it is NOT a hard cap — GOMEMLIMIT is soft, which the
+	// 12:37 outage on 2026-10-16 proved by reaching 18.4GB under it. This
+	// call also OVERRIDES the GOMEMLIMIT the operator exports in
+	// run-server.sh on .206 (currently 10GiB, set there after an earlier
+	// OOM), so that env var has never taken effect. Two producers for one
+	// limit, and the code silently wins. Which number should win is an
+	// operator decision, not a drive-by one: raising the effective limit on
+	// a 15.8GB box that OOMed today is a change in the dangerous direction,
+	// so this is filed rather than flipped.
+	debug.SetMemoryLimit(8 * 1024 * 1024 * 1024)
 
 	var totalGames atomic.Int64
 	var totalTurns atomic.Int64

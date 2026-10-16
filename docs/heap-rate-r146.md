@@ -158,3 +158,56 @@ The second branch would also explain the thing that has never fit: why
 
 **This is the first instrument that can tell those two apart**, and it costs one
 subtraction per window.
+
+---
+
+## r147 — the limit line was lying, and so was I about why
+
+The grinder's startup line printed the literal string `memlimit=8GB`. It read
+nothing. r147 made it render `debug.SetMemoryLimit(-1)`, the live value.
+
+**The first thing the honest line said corrected me.** I had read
+`run-server.sh` on .206, seen `export GOMEMLIMIT=10GiB`, and written in the
+r147 commit that the box runs 10GiB and the literal was therefore wrong. The
+deployed line printed **`memlimit=8GiB`**.
+
+The reason is one line above the log statement:
+`debug.SetMemoryLimit(8 * 1024 * 1024 * 1024)`, called unconditionally at the
+top of `runGrinder`. **The code overrides the operator's env var**, so the
+wrapper's `GOMEMLIMIT=10GiB` has never taken effect — it was set there after an
+earlier OOM and has been inert ever since.
+
+So the old literal was *nearly* right (8GB vs the real 8GiB — out by 15%, since
+8e9 bytes is 7.45GiB), and **my correction to it was more wrong than the thing
+I was correcting.** I checked one producer, the wrapper, and not the other, the
+code. That is the "grep the other arm" check failing on the very round whose
+lesson was that a plausible story is not a verified one.
+
+**The real finding is better than the one I filed:** two of the wrapper's three
+knobs are dead configuration. `GOMAXPROCS=2` works; `GOMEMLIMIT=10GiB` is
+overridden by the code; `HEXDEK_GRINDER_WORKERS` is read by nothing, which the
+wrapper's own comment already admits ("sat here for 16 days while the grinder
+ran anyway"). An operator editing that file has a one-in-three chance of the
+edit mattering.
+
+**Not flipped, filed.** Honouring the env would raise the effective limit from
+8GiB to 10GiB on a 15.8GB box that OOMed today — a change in the dangerous
+direction. Which number wins is an operator call. The `// 8 GB hard cap`
+comment is corrected in place: it is 8 GiB, it is soft, and it shadows the env.
+
+## r147 also switched on the instrument that ends the guesswork
+
+`ENABLE_PPROF` has existed in `cmd/hexdek-server/main.go` for some time, serving
+`net/http/pprof` on **127.0.0.1:6060** — loopback only, not reachable through
+Caddy, which proxies 8090. **It was simply never switched on.** Four heap
+excursions have now been diagnosed by elimination — tokens, cascade, rollouts,
+all killed — when an allocation profile would have named the path directly.
+
+It is now exported in `run-server.sh` (backup: `run-server.sh.bak-pre-r147`)
+and verified live: `pprof 200`. **At the next excursion, take
+`/debug/pprof/allocs` before anything else.** That costs nothing until queried
+and answers the question the last four rounds could only narrow.
+
+I nearly wrote this endpoint from scratch. The r141 check — *before building a
+chokepoint, check whether one already exists* — is the only reason I grepped
+first.
