@@ -1095,6 +1095,10 @@ func (sm *Showmatch) runGrinder() {
 	prevGames, prevTurns, prevGC := int64(0), int64(0), uint32(0)
 	prevLimited := int64(0)
 	prevClones, prevAlloc := int64(0), uint64(0)
+	// r150 — see alloc_spike_r150.go. The excursions are a rate event
+	// and a profile taken after one is useless, so the process takes its
+	// own at the moment the rate departs.
+	spikeRec := newAllocSpikeRecorder()
 	prevAt := t0
 	for range ticker.C {
 		n := totalGames.Load()
@@ -1147,6 +1151,14 @@ func (sm *Showmatch) runGrinder() {
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
 			float64(dAlloc)/1e6, dClones)
+
+		// r150 — per GAME, not per window: the window rate tracks
+		// throughput, which swings twofold here, and that confounder
+		// alone produced three of the four largest per-window ratios in
+		// the run that motivated this.
+		if dG > 0 {
+			spikeRec.observe(float64(dAlloc) / 1e6 / float64(dG))
+		}
 
 		if n-lastLogged >= 50 {
 			sm.flushELO()
