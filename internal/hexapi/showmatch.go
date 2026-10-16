@@ -381,8 +381,11 @@ const maintenanceMessage = "Gauntlets & live games are paused for maintenance â€
 //     attribution-free backstop that actually has to hold.
 const (
 	maxHeapPerGame = 2 * 1024 * 1024 * 1024 // 2GB, per-game delta (coarse)
-	// The box has 15.8GB and the grinder runs under memlimit=8GB; a live
-	// heap past 6GB is pathological under any attribution.
+	// The box has 15.8GB. A live heap past 6GB is pathological under any
+	// attribution. r147: this comment used to cite an 8GB soft limit that
+	// was never read from anywhere and is not what .206 runs (the wrapper
+	// exports a 10GiB GOMEMLIMIT) â€” the 6GB figure stands on the box size,
+	// not on the soft limit, which is soft and has not held anyway.
 	maxProcessHeap = 6 * 1024 * 1024 * 1024
 
 	heapAbortDelta   = "delta"
@@ -1052,8 +1055,9 @@ func (sm *Showmatch) runGrinder() {
 	var totalTurns atomic.Int64
 	t0 := time.Now()
 
-	log.Printf("grinder: starting %d parallel workers (NumCPU=%d GOMAXPROCS=%d, GOGC=50, memlimit=8GB)",
-		workers, runtime.NumCPU(), runtime.GOMAXPROCS(0))
+	log.Printf("grinder: starting %d parallel workers (NumCPU=%d GOMAXPROCS=%d, GOGC=50, memlimit=%s)",
+		workers, runtime.NumCPU(), runtime.GOMAXPROCS(0),
+		memLimitLabel(debug.SetMemoryLimit(-1)))
 
 	for w := 0; w < workers; w++ {
 		go func(id int) {
