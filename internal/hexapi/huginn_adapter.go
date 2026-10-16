@@ -23,7 +23,17 @@ const (
 	// with the length of the run. Buffering amortises the read-modify-write
 	// over a batch. The seed sink one function away in heimdall's Observer
 	// has used exactly this shape (seedBufSize = 1000) since it was written.
-	huginnObsFlushEvery = 500
+	// r151.1 — this was 500 and that was measured wrong on prod within four
+	// minutes: with the pipeline actually working again the history reached
+	// its cap (11MB) and a flush every ~31 games cost more than the broken
+	// per-game read ever did. Allocation went 16.7 -> ~32 MB/game, i.e. r151
+	// doubled the thing it set out to cut. The per-game cost here is
+	//     history_bytes * obs_per_game / huginnObsFlushEvery
+	// so the flush interval is the lever, not the cap: raising it cuts the
+	// cost proportionally while KEEPING the history that makes the data
+	// worth collecting. The price is the loss window on an unclean exit
+	// (~600 games of observations) and ~5MB of resident buffer.
+	huginnObsFlushEvery = 10000
 
 	// huginnObsCap bounds the on-disk history so the read-modify-write can
 	// never grow without limit again. Oldest observations are dropped.
