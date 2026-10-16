@@ -578,12 +578,26 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 	n := len(effects)
 
 	// Build dependency graph.
-	// depends[i][j] = true means effect i depends on effect j
+	// depends[i*n+j] = true means effect i depends on effect j
 	// (j must be applied before i).
-	depends := make([][]bool, n)
-	for i := range depends {
-		depends[i] = make([]bool, n)
-	}
+	//
+	// r152 — this matrix used to be materialised unconditionally as n
+	// separate `make([]bool, n)` allocations, and then the "no dependencies
+	// at all" fast path below threw the whole thing away. CR 613.8
+	// dependencies are rare, so the normal case paid n allocations and an
+	// n*n matrix for a result it discarded.
+	//
+	// On .206 this line was 1.13GB inside a single 30-second window —
+	// 41.71% of that window's entire differenced allocation profile, against
+	// a 2.62% lifetime steady-state share. The window contained one game
+	// running at 24.1 s/turn for 506 seconds, which is what a quadratic
+	// per-call allocation looks like once a board grows enough effects.
+	//
+	// So: allocate lazily, and flat. Nothing is allocated unless a real
+	// dependency exists, and when one does it is one allocation rather than
+	// n. The separate hasDeps scan is gone with it — `depends == nil` IS the
+	// answer it was computing.
+	var depends []bool // flat n*n, nil until the first real dependency
 
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
@@ -591,22 +605,15 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 				continue
 			}
 			if effectDependsOn(effects[i], effects[j], gs) {
-				depends[i][j] = true
+				if depends == nil {
+					depends = make([]bool, n*n)
+				}
+				depends[i*n+j] = true
 			}
 		}
 	}
 
-	// Check if any dependencies exist at all; if not, skip topological
-	// sort and use timestamp order (the common fast path).
-	hasDeps := false
-	for i := 0; i < n && !hasDeps; i++ {
-		for j := 0; j < n && !hasDeps; j++ {
-			if depends[i][j] {
-				hasDeps = true
-			}
-		}
-	}
-	if !hasDeps {
+	if depends == nil {
 		return effects // already sorted by caller (timestamp order)
 	}
 
@@ -632,7 +639,7 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 		visited[i] = 1
 		// Visit dependencies first (j must come before i).
 		for j := 0; j < n; j++ {
-			if depends[i][j] {
+			if depends[i*n+j] {
 				visit(j)
 			}
 		}
