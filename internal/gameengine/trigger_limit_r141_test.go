@@ -172,6 +172,49 @@ func TestR141_TheEffectOnlyEntryPointIsNeverLimited(t *testing.T) {
 	}
 }
 
+// TestR142_SuppressionsArePublishedToACounter covers the gap r141 shipped
+// with: enforcement whose only signal was a LogEvent, which the grinder
+// discards wholesale under EventLogNone. The counter is what makes the
+// limiter visible in production, so it gets a test rather than being
+// trusted. Deltas rather than absolutes — the counter is process-wide and
+// other tests in this package fire triggers too.
+func TestR142_SuppressionsArePublishedToACounter(t *testing.T) {
+	gs := r141Game(t)
+	trig := r141Trigger("once_per_turn")
+	p := r141Perm(gs, 0, "R142 Counted", trig)
+
+	before := TriggerLimitSuppressions()
+	if !r141Fires(gs, p, trig) {
+		t.Fatal("precondition: the first fire must succeed")
+	}
+	if got := TriggerLimitSuppressions() - before; got != 0 {
+		t.Fatalf("a successful fire counted as a suppression: +%d", got)
+	}
+	if r141Fires(gs, p, trig) {
+		t.Fatal("precondition: the second fire must be suppressed")
+	}
+	if got := TriggerLimitSuppressions() - before; got != 1 {
+		t.Fatalf("the suppression was not published: want +1, got +%d — "+
+			"the limiter would be invisible in production again", got)
+	}
+}
+
+func TestR142_AnUnlimitedTriggerNeverTouchesTheCounter(t *testing.T) {
+	gs := r141Game(t)
+	trig := r141Trigger("")
+	p := r141Perm(gs, 0, "R142 Uncounted", trig)
+
+	before := TriggerLimitSuppressions()
+	for i := 0; i < 5; i++ {
+		if !r141Fires(gs, p, trig) {
+			t.Fatalf("fire %d suppressed on an unrestricted ability", i+1)
+		}
+	}
+	if got := TriggerLimitSuppressions() - before; got != 0 {
+		t.Fatalf("an unrestricted ability moved the counter by %d", got)
+	}
+}
+
 // TestR141_TheChokepointIsStillTheOnlyWayOntoTheStack is a derived gate
 // (the r134 pattern): it reads the package's own source rather than
 // asserting a remembered fact. The limiter is only uniform because every

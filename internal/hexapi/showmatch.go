@@ -1080,6 +1080,7 @@ func (sm *Showmatch) runGrinder() {
 	// elapsed times and is meaningless. The interval figures are the ones
 	// to compare; they are what this window actually did.
 	prevGames, prevTurns, prevGC := int64(0), int64(0), uint32(0)
+	prevLimited := int64(0)
 	prevAt := t0
 	for range ticker.C {
 		n := totalGames.Load()
@@ -1102,10 +1103,20 @@ func (sm *Showmatch) runGrinder() {
 		}
 		prevGames, prevTurns, prevGC, prevAt = n, tn, m.NumGC, time.Now()
 
+		// r142 — the once-each-turn limiter's suppression count for this
+		// window. r141 enforced the limiter but logged it through
+		// LogEvent, and the grinder runs with EventPolicy = EventLogNone,
+		// which retains nothing — so the only number available said zero
+		// no matter what happened. This line is where aborts and slow
+		// games already surface from, so it is where the counter belongs.
+		limited := gameengine.TriggerLimitSuppressions()
+		dLimited := limited - prevLimited
+		prevLimited = limited
+
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
-			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d",
+			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
-			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC)
+			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited)
 
 		if n-lastLogged >= 50 {
 			sm.flushELO()
@@ -1825,8 +1836,20 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	defer func() {
 		d := time.Since(gameStart)
 		if d >= slowGameThreshold {
-			log.Printf("grinder: SLOW GAME %.1fs turns=%d decks=%v",
-				d.Seconds(), turnsPlayed, deckKeys)
+			// r142 — carry s/turn, because DURATION ALONE CONFLATES TWO
+			// DIFFERENT PATHOLOGIES and the threshold above is duration
+			// only. Measured over 2026-10-16: 664.1s at 76 turns is 8.7
+			// s/turn, which is just a long game; 605.6s at 29 turns is
+			// 20.9 s/turn, which is a sick one; and the worst of the day,
+			// 3102.6s at 49 turns, is 63.3 s/turn. Those read as
+			// comparable on duration and are nothing alike. The ratio is
+			// what says "this game is expensive per unit of play".
+			perTurn := 0.0
+			if turnsPlayed > 0 {
+				perTurn = d.Seconds() / float64(turnsPlayed)
+			}
+			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f decks=%v",
+				d.Seconds(), turnsPlayed, perTurn, deckKeys)
 		}
 	}()
 	defer func() {

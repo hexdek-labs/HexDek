@@ -1,6 +1,10 @@
 package gameengine
 
-import "github.com/hexdek/hexdek/internal/gameast"
+import (
+	"sync/atomic"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
 
 // Once-each-turn trigger limiter (r141).
 //
@@ -32,6 +36,21 @@ import "github.com/hexdek/hexdek/internal/gameast"
 // any caller remembering to reset, and bounds the map to one turn's worth
 // of entries.
 
+// triggerLimitSuppressed counts suppressions process-wide (r142).
+//
+// r141 shipped this limiter with no way to see it in production: the
+// grinder runs with gs.EventPolicy = EventLogNone, under which LogEvent
+// retains nothing, so the suppression Event never reaches server.log and
+// "0 suppressions" meant nothing at all. A process-wide atomic is the
+// right shape here rather than per-game state — the grinder runs games
+// concurrently on two workers, so this is PUBLISHED by the worker and
+// READ by the stats goroutine, never inspected across goroutines by hand.
+var triggerLimitSuppressed atomic.Int64
+
+// TriggerLimitSuppressions returns the cumulative count of triggers the
+// once-each-turn limiter has suppressed. The caller deltas it per window.
+func TriggerLimitSuppressions() int64 { return triggerLimitSuppressed.Load() }
+
 type triggerLimitKey struct {
 	perm *Permanent
 	ab   *gameast.Triggered
@@ -53,6 +72,7 @@ func triggerLimitAllows(gs *GameState, src *Permanent, trig *gameast.Triggered) 
 	}
 	key := triggerLimitKey{perm: src, ab: trig}
 	if gs.triggerLimitFired[key] > 0 {
+		triggerLimitSuppressed.Add(1)
 		name := ""
 		if src.Card != nil {
 			name = src.Card.DisplayName()
