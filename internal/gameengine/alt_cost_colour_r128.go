@@ -104,3 +104,13 @@ func altCostKeywordColourOK(seat *Seat, card *Card, keywordName string) bool {
 	}
 	return altCostColourOK(seat, cs)
 }
+
+// KeywordCostString is the exported form of keywordArgCostString, for
+// drivers outside this package that need to colour-check an alternative
+// cost before offering it (r132: the escape enumerator in
+// internal/tournament). ok=false means the parser captured no cost
+// string and the colour of that cost is unknown — callers must treat
+// that as "do not judge", never as "unpayable".
+func KeywordCostString(card *Card, keywordName string) (string, bool) {
+	return keywordArgCostString(card, keywordName)
+}

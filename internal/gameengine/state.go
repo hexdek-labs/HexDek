@@ -1459,6 +1459,15 @@ type Card struct {
 	// callers and flashback was unreachable in 760 of 1,758 live decks.
 	CastingFlashback bool
 
+	// CastingEscape is the escape twin of CastingFlashback (CR
+	// §702.138a — "You may cast this card from your graveyard by paying
+	// [cost] rather than paying its mana cost"). The cast-candidate
+	// enumerator sets it when it offers this card as an ESCAPE cast, so
+	// the driver routes to CastWithEscape instead of CastSpell. r132 —
+	// until then CastWithEscape had zero production callers and escape
+	// was unreachable in 194 of 1,758 live decks.
+	CastingEscape bool
+
 	// IsCopy is true for card objects that were created as copies of other
 	// cards (Fork, Twinflame, storm copies). CR §707.10: a copy of a spell
 	// ceases to exist in any zone other than the stack. CR §704.5e: a copy

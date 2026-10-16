@@ -1006,6 +1006,16 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 			_, err = gameengine.CastFlashback(gs, seatIdx, chosen, -1)
 			moved = err == nil && len(seat.Graveyard) < beforeGY
 			chosen.CastingFlashback = false
+			chosen.CastingEscape = false
+		} else if chosen.CastingEscape {
+			// r132 — escape leaves the graveyard like flashback, so the
+			// same zone-aware success test applies; the graveyard also
+			// shrinks by the N cards exiled to pay for it.
+			beforeGY := len(seat.Graveyard)
+			targets := escapeExileTargets(seat, chosen, gameengine.EscapeExileCount(chosen))
+			_, err = gameengine.CastWithEscape(gs, seatIdx, chosen, -1, targets)
+			moved = err == nil && len(seat.Graveyard) < beforeGY
+			chosen.CastingEscape = false
 		} else {
 			before := len(seat.Hand)
 			err = gameengine.CastSpell(gs, seatIdx, chosen, nil)
@@ -1427,7 +1437,96 @@ func buildCastableList(gs *gameengine.GameState, seatIdx int) []*gameengine.Card
 		out = append(out, c)
 	}
 	out = append(out, flashbackCandidates(gs, seatIdx, availableMana)...)
+	out = append(out, escapeCandidates(gs, seatIdx, availableMana)...)
 	return out
+}
+
+// escapeCandidates enumerates the seat's own graveyard for cards
+// castable via escape — CR §702.138a: "You may cast this card from your
+// graveyard by paying [cost] rather than paying its mana cost. Casting
+// a spell using its escape ability follows the rules for paying
+// alternative costs in rules 601.2b and 601.2f-h."
+//
+// r132 — the same shape as r127's flashback gap and found the same way:
+// CastWithEscape is fully built (cost resolution, the exile payment,
+// the escaped marker, Drannith suppression) and had ZERO production
+// callers, because buildCastableList walked seat.Hand only. Escape
+// appears in 194 of 1,758 live decks.
+//
+// The one thing escape has that flashback does not is an ADDITIONAL
+// cost paid from the same zone the spell is cast from: "exile N other
+// cards from your graveyard". So a candidate needs N+1 cards in the
+// graveyard — itself plus N to exile — and that is checked here rather
+// than discovered as a failure inside the cast.
+func escapeCandidates(gs *gameengine.GameState, seatIdx, availableMana int) []*gameengine.Card {
+	seat := gs.Seats[seatIdx]
+	var out []*gameengine.Card
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		c.CastingEscape = false
+		// A card already offered as a flashback cast must not also be
+		// offered as an escape cast: the driver routes on the first
+		// marker it sees and the second would be left set.
+		if c.CastingFlashback || isLand(c) || !gameengine.HasEscape(c) {
+			continue
+		}
+		cost := gameengine.EscapeCost(c)
+		if cost <= 0 || cost > availableMana {
+			continue
+		}
+		// §202.1a applies to an alternative cost too (r128). An escape
+		// cost the parser never captured reads as "do not judge".
+		if cs, ok := gameengine.KeywordCostString(c, "escape"); ok {
+			if !gameengine.CanSupplyColoredPipsForCost(seat.Mana, cs) {
+				continue
+			}
+		}
+		// The exile payment comes out of the same graveyard, so it has
+		// to be affordable in CARDS as well as in mana.
+		if len(escapeExileTargets(seat, c, gameengine.EscapeExileCount(c))) < gameengine.EscapeExileCount(c) {
+			continue
+		}
+		c.CastingEscape = true
+		out = append(out, c)
+	}
+	return out
+}
+
+// escapeExileTargets picks the N other graveyard cards to exile as part
+// of an escape cost. Returns fewer than n only when the graveyard cannot
+// pay, which the caller treats as "not castable".
+//
+// Policy, deliberately minimal and stated rather than hidden: it prefers
+// cards that are NOT themselves recursion (escape / flashback), because
+// exiling your own escape fodder to pay for an escape is strictly worse
+// than exiling an inert card, and falls back to any other card when
+// there are not enough inert ones. Anything cleverer is Hat policy and
+// belongs in a round of its own.
+func escapeExileTargets(seat *gameengine.Seat, self *gameengine.Card, n int) []*gameengine.Card {
+	if n <= 0 {
+		return nil
+	}
+	var inert, recursive []*gameengine.Card
+	for _, c := range seat.Graveyard {
+		if c == nil || c == self {
+			continue
+		}
+		if gameengine.HasEscape(c) || gameengine.HasFlashback(c) {
+			recursive = append(recursive, c)
+			continue
+		}
+		inert = append(inert, c)
+	}
+	picked := inert
+	if len(picked) > n {
+		picked = picked[:n]
+	}
+	for i := 0; len(picked) < n && i < len(recursive); i++ {
+		picked = append(picked, recursive[i])
+	}
+	return picked
 }
 
 // flashbackCandidates enumerates the seat's own graveyard for cards
