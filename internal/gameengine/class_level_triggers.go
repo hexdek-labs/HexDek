@@ -94,6 +94,6 @@ func fireClassBecomesLevelAST(gs *GameState, perm *Permanent, level int) {
 				"rule":  "716.2c",
 			},
 		})
-		PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
+		PushTriggeredAbilityNode(gs, perm, trig)
 	}
 }

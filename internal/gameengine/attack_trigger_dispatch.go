@@ -301,7 +301,7 @@ func fireClassifiedAttackTriggers(gs *GameState, activeSeat int, declared []*Per
 						},
 					})
 					if ab.Effect != nil {
-						PushTriggeredAbilityWithIf(gs, perm, ab.Effect, ab.InterveningIf)
+						PushTriggeredAbilityNode(gs, perm, ab)
 					}
 				}
 			}

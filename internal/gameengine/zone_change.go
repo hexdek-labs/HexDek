@@ -875,7 +875,7 @@ func fireObserverZoneChangeTriggers(gs *GameState, dyingPerm *Permanent, dyingCa
 						HasTriggerHook(observer.Card.DisplayName(), "creature_dies") {
 						continue
 					}
-					PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
+					PushTriggeredAbilityNode(gs, observer, trig)
 					if gs.CheckEnd() {
 						return
 					}
@@ -892,7 +892,7 @@ func fireObserverZoneChangeTriggers(gs *GameState, dyingPerm *Permanent, dyingCa
 					continue
 				}
 
-				PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, observer, trig)
 				if gs.CheckEnd() {
 					return
 				}

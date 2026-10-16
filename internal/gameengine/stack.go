@@ -206,6 +206,32 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 // /tmp/fable-review/progression-triggers-r63.md), so this lights up as
 // the parser starts carrying the clause.
 func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Effect, interveningIf *gameast.Condition) *StackItem {
+	return pushTriggeredAbility(gs, src, effect, interveningIf, nil)
+}
+
+// PushTriggeredAbilityNode is the node-aware form of the same chokepoint
+// (r141). Every AST triggered ability in the engine reaches the stack
+// through this one function — r139 reported "31 type-assertion sites across
+// 18 files and no chokepoint", but those were the sites that RECOGNISE a
+// *gameast.Triggered; the sites that FIRE one all funnel into
+// pushTriggeredAbility below. What was actually missing is the ability's
+// IDENTITY: callers passed trig.Effect and trig.InterveningIf, so by the
+// time the restriction mattered the engine no longer knew which ability
+// had fired and could not apply a per-ability limiter.
+//
+// Passing the node instead of two of its fields closes that, and it is why
+// a once-each-turn limiter can be enforced in exactly one place rather than
+// guarded at each dispatch site.
+func PushTriggeredAbilityNode(gs *GameState, src *Permanent, trig *gameast.Triggered) *StackItem {
+	if trig == nil {
+		return nil
+	}
+	return pushTriggeredAbility(gs, src, trig.Effect, trig.InterveningIf, trig)
+}
+
+// pushTriggeredAbility is the single implementation behind both entry
+// points. trig may be nil for callers that only hold an effect.
+func pushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect, interveningIf *gameast.Condition, trig *gameast.Triggered) *StackItem {
 	if gs == nil || src == nil || effect == nil {
 		return nil
 	}
@@ -244,6 +270,22 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 				"rule":   "800.4a",
 			},
 		})
+		return nil
+	}
+	// r141 — "This ability triggers only once each turn". There is NO
+	// general CR rule defining this clause; it is self-describing card
+	// text, and §603.2c ("an ability triggers only once each time its
+	// trigger event occurs") is a DIFFERENT rule that would be a wrong
+	// citation here. The nearest defined analogue is §603.2h, which
+	// renders the sibling templating "Do this only once each turn" as
+	// "This ability triggers only if its source's controller has not yet
+	// taken the indicated action that turn" — i.e. the second occurrence
+	// does not trigger AT ALL, rather than triggering and being removed.
+	// That is why this returns before the ability reaches the stack.
+	// §702.179d quotes the exact wording for the speed mechanic.
+	// r140 bound the clause to this ability in the exporter; without
+	// that the engine could not tell which ability the limit governed.
+	if !triggerLimitAllows(gs, src, trig) {
 		return nil
 	}
 	gs.Flags["_trigger_fires_this_turn"]++
@@ -2891,7 +2933,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 					continue
 				}
 				for i := 0; i < n; i++ {
-					PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
+					PushTriggeredAbilityNode(gs, perm, trig)
 					if gs.CheckEnd() {
 						return
 					}
@@ -3388,7 +3430,7 @@ func fireCastTriggersFromZone(gs *GameState, casterSeat int, card *Card, fromZon
 				Counters:   map[string]int{},
 				Flags:      map[string]int{},
 			}
-			PushTriggeredAbilityWithIf(gs, src, t.Effect, t.InterveningIf)
+			PushTriggeredAbilityNode(gs, src, t)
 		}
 	}
 }

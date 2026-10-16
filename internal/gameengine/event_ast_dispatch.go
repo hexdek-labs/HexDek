@@ -70,7 +70,7 @@ func FireLifeGainedASTTriggers(gs *GameState, seat int) {
 						"event": "life_gained", "rule": "603.2",
 					},
 				})
-				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, p, trig)
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func FireTapEventASTTriggers(gs *GameState, tapped *Permanent) {
 				"event": "becomes_tapped", "rule": "603.2",
 			},
 		})
-		PushTriggeredAbilityWithIf(gs, bearer, trig.Effect, trig.InterveningIf)
+		PushTriggeredAbilityNode(gs, bearer, trig)
 	}
 
 	// Self triggers on the tapped permanent.
@@ -195,7 +195,7 @@ func FireTurnedFaceUpTriggers(gs *GameState, p *Permanent) {
 				"event": "turned_face_up", "rule": "603.2",
 			},
 		})
-		PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+		PushTriggeredAbilityNode(gs, p, trig)
 	}
 }
 
@@ -261,7 +261,7 @@ func FireDrawCardASTTriggers(gs *GameState, drawerSeat int) {
 						"event": "card_drawn", "rule": "603.2",
 					},
 				})
-				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, p, trig)
 			}
 		}
 	}
@@ -343,7 +343,7 @@ func FireSacrificeASTTriggers(gs *GameState, sacSeat int, victim *Permanent) {
 						"event": "sacrifice", "rule": "603.2",
 					},
 				})
-				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, p, trig)
 			}
 		}
 	}
@@ -405,7 +405,7 @@ func FireDiscardASTTriggers(gs *GameState, discarderSeat int) {
 						"event": "card_discarded", "rule": "603.2",
 					},
 				})
-				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, p, trig)
 			}
 		}
 	}
@@ -470,7 +470,7 @@ func FireCommitCrimeASTTriggers(gs *GameState, seat int) {
 					"event": "commit_crime", "rule": "700.13",
 				},
 			})
-			PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			PushTriggeredAbilityNode(gs, p, trig)
 		}
 	}
 }

@@ -229,7 +229,7 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 				continue
 			}
 			for i := 0; i < n; i++ {
-				PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, perm, trig)
 				if gs.CheckEnd() {
 					return
 				}

@@ -183,7 +183,7 @@ func FireBattalionTriggers(gs *GameState, attackerSeat int, attackers []*Permane
 		// when a per_card handler owns "battalion_triggered" (no double-fire).
 		if trig := battalionTriggerFromCard(p.Card); trig != nil && trig.Effect != nil {
 			if HasTriggerHook == nil || !HasTriggerHook(p.Card.DisplayName(), "battalion_triggered") {
-				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, p, trig)
 				if gs.CheckEnd() {
 					return
 				}

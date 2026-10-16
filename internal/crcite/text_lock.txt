@@ -213,6 +213,7 @@
 603.2	c0184814400f	Whenever a game event or game state matches a triggered ability’s trigger event, that ability automatically triggers. The ability doesn’t do anything at this point.
 603.2b	796cd7706c8a	Whenever a game event or game state matches a triggered ability’s trigger event, that ability automatically triggers. The ability doesn’t do anything at this point.
 603.2c	cf882b4aaa79	Whenever a game event or game state matches a triggered ability’s trigger event, that ability automatically triggers. The ability doesn’t do anything at this point.
+603.2h	fb3d8b56cc58	Whenever a game event or game state matches a triggered ability’s trigger event, that ability automatically triggers. The ability doesn’t do anything at this point.
 603.3	89d0df626af0	Once an ability has triggered, its controller puts it on the stack as an object that’s not a card the next time a player would receive priority. See rule 117, “Timing and Priority.” The ability becomes the topmost object on the stack. It has the text of the ability that created it, and no other characteristics. It remains on the stack until it’s countered, it resolves, a rule causes it to be removed from the stack, or an effect moves it elsewhere.
 603.3a	63d80a497285	Once an ability has triggered, its controller puts it on the stack as an object that’s not a card the next time a player would receive priority. See rule 117, “Timing and Priority.” The ability becomes the topmost object on the stack. It has the text of the ability that created it, and no other characteristics. It remains on the stack until it’s countered, it resolves, a rule causes it to be removed from the stack, or an effect moves it elsewhere.
 603.3b	81584e76d6cb	Once an ability has triggered, its controller puts it on the stack as an object that’s not a card the next time a player would receive priority. See rule 117, “Timing and Priority.” The ability becomes the topmost object on the stack. It has the text of the ability that created it, and no other characteristics. It remains on the stack until it’s countered, it resolves, a rule causes it to be removed from the stack, or an effect moves it elsewhere.
@@ -566,6 +567,7 @@
 702.177	c8b6d0caf080	Exhaust
 702.178	e2d4da7ee6ee	Max Speed
 702.179	bb94092c4139	Start Your Engines!
+702.179d	7c35e263b598	Start Your Engines!
 702.18	6a9a7fb43dc8	Shroud
 702.180	3f813bd61dbf	Harmonize
 702.181	3089f88d3b4c	Mobilize

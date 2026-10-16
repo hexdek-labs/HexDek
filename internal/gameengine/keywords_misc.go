@@ -2687,7 +2687,7 @@ func FireConstellationTriggers(gs *GameState, seatIdx int, enchantment *Permanen
 			continue
 		}
 		for i := 0; i < n; i++ {
-			PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			PushTriggeredAbilityNode(gs, p, trig)
 			if gs.CheckEnd() {
 				return
 			}

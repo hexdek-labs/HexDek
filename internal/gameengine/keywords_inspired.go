@@ -157,7 +157,7 @@ func FireInspiredTriggers(gs *GameState, perm *Permanent) {
 	// firing BOTH for the same card (the double-fire the sweep cautioned on).
 	if HasTriggerHook == nil || !HasTriggerHook(cardName, "inspired") {
 		if trig := inspiredTriggerFromCard(perm.Card); trig != nil && trig.Effect != nil {
-			PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
+			PushTriggeredAbilityNode(gs, perm, trig)
 		}
 	}
 }

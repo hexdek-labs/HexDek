@@ -56,10 +56,13 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 	// Collect first so firing doesn't invalidate our iteration when the
 	// trigger mutates the battlefield (e.g. a saga advancing its counter).
+	// r141 — carry the whole Triggered node, not two of its fields, so the
+	// chokepoint can see which ability fired and apply its once-each-turn
+	// limiter. This is the only deferred-fire queue in the engine; the other
+	// 28 sites pass the node directly.
 	type pending struct {
-		perm          *Permanent
-		effect        gameast.Effect
-		interveningIf *gameast.Condition
+		perm *Permanent
+		trig *gameast.Triggered
 	}
 	var toFire []pending
 	for _, seat := range gs.Seats {
@@ -109,7 +112,7 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 				// Intervening-if: evaluate the condition now, and again on
 				// resolution (both per §603.4). MVP check: defer condition
 				// until resolution (resolveConditional handles it).
-				toFire = append(toFire, pending{perm: perm, effect: trig.Effect, interveningIf: trig.InterveningIf})
+				toFire = append(toFire, pending{perm: perm, trig: trig})
 			}
 		}
 	}
@@ -122,7 +125,7 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 		return si < sj
 	})
 	for _, p := range toFire {
-		PushTriggeredAbilityWithIf(gs, p.perm, p.effect, p.interveningIf)
+		PushTriggeredAbilityNode(gs, p.perm, p.trig)
 		if gs.CheckEnd() {
 			return
 		}

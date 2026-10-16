@@ -157,7 +157,7 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 					continue
 				}
 				for i := 0; i < n; i++ {
-					PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
+					PushTriggeredAbilityNode(gs, observer, trig)
 					if gs.CheckEnd() {
 						return
 					}
@@ -345,7 +345,7 @@ func fireObserverCastTriggers(gs *GameState, casterSeat int, card *Card) {
 					},
 				})
 
-				PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, observer, trig)
 				if gs.CheckEnd() {
 					return
 				}
@@ -379,7 +379,7 @@ func fireBlockTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*Pe
 				if !isSelfTrigger(trig) {
 					continue
 				}
-				PushTriggeredAbilityWithIf(gs, blocker, trig.Effect, trig.InterveningIf)
+				PushTriggeredAbilityNode(gs, blocker, trig)
 				if gs.CheckEnd() {
 					return
 				}
@@ -393,7 +393,7 @@ func fireBlockTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*Pe
 			continue
 		}
 		for _, trig := range attackerBecomesBlockedTriggers(atk) {
-			PushTriggeredAbilityWithIf(gs, atk, trig.Effect, trig.InterveningIf)
+			PushTriggeredAbilityNode(gs, atk, trig)
 			if gs.CheckEnd() {
 				return
 			}
@@ -448,7 +448,7 @@ func FireBecomesBlockedTriggers(gs *GameState, atk *Permanent) {
 	}
 	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 	for _, trig := range trigs {
-		PushTriggeredAbilityWithIf(gs, atk, trig.Effect, trig.InterveningIf)
+		PushTriggeredAbilityNode(gs, atk, trig)
 		if gs.CheckEnd() {
 			return
 		}

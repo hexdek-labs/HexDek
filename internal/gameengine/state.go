@@ -175,6 +175,13 @@ type GameState struct {
 	// corruption. Tokens record their creator (§110.5a).
 	MintedInstanceIDOwners map[string]int
 
+	// triggerLimitTurn / triggerLimitFired back the once-each-turn trigger
+	// limiter (r141). Keyed by (permanent, ability node); discarded whenever
+	// Turn moves on, so the limiter needs no reset call from a driver. See
+	// trigger_limit_r141.go.
+	triggerLimitTurn  int
+	triggerLimitFired map[triggerLimitKey]int
+
 	// CeasedInstanceIDs marks IDs no longer expected to appear in any
 	// zone census. Populated at:
 	//   - §707.10 — spell-copy cease at resolution (stack.go IsCopy arm)
