@@ -3171,6 +3171,14 @@ func SplitSecondActive(gs *GameState) bool {
 		if item.Card != nil && cardHasSplitSecond(item.Card) {
 			return true
 		}
+		// r137 — split second is not always a printed Keyword node.
+		// Molten Disaster's "if this spell was kicked, it has split
+		// second" parses to a Static/if_intervening_tail guarded by a
+		// cast_mode_check, which cardHasSplitSecond cannot see because
+		// it walks for *gameast.Keyword only. See cast_mode_r137.go.
+		if itemGrantsSplitSecond(item) {
+			return true
+		}
 	}
 	return false
 }
@@ -3205,6 +3213,12 @@ func permHasSplitSecond(gs *GameState, p *Permanent) bool {
 // cardHasSplitSecond scans a Card's AST for a Keyword ability whose name
 // contains "split". Called for stack items that represent spells (no
 // associated Permanent yet).
+//
+// r137 — this is the PRINTED-keyword arm only, and deliberately stays
+// that way. A Card has no Flags and no GrantedAbilities field, so there
+// is nothing layer-like for it to consult; a conditional or granted
+// split second has to be COMPUTED from the stack item, which is what
+// itemGrantsSplitSecond does.
 func cardHasSplitSecond(c *Card) bool {
 	if c == nil || c.AST == nil {
 		return false
