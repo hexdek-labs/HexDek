@@ -772,7 +772,22 @@ func applyLayer(gs *GameState, perm *Permanent, chars *Characteristics, layer in
 	if len(gs.ContinuousEffects) == 0 {
 		return
 	}
-	candidates := make([]*ContinuousEffect, 0, 4)
+	// r153 — this slice used to be allocated here, before the filter, so
+	// EVERY call paid for it even when nothing matched. GetEffectiveCharacteristics
+	// makes thirteen applyLayer calls per computation (one per layer and PT
+	// sublayer) while a board's effects concentrate in one or two buckets,
+	// so most of those thirteen allocated a slice and returned empty two
+	// statements later.
+	//
+	// On .206 this line was 3.17GB in a genuine two-window allocation burst
+	// — the single largest line in the capture — while the appends below
+	// were 32MB, so the cost is the CALLS, not the sizes, and regrowth past
+	// cap 4 is negligible. Allocating on first match leaves the matching
+	// path byte-for-byte as it was and removes the empty one entirely.
+	//
+	// Same shape as r152's DependencyOrder matrix, one function up, in the
+	// file r152 was already editing.
+	var candidates []*ContinuousEffect
 	for _, ce := range gs.ContinuousEffects {
 		if ce == nil {
 			continue
@@ -790,6 +805,9 @@ func applyLayer(gs *GameState, perm *Permanent, chars *Characteristics, layer in
 		}
 		if ce.Sublayer != sublayer {
 			continue
+		}
+		if candidates == nil {
+			candidates = make([]*ContinuousEffect, 0, 4)
 		}
 		candidates = append(candidates, ce)
 	}
