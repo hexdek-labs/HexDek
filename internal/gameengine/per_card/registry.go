@@ -644,12 +644,22 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	hitsBySeat := map[int][]hit{}
 
 	reg := Global()
-	scanned := map[*gameengine.Permanent]bool{}
+	// r148 — there used to be a `scanned map[*Permanent]bool` here,
+	// populated for every permanent on every seat's battlefield on every
+	// trigger event. An allocation profile of a healthy production run put
+	// that single insert at 4.75GB, 14.74% of ALL allocation in the
+	// process — the largest line in the binary.
+	//
+	// It bought one boolean. The battlefield scan below cannot produce a
+	// duplicate, because a Permanent sits on exactly one seat's
+	// battlefield; the map existed only so the leaving-perm collect at the
+	// end of this function could ask "did I already handle this one?",
+	// which its own comment says in as many words. Asking the battlefield
+	// directly, once, answers the same question without the map.
 	collect := func(seatIdx int, perm *gameengine.Permanent) {
-		if perm == nil || perm.Card == nil || scanned[perm] {
+		if perm == nil || perm.Card == nil {
 			return
 		}
-		scanned[perm] = true
 		reg.mu.RLock()
 		var byEvent map[string][]TriggerHandler
 		for _, k := range lookupCandidates(perm.Card.DisplayName()) {
@@ -762,7 +772,7 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	// on the battlefield (some LTB-shape callers detach AFTER firing)
 	// doesn't get double-handled.
 	if isLeavingPermEvent(event) {
-		if cp, ok := ctx["perm"].(*gameengine.Permanent); ok && cp != nil {
+		if cp, ok := ctx["perm"].(*gameengine.Permanent); ok && cp != nil && !onAnySeatBattlefield(gs, cp) {
 			seatIdx := cp.Controller
 			if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 				seatIdx = 0

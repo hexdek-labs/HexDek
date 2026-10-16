@@ -390,8 +390,17 @@ func upperColor(c string) string {
 
 // isSignet recognizes the ten Ravnica-guild signets (Azorius, Dimir,
 // Rakdos, Gruul, Selesnya, Orzhov, Izzet, Golgari, Boros, Simic).
-func isSignet(name string) bool {
-	signets := map[string]bool{
+// r148 — these three lookup tables used to be built INSIDE their
+// predicates, so every call allocated a fresh map or slice. An allocation
+// profile of a healthy production run put isSignet alone at 1.42GB, 4.4%
+// of all allocation in the process, for a ten-entry constant. They are
+// package-level now; the predicates are pure lookups.
+//
+// (signetNames was already a map; talismanNames and moxNames were slices
+// scanned linearly. As maps they also dedupe — moxNames listed "Mox Ruby"
+// twice, which was harmless in a linear scan and is harmless here.)
+var (
+	signetNames = map[string]bool{
 		"Azorius Signet":  true,
 		"Dimir Signet":    true,
 		"Rakdos Signet":   true,
@@ -403,37 +412,26 @@ func isSignet(name string) bool {
 		"Boros Signet":    true,
 		"Simic Signet":    true,
 	}
-	return signets[name]
-}
+	talismanNames = map[string]bool{
+		"Talisman of Progress": true, "Talisman of Dominance": true,
+		"Talisman of Indulgence": true, "Talisman of Impulse": true,
+		"Talisman of Unity": true, "Talisman of Hierarchy": true,
+		"Talisman of Creativity": true, "Talisman of Resilience": true,
+		"Talisman of Conviction": true, "Talisman of Curiosity": true,
+	}
+	moxNames = map[string]bool{
+		"Mox Pearl": true, "Mox Sapphire": true, "Mox Jet": true,
+		"Mox Ruby": true, "Mox Emerald": true, "Mox Diamond": true,
+		"Mox Opal": true, "Mox Amber": true, "Mox Tantalite": true,
+		"Chrome Mox": true, "Mox Pyrite": true, "Moxite": true,
+	}
+)
 
-func isTalisman(name string) bool {
-	talismans := []string{
-		"Talisman of Progress", "Talisman of Dominance", "Talisman of Indulgence",
-		"Talisman of Impulse", "Talisman of Unity", "Talisman of Hierarchy",
-		"Talisman of Creativity", "Talisman of Resilience", "Talisman of Conviction",
-		"Talisman of Curiosity",
-	}
-	for _, t := range talismans {
-		if name == t {
-			return true
-		}
-	}
-	return false
-}
+func isSignet(name string) bool { return signetNames[name] }
 
-func isMox(name string) bool {
-	moxes := []string{
-		"Mox Pearl", "Mox Sapphire", "Mox Jet", "Mox Ruby", "Mox Emerald",
-		"Mox Diamond", "Mox Opal", "Mox Amber", "Mox Tantalite", "Chrome Mox",
-		"Mox Ruby", "Mox Pyrite", "Moxite",
-	}
-	for _, m := range moxes {
-		if name == m {
-			return true
-		}
-	}
-	return false
-}
+func isTalisman(name string) bool { return talismanNames[name] }
+
+func isMox(name string) bool { return moxNames[name] }
 
 // SacrificePermanent removes p from the battlefield via the proper §701.17
 // sacrifice path: runs §614 replacement effects (Rest in Peace redirect,

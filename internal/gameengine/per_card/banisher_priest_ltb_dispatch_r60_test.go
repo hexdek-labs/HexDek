@@ -209,7 +209,10 @@ func TestFireTrigger_LeavingPermDedup(t *testing.T) {
 	gs.Seats[0].Battlefield = []*gameengine.Permanent{src}
 
 	// Fire permanent_ltb with perm still on the battlefield AND referenced
-	// in ctx — the dedup map in fireTrigger should detect the duplicate.
+	// in ctx — fireTrigger must detect the duplicate. (r148: this used to
+	// be a per-event map of every permanent in the game; it is now a
+	// direct battlefield check. This test is what proved the two are
+	// equivalent, and it is the control that goes red if the check goes.)
 	fireTrigger(gs, "permanent_ltb", map[string]interface{}{
 		"perm":            src,
 		"card":            src.Card,
