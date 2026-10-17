@@ -348,6 +348,13 @@ type GameState struct {
 	// itself through effectDependsOn -> Predicate -> characteristics.
 	depOrderBufs [][]bool
 
+	// r163 — highest per-card trigger nesting depth this game has
+	// reached. A FIELD and not a gs.Flags entry on purpose: fireTrigger
+	// consults it on every dispatch, and a map hash there would cost
+	// more than the measurement is worth. CloneForRollout does not copy
+	// it; see trigger_depth_hwm_r163.go.
+	triggerDepthHWM int
+
 	// cacheID identifies this GameState to the per-Permanent cache slot.
 	// Assigned lazily on first use so that a bare &GameState{} literal
 	// (which tests and some callers build) still gets a distinct one

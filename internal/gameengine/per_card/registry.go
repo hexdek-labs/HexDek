@@ -615,6 +615,11 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	}
 	gs.Flags["trigger_depth"]++
 	defer func() { gs.Flags["trigger_depth"]-- }()
+	// r163 — record the depth this game actually reaches. The cap below
+	// can only ever report 9 (it returns without dispatching, so nothing
+	// can nest deeper), which says nothing about whether 8 is above or
+	// below ordinary play. This does.
+	gs.NoteTriggerDepth(gs.Flags["trigger_depth"])
 	if gs.Flags["trigger_depth"] > 8 {
 		gameengine.LogLoopGuardFired(gs, "percard_dispatch_depth_cap", map[string]interface{}{
 			"depth": gs.Flags["trigger_depth"], "event": event,

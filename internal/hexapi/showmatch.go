@@ -1179,6 +1179,11 @@ func (sm *Showmatch) runGrinder() {
 		if guardTop != "" {
 			guardTop = " guardtop=" + guardTop
 		}
+		// r163 — trigger-nesting survival curve: games reaching >= depth d.
+		tdepth := gameengine.TriggerDepthSummary()
+		if tdepth != "" {
+			tdepth = " tdepth=" + tdepth
+		}
 		guards := gameengine.LoopGuardSummary()
 		if guards != "" {
 			guards = " guards=" + guards
@@ -1186,10 +1191,10 @@ func (sm *Showmatch) runGrinder() {
 
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop, tdepth)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder
