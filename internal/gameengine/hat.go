@@ -239,7 +239,10 @@ func landProducedColorsMask(c *Card) uint8 {
 	if c == nil {
 		return 0
 	}
-	if c.ProducedColorsReady {
+	// r157 — the mask is derived from the oracle text and the type
+	// line, both of which a transform replaces, so validity is checked
+	// against those sources rather than a bare "computed" flag.
+	if c.ProducedColorsValid() {
 		return c.ProducedColorsMask
 	}
 	var mask uint8
@@ -253,8 +256,7 @@ func landProducedColorsMask(c *Card) uint8 {
 	if strings.Contains(ot, "any color") {
 		mask = colorBitMaskW | colorBitMaskU | colorBitMaskB | colorBitMaskR | colorBitMaskG
 	}
-	c.ProducedColorsMask = mask
-	c.ProducedColorsReady = true
+	c.MarkProducedColors(mask)
 	return mask
 }
 
@@ -651,7 +653,11 @@ func OracleTextLower(card *Card) string {
 	if card == nil || card.AST == nil {
 		return ""
 	}
-	if card.oracleTextReady {
+	// r157 — serve the cache only when it was built from the AST the
+	// card carries NOW. A DFC transform reassigns Card.AST in place; the
+	// old `oracleTextReady` bool could not see that and this function
+	// returned the front face for the rest of the game.
+	if card.oracleTextAST == card.AST {
 		return card.OracleTextCache
 	}
 	var sb strings.Builder
@@ -672,7 +678,7 @@ func OracleTextLower(card *Card) string {
 		}
 	}
 	card.OracleTextCache = strings.ToLower(sb.String())
-	card.oracleTextReady = true
+	card.oracleTextAST = card.AST
 	return card.OracleTextCache
 }
 
@@ -684,11 +690,14 @@ func TypeLineLower(card *Card) string {
 	if card == nil {
 		return ""
 	}
-	if card.typeLineLowerReady {
+	// r157 — keyed on the TypeLine it was built from, not on a
+	// "computed yet" bool: transform reassigns Card.TypeLine too.
+	if card.typeLineComputed && card.typeLineLowerSrc == card.TypeLine {
 		return card.TypeLineLowerCache
 	}
 	card.TypeLineLowerCache = strings.ToLower(card.TypeLine)
-	card.typeLineLowerReady = true
+	card.typeLineLowerSrc = card.TypeLine
+	card.typeLineComputed = true
 	return card.TypeLineLowerCache
 }
 

@@ -210,7 +210,7 @@ func TestHasOutlawTrigger_DetectsCanonicalPhrasings(t *testing.T) {
 	for _, c := range cases {
 		card := &Card{Name: "x", AST: &gameast.CardAST{Name: "x"}}
 		card.OracleTextCache = c.text
-		card.oracleTextReady = true
+		card.oracleTextAST = card.AST
 		if got := HasOutlawTrigger(card); got != c.want {
 			t.Errorf("HasOutlawTrigger(%q) = %v, want %v", c.text, got, c.want)
 		}
@@ -223,7 +223,7 @@ func TestFireOutlawETBTriggers_FiresOnOutlawETB(t *testing.T) {
 	// Watcher card with the trigger preamble.
 	watcher := subtypePerm(gs, 0, "Bonny Pall, Clearcutter", "demon")
 	watcher.Card.OracleTextCache = "whenever an outlaw enters the battlefield under your control, draw a card"
-	watcher.Card.oracleTextReady = true
+	watcher.Card.oracleTextAST = watcher.Card.AST
 
 	// Newly ETB'ing outlaw.
 	rogue := subtypePerm(gs, 0, "Stealthy Rogue", "rogue")
@@ -254,7 +254,7 @@ func TestFireOutlawETBTriggers_PipelineIntegration(t *testing.T) {
 	gs := newOutlawGame(t)
 	watcher := subtypePerm(gs, 0, "Outlaw Hunter", "human")
 	watcher.Card.OracleTextCache = "whenever an outlaw enters the battlefield, draw a card"
-	watcher.Card.oracleTextReady = true
+	watcher.Card.oracleTextAST = watcher.Card.AST
 
 	prev := TriggerHook
 	defer func() { TriggerHook = prev }()
@@ -282,7 +282,7 @@ func TestFireOutlawETBTriggers_NoopOnNonOutlaw(t *testing.T) {
 	gs := newOutlawGame(t)
 	watcher := subtypePerm(gs, 0, "Watcher", "human")
 	watcher.Card.OracleTextCache = "whenever an outlaw enters the battlefield, gain 1 life"
-	watcher.Card.oracleTextReady = true
+	watcher.Card.oracleTextAST = watcher.Card.AST
 
 	bear := subtypePerm(gs, 0, "Bear", "bear")
 
@@ -329,7 +329,7 @@ func TestFireOutlawETBTriggers_FiresAcrossSeats(t *testing.T) {
 	// watcher and per-card handlers gate "your control" themselves).
 	watcher := subtypePerm(gs, 1, "Global Watcher", "spirit")
 	watcher.Card.OracleTextCache = "whenever an outlaw enters the battlefield, do Y"
-	watcher.Card.oracleTextReady = true
+	watcher.Card.oracleTextAST = watcher.Card.AST
 
 	pirate := subtypePerm(gs, 0, "Pirate", "pirate")
 

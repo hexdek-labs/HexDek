@@ -25,7 +25,7 @@ func addLand(seat *Seat, name string, typeLine string, oracle string) *Permanent
 	}
 	if oracle != "" {
 		c.OracleTextCache = oracle
-		c.oracleTextReady = true
+		c.oracleTextAST = c.AST
 	}
 	p := &Permanent{Card: c, Flags: map[string]int{}}
 	seat.Battlefield = append(seat.Battlefield, p)

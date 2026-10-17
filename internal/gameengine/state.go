@@ -1518,12 +1518,31 @@ type Card struct {
 	// OracleTextCache — lowercased oracle text, computed once on first
 	// access via OracleTextLower. Avoids repeated string building +
 	// ToLower in hot evaluator loops.
+	//
+	// r157 — oracleTextAST is the AST the cache was built from, and it
+	// replaces the old `oracleTextReady bool`. A bool only answers "has
+	// this been computed", which is the wrong question: a DFC transform
+	// REASSIGNS Card.AST in place (dfc.go TransformPermanent /
+	// RevertTransformedDFCToFrontFace, keywords_p1p2.go ApplyDisturbETB)
+	// and no site cleared the flag, so every oracle-text reader — 44
+	// files including sba.go, legality.go and cost_modifiers.go — kept
+	// reading the FRONT face after the card had transformed. Keying on
+	// the AST pointer makes the staleness impossible to reintroduce:
+	// a future site that swaps the AST invalidates this by construction
+	// rather than by remembering to.
 	OracleTextCache string
-	oracleTextReady bool
+	oracleTextAST   *gameast.CardAST
 
 	// TypeLineLowerCache — lowercased TypeLine, computed lazily.
+	//
+	// r157 — same defect, same fix. TypeLine is likewise reassigned on
+	// transform (dfc.go:489, stack.go:2676). typeLineLowerSrc holds the
+	// TypeLine the cache was built from; the compare is O(1) in practice
+	// because it is the same string header, so Go's memequal
+	// short-circuits on equal data pointers.
 	TypeLineLowerCache string
-	typeLineLowerReady bool
+	typeLineLowerSrc   string
+	typeLineComputed   bool
 
 	// ProducedColorsMask — bitmask of mana colors this card (typically a
 	// land) can produce. Bits: W=1, U=2, B=4, R=8, G=16. Computed lazily
@@ -1531,6 +1550,14 @@ type Card struct {
 	// and repeated strings.Contains across colors.
 	ProducedColorsMask  uint8
 	ProducedColorsReady bool
+
+	// r157 — ProducedColorsMask is DERIVED from OracleTextLower and
+	// TypeLineLower, so it inherited their staleness: Search for Azcanta
+	// transforms INTO a land, and the mask computed on the front-face
+	// enchantment (0) survived the transform. These record the sources
+	// the mask was computed from; see ProducedColorsValid.
+	producedColorsAST *gameast.CardAST
+	producedColorsTL  string
 
 	// Meta — open-ended per-card runtime metadata. Used by mechanics
 	// that need to mark a card object with provenance state that doesn't

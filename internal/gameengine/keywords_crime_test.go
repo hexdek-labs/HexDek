@@ -70,7 +70,7 @@ func TestHasCommitsCrimeTrigger_DetectsCanonicalPhrasings(t *testing.T) {
 		// Prime the oracle-text cache directly — same package, so we can
 		// reach unexported fields without re-running the full AST parser.
 		card.OracleTextCache = c.oracleText
-		card.oracleTextReady = true
+		card.oracleTextAST = card.AST
 
 		got := HasCommitsCrimeTrigger(card)
 		if got != c.want {

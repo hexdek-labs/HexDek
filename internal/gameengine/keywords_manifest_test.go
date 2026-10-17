@@ -58,7 +58,7 @@ func TestHasManifest_DetectsCanonicalPhrasings(t *testing.T) {
 	for _, c := range cases {
 		card := &Card{Name: "x", AST: &gameast.CardAST{Name: "x"}}
 		card.OracleTextCache = c.text
-		card.oracleTextReady = true
+		card.oracleTextAST = card.AST
 		if got := HasManifest(card); got != c.want {
 			t.Errorf("HasManifest(%q) = %v, want %v", c.text, got, c.want)
 		}

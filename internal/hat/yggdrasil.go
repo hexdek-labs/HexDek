@@ -11814,7 +11814,10 @@ func landProducesColorsMask(c *gameengine.Card) uint8 {
 	if c == nil {
 		return 0
 	}
-	if c.ProducedColorsReady {
+	// r157 — validity is checked against the AST and type line the mask
+	// was derived from, not a bare "computed" flag: a transform replaces
+	// both, and the engine-side mirror does the same.
+	if c.ProducedColorsValid() {
 		return c.ProducedColorsMask
 	}
 	var mask uint8
@@ -11830,8 +11833,7 @@ func landProducesColorsMask(c *gameengine.Card) uint8 {
 	if strings.Contains(ot, "any color") {
 		mask = colorBitAll
 	}
-	c.ProducedColorsMask = mask
-	c.ProducedColorsReady = true
+	c.MarkProducedColors(mask)
 	return mask
 }
 
