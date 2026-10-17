@@ -85,12 +85,31 @@ func TestGameDeadline_PassedEndsGameAsDraw(t *testing.T) {
 
 // TestGameDeadline_AlreadyEndedIsInert — once a game is over the guard
 // must not re-fire and re-log on every subsequent loop iteration.
+//
+// r161 corrected this test's ASSERTION, not its intent. It used to
+// require CheckGameDeadline to return false once ended, conflating two
+// different things: whether the guard fires (it must not, twice) and
+// what the call site is told (it must still bail, or nothing unwinds
+// the in-flight turn). Production proved the difference — a game ran
+// 1094s past its deadline with the counter reading exactly 1. The
+// no-re-fire intent written above is unchanged and is what this test
+// now checks; TestR161_ExpiredDeadlineStillReportsAfterTheGameEnded
+// covers the return value.
 func TestGameDeadline_AlreadyEndedIsInert(t *testing.T) {
+	ResetLoopGuardCountsForTest()
+	t.Cleanup(ResetLoopGuardCountsForTest)
+
 	gs := deadlineTestState()
 	SetGameDeadline(gs, time.Now().Add(-time.Second))
 	gs.Flags["ended"] = 1
-	if CheckGameDeadline(gs, "test") {
-		t.Fatal("guard fired on an already-ended game")
+	before := len(gs.EventLog)
+	CheckGameDeadline(gs, "test")
+	if n := LoopGuardCounts()["game_deadline"]; n != 0 {
+		t.Fatalf("guard re-fired on an already-ended game: counted %d", n)
+	}
+	if len(gs.EventLog) != before {
+		t.Fatalf("guard re-logged on an already-ended game: %d new events",
+			len(gs.EventLog)-before)
 	}
 }
 

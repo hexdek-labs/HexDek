@@ -95,11 +95,30 @@ func CheckGameDeadline(gs *GameState, site string) bool {
 	if gs == nil {
 		return false
 	}
-	if gs.Flags != nil && gs.Flags["ended"] == 1 {
-		return false
-	}
 	if !GameDeadlineExceeded(gs) {
 		return false
+	}
+	// r161 — an already-ended game STILL reports the breach.
+	//
+	// This used to return false the moment gs.Flags["ended"] == 1, which
+	// looked like simple double-end protection and was in fact the hole
+	// that made the whole backstop ineffective. EndGameAsLoopDraw cannot
+	// interrupt the turn that is currently executing: the grinder's
+	// CheckEnd() break sits BETWEEN turns, so a spin inside a single
+	// TakeTurn never reaches it. The first trip therefore ended the game
+	// and returned into the spin — and from then on every call site here
+	// answered "no deadline problem", so nothing ever unwound.
+	//
+	// Measured on production 2026-10-17 with r160's counters: two games
+	// tripped the 10-minute cap (guards=game_deadline:1 then :2 — once
+	// each, exactly as this early return predicts) and then ran on for
+	// 77s and 1094s respectively, completing at 677.2s and 1693.9s. The
+	// second spent over eighteen minutes simulating a game already
+	// recorded as a draw.
+	//
+	// So: report the breach every time, but end the game only once.
+	if gs.Flags != nil && gs.Flags["ended"] == 1 {
+		return true
 	}
 	at, _ := GameDeadline(gs)
 	LogLoopGuardFired(gs, "game_deadline", map[string]interface{}{
