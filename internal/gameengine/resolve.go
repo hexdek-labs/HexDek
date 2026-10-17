@@ -2373,6 +2373,38 @@ func resolveCreateToken(gs *GameState, src *Permanent, e *gameast.CreateToken) {
 	}
 	gs.PendingTokenMintChain = nil
 	for i := 0; i < count; i++ {
+		// r166 — the wall-clock backstop, INSIDE the per-token loop.
+		//
+		// Each iteration appends a permanent to the battlefield and then
+		// calls FirePermanentETBTriggers, which dispatches per-card
+		// triggers by walking EVERY permanent on EVERY battlefield. The
+		// tokens join that scan as they are minted, so creating N tokens
+		// costs O(N*M) and, once the tokens dominate the board, O(N^2).
+		//
+		// Measured on production 2026-10-17: two games ran 2199.1s and
+		// 1442.7s against a 600s cap, and guards=game_deadline bumped
+		// only in the window where each game COMPLETED — 26 and 14
+		// minutes past its deadline, with no check site reached in
+		// between. Twelve goroutine samples over six minutes then caught
+		// a third game pinned on exactly this stack: resolveCreateToken
+		// -> FirePermanentETBTriggers -> fireTrigger -> lookupCandidates.
+		//
+		// DrainStack already checks the deadline (stack.go), and that
+		// check is correct — but it runs BETWEEN stack items, and all of
+		// this happens inside a SINGLE resolution. One ETB dispatch
+		// returns in O(board), so no individual dispatch is slow; the
+		// minutes accumulate across ITERATIONS. The loop is therefore
+		// where the check belongs.
+		//
+		// Opt-in, exactly as r161: a game with no armed deadline is
+		// unaffected, so tests, paritycheck and the correctness harness
+		// keep creating every token. Only a caller that arms one — the
+		// live grinder — can trip this.
+		if CheckGameDeadline(gs, "token_create") {
+			// Keep the mint record honest about what was actually made.
+			mintEvent.FinalCount = i
+			break
+		}
 		card := &Card{
 			Name:          tokenName(types, pow, tough),
 			Owner:         controller,
