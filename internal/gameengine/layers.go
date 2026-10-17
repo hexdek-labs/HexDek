@@ -595,6 +595,13 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 	// dependency exists, and when one does it is one allocation rather than
 	// n. The separate hasDeps scan is gone with it — `depends == nil` IS the
 	// answer it was computing.
+	// r159 — still lazy, but the matrix is now BORROWED rather than
+	// allocated. On a pathological board this line was 1.07GB inside a
+	// single 30-second window (40.38% of that window's differenced
+	// profile) because n*n is paid per call. See
+	// dep_order_scratch_r159.go for why this is a free list and not one
+	// scratch field: DependencyOrder re-enters itself through
+	// effectDependsOn -> Predicate -> GetEffectiveCharacteristics.
 	var depends []bool // flat n*n, nil until the first real dependency
 
 	for i := 0; i < n; i++ {
@@ -604,7 +611,7 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 			}
 			if effectDependsOn(effects[i], effects[j], gs) {
 				if depends == nil {
-					depends = make([]bool, n*n)
+					depends = gs.acquireDepBuf(n * n)
 				}
 				depends[i*n+j] = true
 			}
@@ -656,9 +663,11 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 	if hasCycle {
 		// §613.8b: circular dependency, use timestamp order.
 		// The caller already sorted by timestamp, so return as-is.
+		gs.releaseDepBuf(depends) // r159
 		return effects
 	}
 
+	gs.releaseDepBuf(depends) // r159 — the matrix never escapes.
 	return order
 }
 

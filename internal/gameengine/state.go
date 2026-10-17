@@ -343,6 +343,11 @@ type GameState struct {
 	// without touching any of them.
 	charCacheEpoch uint64
 
+	// r159 — free list of n*n dependency matrices for DependencyOrder.
+	// A list rather than one buffer because DependencyOrder re-enters
+	// itself through effectDependsOn -> Predicate -> characteristics.
+	depOrderBufs [][]bool
+
 	// cacheID identifies this GameState to the per-Permanent cache slot.
 	// Assigned lazily on first use so that a bare &GameState{} literal
 	// (which tests and some callers build) still gets a distinct one
