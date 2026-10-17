@@ -42,11 +42,26 @@ import (
 
 // loopGuardLabelKeys are the details keys considered low-cardinality
 // and meaningful, in priority order. "event" is the engine's
-// normalized event vocabulary; "handler" is a per-card slug. Both are
-// drawn from fixed sets in the source. Keys carrying a count, a depth,
-// a seat or a timestamp are deliberately absent — those are unbounded
-// or near-unbounded and would make the attribution useless.
-var loopGuardLabelKeys = [...]string{"event", "handler"}
+// normalized event vocabulary; "handler" is a per-card slug; "site" is
+// a check-site name. All three are drawn from fixed sets in the
+// source. Keys carrying a count, a depth, a seat or a timestamp are
+// deliberately absent — those are unbounded or near-unbounded and
+// would make the attribution useless.
+//
+// r168 — "site" was missing, and that silently disabled r167.
+// game_deadline passes ONLY {site, turn, stack, deadline_utc,
+// over_by_sec}; with no allow-listed key, loopGuardLabel returned ""
+// and bumpLoopGuardLabel recorded nothing. So r167's deadlines= field
+// read an empty table and printed nothing, through two real capped
+// games (599.7s and 599.3s on 2026-10-17) that were exactly what it
+// was built to attribute.
+//
+// It is LAST in priority deliberately: every guard already attributed
+// by event or handler keeps the label it had. The only guards that
+// pass "site" are game_deadline (4 fixed sites) and trigger_loop_cap
+// ("ast_trigger" / "per_card_trigger"), both bounded in the source,
+// and neither previously carried any label at all.
+var loopGuardLabelKeys = [...]string{"event", "handler", "site"}
 
 const (
 	loopGuardLabelMax      = 64
