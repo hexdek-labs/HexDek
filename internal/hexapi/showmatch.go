@@ -1199,13 +1199,22 @@ func (sm *Showmatch) runGrinder() {
 		if guards != "" {
 			guards = " guards=" + guards
 		}
+		// r167 — every label for game_deadline, not just the top 5.
+		// This is the field that says WHICH check site caught a capped
+		// game; guardtop= cannot, because the deadline fires once per
+		// game and is buried under per-card counters in the thousands.
+		// Empty until a game actually hits its cap.
+		deadlines := gameengine.LoopGuardLabelsFor("game_deadline")
+		if deadlines != "" {
+			deadlines = " deadlines=" + deadlines
+		}
 
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop, tdepth, tpField)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, deadlines, guardTop, tdepth, tpField)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder

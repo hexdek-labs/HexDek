@@ -162,3 +162,63 @@ func ResetLoopGuardLabelsForTest() {
 		return true
 	})
 }
+
+// LoopGuardLabelsFor renders EVERY label recorded for one named guard,
+// sorted heaviest first with ties broken by name, as "label:n" pairs.
+// It returns "" when that guard has never fired, so the caller omits
+// the field entirely.
+//
+// r167 — why this exists, when LoopGuardLabelTop(5) already prints
+// labels. On 2026-10-17 a grinder game ran 599.9s against the 600s cap
+// — the first bounded stall after r166 moved the deadline check inside
+// resolveCreateToken's per-token loop. The log said
+// `guards=game_deadline:1`, and that was ALL it could say: guardtop= is
+// a top-5 column, and the five busiest pairs were percard dispatch
+// counters in the thousands. The one firing that mattered was rank
+// ~15th by volume and therefore invisible.
+//
+// So the question the round existed to answer — did r166's new
+// token_create site fire, or did one of the three pre-existing sites
+// catch it? — could not be read from the log at all, and the verdict
+// had to be published as "probable" on circumstantial evidence.
+//
+// game_deadline fires at most once per game and is rare (five firings
+// in 2.7 hours pre-fix, one in two hours post-fix), so rendering ALL of
+// its labels costs a few bytes on a line that is already ~400, and only
+// on the windows where a game actually hit its cap.
+func LoopGuardLabelsFor(guard string) string {
+	if guard == "" {
+		return ""
+	}
+	// An exact "guard/" prefix, not a substring match: a Contains test
+	// would also match a DIFFERENT guard whose own name happens to end
+	// with this one, and would match the label half of every pair.
+	prefix := guard + "/"
+	counts := LoopGuardLabelCounts()
+	keys := make([]string, 0, 4)
+	for k := range counts {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) == 0 {
+		return ""
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if counts[keys[i]] != counts[keys[j]] {
+			return counts[keys[i]] > counts[keys[j]]
+		}
+		return keys[i] < keys[j]
+	})
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		// Drop the redundant "guard/" — the field name carries it.
+		b.WriteString(strings.TrimPrefix(k, prefix))
+		b.WriteByte(':')
+		b.WriteString(strconv.FormatUint(counts[k], 10))
+	}
+	return b.String()
+}
