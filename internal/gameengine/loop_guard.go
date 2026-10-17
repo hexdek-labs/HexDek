@@ -25,6 +25,10 @@ func LogLoopGuardFired(gs *GameState, guard string, details map[string]interface
 	// Deliberately outside the gs == nil guard below: a guard that fires
 	// without a GameState still fired.
 	bumpLoopGuard(guard)
+	// r162 — and attribute it to WHAT it fired on, where the details
+	// carry a low-cardinality label. Same reasoning as the line above:
+	// the details map is about to be dropped with the event.
+	bumpLoopGuardLabel(guard, loopGuardLabel(details))
 	if gs == nil {
 		return
 	}

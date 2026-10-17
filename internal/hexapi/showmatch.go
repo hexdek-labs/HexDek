@@ -1173,6 +1173,12 @@ func (sm *Showmatch) runGrinder() {
 		// that log holds games of 3102.6s and 2148.3s against an armed
 		// 10-minute cap. Empty string when nothing has ever fired, so
 		// the normal line is unchanged.
+		// r162 — the busiest (guard, label) pairs. Separate field so
+		// guards= stays a small stable column; empty when nothing fired.
+		guardTop := gameengine.LoopGuardLabelTop(5)
+		if guardTop != "" {
+			guardTop = " guardtop=" + guardTop
+		}
 		guards := gameengine.LoopGuardSummary()
 		if guards != "" {
 			guards = " guards=" + guards
@@ -1180,10 +1186,10 @@ func (sm *Showmatch) runGrinder() {
 
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder
