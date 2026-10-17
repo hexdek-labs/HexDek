@@ -55,20 +55,24 @@ func (p *Permanent) HasKeyword(name string) bool {
 	if p == nil {
 		return false
 	}
-	want := strings.ToLower(strings.TrimSpace(name))
+	// r158 — normalizeKeyword is ToLower(TrimSpace(.)) with a fast path
+	// that allocates nothing and stops at the first offending byte when
+	// the string is already trimmed lowercase ASCII, which it nearly
+	// always is (callers pass literals).
+	want := normalizeKeyword(name)
 	// 1) AST-declared keywords.
-	if p.Card != nil && p.Card.AST != nil {
-		for _, ab := range p.Card.AST.Abilities {
-			if kw, ok := ab.(*gameast.Keyword); ok {
-				if strings.ToLower(strings.TrimSpace(kw.Name)) == want {
-					return true
-				}
-			}
+	//
+	// r158 — the names are normalized once per AST rather than on every
+	// call; see astKeywordNames. This also drops the per-call type
+	// assertion over every ability on the card.
+	for _, kw := range astKeywordNames(p.Card) {
+		if kw == want {
+			return true
 		}
 	}
 	// 2) Granted abilities (until-EOT grants, equipment, level-up bands, etc.).
 	for _, g := range p.GrantedAbilities {
-		gl := strings.ToLower(strings.TrimSpace(g))
+		gl := normalizeKeyword(g)
 		// Level-up band abilities are stored under a "level_bracket:" prefix
 		// (CR §711.2) so they strip cleanly on a band change; recognize them.
 		gl = strings.TrimPrefix(gl, "level_bracket:")

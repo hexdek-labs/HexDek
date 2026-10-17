@@ -1544,6 +1544,12 @@ type Card struct {
 	typeLineLowerSrc   string
 	typeLineComputed   bool
 
+	// r158 — normalized names of the AST's Keyword abilities, computed
+	// once per AST by astKeywordNames. Keyed on the AST pointer for the
+	// same reason as oracleTextAST above: a transform replaces it.
+	kwNames    []string
+	kwNamesAST *gameast.CardAST
+
 	// ProducedColorsMask — bitmask of mana colors this card (typically a
 	// land) can produce. Bits: W=1, U=2, B=4, R=8, G=16. Computed lazily
 	// by hat.LandProducesColorsMask. Saves per-evaluation map allocation
