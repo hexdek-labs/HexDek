@@ -180,6 +180,12 @@ type allocSpikeRecorder struct {
 	disabled      bool
 	sinceBaseline int
 	frozen        int // windows left with baseline rotation suspended
+
+	// r154 — the previous window's raw numerator and denominator, so a
+	// firing can state which side of MB/game actually moved.
+	prevAllocMB float64
+	prevGames   int
+	havePrev    bool
 }
 
 func newAllocSpikeRecorder() *allocSpikeRecorder {
@@ -198,15 +204,55 @@ func newAllocSpikeRecorder() *allocSpikeRecorder {
 	return r
 }
 
+// spikeCause renders which side of the MB/game ratio moved.
+//
+// It reports percentages and a short tag and deliberately stops there: it
+// is a pointer at the next thing to read, not a diagnosis. The thresholds
+// are descriptive labels on numbers that are printed in full beside them,
+// so a reader who disagrees with the label still has the figures.
+func spikeCause(allocMB, prevAllocMB float64, games, prevGames int, havePrev bool) string {
+	if !havePrev || prevGames <= 0 || !(prevAllocMB > 0) {
+		return "no prior window to compare"
+	}
+	dAlloc := (allocMB - prevAllocMB) / prevAllocMB * 100
+	dGames := (float64(games) - float64(prevGames)) / float64(prevGames) * 100
+
+	tag := "neither side moved much"
+	switch {
+	case dAlloc >= 20 && dGames <= -20:
+		tag = "BURST DURING A STALL — both sides moved"
+	case dAlloc >= 20:
+		tag = "NUMERATOR ROSE — real allocation burst"
+	case dGames <= -20:
+		tag = "DENOMINATOR FELL — fewer games completed, check for a SLOW GAME"
+	}
+	return fmt.Sprintf("alloc %.0fMB vs %.0fMB prev (%+.0f%%), games %d vs %d prev (%+.0f%%): %s",
+		allocMB, prevAllocMB, dAlloc, games, prevGames, dGames, tag)
+}
+
 func (r *allocSpikeRecorder) baselinePath() string {
 	return filepath.Join(r.dir, "alloc-baseline.pb.gz")
 }
 
 // observe is called once per grinder window with that window's
-// allocation in megabytes per completed game.
-func (r *allocSpikeRecorder) observe(mbPerGame float64) {
+// allocation in megabytes per completed game, plus the raw numerator and
+// denominator that rate was computed from.
+//
+// r154 — the raw pair is carried purely so a firing can say which SIDE of
+// the rate moved. MB/game rises either because the process allocated more
+// or because fewer games completed, and those are different events with
+// different diagnoses: r152's firing was a stalled worker (alloc flat,
+// games halved) and r153's was a real burst (alloc doubled, gc/game
+// 0.05->0.22). Working that out meant going back to the log and reading
+// neighbouring windows by hand, three rounds running. The line can say it
+// itself.
+func (r *allocSpikeRecorder) observe(mbPerGame, allocMB float64, games int) {
 	if r == nil || r.disabled {
 		return
+	}
+	prevAllocMB, prevGames, havePrev := r.prevAllocMB, r.prevGames, r.havePrev
+	if games > 0 {
+		r.prevAllocMB, r.prevGames, r.havePrev = allocMB, games, true
 	}
 	spike, median, ratio := r.det.observe(mbPerGame)
 	if r.frozen > 0 {
@@ -234,13 +280,14 @@ func (r *allocSpikeRecorder) observe(mbPerGame float64) {
 			}
 		}
 		r.frozen = allocSpikeCooldown
+		why := spikeCause(allocMB, prevAllocMB, games, prevGames, havePrev)
 		if err := writeAllocProfile(spikePath); err != nil {
-			log.Printf("grinder: ALLOC SPIKE %.1f MB/game vs median %.1f (%.2fx) — profile write FAILED: %v",
-				mbPerGame, median, ratio, err)
+			log.Printf("grinder: ALLOC SPIKE %.1f MB/game vs median %.1f (%.2fx) [%s] — profile write FAILED: %v",
+				mbPerGame, median, ratio, why, err)
 			return
 		}
-		log.Printf("grinder: ALLOC SPIKE %.1f MB/game vs median %.1f (%.2fx) — spike=%s baseline=%s",
-			mbPerGame, median, ratio, spikePath, base)
+		log.Printf("grinder: ALLOC SPIKE %.1f MB/game vs median %.1f (%.2fx) [%s] — spike=%s baseline=%s",
+			mbPerGame, median, ratio, why, spikePath, base)
 		return
 	}
 

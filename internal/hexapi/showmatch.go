@@ -1157,7 +1157,10 @@ func (sm *Showmatch) runGrinder() {
 		// alone produced three of the four largest per-window ratios in
 		// the run that motivated this.
 		if dG > 0 {
-			spikeRec.observe(float64(dAlloc) / 1e6 / float64(dG))
+			// r154 — pass the raw pair too, so a firing can report which
+			// side of the rate moved instead of making a human read the
+			// neighbouring windows by hand.
+			spikeRec.observe(float64(dAlloc)/1e6/float64(dG), float64(dAlloc)/1e6, int(dG))
 		}
 
 		if n-lastLogged >= 50 {
