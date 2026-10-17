@@ -1164,12 +1164,26 @@ func (sm *Showmatch) runGrinder() {
 			ccInvalPerGame = float64(dCCI) / float64(dG)
 		}
 
+		// r160 — loop-guard firings, cumulative by guard name. Same
+		// defect r142 found for the trigger limiter and fixed for that
+		// ONE counter: LogLoopGuardFired writes only to the event log,
+		// the grinder runs EventLogNone, so all NINE guards were
+		// invisible on the only box where they matter. `grep -c
+		// game_deadline server.log` returns 0 over the whole log while
+		// that log holds games of 3102.6s and 2148.3s against an armed
+		// 10-minute cap. Empty string when nothing has ever fired, so
+		// the normal line is unchanged.
+		guards := gameengine.LoopGuardSummary()
+		if guards != "" {
+			guards = " guards=" + guards
+		}
+
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder

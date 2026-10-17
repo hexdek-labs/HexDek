@@ -18,6 +18,13 @@ const EventLoopGuardFired = "loop_guard_fired"
 // fire caps, SBA pass caps, drain iteration caps, and per-handler
 // no-progress breaks.
 func LogLoopGuardFired(gs *GameState, guard string, details map[string]interface{}) {
+	// r160 — publish the firing as a process counter BEFORE the event,
+	// and unconditionally. The event is dropped entirely under
+	// EventLogNone, which is exactly the policy production runs, so the
+	// counter is the only record that survives on the box that matters.
+	// Deliberately outside the gs == nil guard below: a guard that fires
+	// without a GameState still fired.
+	bumpLoopGuard(guard)
 	if gs == nil {
 		return
 	}
