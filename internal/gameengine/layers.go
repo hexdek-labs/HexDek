@@ -97,14 +97,6 @@ type Characteristics struct {
 	LostAllAbilities bool
 }
 
-// cachedCharacteristics wraps a Characteristics value with the epoch
-// it was computed under. If epoch != gs.charCacheEpoch, the cache is
-// stale.
-type cachedCharacteristics struct {
-	Chars *Characteristics
-	Epoch uint64
-}
-
 // -----------------------------------------------------------------------------
 // ContinuousEffect — the registry entry
 // -----------------------------------------------------------------------------
@@ -221,17 +213,13 @@ func (gs *GameState) InvalidateCharacteristicsCache() {
 	}
 	gs.charCacheEpoch++
 	gs.ccInval++ // r155
-	// r73 — DROP the now-stale entries instead of leaving them in the map.
-	// The epoch bump alone makes every entry unreadable, but the map still
-	// holds a *Permanent key for each one, which keeps that Permanent (and
-	// its Card, Modifications and counters) reachable for the whole life of
-	// the GameState. A token that entered and died on turn 3 was still live
-	// at turn 60. Nothing is lost by clearing: the entries being dropped are
-	// exactly the ones that just became unreadable. It also keeps the map
-	// small, so lookups stay cheap on a wide board.
-	if len(gs.charCache) > 0 {
-		clear(gs.charCache)
-	}
+	// r156 — there is nothing left to clear. r73 added a clear() here
+	// because the map held a *Permanent key per entry, which kept a token
+	// that entered and died on turn 3 reachable at turn 60. With the entry
+	// living ON the permanent that problem cannot arise: the entry dies
+	// with its permanent. The epoch bump alone makes every entry
+	// unreadable, which is all this ever needed to do — and dropping the
+	// clear() removes it from ~440 invalidations per game.
 }
 
 // -----------------------------------------------------------------------------
@@ -508,12 +496,20 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	if gs == nil {
 		return BaseCharacteristics(perm)
 	}
-	// Cache lookup.
-	if gs.charCache != nil {
-		if entry, ok := gs.charCache[perm]; ok && entry != nil && entry.Epoch == gs.charCacheEpoch {
-			gs.ccHits++ // r155
-			return entry.Chars
-		}
+	// Cache lookup. r156 — a field read, not a map probe.
+	//
+	// charGS is the load-bearing guard. It rejects another GameState's
+	// entry (a field on the Permanent is visible to anyone holding it,
+	// which the per-GameState map was not) AND it rejects the cold read,
+	// since a fresh permanent is at charGS 0 and an identity is never 0.
+	// The nil check is defensive only — a control showed removing it
+	// changes nothing today.
+	if gs.cacheID == 0 {
+		gs.cacheID = nextCacheID()
+	}
+	if perm.charChars != nil && perm.charGS == gs.cacheID && perm.charEpoch == gs.charCacheEpoch {
+		gs.ccHits++ // r155
+		return perm.charChars
 	}
 	gs.ccMisses++ // r155
 	chars := BaseCharacteristics(perm)
@@ -549,11 +545,10 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	applyLayer(gs, perm, chars, LayerPT, "d")
 	applyLayer(gs, perm, chars, LayerPT, "e")
 
-	// Stash.
-	if gs.charCache == nil {
-		gs.charCache = map[*Permanent]*cachedCharacteristics{}
-	}
-	gs.charCache[perm] = &cachedCharacteristics{Chars: chars, Epoch: gs.charCacheEpoch}
+	// Stash. r156 — on the permanent itself, so the entry dies with it.
+	perm.charChars = chars
+	perm.charEpoch = gs.charCacheEpoch
+	perm.charGS = gs.cacheID
 	return chars
 }
 

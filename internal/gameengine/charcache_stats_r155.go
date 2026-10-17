@@ -60,3 +60,9 @@ func ResetCharCacheCountersForTest() {
 	charCacheMissesTotal.Store(0)
 	charCacheInvalTotal.Store(0)
 }
+
+// r156 — identities for the per-Permanent characteristics cache slot.
+// Starts at 1 so the zero value never matches a real GameState.
+var charCacheIDSeq atomic.Uint64
+
+func nextCacheID() uint64 { return charCacheIDSeq.Add(1) }

@@ -338,8 +338,16 @@ type GameState struct {
 	// Permanent pointer. Invalidated by charCacheEpoch — every mutation
 	// that could change a characteristic bumps the epoch; a cache entry
 	// is stale if its Epoch != the current epoch.
-	charCache      map[*Permanent]*cachedCharacteristics
+	// r156 — the per-Permanent slot replaced the map; only the epoch
+	// lives here now. Bumping it invalidates every permanent at once
+	// without touching any of them.
 	charCacheEpoch uint64
+
+	// cacheID identifies this GameState to the per-Permanent cache slot.
+	// Assigned lazily on first use so that a bare &GameState{} literal
+	// (which tests and some callers build) still gets a distinct one
+	// rather than sharing the zero value with every other such literal.
+	cacheID uint64
 
 	// r155 — charCache hit accounting. Plain uint64, not atomic: a game
 	// runs on one goroutine, and these are folded into process-wide
@@ -1677,6 +1685,39 @@ func (c *Card) ProtoManaValue() int {
 type Permanent struct {
 	Card       *Card
 	Controller int // seat index (CR §108.4 — may change via Gilded Drake, Threaten, etc.)
+
+	// r156 — this permanent's memoized effective characteristics, valid
+	// only while charEpoch == gs.charCacheEpoch. This used to be an entry
+	// in a gs.charCache map keyed by the Permanent pointer; a 30s CPU
+	// profile of prod showed runtime.mapaccess2_fast64 at 32.76% of
+	// GetEffectiveCharacteristics, which is itself 8.77% of all CPU. The
+	// cache hits 98.1% of the time (r155), so that lookup cost is paid on
+	// essentially every one of ~430,000 calls per game. The Permanent
+	// pointer IS the object identity here — there is no ID field — so a
+	// field on the Permanent is exactly the same key, reached by a
+	// dereference instead of a hash.
+	//
+	// charChars is nil-checked DEFENSIVELY, not because anything needs it
+	// today. I first wrote that the nil check was load-bearing for the
+	// cold read — a fresh GameState at epoch 0 meeting a fresh Permanent
+	// at charEpoch 0 — and a control proved me wrong: charGS below
+	// already rejects that case, because a permanent starts at charGS 0
+	// and a GameState's identity is always >= 1. The check stays as one
+	// pointer compare of insurance against a future path that stashes a
+	// nil, and the comment now says what it actually buys.
+	//
+	// charGS is the identity of the GameState the entry was computed
+	// under, and it is NOT optional. The map this replaced was a field on
+	// one GameState, so it could not serve another's entry. A field on the
+	// Permanent can: I confirmed by probe that two GameStates sharing a
+	// permanent at the same epoch served each other's characteristics
+	// (one read power 5 where it should read 2). Clone deep-copies every
+	// Permanent through a field literal and remaps pointers, so nothing
+	// shares one today — but "nothing does today" is not a safety
+	// property, and this is the cache whose corruption is silent.
+	charChars *Characteristics
+	charEpoch uint64
+	charGS    uint64
 
 	// Owner is the seat that owns this permanent per CR §108.3 —
 	// permanent and distinct from Controller. A Gilded Drake control

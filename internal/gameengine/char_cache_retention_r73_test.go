@@ -2,6 +2,7 @@ package gameengine
 
 import (
 	"math/rand"
+	"reflect"
 	"testing"
 )
 
@@ -24,18 +25,56 @@ func r73Game(t *testing.T) *GameState {
 	return NewGameState(2, rand.New(rand.NewSource(7)), nil)
 }
 
-func TestCharCacheR73_DoesNotRetainDeadPermanents(t *testing.T) {
+// r156 — the cache moved from a gs.charCache map onto the Permanent
+// itself, which makes r73's bug structurally impossible rather than
+// merely fixed: the GameState no longer holds a reference to the
+// permanent at all, so a dead permanent's entry dies with it and there is
+// nothing to clear.
+//
+// Counting map entries is therefore no longer the right assertion — the
+// map is gone. This is the DERIVED GATE instead: no field on GameState
+// may be a map keyed by *Permanent. That pins the property for good,
+// deterministically, and will fail the day someone reintroduces the shape
+// r73 was about.
+func TestCharCacheR73_GameStateHoldsNoPerPermanentMap(t *testing.T) {
+	ty := reflect.TypeOf(GameState{})
+	permPtr := reflect.TypeOf((*Permanent)(nil))
+	for i := 0; i < ty.NumField(); i++ {
+		f := ty.Field(i)
+		if f.Type.Kind() == reflect.Map && f.Type.Key() == permPtr {
+			t.Errorf("GameState.%s is a map[*Permanent]%s — this is the r73 "+
+				"retention shape: the map key keeps every permanent it ever "+
+				"saw reachable for the life of the GameState",
+				f.Name, f.Type.Elem())
+		}
+	}
+}
+
+// And the behaviour r73 actually cared about: churn a lot of permanents
+// through the cache and none of them is left referenced by the GameState.
+// With the entry on the permanent this is true by construction, so the
+// test is cheap — it exists to fail loudly if the storage moves back.
+func TestCharCacheR73_DeadPermanentsLeaveNothingBehind(t *testing.T) {
 	gs := r73Game(t)
 	const n = 500
+	var last *Permanent
 	for i := 0; i < n; i++ {
 		p := addBattlefield(gs, 0, "Spirit Token", 1, 1, "creature")
-		_ = GetEffectiveCharacteristics(gs, p) // caches an entry for p
+		_ = GetEffectiveCharacteristics(gs, p) // caches an entry on p
+		if p.charChars == nil {
+			t.Fatalf("iteration %d: query did not populate the permanent's cache", i)
+		}
 		gs.Seats[0].Battlefield = gs.Seats[0].Battlefield[:0]
 		gs.InvalidateCharacteristicsCache()
+		last = p
 	}
-	if got := len(gs.charCache); got != 0 {
-		t.Errorf("cache retained %d entries for permanents that left the "+
-			"battlefield; want 0", got)
+	// The last permanent still holds its own (now stale) entry — that is
+	// fine and is the point: it is reachable only from the permanent, so
+	// it is collected with it. What must NOT happen is the GameState
+	// serving it.
+	if last.charEpoch == gs.charCacheEpoch {
+		t.Errorf("stale entry still considered current: charEpoch %d == epoch %d",
+			last.charEpoch, gs.charCacheEpoch)
 	}
 }
 
@@ -48,9 +87,9 @@ func TestCharCacheR73_StillCachesWithinAnEpoch(t *testing.T) {
 
 	gs.InvalidateCharacteristicsCache()
 	first := GetEffectiveCharacteristics(gs, p)
-	if len(gs.charCache) != 1 {
-		t.Fatalf("query after invalidation did not populate the cache (len=%d)",
-			len(gs.charCache))
+	if p.charChars == nil || p.charEpoch != gs.charCacheEpoch {
+		t.Fatalf("query after invalidation did not populate the cache (chars=%v epoch=%d want %d)",
+			p.charChars != nil, p.charEpoch, gs.charCacheEpoch)
 	}
 	second := GetEffectiveCharacteristics(gs, p)
 	if first != second {
