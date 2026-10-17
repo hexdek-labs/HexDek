@@ -578,13 +578,13 @@ func drawEngineRate(p *gameengine.Permanent) float64 {
 	// don't say "you draw a card" so they fall through
 	// isPersistentDrawEngine entirely. Check them before the
 	// draw-engine gate so they register.
-	if isImpulseDrawEngine(ot) {
+	if cachedImpulseDrawEngine(p.Card) {
 		return 0.8
 	}
-	if isPersistentScryEngine(ot) {
+	if cachedPersistentScryEngine(p.Card) {
 		return 0.3
 	}
-	if !isPersistentDrawEngine(p) {
+	if !cachedPersistentDrawEngine(p.Card) {
 		return 0
 	}
 	// Symmetric (each-player-draws) effects diffuse their value across
@@ -624,7 +624,14 @@ func isPersistentDrawEngine(p *gameengine.Permanent) bool {
 	if p == nil || p.Card == nil {
 		return false
 	}
-	ot := gameengine.OracleTextLower(p.Card)
+	return isPersistentDrawEngineText(gameengine.OracleTextLower(p.Card))
+}
+
+// isPersistentDrawEngineText is the body of isPersistentDrawEngine as a
+// pure function of the lowered oracle text (r164), so it can be
+// memoized per Card. The Permanent form above is kept for callers that
+// only hold a Permanent.
+func isPersistentDrawEngineText(ot string) bool {
 	if ot == "" {
 		return false
 	}
@@ -3018,7 +3025,6 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 		if c == nil {
 			continue
 		}
-		ot := gameengine.OracleTextLower(c)
 		isCreature := false
 		for _, t := range c.Types {
 			switch t {
@@ -3042,7 +3048,7 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 		// 0.10 (so even free spells like Jump-Start on a 0-cost card
 		// register), ceiling at 0.35 (a 6-mana flashback Cataclysm is
 		// not 6x as valuable as a 1-mana cantrip).
-		if hasGraveyardCastKeyword(ot) {
+		if cachedGraveyardCastKeyword(c) {
 			cmc := gameengine.ManaCostOf(c)
 			rv := 0.10 + float64(cmc)*0.05
 			if rv > 0.35 {
@@ -3136,8 +3142,7 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 			if c == nil {
 				continue
 			}
-			ot := gameengine.OracleTextLower(c)
-			if hasGraveyardCastKeyword(ot) {
+			if cachedGraveyardCastKeyword(c) {
 				continue
 			}
 			for _, t := range c.Types {
@@ -3828,7 +3833,7 @@ func (e *GameStateEvaluator) scoreActivationTempo(gs *gameengine.GameState, seat
 			continue
 		}
 		// Skip pure mana abilities.
-		if isManaOnlyAbility(ot) {
+		if cachedManaOnlyAbility(p.Card) {
 			continue
 		}
 
@@ -3864,7 +3869,7 @@ func (e *GameStateEvaluator) scoreActivationTempo(gs *gameengine.GameState, seat
 				continue
 			}
 			ot := gameengine.OracleTextLower(p.Card)
-			if strings.Contains(ot, ":") && !isManaOnlyAbility(ot) && !p.Tapped {
+			if strings.Contains(ot, ":") && !cachedManaOnlyAbility(p.Card) && !p.Tapped {
 				oppAvg += 0.3
 			}
 		}
@@ -3922,7 +3927,7 @@ func (e *GameStateEvaluator) scoreToolboxBreadth(gs *gameengine.GameState, seatI
 			continue
 		}
 		ot := gameengine.OracleTextLower(p.Card)
-		if strings.Contains(ot, ":") && !isManaOnlyAbility(ot) {
+		if strings.Contains(ot, ":") && !cachedManaOnlyAbility(p.Card) {
 			activationsOnBoard++
 		}
 	}

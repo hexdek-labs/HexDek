@@ -1179,6 +1179,17 @@ func (sm *Showmatch) runGrinder() {
 		if guardTop != "" {
 			guardTop = " guardtop=" + guardTop
 		}
+		// r164 — text-predicate memo hit rate. r155's lesson: publish it,
+		// do not assume it. My charCache prediction was wrong by 4x.
+		tpHits, tpMiss, tpUnc := gameengine.TextPredicateStats()
+		tpField := ""
+		if tpHits+tpMiss > 0 {
+			tpField = fmt.Sprintf(" tp=%.1f%% (%d/%d)",
+				100*float64(tpHits)/float64(tpHits+tpMiss), tpHits, tpHits+tpMiss)
+			if tpUnc > 0 {
+				tpField += fmt.Sprintf(" tpunc=%d", tpUnc)
+			}
+		}
 		// r163 — trigger-nesting survival curve: games reaching >= depth d.
 		tdepth := gameengine.TriggerDepthSummary()
 		if tdepth != "" {
@@ -1191,10 +1202,10 @@ func (sm *Showmatch) runGrinder() {
 
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop, tdepth)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, guardTop, tdepth, tpField)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder

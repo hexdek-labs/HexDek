@@ -1545,6 +1545,14 @@ type Card struct {
 	OracleTextCache string
 	oracleTextAST   *gameast.CardAST
 
+	// r164 — memoized results of pure text predicates, one bit each,
+	// keyed on the AST they were derived from (see
+	// card_text_predicate_r164.go). textPredSet marks which bits have
+	// been computed; textPredVal holds their values.
+	textPredVal uint64
+	textPredSet uint64
+	textPredAST *gameast.CardAST
+
 	// TypeLineLowerCache — lowercased TypeLine, computed lazily.
 	//
 	// r157 — same defect, same fix. TypeLine is likewise reassigned on
