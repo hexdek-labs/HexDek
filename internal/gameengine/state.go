@@ -341,6 +341,13 @@ type GameState struct {
 	charCache      map[*Permanent]*cachedCharacteristics
 	charCacheEpoch uint64
 
+	// r155 — charCache hit accounting. Plain uint64, not atomic: a game
+	// runs on one goroutine, and these are folded into process-wide
+	// atomics by PublishCharCacheStats once the game ends.
+	ccHits   uint64
+	ccMisses uint64
+	ccInval  uint64
+
 	// painterColor is the chosen color for Painter's Servant. "" when no
 	// Painter's Servant is on the battlefield. Set by
 	// RegisterPaintersServant (Phase 8). Mirrors Python game.painter_color.

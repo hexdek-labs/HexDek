@@ -220,6 +220,7 @@ func (gs *GameState) InvalidateCharacteristicsCache() {
 		return
 	}
 	gs.charCacheEpoch++
+	gs.ccInval++ // r155
 	// r73 — DROP the now-stale entries instead of leaving them in the map.
 	// The epoch bump alone makes every entry unreadable, but the map still
 	// holds a *Permanent key for each one, which keeps that Permanent (and
@@ -510,9 +511,11 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	// Cache lookup.
 	if gs.charCache != nil {
 		if entry, ok := gs.charCache[perm]; ok && entry != nil && entry.Epoch == gs.charCacheEpoch {
+			gs.ccHits++ // r155
 			return entry.Chars
 		}
 	}
+	gs.ccMisses++ // r155
 	chars := BaseCharacteristics(perm)
 
 	// Apply layer effects in strict order.

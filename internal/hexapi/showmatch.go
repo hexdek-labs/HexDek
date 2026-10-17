@@ -1095,6 +1095,7 @@ func (sm *Showmatch) runGrinder() {
 	prevGames, prevTurns, prevGC := int64(0), int64(0), uint32(0)
 	prevLimited := int64(0)
 	prevClones, prevAlloc := int64(0), uint64(0)
+	prevCCHits, prevCCMisses, prevCCInval := uint64(0), uint64(0), uint64(0) // r155
 	// r150 — see alloc_spike_r150.go. The excursions are a rate event
 	// and a profile taken after one is useless, so the process takes its
 	// own at the moment the rate departs.
@@ -1145,12 +1146,30 @@ func (sm *Showmatch) runGrinder() {
 		dAlloc := m.TotalAlloc - prevAlloc
 		prevAlloc = m.TotalAlloc
 
+		// r155 — the charCache hit rate. BaseCharacteristics is the
+		// steady-state allocation top DESPITE a cache existing, which
+		// says the cache is missing; but "says" is a guess and the
+		// charCache split would be designed on it. Publish the real
+		// number before designing anything. inval/game is the other half:
+		// the epoch is global and has 371 production call sites.
+		ccH, ccM, ccI := gameengine.CharCacheCounters()
+		dCCH, dCCM, dCCI := ccH-prevCCHits, ccM-prevCCMisses, ccI-prevCCInval
+		prevCCHits, prevCCMisses, prevCCInval = ccH, ccM, ccI
+		ccRate := 0.0
+		if dCCH+dCCM > 0 {
+			ccRate = float64(dCCH) / float64(dCCH+dCCM) * 100
+		}
+		ccInvalPerGame := 0.0
+		if dG > 0 {
+			ccInvalPerGame = float64(dCCI) / float64(dG)
+		}
+
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder
@@ -2166,6 +2185,10 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	}
 
 	turnsPlayed = gs.Turn
+	// r155 — fold this game's charCache counters into the process-wide
+	// totals. Publishing at game end keeps the per-call path atomic-free
+	// and keeps one worker out of the other's GameState.
+	gs.PublishCharCacheStats()
 	sm.mu.Lock()
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
