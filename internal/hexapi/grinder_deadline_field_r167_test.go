@@ -36,7 +36,11 @@ func TestR167_GrinderLineWiresTheDeadlineField(t *testing.T) {
 	}
 	// Computed and prefixed is still not printed: r160 shipped nine
 	// guards that were counted and then dropped on the floor.
-	if !strings.Contains(s, "ccInvalPerGame, guards, deadlines, guardTop, tdepth, tpField)") {
+	// r169 inserted tmemo= between deadlines and guardTop. The lock is
+	// on deadlines still being IN the argument list in the right place,
+	// not on the list never changing — this assertion correctly went red
+	// when r169 edited the line, which is the whole point of it.
+	if !strings.Contains(s, "ccInvalPerGame, guards, deadlines, tmemo, guardTop, tdepth, tpField)") {
 		t.Fatal("deadlines is not passed to the grinder log.Printf argument list")
 	}
 }

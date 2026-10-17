@@ -1570,6 +1570,23 @@ type Card struct {
 	kwNames    []string
 	kwNamesAST *gameast.CardAST
 
+	// r169 — opaque memo slot owned by internal/gameengine/per_card.
+	// It holds that package's resolved per-card trigger-handler table so
+	// the per-permanent-per-event registry lookup (an RWMutex read lock,
+	// a sync.Map load on the display name, and one or more string-map
+	// probes) collapses to a pointer load plus two comparisons.
+	//
+	// It is `any` and not a typed field because per_card.TriggerHandler
+	// is defined in per_card, which imports gameengine — a typed field
+	// here would be an import cycle. gameengine never inspects the
+	// value; it only stores and returns it.
+	//
+	// Deliberately NOT copied by Clone (clone.go's explicit field
+	// literal): a clone simply re-memoizes on first use. Same
+	// concurrency assumption as the r157/r158/r164 caches above — Card
+	// objects are per-game.
+	perCardTriggerMemo any
+
 	// ProducedColorsMask — bitmask of mana colors this card (typically a
 	// land) can produce. Bits: W=1, U=2, B=4, R=8, G=16. Computed lazily
 	// by hat.LandProducesColorsMask. Saves per-evaluation map allocation

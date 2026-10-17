@@ -77,6 +77,12 @@ var (
 )
 
 func newRegistry() *Registry {
+	// r169 — a brand-new registry invalidates every outstanding
+	// per-Card trigger memo. Reset() swaps the global pointer, so the
+	// generation must move here and not only in the registration
+	// methods: a registry that is replaced and then repopulated with an
+	// identical table is still a different registry object.
+	bumpRegistryGeneration()
 	return &Registry{
 		etb:               map[string][]ETBHandler{},
 		onCast:            map[string][]CastHandler{},
@@ -314,6 +320,7 @@ func (r *Registry) OnETB(cardName string, h ETBHandler) {
 		}
 	}
 	r.etb[k] = append(r.etb[k], h)
+	bumpRegistryGeneration()
 }
 
 // OnCast registers a cast-time handler for cardName.
@@ -331,6 +338,7 @@ func (r *Registry) OnCast(cardName string, h CastHandler) {
 		}
 	}
 	r.onCast[k] = append(r.onCast[k], h)
+	bumpRegistryGeneration()
 }
 
 // OnResolve registers a resolve-time handler for non-permanent spells.
@@ -348,6 +356,7 @@ func (r *Registry) OnResolve(cardName string, h ResolveHandler) {
 		}
 	}
 	r.onResolve[k] = append(r.onResolve[k], h)
+	bumpRegistryGeneration()
 }
 
 // OnActivated registers an activated-ability handler.
@@ -365,6 +374,7 @@ func (r *Registry) OnActivated(cardName string, h ActivatedHandler) {
 		}
 	}
 	r.activated[k] = append(r.activated[k], h)
+	bumpRegistryGeneration()
 }
 
 // EnumerateOnTriggerRegistrations returns every (normalizedCardName,
@@ -435,6 +445,7 @@ func (r *Registry) OnTrigger(cardName, event string, h TriggerHandler) {
 		}
 	}
 	r.onTrigger[k][canonical] = append(r.onTrigger[k][canonical], h)
+	bumpRegistryGeneration()
 }
 
 // OnEminenceTrigger registers a triggered ability that functions while the
@@ -465,6 +476,7 @@ func (r *Registry) OnEminenceTrigger(cardName, event string, h TriggerHandler) {
 		}
 	}
 	r.onEminenceTrigger[k][canonical] = append(r.onEminenceTrigger[k][canonical], h)
+	bumpRegistryGeneration()
 }
 
 // -----------------------------------------------------------------------------
@@ -665,14 +677,16 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		if perm == nil || perm.Card == nil {
 			return
 		}
-		reg.mu.RLock()
-		var byEvent map[string][]TriggerHandler
-		for _, k := range lookupCandidates(perm.Card.DisplayName()) {
-			if m := reg.onTrigger[k]; m != nil {
-				byEvent = m
-				break
-			}
-		}
+		// r169 — this used to take reg.mu.RLock(), load the card's
+		// lookup candidates from a sync.Map keyed on the display name,
+		// and probe reg.onTrigger for each candidate, FOR EVERY
+		// PERMANENT ON EVERY BATTLEFIELD ON EVERY EVENT. Almost all of
+		// those permanents have no handler, so almost all of that work
+		// produced the answer "no". triggerTableFor memoizes the answer
+		// on the Card, keyed on (DisplayName, registry generation); a
+		// hit takes no lock, because the table it returns is an
+		// immutable copy. See trigger_memo_r169.go.
+		byEvent := reg.triggerTableFor(perm.Card)
 		var handlers []TriggerHandler
 		if byEvent != nil {
 			handlers = append([]TriggerHandler(nil), byEvent[canonical]...)
@@ -692,6 +706,10 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		// resolve against the one real permanent. Scoped to merged
 		// permanents → zero cost on the non-merged common path.
 		if perm.MergeKind != gameengine.MergeNone && len(perm.MergedCardPtrs) > 0 {
+			// r169 — the memo above no longer holds reg.mu, so this
+			// rare branch takes its own read lock. Scoped to merged
+			// permanents exactly as before: zero cost on the common path.
+			reg.mu.RLock()
 			topName := perm.Card.DisplayName()
 			seenConstituent := map[string]bool{normalizeName(topName): true}
 			for _, mc := range perm.MergedCardPtrs {
@@ -710,8 +728,8 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 					}
 				}
 			}
+			reg.mu.RUnlock()
 		}
-		reg.mu.RUnlock()
 		if len(handlers) > 0 {
 			hitsBySeat[seatIdx] = append(hitsBySeat[seatIdx], hit{perm: perm, hs: handlers})
 		}
@@ -927,6 +945,7 @@ func (r *Registry) OwnsETBTrigger(cardName string) {
 		r.ownsETBTrigger = map[string]bool{}
 	}
 	r.ownsETBTrigger[normalizeName(cardName)] = true
+	bumpRegistryGeneration()
 }
 
 // OwnsETB reports whether cardName declared self-ETB ownership. Uses

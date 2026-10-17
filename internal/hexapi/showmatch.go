@@ -30,6 +30,7 @@ import (
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/gameengine/per_card"
 	"github.com/hexdek/hexdek/internal/hat"
 	"github.com/hexdek/hexdek/internal/heimdall"
 	"github.com/hexdek/hexdek/internal/matchmaking"
@@ -1096,6 +1097,7 @@ func (sm *Showmatch) runGrinder() {
 	prevLimited := int64(0)
 	prevClones, prevAlloc := int64(0), uint64(0)
 	prevCCHits, prevCCMisses, prevCCInval := uint64(0), uint64(0), uint64(0) // r155
+	prevTMH, prevTMM := uint64(0), uint64(0)                                 // r169
 	// r150 — see alloc_spike_r150.go. The excursions are a rate event
 	// and a profile taken after one is useless, so the process takes its
 	// own at the moment the rate departs.
@@ -1164,6 +1166,21 @@ func (sm *Showmatch) runGrinder() {
 			ccInvalPerGame = float64(dCCI) / float64(dG)
 		}
 
+		// r169 — the trigger-memo hit rate, PER WINDOW. Published and
+		// not assumed: r155 predicted the charCache hit rate under 25%
+		// and measured 98.1%, and r164 predicted a hit rate it then had
+		// to correct in the other direction. The revert threshold for
+		// r169 was stated before this field existed — below 90% the
+		// memo is not earning its key and comes out.
+		tmH, tmM := per_card.TriggerMemoStats()
+		dTMH, dTMM := tmH-prevTMH, tmM-prevTMM
+		prevTMH, prevTMM = tmH, tmM
+		tmemo := ""
+		if dTMH+dTMM > 0 {
+			tmemo = fmt.Sprintf(" tmemo=%.1f%% (%d/%d)",
+				float64(dTMH)/float64(dTMH+dTMM)*100, dTMH, dTMH+dTMM)
+		}
+
 		// r160 — loop-guard firings, cumulative by guard name. Same
 		// defect r142 found for the trigger limiter and fixed for that
 		// ONE counter: LogLoopGuardFired writes only to the event log,
@@ -1211,10 +1228,10 @@ func (sm *Showmatch) runGrinder() {
 
 		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s",
+			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s",
 			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
 			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, deadlines, guardTop, tdepth, tpField)
+			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, deadlines, tmemo, guardTop, tdepth, tpField)
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder
