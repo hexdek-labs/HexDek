@@ -22,6 +22,22 @@ and nobody had aggregated it.
 **One deck appears in 932 of 1,327 slow games — 70%** — and carries 35% of
 all attributed slow-game time.
 
+### The 70% is a lifetime figure, and the current rate is lower
+
+Broken down by day, the concentration is real but less extreme now than the
+lifetime number suggests — the lifetime figure is inflated by a burst on
+Oct 13-15 (484 on Oct 14 alone):
+
+```
+2026/10/16   109 slow games   49 involve this deck   45%
+2026/10/17    93              28                     30%
+2026/10/18   158              56                     35%
+```
+
+So the honest live number is **~35% of recent slow games involve one deck**,
+not 70%. That is still one deck out of 902 accounting for a third of them,
+which is the point — but quote 35%, not 70%, for anything forward-looking.
+
 ### Why this is not a selection artifact
 
 Normal games log nothing, so there is no direct base rate. But the shape of
