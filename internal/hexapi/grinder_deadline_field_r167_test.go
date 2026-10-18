@@ -43,7 +43,7 @@ func TestR167_GrinderLineWiresTheDeadlineField(t *testing.T) {
 	// on deadlines still being IN the argument list in the right place,
 	// not on the list never changing — this assertion correctly went red
 	// when r169 edited the line, which is the whole point of it.
-	if !strings.Contains(s, "guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk)") {
+	if !strings.Contains(s, "guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk,") {
 		t.Fatal("deadlines is not passed to the grinder log.Printf argument list")
 	}
 }

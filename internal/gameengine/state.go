@@ -355,6 +355,17 @@ type GameState struct {
 	// it; see trigger_depth_hwm_r163.go.
 	triggerDepthHWM int
 
+	// r182 — per-game accounting for dispatches the depth cap in
+	// fireTrigger REFUSES (see depth_cap_swallow_r182.go). Fields and
+	// not gs.Flags entries for the same reason triggerDepthHWM is:
+	// fireTrigger touches them on the hot path and a map hash there
+	// would cost more than the measurement. CloneForRollout does not
+	// copy them.
+	depthCapSwallowed  int    // total swallowed dispatches this game
+	depthCapCascade    int    // swallows inside the current top-level cascade
+	depthCapFirstEvent string // event of the first swallow this game
+	depthCapMixed      bool   // a later swallow carried a different event
+
 	// cacheID identifies this GameState to the per-Permanent cache slot.
 	// Assigned lazily on first use so that a bare &GameState{} literal
 	// (which tests and some callers build) still gets a distinct one

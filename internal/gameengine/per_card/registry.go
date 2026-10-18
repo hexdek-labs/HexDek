@@ -625,17 +625,30 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags["trigger_depth"]++
+	// r182 — one map hash, not three. depth is the post-increment
+	// nesting level and is identical to what gs.Flags["trigger_depth"]
+	// held at each of the three reads this replaces.
+	depth := gs.Flags["trigger_depth"] + 1
+	gs.Flags["trigger_depth"] = depth
 	defer func() { gs.Flags["trigger_depth"]-- }()
+	// r182 — a new TOP-LEVEL cascade starts here. Resets a counter and
+	// nothing else; no dispatch decision reads it.
+	if depth == 1 {
+		gs.NoteCascadeRoot()
+	}
 	// r163 — record the depth this game actually reaches. The cap below
 	// can only ever report 9 (it returns without dispatching, so nothing
 	// can nest deeper), which says nothing about whether 8 is above or
 	// below ordinary play. This does.
-	gs.NoteTriggerDepth(gs.Flags["trigger_depth"])
-	if gs.Flags["trigger_depth"] > 8 {
+	gs.NoteTriggerDepth(depth)
+	if depth > 8 {
 		gameengine.LogLoopGuardFired(gs, "percard_dispatch_depth_cap", map[string]interface{}{
-			"depth": gs.Flags["trigger_depth"], "event": event,
+			"depth": depth, "event": event,
 		})
+		// r182 — per-GAME accounting for the dispatch this return is
+		// about to swallow. Counting only; the return below is
+		// unchanged and still happens for exactly the same inputs.
+		gs.NoteDepthCapSwallow(event)
 		// Emit a marker so TriggerCompleteness sees a follow-up event even
 		// when the runaway-loop guard silently swallows the dispatch.
 		gs.LogEvent(gameengine.Event{
