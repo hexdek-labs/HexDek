@@ -2306,17 +2306,19 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 			if p == nil || p.Card == nil {
 				continue
 			}
-			ot := gameengine.OracleTextLower(p.Card)
-			if strings.Contains(ot, "whenever a creature enters") && strings.Contains(ot, "damage") {
+			// r181a — four INDEPENDENT tests (not a switch): a single
+			// card can satisfy several and each adds its own weight.
+			// Each is now one bit of the per-Card text-predicate memo.
+			if cachedThreatCreatureEntersDamage(p.Card) {
 				dangerousPermanents += 0.3
 			}
-			if strings.Contains(ot, "whenever a creature dies") && strings.Contains(ot, "loses") {
+			if cachedThreatCreatureDiesLoses(p.Card) {
 				dangerousPermanents += 0.25
 			}
-			if strings.Contains(ot, "each opponent") && strings.Contains(ot, "loses") {
+			if cachedThreatEachOpponentLoses(p.Card) {
 				dangerousPermanents += 0.2
 			}
-			if strings.Contains(ot, "double") && strings.Contains(ot, "damage") {
+			if cachedThreatDoubleDamage(p.Card) {
 				dangerousPermanents += 0.3
 			}
 		}
@@ -2404,10 +2406,10 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 				if p == nil || p.Card == nil {
 					continue
 				}
-				ot := gameengine.OracleTextLower(p.Card)
-				if (strings.Contains(ot, "mill") || strings.Contains(ot, "cards from the top of") ||
-					(strings.Contains(ot, "library") && strings.Contains(ot, "graveyard"))) &&
-					(strings.Contains(ot, "opponent") || strings.Contains(ot, "target player") || strings.Contains(ot, "each player")) {
+				// r181a — the mill disjunction is pure oracle text and is
+				// now one memo bit; the myLibSize tiers below are game
+				// state and stay here.
+				if cachedThreatMillSource(p.Card) {
 					if myLibSize < 5 {
 						millPenalty = 0.8
 					} else if myLibSize < 10 {
