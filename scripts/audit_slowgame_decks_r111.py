@@ -45,13 +45,31 @@ if not per_card_pool:
 print()
 
 # ---- 2. walk every SLOW GAME line --------------------------------------
-line_re = re.compile(r"SLOW GAME ([0-9.]+)s turns=(\d+) decks=\[([^\]]*)\]")
+# r184 — THIS REGEX HAD BEEN DEAD SINCE r142 AND THE SCRIPT SILENTLY
+# MATCHED NOTHING ON EVERY CURRENT LOG. It pinned `turns=(\d+) decks=`
+# as adjacent, and two later changes inserted fields between them:
+# r142 added " s/turn=" and r170 added " seed=". The guard below then
+# fired SystemExit on every run, so this was an audit that could only
+# ever report failure. Tolerant `.*?` between the two anchors now, so a
+# third insertion does not kill it again — the fragile part was the
+# adjacency assumption, not any one field.
+#
+# `swallowed=` (r184) is the per-game depth-cap swallow count, optional
+# because logs written by an older binary do not carry it. None means
+# "this build did not report it"; 0 means "this game swallowed nothing".
+# Those are different facts and the script must not conflate them.
+line_re = re.compile(
+    r"SLOW GAME ([0-9.]+)s turns=(\d+).*? decks=\[([^\]]*)\]"
+    r"(?: swallowed=(\d+|n/a))?"
+)
 slow = []
 unresolved = collections.Counter()
 for L in open(LOG, errors="replace"):
     m = line_re.search(L)
     if m:
-        slow.append((float(m.group(1)), int(m.group(2)), m.group(3).split()))
+        sw = m.group(4)
+        sw = None if sw in (None, "n/a") else int(sw)
+        slow.append((float(m.group(1)), int(m.group(2)), m.group(3).split(), sw))
 
 print(f"SLOW GAMES in server.log: {len(slow)}")
 if not slow:
@@ -61,7 +79,7 @@ games_with_seven = 0
 games_with_loop  = 0
 slot_total = 0
 slot_with_seven = 0
-for _dur, _turns, decks in slow:
+for _dur, _turns, decks, _sw in slow:
     anyseven = False
     for d in decks:
         slot_total += 1
@@ -93,7 +111,38 @@ if unresolved:
 # ---- 3. the worst games ------------------------------------------------
 print()
 print("TEN WORST SLOW GAMES:")
-for dur, turns, decks in sorted(slow, reverse=True)[:10]:
+for dur, turns, decks, sw in sorted(slow, reverse=True)[:10]:
     s = any(deck_cards.get(d) for d in decks)
     l = any(LOOP_DECK in d for d in decks)
-    print(f"  {dur:7.1f}s turns={turns:3d}  seven={'Y' if s else 'n'}  loopdeck={'Y' if l else 'n'}")
+    swtxt = "  -" if sw is None else f"{sw:3d}"
+    print(f"  {dur:7.1f}s turns={turns:3d}  seven={'Y' if s else 'n'}  loopdeck={'Y' if l else 'n'}  swallowed={swtxt}")
+
+
+# ---- 4. r184 — the depth-cap join -------------------------------------
+# The whole point of putting swallowed= on the SLOW GAME line: a capped
+# game can now be attributed to its DECKS. Before r184 the cap counters
+# were process-global and this join was impossible.
+reported = [r for r in slow if r[3] is not None]
+print()
+if not reported:
+    print("DEPTH-CAP JOIN: no SLOW GAME line carries swallowed= "
+          "(pre-r184 binary) — nothing to join.")
+else:
+    capped = [r for r in reported if r[3] > 0]
+    print(f"DEPTH-CAP JOIN: {len(reported)} slow games report swallowed=, "
+          f"{len(capped)} of them swallowed >0")
+    if capped:
+        per_deck = collections.Counter()
+        per_deck_games = collections.Counter()
+        for _d, _t, decks, sw in capped:
+            for dk in set(decks):
+                per_deck[dk] += sw
+                per_deck_games[dk] += 1
+        print("  decks present in the most CAPPED slow games:")
+        for dk, c in per_deck_games.most_common(10):
+            print(f"     games={c:5d}  swallows={per_deck[dk]:7d}  {dk}")
+        print()
+        print("  NOTE: a deck is credited for every capped game it was "
+              "PRESENT in, which is not the same as causing it — four "
+              "decks sit at every table. Compare against how often each "
+              "deck appears in slow games overall before concluding.")
