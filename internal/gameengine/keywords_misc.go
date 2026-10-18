@@ -1181,16 +1181,28 @@ func ApplyGraft(gs *GameState, perm *Permanent) {
 			if g == nil || g == perm || g.Card == nil || g.PhasedOut {
 				continue
 			}
-			if g.Counters == nil || g.Counters["+1/+1"] <= 0 {
-				continue
-			}
-			if _, ok := keywordArgCostStrict(g.Card, "graft"); !ok {
-				continue
-			}
+			// r181 — ORDER. This test was LAST, after a map lookup and a
+			// full ability-list walk with a ToLower per keyword
+			// (keywordArgCostStrict). It is an int compare, and on a
+			// four-player table it rejects roughly three quarters of
+			// every battlefield outright, so running it first turns most
+			// of this scan into one comparison.
+			//
+			// Behaviour-preserving without relying on any invariant about
+			// which seat's Battlefield slice holds a permanent: the body
+			// only ever ran when all four predicates passed, and all four
+			// are pure, so their order cannot change the outcome.
+			//
 			// Graft triggered ability — the graft creature's controller may move a counter
 			// onto the entering creature (CR §702.58a). Auto-play: do so only when the entering
 			// creature is one the graft controller controls.
 			if perm.Controller != g.Controller {
+				continue
+			}
+			if g.Counters == nil || g.Counters["+1/+1"] <= 0 {
+				continue
+			}
+			if _, ok := keywordArgCostStrict(g.Card, "graft"); !ok {
 				continue
 			}
 			ApplyGraftTransfer(gs, g, perm)

@@ -147,3 +147,71 @@ the log growing normally). I said several hours would be proof; this is not
 that yet. The daily heap-corruption crash last fired at 06:27 today, before
 the 13:40:49 r179 deploy — but the previous one was Oct 13 17:12, a five-day
 gap, so 1h42m of silence says nothing about it either way.
+
+---
+
+# CORRECTION (r181): the audit was incomplete, and the class has three members
+
+**My r180 audit was wrong by omission.** I read every hook called from
+`etb_dispatch.go` and `observer_triggers.go` and declared the class closed at
+two. I never read `FirePermanentETBTriggers` (`etb_dispatch.go:91`), which is
+a *different* entry point that also runs on every permanent entering and
+calls six hooks of its own.
+
+What caught it was not re-reading the code. It was a **goroutine dump from a
+live hold**: with four workers all runnable, worker 0's stack read
+`ApplyGraft <- FirePermanentETBTriggers <- resolveCreateToken`. I had been
+analysing CPU profiles from these captures for rounds and had never once
+opened the goroutine dumps sitting beside them.
+
+## The third member: `ApplyGraft` (`keywords_misc.go:1164`)
+
+```go
+if !perm.IsCreature() { return }          // rejects nobody in a token swarm
+for _, seat := range gs.Seats {           // ALL FOUR SEATS
+    for _, g := range seat.Battlefield {
+        ...
+        if _, ok := keywordArgCostStrict(g.Card, "graft"); !ok { continue }
+```
+
+Same gate as evolve and soulbond — "is the entering permanent a creature",
+which rejects nobody in a creature-token swarm. **It is the worst of the
+three: evolve and soulbond walk only the controller's battlefield, this one
+walks all four.** Graft is a 2005 Ravnica keyword on a handful of cards, so
+in essentially every game the entire scan is pure loss.
+
+## Completed audit of `FirePermanentETBTriggers`
+
+| hook | shape | verdict |
+|---|---|---|
+| `ApplyStaticETBCounters` | iterates the entering permanent's own abilities | fine |
+| `ApplyEntersTappedUnless` | own abilities | fine |
+| `ApplySelfEntersTapped` | own abilities | fine |
+| `ApplyVanishingFadingETBCounters` | own abilities | fine |
+| `ApplyAmplifyETB` | gates on `keywordArgCostStrict(perm.Card,"amplify")` first | correctly gated |
+| **`ApplyGraft`** | **gates on `IsCreature()`, then scans all seats** | **the class** |
+
+## What r181 changed, and what it did not
+
+The controller test `perm.Controller != g.Controller` was the **last** of four
+predicates, after a map lookup and a full ability-list walk with a `ToLower`
+per keyword. It is an int compare and on a four-player table it rejects about
+three quarters of every battlefield. Hoisting it to first turns most of the
+scan into one comparison.
+
+This is behaviour-preserving **without relying on any invariant** about which
+seat's `Battlefield` slice holds a permanent: the body only ran when all four
+pure predicates passed, so their order cannot change the outcome. (The
+invariant does appear to hold — `ApplyControlChange` moves the permanent
+between slices — but the fix does not need it.)
+
+**The scan is still there.** `ApplyGraft` remains the third member of the
+owner-call class, and the per-seat tracked state that would fix evolve and
+soulbond would fix this too. The owner call is now worth **triple**.
+
+## Method note worth keeping
+
+The watcher has been capturing `goro-*.txt` and `goro2-*.txt` next to every
+`cpu-*.pb.gz` this whole time. CPU profiles answer "where is time going";
+the goroutine dumps answer "what is each worker actually doing", which is a
+different and in this case more useful question. Read both.
