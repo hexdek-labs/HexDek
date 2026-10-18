@@ -365,6 +365,14 @@ type GameState struct {
 	depthCapCascade    int    // swallows inside the current top-level cascade
 	depthCapFirstEvent string // event of the first swallow this game
 	depthCapMixed      bool   // a later swallow carried a different event
+	// r185 — the per-GAME high-water mark of depthCapCascade.
+	// depthCapCascade itself is reset by NoteCascadeRoot at every new
+	// top-level cascade, so the live field only ever holds the CURRENT
+	// cascade and is worthless once the game ends; the existing
+	// cascade maximum is a process-wide atomic and cannot be
+	// attributed to one game. This is the per-game half, and it is one
+	// int written only on the already-rare capped path.
+	depthCapCascadeGameMax int // largest single-cascade swallow run this game
 
 	// cacheID identifies this GameState to the per-Permanent cache slot.
 	// Assigned lazily on first use so that a bare &GameState{} literal

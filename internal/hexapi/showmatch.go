@@ -1052,6 +1052,66 @@ func grinderWorkerCount(numCPU, maxProcs int) int {
 // production path. Never written outside a test.
 var slowGameThreshold = 10 * time.Second
 
+// cappedGameThreshold is the per-game depth-cap swallow count at or
+// above which a game is logged by name, REGARDLESS OF DURATION.
+//
+// WHY A SECOND LINE EXISTS AT ALL. r184 put swallowed= on the SLOW
+// GAME line so a capped game could be attributed to its decks and
+// re-run from its seed. Measured in production one tick later, that
+// instrument has a sampling hole big enough to invalidate it:
+//
+//	13,509 games in the process
+//	   280 hit the depth cap
+//	     8 crossed slowGameThreshold and emitted a SLOW GAME line
+//	     2 of those 8 had swallowed > 0
+//
+// 278 of 280 capped games — 99.3% — never reach the join, because
+// capped games are overwhelmingly NOT slow games. Swallowing a
+// dispatch is the engine declining to do work; it makes a game
+// CHEAPER, not more expensive. Conditioning the attribution on
+// duration was answering the wrong sampling question.
+//
+// WHY THE THRESHOLD IS 1, FROM THE DISTRIBUTION AND NOT FROM TASTE.
+// The live per-game survival curve over those 13,509 games is
+// hist[1:280, 2:280, 4:222, 8:172, 16:97, 32:34, 64:8, 128:5, 256:4,
+// 512:3, 1024:2], max 1920 — read as "games that swallowed AT LEAST
+// N". Two things fall out of it:
+//
+//   - hist[1] == hist[2] == 280. NOT ONE GAME SWALLOWS EXACTLY ONE
+//     dispatch. A floor of 2 would log precisely the same 280 games
+//     today while quietly acquiring the power to drop games if the
+//     shape ever changes, which is the worse of two identical
+//     options. 1 is the honest floor.
+//   - A floor of 4 logs 222 games and loses 58 (21% of all capped
+//     games); a floor of 8 loses 108 (39%). Those are exactly the
+//     games the measurement is FOR. r182's whole question is telling
+//     "ordinary wide cascade, silently truncated" from "genuine
+//     runaway loop, correctly contained", and the low-swallow tail IS
+//     the first population. Raising the floor throws away the control
+//     group and keeps only the cases nobody disputes.
+//
+// LOG VOLUME, EXPLICITLY. At 1, this logs 280 of 13,509 games =
+// 2.07%, i.e. 20.7 lines per 1,000 games, against 0.6 per 1,000 for
+// SLOW GAME. It is ~35x the slow-game line and still two orders of
+// magnitude under the per-game noise the grinder already tolerates.
+// Each line is one Printf of fixed shape with no allocation beyond
+// the format. If a future corpus pushes the capped fraction into
+// double digits this constant is the one knob to turn, and the curve
+// above says the next sensible stop is 4 (79% retained).
+//
+// A game that is BOTH slow and capped emits BOTH lines, on purpose:
+// they carry the same seed= decks= run and join to each other, and
+// collapsing them would make "capped games are not slow games" — the
+// finding that motivated this round — unmeasurable from the log.
+//
+// A var, not a const, for r170's reason: a test must be able to drive
+// the real runOneGameFast and read the line production actually
+// writes, rather than hand-feeding the value at its destination. The
+// hexapi fixture decks cannot manufacture a swallow (see the r185
+// test header), so driving the transport means lowering the floor to
+// 0. Never written outside a test.
+var cappedGameThreshold = 1
+
 func (sm *Showmatch) runGrinder() {
 	workers := grinderWorkerCount(runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
@@ -2005,6 +2065,44 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			}
 			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f seed=%d decks=%v swallowed=%s",
 				d.Seconds(), turnsPlayed, perTurn, gameSeed, deckKeys, swallowed)
+		}
+
+		// r185 — attribute capped games INDEPENDENTLY OF DURATION.
+		// See cappedGameThreshold above for the sampling hole this
+		// closes and for where the floor of 1 comes from.
+		//
+		// KEY ORDER IS DELIBERATE and is NOT the shape the brief
+		// suggested. What the SLOW GAME line and abortContext
+		// (game_census_r131.go) actually share is the literal run
+		// "seed=%d decks=[...]", and decks=%v renders a []string
+		// bracket-terminated; r184 appended swallowed= AFTER decks=
+		// precisely so a bracket-terminated deck parse never sees it.
+		// Putting swallowed= before seed= here would give this line a
+		// different field order from the other two for no gain, so
+		// the run is reproduced verbatim and the new fields follow
+		// it. All three lines now join on the same substring.
+		//
+		// The duration is carried even though this line is explicitly
+		// not about duration: it is the evidence for the claim that
+		// motivated the line. If capped games turn out to cluster
+		// near the slow threshold after all, this field is what says
+		// so, and it costs nothing — d is already computed above.
+		//
+		// NIL GAMESTATE: no line, rather than r184's "n/a". r184's
+		// field sits on a line that exists for an unrelated reason,
+		// so it needed a token meaning "no game ran". Here the line's
+		// EXISTENCE is the measurement — emitting "CAPPED GAME ...
+		// swallowed=n/a" would enter a fabricated capped game into
+		// the very count this instrument produces. The nil path
+		// contributes nothing, which is the same honesty r184 was
+		// after by a different route.
+		if gs != nil {
+			swallowed := gs.DepthCapSwallowedCount()
+			if swallowed >= cappedGameThreshold {
+				log.Printf("grinder: CAPPED GAME %.1fs turns=%d seed=%d decks=%v swallowed=%d cascademax=%d",
+					d.Seconds(), turnsPlayed, gameSeed, deckKeys,
+					swallowed, gs.DepthCapCascadeMaxCount())
+			}
 		}
 	}()
 	defer func() {

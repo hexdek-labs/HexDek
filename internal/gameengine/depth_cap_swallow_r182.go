@@ -141,6 +141,20 @@ func (gs *GameState) NoteDepthCapSwallow(event string) {
 	bumpAtomicMax(&depthCapMaxPerGame, uint64(n))
 
 	gs.depthCapCascade++
+	// r185 — keep the per-GAME maximum alongside the process-wide one.
+	// NoteCascadeRoot zeroes depthCapCascade at every new top-level
+	// cascade, so without this the only surviving record of "how hard
+	// did ONE chain push against the cap" is the global atomic, which
+	// no single game can be held responsible for.
+	//
+	// COST: one int compare against a field this line already loaded,
+	// plus a store only on a new record. It is on the CAPPED path —
+	// the branch that already does up to four atomic operations — and
+	// not on the uncapped dispatch path, which is untouched. No
+	// allocation, no map.
+	if gs.depthCapCascade > gs.depthCapCascadeGameMax {
+		gs.depthCapCascadeGameMax = gs.depthCapCascade
+	}
 	bumpAtomicMax(&depthCapCascadeMax, uint64(gs.depthCapCascade))
 }
 
@@ -245,4 +259,33 @@ func (gs *GameState) DepthCapSwallowedCount() int {
 		return 0
 	}
 	return gs.depthCapSwallowed
+}
+
+// DepthCapCascadeMaxCount is this ONE game's largest swallow run
+// inside a single top-level dispatch cascade.
+//
+// WHY IT IS NOT gs.depthCapCascade. That field is the CURRENT cascade
+// and NoteCascadeRoot resets it to zero at every new top-level
+// dispatch, so by the time a game ends it holds whatever the last
+// cascade happened to do — usually zero. The number worth attributing
+// is the peak, which is why r185 added a separate field for it.
+//
+// WHY IT IS WORTH CARRYING NEXT TO THE SWALLOW TOTAL. The two
+// together are the shape discriminator this file's header is about:
+// 40 swallows spread over 40 separate cascades is a deck that keeps
+// building wide boards, and 40 swallows inside ONE cascade is a chain
+// re-entering the frontier without bound. The totals are identical
+// and the diagnoses are opposite.
+//
+// COST. One field load behind a nil check, read once per game from a
+// deferred log. Read-only: no reset, no side effect, nothing the
+// engine can branch on. Mirrors DepthCapSwallowedCount exactly,
+// including returning 0 for a nil receiver — the caller decides what
+// a missing GameState should render, because only the caller knows
+// whether a game ran at all.
+func (gs *GameState) DepthCapCascadeMaxCount() int {
+	if gs == nil {
+		return 0
+	}
+	return gs.depthCapCascadeGameMax
 }
