@@ -21,14 +21,17 @@ import (
 // rather than hidden: its only job is to make the deletion control go
 // red, and it does.
 func TestR167_GrinderLineWiresTheDeadlineField(t *testing.T) {
-	src, err := os.ReadFile("showmatch.go")
+	// r176 moved the line's rendering out of showmatch.go into
+	// renderGrinderLine so the transport could be driven directly;
+	// this source assertion follows it to the new file.
+	src, err := os.ReadFile("grinder_line_r176.go")
 	if err != nil {
-		t.Fatalf("reading showmatch.go: %v", err)
+		t.Fatalf("reading grinder_line_r176.go: %v", err)
 	}
 	s := string(src)
 
 	if !strings.Contains(s, `gameengine.LoopGuardLabelsFor("game_deadline")`) {
-		t.Fatal("showmatch.go no longer calls LoopGuardLabelsFor(\"game_deadline\") — " +
+		t.Fatal("grinder_line_r176.go no longer calls LoopGuardLabelsFor(\"game_deadline\") — " +
 			"the deadline's firing site is invisible in production again")
 	}
 	if !strings.Contains(s, `" deadlines=" + deadlines`) {
@@ -40,7 +43,7 @@ func TestR167_GrinderLineWiresTheDeadlineField(t *testing.T) {
 	// on deadlines still being IN the argument list in the right place,
 	// not on the list never changing — this assertion correctly went red
 	// when r169 edited the line, which is the whole point of it.
-	if !strings.Contains(s, "ccInvalPerGame, guards, deadlines, tmemo, guardTop, tdepth, tpField)") {
+	if !strings.Contains(s, "guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk)") {
 		t.Fatal("deadlines is not passed to the grinder log.Printf argument list")
 	}
 }

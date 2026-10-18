@@ -618,6 +618,14 @@ func evalCondition(gs *GameState, src *Permanent, c *gameast.Condition) bool {
 	// Fail closed: an unrecognized condition kind must not silently
 	// satisfy its gate. Log the kind so the unhandled set is a
 	// measurable burn-down list instead of invisible wrongness.
+	//
+	// r176 — the census comes FIRST and is unconditional on gs. The
+	// LogEvent below writes into gs.EventLog, which the grinder
+	// discards (EventLogNone), so for five rounds the burn-down list
+	// promised by the comment above has read zero on the only box that
+	// runs enough games to populate it. The counter is process-global
+	// and survives into the grinder's periodic line.
+	bumpConditionUnrecognized(c.Kind)
 	if gs != nil {
 		gs.LogEvent(Event{
 			Kind:   "condition_unrecognized",

@@ -1187,57 +1187,20 @@ func (sm *Showmatch) runGrinder() {
 				float64(dTMH)/float64(dTMH+dTMM)*100, dTMH, dTMH+dTMM)
 		}
 
-		// r160 — loop-guard firings, cumulative by guard name. Same
-		// defect r142 found for the trigger limiter and fixed for that
-		// ONE counter: LogLoopGuardFired writes only to the event log,
-		// the grinder runs EventLogNone, so all NINE guards were
-		// invisible on the only box where they matter. `grep -c
-		// game_deadline server.log` returns 0 over the whole log while
-		// that log holds games of 3102.6s and 2148.3s against an armed
-		// 10-minute cap. Empty string when nothing has ever fired, so
-		// the normal line is unchanged.
-		// r162 — the busiest (guard, label) pairs. Separate field so
-		// guards= stays a small stable column; empty when nothing fired.
-		guardTop := gameengine.LoopGuardLabelTop(5)
-		if guardTop != "" {
-			guardTop = " guardtop=" + guardTop
-		}
-		// r164 — text-predicate memo hit rate. r155's lesson: publish it,
-		// do not assume it. My charCache prediction was wrong by 4x.
-		tpHits, tpMiss, tpUnc := gameengine.TextPredicateStats()
-		tpField := ""
-		if tpHits+tpMiss > 0 {
-			tpField = fmt.Sprintf(" tp=%.1f%% (%d/%d)",
-				100*float64(tpHits)/float64(tpHits+tpMiss), tpHits, tpHits+tpMiss)
-			if tpUnc > 0 {
-				tpField += fmt.Sprintf(" tpunc=%d", tpUnc)
-			}
-		}
-		// r163 — trigger-nesting survival curve: games reaching >= depth d.
-		tdepth := gameengine.TriggerDepthSummary()
-		if tdepth != "" {
-			tdepth = " tdepth=" + tdepth
-		}
-		guards := gameengine.LoopGuardSummary()
-		if guards != "" {
-			guards = " guards=" + guards
-		}
-		// r167 — every label for game_deadline, not just the top 5.
-		// This is the field that says WHICH check site caught a capped
-		// game; guardtop= cannot, because the deadline fires once per
-		// game and is buried under per-card counters in the thousands.
-		// Empty until a game actually hits its cap.
-		deadlines := gameengine.LoopGuardLabelsFor("game_deadline")
-		if deadlines != "" {
-			deadlines = " deadlines=" + deadlines
-		}
-
-		log.Printf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
-			"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-			"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s",
-			n, gpm, intervalGPM, turnsPerGame, gcPerGame,
-			sm.eloSize(), float64(m.HeapAlloc)/1e6, float64(m.Sys)/1e6, m.NumGC, dLimited,
-			float64(dAlloc)/1e6, dClones, ccRate, dCCH, dCCH+dCCM, ccInvalPerGame, guards, deadlines, tmemo, guardTop, tdepth, tpField)
+		log.Print(renderGrinderLine(grinderWindow{
+			games: n, cumGPM: gpm, winGPM: intervalGPM,
+			turnsPerGame: turnsPerGame, gcPerGame: gcPerGame,
+			eloPool:  sm.eloSize(),
+			heapMB:   float64(m.HeapAlloc) / 1e6,
+			sysMB:    float64(m.Sys) / 1e6,
+			numGC:    m.NumGC,
+			dLimited: dLimited,
+			allocMB:  float64(dAlloc) / 1e6,
+			dClones:  dClones,
+			ccRate:   ccRate, ccHits: dCCH, ccLooks: dCCH + dCCM,
+			ccInvalPerGame: ccInvalPerGame,
+			tmemo:          tmemo,
+		}))
 
 		// r150 — per GAME, not per window: the window rate tracks
 		// throughput, which swings twofold here, and that confounder

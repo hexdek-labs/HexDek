@@ -61,18 +61,31 @@ func TestR169_TriggerMemoCountersMoveUnderRealDispatch(t *testing.T) {
 // the counters in place — the precise shape of r167's defect, which no
 // amount of testing in per_card could have caught.
 func TestR169_GrinderLineWiresTheTriggerMemoField(t *testing.T) {
-	b, err := os.ReadFile("showmatch.go")
-	if err != nil {
-		t.Fatalf("read showmatch.go: %v", err)
-	}
-	src := string(b)
-	for _, needle := range []string{
-		"per_card.TriggerMemoStats()",
-		`" tmemo=%.1f%% (%d/%d)"`,
-		"ccInvalPerGame, guards, deadlines, tmemo, guardTop, tdepth, tpField)",
+	// r176 split the rendering into grinder_line_r176.go; tmemo is
+	// still computed in showmatch.go (it is a window rate owned by the
+	// ticker loop) and passed through, so this checks both halves.
+	for _, f := range []struct {
+		file    string
+		needles []string
+	}{
+		{"showmatch.go", []string{
+			"per_card.TriggerMemoStats()",
+			`" tmemo=%.1f%% (%d/%d)"`,
+			"tmemo:          tmemo,",
+		}},
+		{"grinder_line_r176.go", []string{
+			"guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk)",
+		}},
 	} {
-		if !strings.Contains(src, needle) {
-			t.Errorf("showmatch.go no longer contains %s — the tmemo field is not wired", needle)
+		b, err := os.ReadFile(f.file)
+		if err != nil {
+			t.Fatalf("read %s: %v", f.file, err)
+		}
+		src := string(b)
+		for _, needle := range f.needles {
+			if !strings.Contains(src, needle) {
+				t.Errorf("%s no longer contains %s — the tmemo field is not wired", f.file, needle)
+			}
 		}
 	}
 }
