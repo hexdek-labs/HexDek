@@ -575,6 +575,50 @@ func DependencyOrder(effects []*ContinuousEffect, gs *GameState) []*ContinuousEf
 
 	n := len(effects)
 
+	// r171 — the quadratic scan below is dead work for most layers.
+	//
+	// effectDependsOn has exactly two blocks that can RETURN true: the
+	// ability block (requires some b at LayerAbility) and the
+	// type-change block (requires some b at LayerType AND some a at a
+	// layer ABOVE LayerType). Its third block, the layer-4/layer-4 one,
+	// returns nothing at all. So when neither shape is present in this
+	// set, every one of the n*n effectDependsOn calls is guaranteed to
+	// return false and the matrix is guaranteed to stay nil.
+	//
+	// applyLayer (the ONLY caller, below) filters candidates to a single
+	// (layer, sublayer) before calling, so in production the second
+	// shape cannot occur and this reduces to "is this the layer-6 pass".
+	// GetEffectiveCharacteristics makes thirteen applyLayer calls; twelve
+	// of them were paying a full n*n scan to rediscover "no dependency".
+	//
+	// The guard is written against the general set rather than against
+	// that single-layer invariant, so it stays correct if a future caller
+	// passes a mixed-layer slice. It is deliberately CONSERVATIVE: it can
+	// only ever cause the scan to RUN when it need not have, never to be
+	// skipped when a dependency was possible.
+	//
+	// Measured on a synthetic 80-effect layer: 51.9us per call at layer 7
+	// and 78.7us at layer 4, both for a result that could not have been
+	// anything but the input.
+	hasAbility, hasType, hasAboveType := false, false, false
+	for _, e := range effects {
+		if e == nil {
+			continue
+		}
+		if e.Layer == LayerAbility {
+			hasAbility = true
+		}
+		if e.Layer == LayerType {
+			hasType = true
+		}
+		if e.Layer > LayerType {
+			hasAboveType = true
+		}
+	}
+	if !hasAbility && !(hasType && hasAboveType) {
+		return effects // no pair can depend; already in timestamp order
+	}
+
 	// Build dependency graph.
 	// depends[i*n+j] = true means effect i depends on effect j
 	// (j must be applied before i).
@@ -699,28 +743,20 @@ func effectDependsOn(a, b *ContinuousEffect, gs *GameState) bool {
 	// operates at layer 4+ with a predicate that could read type info.
 	// Classic case: Opalescence (type-add at L4) makes enchantments into
 	// creatures, which changes whether Humility's predicate matches them.
-	if b.Layer == LayerType && a.Layer == LayerType {
-		// Within layer 4, if B adds types that A's predicate might check,
-		// A depends on B. We detect this by checking if B's source is a
-		// type-changer whose targets could include A's source.
-		if a.SourcePerm != nil && b.SourcePerm != nil && a.SourcePerm != b.SourcePerm {
-			// If B could change the type of A's source permanent, then A
-			// might depend on B (A's applicability could change).
-			if b.Predicate != nil && a.SourcePerm != nil {
-				// Check if B would apply to A's source — if so, A's source's
-				// type could change, affecting A's behavior.
-				func() {
-					defer func() { _ = recover() }()
-					if b.Predicate(gs, a.SourcePerm) {
-						// B applies to A's source → A might depend on B
-						// But this is within the same layer, and type changes
-						// affecting the source's own type line is a dependency.
-					}
-				}()
-			}
-		}
-	}
-
+	// CR 613.8a — two layer-4 type-changing effects CAN depend on each
+	// other (Blood Moon + Urborg is the canonical pair), and this engine
+	// does NOT detect that. The block that stood here called
+	// b.Predicate(gs, a.SourcePerm) inside a deferred recover and then
+	// threw the answer away: its `if` body was comments only, so it could
+	// not affect the result and only cost a predicate call plus a defer
+	// per layer-4 pair. Removing the call is behaviour-preserving; the
+	// GAP IT MARKED IS REAL AND IS NOT CLOSED HERE.
+	//
+	// Closing it is a rules change, not a cleanup: it would make a
+	// dependency fire that never has, which moves real game outcomes. It
+	// is filed rather than guessed at. Note also that the doc comment on
+	// DependencyOrder claims Blood Moon + Urborg is handled correctly --
+	// that claim is not backed by anything in this function.
 	// Ability-granting/removing dependency: B removes abilities (layer 6)
 	// and A is sourced from a permanent whose ability could be removed.
 	// Classic case: Humility strips abilities from creatures. If
