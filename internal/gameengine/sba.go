@@ -609,9 +609,45 @@ func removeCopiesFromZone(gs *GameState, zone *[]*Card) int {
 	if zone == nil || len(*zone) == 0 {
 		return 0
 	}
+	// r176 — find the first copy before compacting anything.
+	//
+	// What stood here rebuilt the slice unconditionally: `kept :=
+	// (*zone)[:0]` followed by `kept = append(kept, c)` for every card,
+	// then `*zone = kept`. On a zone with no copies in it -- which is
+	// nearly always -- that writes every element back over itself and
+	// reassigns the slice header for no change at all.
+	//
+	// It is not free. These are pointer stores into a heap-backed slice,
+	// so each one takes a GC write barrier. sba704_5e sweeps hand,
+	// graveyard, exile and library for all four seats on every
+	// state-based-action pass, and the libraries dominate: a production
+	// profile put ~1,480 such stores per call and 43% of this function's
+	// time in runtime.gcWriteBarrier.
+	//
+	// THE SIBLING WAS ALREADY FIXED AND THIS ONE WAS MISSED. sba704_5d
+	// performs the same compaction for tokens and gates its commit on
+	// `if removed > 0`. Nobody came back to 5e.
+	//
+	// The scan below is read-only, so it takes no barriers, and the
+	// common case now does zero writes and leaves the slice header
+	// alone. When a copy IS present the prefix is walked twice, which is
+	// the trade: copies in a hidden zone are rare, the no-copy case is
+	// the one that runs constantly.
+	src := *zone
+	first := -1
+	for i, c := range src {
+		if c != nil && c.IsCopy {
+			first = i
+			break
+		}
+	}
+	if first < 0 {
+		return 0
+	}
+
 	removed := 0
-	kept := (*zone)[:0]
-	for _, c := range *zone {
+	kept := src[:first] // the clean prefix is already in place
+	for _, c := range src[first:] {
 		if c != nil && c.IsCopy {
 			if c.InstanceID != "" {
 				MarkInstanceIDCeased(gs, c.InstanceID)
