@@ -120,11 +120,27 @@ The sharper and more useful statement:
 ## What follows
 
 1. **The instrumentation is still the right next step**, and now has a named
-   case to validate against: count attempted depth and per-game swallowed
-   dispatches above the cap, changing no behaviour. If this deck shows
-   thousands of swallows in one game while the median capped game shows ~20,
-   that single number separates "truncating a cascade" from "slicing ordinary
-   play" and tells us whether one cap can ever serve both.
+   case to validate against. If this deck shows thousands of swallows in one
+   game while the median capped game shows ~20, that single number separates
+   "truncating a cascade" from "slicing ordinary play" and tells us whether
+   one cap can ever serve both.
+
+   **CORRECTION, same day.** I first specified this as "count attempted depth
+   above the cap". **That measurement cannot exist**, and `r163`'s own file
+   header (`trigger_depth_hwm_r163.go`) says so in capitals, with a probe: an
+   infinite recursive handler fires the guard repeatedly and the maximum
+   depth ever *recorded* is 9. Depth only climbs when a dispatch RUNS and
+   nests; the cap returns before dispatching, so nothing can reach 10.
+   Recording it would mean running the handler the cap exists to skip — a
+   behaviour change, not instrumentation. I asked for it anyway because I
+   wrote the brief without reading the file that had already answered it.
+
+   What shipped instead is the nearest behaviour-neutral analogue:
+   **`cascademax`**, the largest swallow count within a single top-level
+   cascade (reset when nesting returns to depth 1). A mutual trigger pair
+   re-enters the frontier without bound inside one cascade; a wide finite
+   cascade is bounded by board size. That is the discriminator depth was
+   supposed to give us.
 2. **A reproducible case now exists.** Deck and seeds are in the log. Any
    repro runs off .206.
 3. **Stall work is now targetable.** "Make the engine faster" was unbounded.

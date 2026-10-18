@@ -388,10 +388,33 @@ func TestIntegration_DeleteDeck_TamperedTokenRejected(t *testing.T) {
 	h.Register(mux)
 
 	tok, _, _ := store.IssueToken()
-	// Flip last char of base64 — corrupts the HMAC tail.
-	bad := tok[:len(tok)-1] + "A"
+	// r182 — tamper with the DECODED HMAC byte, not the last base64
+	// character.
+	//
+	// The old version did `tok[:len(tok)-1] + "A"` and guarded only
+	// against producing the identical STRING. That is not enough.
+	// csrfTokenLen is 56 and 56 % 3 == 2, so the final base64 group
+	// encodes 2 bytes in 3 characters and the last character carries
+	// only 4 significant bits — the low 2 are padding that
+	// RawURLEncoding (non-strict) ignores on decode. Four of the 64
+	// alphabet characters therefore decode to the same byte, so for a
+	// token whose last character is one of them the "tampered" string
+	// differs while the decoded token is byte-identical. The token
+	// then verifies, the handler returns 200, and the test fails
+	// having tampered with nothing. Measured rate ~6% of tokens
+	// (4/64), which is exactly the intermittent failure seen in full
+	// -package runs.
+	//
+	// Flipping a bit inside the decoded HMAC is deterministic and
+	// actually tests what the name claims.
+	rawTok, err := base64.RawURLEncoding.DecodeString(tok)
+	if err != nil {
+		t.Fatalf("issued token did not decode: %v", err)
+	}
+	rawTok[len(rawTok)-1] ^= 0x01
+	bad := base64.RawURLEncoding.EncodeToString(rawTok)
 	if bad == tok {
-		bad = tok[:len(tok)-1] + "B"
+		t.Fatal("tamper was a no-op: flipped HMAC bit re-encoded identically")
 	}
 	req := httptest.NewRequest("DELETE", "/api/decks/alice/korvold", nil)
 	req.Header.Set("X-HexDek-Owner", "alice")
