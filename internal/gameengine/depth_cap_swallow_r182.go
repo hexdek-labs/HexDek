@@ -221,3 +221,28 @@ func ResetDepthCapForTest() {
 		depthCapBuckets[i].Store(0)
 	}
 }
+
+// DepthCapSwallowedCount is this ONE game's swallow total — the same
+// counter the process-wide accounting above aggregates, read back
+// per-game so a caller that knows which decks and which seed produced
+// this GameState can attribute the swallows to them.
+//
+// WHY THIS EXISTS. Everything in this file above is a process-global
+// aggregate. Production over 5,794 games said 138 of them (2.4%) hit
+// the cap, between them swallowing 2,936 dispatches, worst game 334.
+// It could not say WHICH 138. The grinder's "SLOW GAME" line already
+// prints seed= and decks=; this accessor is the missing half of that
+// join, and the reason it is a method on *GameState rather than
+// another atomic is that the attribution has to be per-game by
+// construction.
+//
+// COST. One field load behind a nil check. It is NOT on the fireTrigger
+// path — it is read once per game, from a deferred log — so it adds
+// nothing to dispatch. It is deliberately read-only: no reset, no
+// side effect, nothing the engine can branch on.
+func (gs *GameState) DepthCapSwallowedCount() int {
+	if gs == nil {
+		return 0
+	}
+	return gs.depthCapSwallowed
+}
