@@ -73,6 +73,23 @@ func (sp *SelfPlayManager) IsTraining() bool {
 // if the threshold is met. Non-blocking: training runs in a goroutine.
 // Enforces a 5-minute cooldown between attempts to avoid spam on failure.
 func (sp *SelfPlayManager) RecordSamples(n int) {
+	// r170 — nil-safe. WriteEnrichedSamples calls this unconditionally,
+	// and all four of its call sites invoke it on sm.selfPlay without a
+	// guard. sm.selfPlay is assigned unconditionally during Showmatch
+	// init (showmatch.go:739), so a live server never hits this — but
+	// any Showmatch built without that init (every test fixture) writes
+	// its samples file and then panics here on the training trigger.
+	// The panic is swallowed by the grinder's recover(), which is why it
+	// has sat in the hexapi gate for twenty-four rounds inside tests
+	// that still PASS, reported but never filed with a reproduction.
+	//
+	// A nil manager means no training is configured, and "count samples
+	// toward a training run that cannot happen" is correctly a no-op.
+	// The sample WRITE is deliberately left to complete above: it does
+	// not need a manager and is the useful half.
+	if sp == nil {
+		return
+	}
 	newCount := atomic.AddInt64(&sp.sampleCount, int64(n))
 	lastTrained := atomic.LoadInt64(&sp.lastTrained)
 	threshold := int64(sp.config.TrainThreshold)

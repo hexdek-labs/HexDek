@@ -1044,7 +1044,13 @@ func grinderWorkerCount(numCPU, maxProcs int) int {
 // grinder game is logged by name. A healthy game on .206 finishes well
 // under a second; 10s is far enough above the noise that the log stays
 // readable while still catching every real offender.
-const slowGameThreshold = 10 * time.Second
+// r170 — a var, not a const, ONLY so a test can drive the real
+// runOneGameFast and read the line it actually logs. r167 shipped
+// broken because every one of its tests hand-fed the value at the
+// destination instead of driving the transport; the seed this round
+// adds is a transported value, so the test has to come through the
+// production path. Never written outside a test.
+var slowGameThreshold = 10 * time.Second
 
 func (sm *Showmatch) runGrinder() {
 	workers := grinderWorkerCount(runtime.NumCPU(), runtime.GOMAXPROCS(0))
@@ -1943,6 +1949,11 @@ func (sm *Showmatch) getOrCreateCursePool(deckKey string, rng *rand.Rand) *hat.C
 // causes behind the same falling games-per-minute.
 func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	var deckKeys []string // declared here so crash recovery can access it
+	// r170 — hoisted out of the body so the SLOW GAME defer below can
+	// report it. The seed is assigned further down, next to the
+	// gameRng it feeds; declaring it here changes nothing about the
+	// stream, it only widens the scope to cover the deferred log.
+	var gameSeed int64
 
 	// r78 — name the slow games.
 	//
@@ -1974,8 +1985,16 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			if turnsPlayed > 0 {
 				perTurn = d.Seconds() / float64(turnsPlayed)
 			}
-			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f decks=%v",
-				d.Seconds(), turnsPlayed, perTurn, deckKeys)
+			// r170 — carry the SEED. Duration, turns and s/turn say a game
+			// was pathological; none of them let anyone RE-RUN it. Nine
+			// capped pods have been logged since r166 and not one is
+			// replayable, which has blocked every repro attempt in the
+			// chain. gs.Seed already carries this value and
+			// abortContext already prints it for aborts; the slow-game
+			// line is the one place it was missing. Same key order as
+			// abortContext (game_census_r131.go:78) so the two join.
+			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f seed=%d decks=%v",
+				d.Seconds(), turnsPlayed, perTurn, gameSeed, deckKeys)
 		}
 	}()
 	defer func() {
@@ -2029,7 +2048,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 		deckKeys[i] = deckKeyFromPath(pickedDecks[i].Path)
 	}
 
-	gameSeed := time.Now().UnixNano()
+	gameSeed = time.Now().UnixNano()
 	gameRng := rand.New(rand.NewSource(gameSeed))
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
