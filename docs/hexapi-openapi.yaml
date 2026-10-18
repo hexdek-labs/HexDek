@@ -377,6 +377,383 @@ components:
       description: Generic success body; specific fields are response-dependent.
       additionalProperties: true
 
+    DeckHistoryTotals:
+      type: object
+      description: |
+        Windowed aggregate over the same rows `games` carries, NOT a
+        lifetime stat. `games == wins + losses + draws`. The derived
+        fields are omitted (not zeroed) when the window is empty so a
+        client can distinguish "no games" from "0% over 0 games".
+      required: [games, wins, losses, draws]
+      properties:
+        games: { type: integer }
+        wins: { type: integer }
+        losses: { type: integer }
+        draws: { type: integer }
+        win_rate:
+          type: number
+          format: double
+          description: Ratio in 0..1 (`wins / games`). Omitted when the window is empty.
+        avg_turns:
+          type: number
+          format: double
+          description: Mean game length over the window. Omitted when the window is empty.
+
+    DeckGameHistoryRow:
+      type: object
+      description: One completed game in which this deck held a seat.
+      required: [game_id, finished_at, turns, seat, won, draw]
+      properties:
+        game_id: { type: integer, format: int64 }
+        finished_at:
+          type: integer
+          format: int64
+          description: Unix seconds.
+        turns: { type: integer }
+        seat:
+          type: integer
+          description: Seat index this deck occupied.
+        won: { type: boolean }
+        draw:
+          type: boolean
+          description: Takes precedence over `won` when classifying the result.
+        end_reason:
+          type: string
+          description: Omitted when the game recorded no end reason.
+
+    DeckRecord:
+      type: object
+      description: |
+        Rolling lifetime W/L projected from `showmatch_elo`. All-zero
+        when the DB has no row for the deck key or the showmatch
+        wiring is absent — clients should read `games == 0` as "no
+        history yet" rather than "0 wins and 0 losses".
+      required: [games, wins, losses]
+      properties:
+        games: { type: integer }
+        wins: { type: integer }
+        losses: { type: integer }
+        win_rate:
+          type: number
+          format: double
+          description: Ratio in 0..1, NOT a percentage. Omitted when `games` is 0.
+        rating:
+          type: number
+          format: double
+          description: Current ELO rating. Omitted when zero / absent.
+
+    DeckSnapshotCard:
+      type: object
+      description: |
+        One deck entry. `name` and `quantity` are always present. The
+        remaining fields only appear for decks stored as `.json` —
+        the plain-text deck format carries no cost or type data.
+      required: [name, quantity]
+      properties:
+        name: { type: string }
+        quantity: { type: integer }
+        cmc:
+          type: integer
+          description: JSON-format decks only.
+        mana_cost:
+          type: string
+          description: JSON-format decks only; omitted when empty.
+        type_line:
+          type: string
+          description: JSON-format decks only; the card's types joined by spaces.
+      additionalProperties: true
+
+    DeckSuggestionsAnalyzing:
+      type: object
+      description: |
+        Placeholder returned with HTTP 200 when no suggestions
+        sidecar exists yet but the deck file does — a background
+        Freya run has just been started and the client should poll.
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [analyzing]
+        message: { type: string }
+
+    DeckSuggestions:
+      type: object
+      description: |
+        Freya's `SuggestedChanges` rollup, served verbatim from the
+        `{id}.suggestions.json` sidecar.
+      required: [adds, cuts, swaps, summary, total_changes]
+      properties:
+        adds:
+          type: array
+          items: { $ref: '#/components/schemas/SuggestedAdd' }
+        cuts:
+          type: array
+          items: { $ref: '#/components/schemas/SuggestedCut' }
+        swaps:
+          type: array
+          items: { $ref: '#/components/schemas/SuggestedSwap' }
+        summary:
+          type: string
+          description: Human-readable one-line rollup.
+        total_changes: { type: integer }
+
+    SuggestedAdd:
+      type: object
+      required: [card_name, category, priority, reason, gap_size]
+      properties:
+        card_name: { type: string }
+        category:
+          type: string
+          description: e.g. `interaction`, `ramp`, `draw`, `wipes`, `tutors`, `manabase`.
+        priority:
+          type: integer
+          description: 1-10, higher is more urgent.
+          minimum: 1
+          maximum: 10
+        reason: { type: string }
+        gap_size:
+          type: integer
+          description: The current-vs-target gap that motivated the add.
+
+    SuggestedCut:
+      type: object
+      required: [card_name, category, priority, reason]
+      properties:
+        card_name: { type: string }
+        category:
+          type: string
+          description: e.g. `cuttable`, `off_archetype`, `redundant_tutor`.
+        priority: { type: integer, minimum: 1, maximum: 10 }
+        reason: { type: string }
+
+    SuggestedSwap:
+      type: object
+      required: [add_card_name, cut_card_name, category, priority, reason]
+      properties:
+        add_card_name: { type: string }
+        cut_card_name: { type: string }
+        category:
+          type: string
+          description: e.g. `manabase`, `interaction_upgrade`, `ramp_upgrade`.
+        priority: { type: integer, minimum: 1, maximum: 10 }
+        reason: { type: string }
+
+    GameSearchRow:
+      type: object
+      description: One game matching a `/api/games/search` query.
+      required: [game_id, finished_at, turns, winner, winner_name, end_reason, owner_seat, owner_won]
+      properties:
+        game_id: { type: integer, format: int64 }
+        finished_at:
+          type: integer
+          format: int64
+          description: Unix seconds.
+        turns: { type: integer }
+        winner:
+          type: integer
+          description: Winning seat index.
+        winner_name: { type: string }
+        end_reason: { type: string }
+        commanders:
+          type: array
+          description: Per-seat commanders. Omitted when empty.
+          items: { type: string }
+        deck_keys:
+          type: array
+          description: Per-seat `owner/id` keys. Omitted when empty.
+          items: { type: string }
+        owner_seat:
+          type: integer
+          description: |
+            Seat the `owner` filter matched, or `-1` when no owner
+            filter was supplied. On a mirror (the owner seated more
+            than one deck) this is the LOWEST matching seat index.
+        owner_won:
+          type: boolean
+          description: Computed against `owner_seat`; meaningless when `owner_seat` is -1.
+
+    ReplayEvent:
+      type: object
+      description: One entry in a replay's chronological event log.
+      required: [turn, kind, seat, description]
+      properties:
+        turn: { type: integer }
+        kind:
+          type: string
+          description: Event discriminator, e.g. `game_end`.
+        seat: { type: integer }
+        card_name:
+          type: string
+          description: Omitted when the event is not card-scoped.
+        score:
+          type: integer
+          description: Omitted when zero.
+        is_commander:
+          type: boolean
+          description: Omitted when false.
+        description: { type: string }
+
+    MVPCard:
+      type: object
+      description: |
+        A high-impact permanent on a seat's battlefield at game end.
+        `score` is the end-state proxy
+        `effective_cmc + positive_counters + (4 if commander)`.
+      required: [seat, card_name, cmc, turn_played, counters, score, is_commander]
+      properties:
+        seat: { type: integer }
+        card_name: { type: string }
+        cmc: { type: integer }
+        turn_played: { type: integer }
+        counters: { type: integer }
+        score: { type: integer }
+        is_commander: { type: boolean }
+
+    RegretCard:
+      type: object
+      description: A card a seat held but never deployed.
+      required: [seat, card_name, cmc, reason]
+      properties:
+        seat: { type: integer }
+        card_name: { type: string }
+        cmc: { type: integer }
+        reason:
+          type: string
+          description: How the regret was identified.
+
+    MulliganStat:
+      type: object
+      description: |
+        One seat's opening-hand outcome under the London mulligan.
+        All fields except `mulligans_taken` describe the FINAL
+        post-bottom hand.
+      required: [seat, mulligans_taken, opening_hand_size, lands, action_cards, keepable]
+      properties:
+        seat: { type: integer }
+        mulligans_taken: { type: integer }
+        opening_hand_size: { type: integer }
+        lands: { type: integer }
+        action_cards: { type: integer }
+        keepable: { type: boolean }
+
+    CommanderZoneVisit:
+      type: object
+      description: One seat's commander zone-movement tally.
+      required: [seat, commander_name, cast_count, in_zone_at_end, visits]
+      properties:
+        seat: { type: integer }
+        commander_name: { type: string }
+        cast_count: { type: integer }
+        in_zone_at_end: { type: boolean }
+        visits: { type: integer }
+
+    TurningPoint:
+      type: object
+      description: A derived pivotal moment in the game.
+      required: [turn, kind, seat, description]
+      properties:
+        turn: { type: integer }
+        kind: { type: string }
+        seat: { type: integer }
+        description: { type: string }
+
+    FullReplayResponse:
+      type: object
+      required: [game_id, total_turns, winner, events]
+      properties:
+        game_id: { type: integer, format: int64 }
+        total_turns:
+          type: integer
+          description: '`max(seed.turns, final_turn)` from the snapshot.'
+        winner:
+          type: integer
+          description: Winning seat index as recorded in the snapshot seed.
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/ReplayEvent' }
+
+    TurnStateResponse:
+      type: object
+      required: [game_id, turn, total_turns, events_through_n, mvps_emerged]
+      properties:
+        game_id: { type: integer, format: int64 }
+        turn:
+          type: integer
+          description: The turn requested in the path.
+        total_turns: { type: integer }
+        events_through_n:
+          type: array
+          description: Events with `turn <= n`, minus the terminal `game_end` when `n < total_turns`.
+          items: { $ref: '#/components/schemas/ReplayEvent' }
+        mvps_emerged:
+          type: array
+          description: MVP cards whose `turn_played` falls in 1..n.
+          items: { $ref: '#/components/schemas/MVPCard' }
+
+    ForensicsResponse:
+      type: object
+      description: Every array is `[]` rather than `null` when empty.
+      required: [game_id, winner, total_turns, turning_points, mvp_cards, regret_cards, mulligan_stats, commander_zone_visits]
+      properties:
+        game_id: { type: integer, format: int64 }
+        winner: { type: integer }
+        total_turns: { type: integer }
+        turning_points:
+          type: array
+          items: { $ref: '#/components/schemas/TurningPoint' }
+        mvp_cards:
+          type: array
+          items: { $ref: '#/components/schemas/MVPCard' }
+        regret_cards:
+          type: array
+          items: { $ref: '#/components/schemas/RegretCard' }
+        mulligan_stats:
+          type: array
+          items: { $ref: '#/components/schemas/MulliganStat' }
+        commander_zone_visits:
+          type: array
+          items: { $ref: '#/components/schemas/CommanderZoneVisit' }
+
+    LineageNode:
+      type: object
+      description: |
+        One node in a card instance's provenance tree. Recursive via
+        `source`, `enabler` and `merged`.
+      required: [instance_id]
+      properties:
+        instance_id: { type: string }
+        name: { type: string }
+        provenance:
+          type: string
+          description: How this instance came to exist.
+        source_instance_id: { type: string }
+        enabler_instance_id: { type: string }
+        enabler_history:
+          type: array
+          items: { type: string }
+        merged_card_ids:
+          type: array
+          items: { type: string }
+        source: { $ref: '#/components/schemas/LineageNode' }
+        enabler: { $ref: '#/components/schemas/LineageNode' }
+        merged:
+          type: array
+          items: { $ref: '#/components/schemas/LineageNode' }
+        description: { type: string }
+
+    LineageResponse:
+      type: object
+      required: [instance_id, tree]
+      properties:
+        instance_id:
+          type: string
+          description: Echo of the requested InstanceID.
+        tree:
+          $ref: '#/components/schemas/LineageNode'
+        text:
+          type: string
+          description: Flat tooltip-ready rendering of the same tree. Omitted when empty.
+
     Tag:
       type: string
       description: Free-form tag string applied to a deck.
@@ -449,6 +826,21 @@ components:
       description: Spectate room id.
       schema:
         type: string
+
+    ReplayGameIdParam:
+      name: game_id
+      in: path
+      required: true
+      description: |
+        Numeric game id (`showmatch_game.id`). Must parse as a
+        positive int64 — a non-numeric or non-positive value is a
+        400 (`invalid game id` on the `/api/replay` routes,
+        `invalid game_id` on the event stream). Note this is NOT the
+        UUID form used by the `/api/games/{id}` sub-tree.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
 
     XHexDekOwner:
       name: X-HexDek-Owner
@@ -1127,6 +1519,167 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "500": { $ref: '#/components/responses/InternalError' }
 
+  /api/decks/{owner}/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckGameHistory
+      summary: Per-game result rows for this deck plus a windowed aggregate roll-up.
+      description: |
+        Distinct from `/elo-history` (which returns gauntlet RUNS — a
+        rating snapshot per completed N-game gauntlet) and from
+        `/version-trends` (which buckets games by deck version). This
+        endpoint returns individual GAMES with no version-walking.
+
+        Rows are returned chronological-ASCENDING (the DB query is
+        newest-first and the handler reverses it) so a chart can plot
+        win/loss over time without re-sorting.
+
+        `totals` aggregates across the SAME window `games` covers, so
+        `totals.games == len(games)` always — it is a windowed view,
+        not a lifetime stat. The lifetime view lives in
+        `/snapshot`.`record`.
+
+        When the showmatch DB is not wired, the handler returns 200
+        with an empty `games` array and a zeroed `totals` rather than
+        an error.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: |
+            Max rows. Default 50, silently clamped to 500 — an
+            over-cap value is NOT rejected. A non-numeric or
+            non-positive value is ignored and the default applies.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Per-game rows plus windowed totals.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deck_key, totals, games]
+                properties:
+                  deck_key:
+                    type: string
+                    description: '`owner/id`.'
+                    examples: ["alice/korvold_combo"]
+                  totals:
+                    $ref: '#/components/schemas/DeckHistoryTotals'
+                  games:
+                    type: array
+                    description: Chronological-ascending game rows.
+                    items: { $ref: '#/components/schemas/DeckGameHistoryRow' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/snapshot:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckSnapshot
+      summary: Tournament-ready one-shot summary — list, commander, bracket, archetype, colors, W/L record.
+      description: |
+        A single round-trip for tournament / seeding tooling that
+        needs the full identification + matchmaking shape but not the
+        per-version DAG, archetype history, or analysis JSON that
+        `/api/decks/{owner}/{id}` + `/analysis` + `/elo-history`
+        collectively provide. Side-effect-free.
+
+        `bracket` is an INTEGER here (1..5 when known, `0` when
+        unresolvable) rather than the `"?"` sentinel string the rich
+        deck endpoint emits — pairing logic does ordered comparisons,
+        not equality checks against sentinels.
+
+        `record.win_rate` is a ratio in 0..1, not a percentage, and is
+        omitted entirely when the deck has no recorded games.
+      responses:
+        "200":
+          description: Deck snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [owner, id, deck_key, commander, color, bracket, primary_archetype, card_count, cards, record]
+                properties:
+                  owner: { type: string }
+                  id: { type: string }
+                  deck_key:
+                    type: string
+                    description: '`owner/id`.'
+                  commander:
+                    type: string
+                    description: Resolved commander name; empty when unresolvable.
+                  color:
+                    type: string
+                    description: Color identity as resolved by `resolveDeckMetadata`.
+                  bracket:
+                    type: integer
+                    description: 1..5 when known, 0 when unresolvable.
+                    minimum: 0
+                    maximum: 5
+                  primary_archetype:
+                    type: string
+                    description: Freya's primary archetype; empty when no analysis exists.
+                  card_count:
+                    type: integer
+                    description: Sum of per-entry `quantity`.
+                  cards:
+                    type: array
+                    items: { $ref: '#/components/schemas/DeckSnapshotCard' }
+                  record:
+                    $ref: '#/components/schemas/DeckRecord'
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckSuggestions
+      summary: Prioritized deck-builder suggestions — adds, cuts, and swaps with reasons.
+      description: |
+        Serves the `{id}.suggestions.json` sidecar Freya writes
+        alongside `strategy.json` / `profile.json`. The handler
+        streams the cached file bytes through verbatim; the shape is
+        Freya's `SuggestedChanges` (see
+        `cmd/hexdek-freya/suggested_changes.go`).
+
+        Read-then-fallback, mirroring `/analysis`: when the sidecar is
+        absent but the deck FILE exists, the handler kicks off a
+        background Freya run and returns **200** with an
+        `{"status":"analyzing"}` body so the frontend can poll. It is
+        NOT a 202 — the status lives in the body, not the status line.
+
+        `404` is returned only when the deck file itself cannot be
+        found.
+      responses:
+        "200":
+          description: |
+            Either the completed suggestion rollup, or the
+            `analyzing` placeholder while a background Freya run is
+            in flight.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DeckSuggestions'
+                  - $ref: '#/components/schemas/DeckSuggestionsAnalyzing'
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/decks/{owner}/{id}/curse:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
@@ -1282,6 +1835,46 @@ paths:
                         type: string
                         enum: [none]
         "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/gauntlet/{owner}/{id}/stop:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [gauntlet]
+      operationId: stopGauntlet
+      summary: Request an early stop of this deck's running gauntlet.
+      description: |
+        Flags the in-flight run as stop-requested, marks it `stopped`
+        with a finish timestamp, and fans the terminal state to any
+        live SSE subscribers on
+        `/api/tournaments/{owner}/{id}/events` so a spectating client
+        sees the stop immediately instead of at its next poll.
+
+        Idempotent and non-failing: when there is no run for the deck,
+        or the run is not in `running` state, the handler returns
+        **200** with `status: "not_running"` rather than a 404.
+
+        Guarded by CSRF (`requireCSRFLate`) — callers must send the
+        token from `GET /api/csrf` in `X-CSRF-Token`. No admin token
+        and no ownership check is applied.
+      responses:
+        "200":
+          description: Stop acknowledged, or reported as nothing-to-stop.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, deck_key]
+                properties:
+                  status:
+                    type: string
+                    enum: [stopped, not_running]
+                  deck_key:
+                    type: string
+                    description: '`owner/id`.'
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /api/tournament/{id}/stats:
     parameters:
@@ -1609,6 +2202,231 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "503": { $ref: '#/components/responses/ServiceUnavailable' }
 
+  /api/games/search:
+    get:
+      tags: [games]
+      operationId: searchGames
+      summary: Full-history game search with owner-relative win/loss filters.
+      description: |
+        Scans the full `showmatch_game` table. Distinct from
+        `/api/games/summaries`, which only walks games that have a
+        persisted observation snapshot and lacks the owner-relative
+        filters.
+
+        All query parameters are optional and combine with implicit
+        AND. Malformed numeric values are silently ignored rather
+        than rejected (`since` / `until` / `min_turn` / `max_turn` /
+        `limit` / `offset` all fall back to their default when they
+        fail to parse) — the one exception is `won`, which 400s on an
+        unrecognised value and 400s when supplied without `owner`.
+
+        `rows[].owner_seat` is `-1` when no `owner` filter was
+        supplied; when `owner` is set, `rows[].owner_won` is
+        `owner_seat == winner`. The response's `owner` field is
+        always present and is the empty string when unfiltered.
+      parameters:
+        - name: owner
+          in: query
+          required: false
+          description: |
+            Restrict to games where this owner held a seat.
+            Lowercased and trimmed, then validated with
+            `validatePathComponent` — a violation is a 400.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_.-]+$'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring against `winner_name`, `end_reason`, or any seat's commander.
+          schema: { type: string }
+        - name: won
+          in: query
+          required: false
+          description: |
+            Requires `owner`. Accepts `true|1|yes` or `false|0|no`
+            (case-insensitive); anything else is a 400.
+          schema:
+            type: string
+            enum: ["true", "1", "yes", "false", "0", "no"]
+        - name: min_turn
+          in: query
+          required: false
+          description: Inclusive lower bound on game length. Values <= 0 are ignored.
+          schema: { type: integer, minimum: 1 }
+        - name: max_turn
+          in: query
+          required: false
+          description: Inclusive upper bound on game length. Values <= 0 are ignored.
+          schema: { type: integer, minimum: 1 }
+        - name: end_reason
+          in: query
+          required: false
+          description: Exact case-insensitive match on the game's end reason.
+          schema: { type: string }
+        - name: since
+          in: query
+          required: false
+          description: Inclusive lower bound on `finished_at` (Unix seconds). Negative values ignored.
+          schema: { type: integer, format: int64, minimum: 0 }
+        - name: until
+          in: query
+          required: false
+          description: Inclusive upper bound on `finished_at` (Unix seconds). Negative values ignored.
+          schema: { type: integer, format: int64, minimum: 0 }
+        - name: limit
+          in: query
+          required: false
+          description: Page size. Default 50, clamped to 500 in the echoed value.
+          schema: { type: integer, default: 50, maximum: 500 }
+        - name: offset
+          in: query
+          required: false
+          description: Pagination offset. Negative values are echoed back as 0.
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Matching games, newest-first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows, count, limit, offset, owner]
+                properties:
+                  rows:
+                    type: array
+                    items: { $ref: '#/components/schemas/GameSearchRow' }
+                  count:
+                    type: integer
+                    description: '`len(rows)` for THIS page — not the unpaged total.'
+                  limit:
+                    type: integer
+                    description: Effective limit after defaulting and the 500 clamp.
+                  offset:
+                    type: integer
+                    description: Effective offset (negatives normalized to 0).
+                  owner:
+                    type: string
+                    description: Echo of the normalized owner filter; empty string when unfiltered.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/replay/{game_id}:
+    parameters:
+      - $ref: '#/components/parameters/ReplayGameIdParam'
+    get:
+      tags: [games]
+      operationId: getReplayFull
+      summary: Full replay as a single JSON document.
+      description: |
+        Same chronological event list that `GET /api/games/{id}/replay`
+        streams as NDJSON, packaged in one envelope so a JS client can
+        `await fetch().then(r => r.json())` instead of line-buffering.
+        A `meta`-style header (`total_turns`, `winner`) lets consumers
+        read the outcome without scanning every event.
+
+        Shares the snapshot cache with `/api/games/{id}/replay`,
+        `/summary` and `/summary.pdf`, so a snapshot warmed by any one
+        path is reused here.
+
+        Read-only and unauthenticated, matching the existing replay
+        and summary endpoints.
+
+        `total_turns` is `max(snapshot.Seed.Turns, snapshot.FinalTurn)`.
+      responses:
+        "200":
+          description: Full replay document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FullReplayResponse' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404":
+          description: Game id unknown, or the game has no persisted observation snapshot.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/replay/{game_id}/turn/{n}:
+    parameters:
+      - $ref: '#/components/parameters/ReplayGameIdParam'
+      - name: n
+        in: path
+        required: true
+        description: Turn number to project to. Must parse as an integer >= 1; otherwise `400 invalid turn`.
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [games]
+      operationId: getReplayTurnState
+      summary: State-at-turn-N projection of a replay.
+      description: |
+        The persisted snapshot is END-OF-GAME, not per-turn, so this
+        endpoint projects what was true "by turn N" from that single
+        snapshot: events with `turn <= n`, and the MVP cards whose
+        `turn_played` falls in `1..n`. It reflects the snapshot's
+        information-theoretic limit, not a true per-turn replay — that
+        would require every-turn snapshots.
+
+        The terminal `game_end` event is suppressed when `n` is less
+        than `total_turns`, since from turn N's perspective the game
+        had not ended.
+
+        Note the error ordering: the snapshot is loaded BEFORE `n` is
+        parsed, so an unknown `game_id` combined with a malformed `n`
+        reports the game error, not the turn error.
+      responses:
+        "200":
+          description: Turn-N projection.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TurnStateResponse' }
+        "400":
+          description: Non-numeric / non-positive `game_id`, or a turn below 1.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        "404":
+          description: Game id unknown, or the game has no persisted observation snapshot.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/replay/{game_id}/forensics:
+    parameters:
+      - $ref: '#/components/parameters/ReplayGameIdParam'
+    get:
+      tags: [games]
+      operationId: getReplayForensics
+      summary: One-shot bundle of every post-game analysis signal for a game.
+      description: |
+        Assembles in a single round-trip what would otherwise need
+        five separate hits: turning points (derived via the shared
+        snapshot-summary builder), MVP cards, regret cards, mulligan
+        stats, and commander zone visits.
+
+        Every array is normalized to `[]` rather than `null` when
+        empty, so a JS consumer never has to nil-check.
+      responses:
+        "200":
+          description: Forensics bundle.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ForensicsResponse' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404":
+          description: Game id unknown, or the game has no persisted observation snapshot.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
   /api/players/compare:
     get:
       tags: [profile]
@@ -1745,6 +2563,114 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
         "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/events/{game_id}/stream:
+    parameters:
+      - $ref: '#/components/parameters/ReplayGameIdParam'
+    get:
+      tags: [live]
+      operationId: gameEventStreamSSE
+      summary: Server-Sent Events stream of significant engine events for one game.
+      description: |
+        One-way read-only companion to the global bidirectional
+        `/ws/events` WebSocket, scoped to a single game. SSE is plain
+        HTTP/1.1, so it survives proxies that block WS upgrades,
+        needs no client library (browser `EventSource`), and
+        reconnects automatically.
+
+        The handler subscribes to the global EventBus with no type
+        filter and filters per-frame by extracting `game_id` from the
+        event payload. An event that carries no `game_id` is dropped
+        rather than broadcast — a cluster-wide event must not surface
+        on a per-game stream.
+
+        Frame sequence: one `ready` event immediately on connect
+        (`EventSource` cannot otherwise distinguish "connected" from
+        "no messages yet"), then one frame per matching engine event,
+        with a `: ping` comment every 15s to keep idle proxies from
+        severing the connection.
+
+        Event types currently surfaced: `game.turn_transition`,
+        `game.combo_fired`, `game.player_loss`, `game.end`. The wire
+        format does not gate on an enum, so new types appear without
+        a spec change.
+
+        Rate-limited per-IP BEFORE the upgrade, since every reconnect
+        would otherwise consume a subscriber slot and a goroutine.
+      responses:
+        "200":
+          description: |
+            SSE stream. The opening frame is `event: ready` with
+            `{game_id, server_now}`. Every later frame's `data:` line
+            is a JSON object `{event, data, timestamp}` where
+            `timestamp` is RFC3339Nano and `data` is the raw
+            publisher payload (shape varies by event type).
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500":
+          description: The underlying ResponseWriter does not support flushing, so streaming is impossible.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        "503":
+          description: Event bus not configured in this binary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/spectator/lineage/{instance_id}:
+    parameters:
+      - name: instance_id
+        in: path
+        required: true
+        description: |
+          Canonical InstanceID. Validated against
+          `^[a-z][0-3](OG|TK|CP|AB)(V|H)(C|[WUBRG]{1,5})[0-9]+$`
+          before any work is done — the pattern doubles as a
+          path-traversal / log-injection guard. A non-matching value
+          is a 400.
+        schema:
+          type: string
+          pattern: '^[a-z][0-3](OG|TK|CP|AB)(V|H)(C|[WUBRG]{1,5})[0-9]+$'
+    get:
+      tags: [spectate]
+      operationId: getSpectatorLineage
+      summary: Provenance tree for one card instance in a live spectate room.
+      description: |
+        Scans every live spectate room's most-recent snapshot for the
+        requested InstanceID, then walks that room's lineage forest.
+        The InstanceID system is per-game, so lineage is never
+        cross-walked between rooms — once the owning room is found,
+        the whole tree comes from that room's snapshot.
+
+        `404` when the ID is unknown to every live room's CURRENT
+        snapshot: the card has ceased, the game ended and the room
+        was torn down, or the ID was never minted in a live game.
+
+        Rate-limited on both the per-IP and per-owner
+        (`X-HexDek-Owner`) axes, charged BEFORE the room scan —
+        a format-valid-but-unknown ID costs a full scan of every
+        room, so the 404 path is as expensive as a hit and must be
+        throttled identically.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Lineage tree for the instance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineageResponse' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "503":
+          description: Spectator room manager not available in this binary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   /ws/live:
     get:
@@ -3156,33 +4082,3 @@ paths:
                 additionalProperties: true
         "400": { $ref: '#/components/responses/BadRequest' }
 
-  /graphql/subscriptions:
-    get:
-      tags: [graphql]
-      operationId: graphqlSubscriptionsWs
-      summary: WebSocket — GraphQL subscriptions over the `graphql-transport-ws` subprotocol.
-      description: |
-        Companion to `POST /graphql` (queries + mutations) and the
-        `/ws/events` raw event stream. Clients that already speak
-        GraphQL (Apollo Client, urql, etc.) connect with the
-        `graphql-transport-ws` subprotocol and run subscription
-        documents against the same schema.
-
-        Current subscription roots: `gameEnded`. Adding more is a
-        schema-only change; the transport handles any number of
-        subscription fields without code edits.
-
-        Capacity-capped at 100 concurrent sessions (same budget as
-        /ws/events); further upgrades return `503 too many
-        subscription clients` as the unified ErrorResponse envelope
-        before the WebSocket handshake.
-
-        Selective field projection works end-to-end — asking for
-        `subscription { gameEnded { id winner } }` produces frames
-        that omit every other field. The field-projection ergonomic
-        is the load-bearing argument for this surface vs the
-        existing /ws/events JSON firehose.
-      responses:
-        "101":
-          description: Switching Protocols → WebSocket (subprotocol `graphql-transport-ws`).
-        "503": { $ref: '#/components/responses/ServiceUnavailable' }
