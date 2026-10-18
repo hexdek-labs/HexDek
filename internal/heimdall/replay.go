@@ -467,13 +467,35 @@ func SnapshotBattlefieldNames(gs *gameengine.GameState) map[string]int {
 	return counts
 }
 
-// DiffBattlefield returns names of permanents that are new in post
-// relative to pre (accounting for counts).
+// DiffBattlefield returns the DISTINCT names of permanents that are new
+// in post relative to pre. A name that gained ten copies appears once.
+//
+// r179 — this used to append one entry PER COPY ("accounting for
+// counts"), and that was unbounded: the slice length was the number of
+// permanents that entered this turn. In a token-swarm game -- the
+// dominant stall shape in production -- a single turn can mint an
+// enormous number of identically-named tokens, so one turn produced a
+// slice with that many copies of one string, and the caller retained it
+// in a per-turn map for the whole game.
+//
+// NO CONSUMER EVER USED THE MULTIPLICITY. All four production call
+// sites feed the result to ExtractCoTriggers, whose first act is
+// distinctNames(); one of them also builds a first-played index that
+// keeps only the first occurrence of each name. So the duplicates were
+// built, retained, copied into a second same-sized slice and map by
+// distinctNames, and then discarded.
+//
+// Emitting each name once is therefore behaviour-preserving for every
+// consumer (verified by a differential test against the previous
+// implementation composed with distinctNames) and bounds the result by
+// the number of distinct card names rather than by the token count.
+//
+// Found via a SIGQUIT goroutine dump of a wedged production process,
+// which was on-CPU inside this function's map access.
 func DiffBattlefield(pre, post map[string]int) []string {
 	var newCards []string
 	for name, postCount := range post {
-		preCount := pre[name]
-		for i := 0; i < postCount-preCount; i++ {
+		if postCount > pre[name] {
 			newCards = append(newCards, name)
 		}
 	}
