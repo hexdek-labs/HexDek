@@ -3499,34 +3499,29 @@ func (e *GameStateEvaluator) scoreDrainEngine(gs *gameengine.GameState, seatIdx 
 		if p == nil || p.Card == nil {
 			continue
 		}
-		ot := gameengine.OracleTextLower(p.Card)
+		// r180b — these five clusters are pure functions of the lowered
+		// oracle text and are now memoized per Card on bits 16-20. The
+		// fodder branch's IsToken/IsCreature reads are permanent state,
+		// not text, and stay inline below.
 
 		// Death-trigger drain payoffs: Blood Artist, Zulaport Cutthroat,
 		// Bastion of Remembrance, Vindictive Vampire, Syr Konrad, etc.
-		if strings.Contains(ot, "whenever") &&
-			(strings.Contains(ot, "creature dies") || strings.Contains(ot, "a creature dies")) &&
-			(strings.Contains(ot, "loses") || strings.Contains(ot, "drain") ||
-				strings.Contains(ot, "each opponent") || strings.Contains(ot, "life")) {
+		if cachedDrainDeathTriggerPayoff(p.Card) {
 			drainPayoffs += 1.0
 		}
 
 		// Lifegain-trigger drain: Dina, Vito, Marauding Blight-Priest
-		if strings.Contains(ot, "whenever you gain life") &&
-			(strings.Contains(ot, "loses") || strings.Contains(ot, "each opponent")) {
+		if cachedDrainLifegainPayoff(p.Card) {
 			lifeGainPayoffs += 1.0
 		}
 
 		// ETB/LTB drain: Wayward Servant, Corpse Knight
-		if strings.Contains(ot, "whenever") &&
-			strings.Contains(ot, "enters") &&
-			(strings.Contains(ot, "loses") || strings.Contains(ot, "each opponent")) {
+		if cachedDrainETBPayoff(p.Card) {
 			drainPayoffs += 0.7
 		}
 
 		// Sacrifice outlets (free or cheap)
-		if (strings.Contains(ot, "sacrifice a creature") || strings.Contains(ot, "sacrifice another") ||
-			strings.Contains(ot, "sacrifice an artifact") || strings.Contains(ot, "sacrifice a permanent")) &&
-			!strings.Contains(ot, "when") {
+		if cachedDrainSacOutlet(p.Card) {
 			sacOutlets += 1.0
 		}
 
@@ -3537,7 +3532,7 @@ func (e *GameStateEvaluator) scoreDrainEngine(gs *gameengine.GameState, seatIdx 
 		if p.IsCreature() {
 			if p.IsToken() {
 				fodder += 0.5
-			} else if strings.Contains(ot, "when") && strings.Contains(ot, "dies") {
+			} else if cachedDrainFodderDeathTrigger(p.Card) {
 				fodder += 0.8
 			}
 		}
@@ -3718,10 +3713,8 @@ func (e *GameStateEvaluator) scoreOpponentGraveyard(gs *gameengine.GameState, se
 			if p == nil || p.Card == nil {
 				continue
 			}
-			ot := gameengine.OracleTextLower(p.Card)
-			if (strings.Contains(ot, "return") || strings.Contains(ot, "put")) &&
-				strings.Contains(ot, "graveyard") &&
-				strings.Contains(ot, "battlefield") {
+			// r180b — cached on bit 21; same three-clause expression.
+			if cachedOpponentReanimationEnabler(p.Card) {
 				threat -= 0.30
 			}
 		}
