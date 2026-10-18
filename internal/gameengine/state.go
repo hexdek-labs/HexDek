@@ -2178,10 +2178,26 @@ func (p *Permanent) IsCreature() bool {
 	// layer-aware GameState.IsCreatureOf share one source of truth —
 	// before r107 only this one implemented them, and the creature SBAs
 	// call the other one.
-	if permSuppressesCreatureType(p) {
+	// r172 — ORDER. permSuppressesCreatureType is three string-keyed
+	// map lookups into p.Flags; hasType is a short slice scan. Measured
+	// in a production stall profile, the suppression check was 73% of
+	// this function and 79% of THAT was runtime.mapaccess1_faststr --
+	// 13.7% of the whole stalled worker, spent asking about three flags
+	// that are almost never set.
+	//
+	// (!S && T) and (T && !S) are the same answer for two pure
+	// predicates, so this is behaviour-preserving; it only changes which
+	// one gets to short-circuit. Putting the cheap one first means every
+	// NON-creature scanned anywhere in the engine stops at the slice
+	// scan instead of paying three map hashes first.
+	//
+	// This does NOT help a creature swarm, where hasType returns true and
+	// the suppression check still runs -- that case is handled by the
+	// callers in observer_triggers.go, not here.
+	if !p.hasType("creature") {
 		return false
 	}
-	return p.hasType("creature")
+	return !permSuppressesCreatureType(p)
 }
 
 // permIsBestowed reports whether p is currently attached as a bestow Aura.

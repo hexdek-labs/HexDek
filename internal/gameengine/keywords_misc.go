@@ -2749,10 +2749,28 @@ func FireEvolveTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 		if p == nil || p.Card == nil || p == newCreature {
 			continue
 		}
-		if !p.IsCreature() {
+		// r172 — ORDER, and it is the SAME mistake r80 fixed one level
+		// down. permHasTriggerEvent carries r80's own comment: "ORDER
+		// MATTERS HERE, and getting it wrong cost ~55% of grinder
+		// throughput ... these callers scan EVERY permanent ... and
+		// almost none of them carry the trigger." r80 fixed the inside
+		// of that predicate and never looked at its CALLERS, which
+		// still asked the expensive question first.
+		//
+		// Almost nothing on a battlefield has evolve, and nearly
+		// everything in a token swarm is a creature -- so IsCreature
+		// rejects nobody while costing three map hashes each, and the
+		// evolve test rejects everybody. Measured in a production stall
+		// profile: IsCreature 3.79s here against keywordActive's 0.99s
+		// over the same permanents.
+		//
+		// Both predicates are pure (keywordActive and permHasTriggerEvent
+		// only read state and fill the characteristics memo), so
+		// swapping two conjuncts is behaviour-preserving.
+		if !keywordActive(gs, p, "evolve") && !permHasTriggerEvent(gs, p, "evolve") {
 			continue
 		}
-		if !keywordActive(gs, p, "evolve") && !permHasTriggerEvent(gs, p, "evolve") {
+		if !p.IsCreature() {
 			continue
 		}
 		// Check if the entering creature has greater power OR greater

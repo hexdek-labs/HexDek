@@ -214,13 +214,29 @@ func FireSoulbondTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 	// "another creature" that an already-out soulbond creature pairs with.)
 	// Stops once newCreature is paired — a creature pairs with only one other.
 	for _, p := range bf {
-		if p == nil || p == newCreature || !p.IsCreature() {
-			continue
-		}
+		// r172 — ORDER, same finding as FireEvolveTriggers (see the note
+		// there). HasSoulbond rejects essentially every permanent on a
+		// real board; IsCreature rejects almost none of a token swarm
+		// while costing three string-keyed map lookups apiece. Measured
+		// in a production stall profile: IsCreature 4.67s here against
+		// HasSoulbond's 1.67s over the same permanents.
+		//
+		// The IsPaired(newCreature) break moves to the top of the body.
+		// That is behaviour-preserving: newCreature can only become
+		// paired by a PairSoulbond call made LATER in this same loop,
+		// and once it is paired every remaining iteration would reach
+		// this break and stop anyway -- so breaking here reaches the
+		// same end state, just without walking the tail first.
 		if IsPaired(newCreature) {
 			break
 		}
+		if p == nil || p == newCreature {
+			continue
+		}
 		if !HasSoulbond(gs, p) || IsPaired(p) {
+			continue
+		}
+		if !p.IsCreature() {
 			continue
 		}
 		if PairSoulbond(gs, p, newCreature) {
