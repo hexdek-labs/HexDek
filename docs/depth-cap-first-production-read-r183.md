@@ -354,3 +354,107 @@ facing a per-cascade problem, which is the case where the instrument
 and the pathology actually match. Raising it genuinely does risk
 letting a runaway run. **Still do not move it**, but the target is now
 clear: find what re-enters inside a single cascade on a token board.
+
+---
+
+# FOURTH AMENDMENT — n=701. Three of my own n=48 numbers were wrong,
+# and the pick-frequency control finally exists.
+
+14.6x the sample. **Every correction below is to a claim I made last
+tick from n=48.**
+
+```
+capped games attributed                               701
+ratio EXACTLY 1.00 (all swallows in ONE cascade)      565/701 = 81%
+  ...among the 244 games with >=16 swallows           156/244 = 64%
+  ratio <0.50                                          79 games
+duration: median 0.30s  p90 0.60s  MAX 218.6s   >=10s: 1
+swallowed: median 11  p90 41  max 3128
+Sorin at the table                                    3 of 701
+```
+
+## CORRECTION 1 — "92% single cascade" was an n=48 overstatement
+
+It is **81%** overall, and **64% among the heavy games** — where at
+n=48 I reported 13 of 14 (93%). **The heavy games moved the FURTHEST
+in the wrong direction**, which is the opposite of what the small
+sample implied, and they are the games that matter most.
+
+79 games put less than half their swallows in their biggest cascade.
+**So both mechanisms are real:** a single re-entrant cascade is the
+majority case, but roughly a third of heavy games genuinely spread
+swallows across many cascades. The correct statement is "predominantly
+one runaway cascade", not "it is one runaway cascade".
+
+## CORRECTION 2 — "ZERO capped games reached 10s" is now false
+
+**One game ran 218.6 seconds** with the cap firing. At n=48 the max was
+1.4s and I said none reached the slow threshold; I should have written
+"none in 48", because an absence in a small sample of a long-tailed
+distribution is the least durable claim available. Median 0.30s and p90
+0.60s still hold — **capped games are overwhelmingly fast, with a tail
+that does reach the stall population.** The two populations are mostly
+disjoint, not strictly disjoint.
+
+## CORRECTION 3 — "Sorin is in ZERO of the capped games" is false
+
+**3 of 701.** Against ~2 expected for an average deck, that is
+unremarkable — so the *conclusion* (Sorin has no special relationship
+to the depth cap) survives intact. But I stated "absent, not
+under-represented" in bold off a sample of 48, and absence at n=48 was
+never evidence of absence.
+
+## THE CONTROL I OWED — observed vs expected from pick frequency
+
+Deck selection is **not** uniform: `matchmaking.AssembleBracketPod`
+weights by TrueSkill proximity, info-gain and bracket, so "expected =
+4/poolsize" would have been wrong. The real denominator is each deck's
+lifetime game count from `/api/live/elo` (1,425 decks).
+
+**Join fix worth recording: `deck_id` is NOT unique in that table** —
+`imported_deck` appears 4 times, plus 2 more collisions. Keying on
+`deck_id` alone silently merged different owners' decks. `owner +
+deck_id` is unique; all 1,090 observed decks then matched.
+
+| deck | capped games | expected | **rate** | swallows |
+|---|---:|---:|---:|---:|
+| gerrard_weatherlight_hero_b4 | 20 | 1.98 | **10.1x** | 1,968 |
+| krenko_mob_boss_b4 | 16 | 1.98 | **8.1x** | 918 |
+| elas_il_kor_sadistic_pilgrim_b4 | 14 | 1.98 | 7.1x | 466 |
+| kess_dissident_mage_b4 | 12 | 1.97 | 6.1x | 185 |
+| marrow_gnawer_b3 | 11 | 1.98 | 5.5x | 815 |
+
+By **volume** rather than rate: winota 4,396 (6 games), queen_marchesa
+3,192 (7), **yarok_the_desecrated 3,173 (5)**, witherbloom 3,134 (2).
+
+## THE MECHANISM, FROM VERIFIED ORACLE TEXT
+
+Two names in those lists are not generic token decks — they are
+cascade amplifiers, and both oracle texts were fetched this session:
+
+- **Yarok, the Desecrated** — *"If a permanent entering causes a
+  triggered ability of a permanent you control to trigger, that
+  ability triggers an additional time."* **A literal ETB-trigger
+  doubler**, i.e. a multiplier on exactly the quantity the cap
+  measures. 3,173 swallows in 5 games.
+- **Gerrard, Weatherlight Hero** (the #1 by rate, 10.1x) — *"When
+  Gerrard dies, exile it and return to the battlefield all artifact and
+  creature cards in your graveyard that were put there from the
+  battlefield this turn."* **A dies-trigger that causes a mass
+  simultaneous ETB wave** — death feeding entry feeding death.
+
+That is a far more specific hypothesis than "token decks": the
+population is enriched for **cards that multiply or re-enter the
+ETB/dies loop**, which is consistent with `capfirst=creature_dies` at
+64% of games.
+
+**n=701 with ~2 expected per deck is still thin per-deck, and a rate of
+10.1x on 20 observed games has a wide interval.** Treat the mechanism
+as the finding and the individual names as leads.
+
+## NEXT
+
+Instrument which EVENT recurs *within* one cascade, not just which
+event the cap first fires on. That distinguishes "Yarok doubled an ETB
+wave" from "a dies/ETB pair is re-entering", and it is the last
+question the current fields cannot answer.
