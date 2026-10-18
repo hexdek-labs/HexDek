@@ -3,6 +3,8 @@ package gameengine
 import (
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
@@ -1398,13 +1400,117 @@ var counterLimitWords = map[string]int{
 	"eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
 }
 
+// counterLimitNeedle is the only phrase parseCounterLimit can ever match.
+// It must stay lowercase ASCII (containsSubstrFold's precondition).
+const counterLimitNeedle = "can't have more than "
+
+// containsSubstrFold reports whether needle occurs in haystack under exactly
+// the same case folding strings.ToLower applies, WITHOUT allocating a lowered
+// copy of haystack.
+//
+// Precondition: needle must be lowercase ASCII.
+//
+// Equivalence argument (r172): strings.ToLower is a one-to-one rune map --
+// it applies unicode.ToLower to each rune (its ASCII fast path is the same
+// map restricted to A-Z), never a multi-rune special case. So
+// strings.Index(strings.ToLower(h), n) >= 0 iff there is a rune offset i in h
+// such that the runes of h from i onward lower, one for one, to the runes of
+// n. That is exactly what this scan tests. Invalid UTF-8 decodes to
+// RuneError in both paths and RuneError lowers to itself (non-ASCII), so it
+// can never match an ASCII needle byte under either implementation.
+//
+// Note the length guard is sound even though lowering can SHRINK the byte
+// length (U+212A KELVIN SIGN is 3 bytes, 'k' is 1): runes(h) <= len(h), and
+// since needle is ASCII runes(n) == len(n), so len(h) < len(n) implies
+// runes(h) < runes(n) and no match is possible.
+//
+// NB: the package already has an unrelated containsFold([]string, string) in
+// layers.go, hence the distinct name.
+func containsSubstrFold(haystack, needle string) bool {
+	if len(needle) == 0 {
+		return true
+	}
+	if len(haystack) < len(needle) {
+		return false
+	}
+	// n0 / n0u are the two ASCII bytes that can begin a match. A non-ASCII
+	// lead byte is handled by the slow arm below (only U+212A and U+0130
+	// lower to ASCII at all -- see TestR172_OnlyKelvinAndDotlessILowerToASCII
+	// -- but the arm is written generically so the claim is not load-bearing).
+	n0 := needle[0]
+	n0u := n0
+	if 'a' <= n0 && n0 <= 'z' {
+		n0u = n0 - ('a' - 'A')
+	}
+	for i := 0; i < len(haystack); i++ {
+		c := haystack[i]
+		if c != n0 && c != n0u {
+			if c < utf8.RuneSelf {
+				continue // overwhelmingly the common path: one compare, next byte
+			}
+			// Non-ASCII lead byte (or a UTF-8 continuation byte, which
+			// decodes to RuneError and so never matches).
+			r, _ := utf8.DecodeRuneInString(haystack[i:])
+			lr := unicode.ToLower(r)
+			if lr >= utf8.RuneSelf || byte(lr) != n0 {
+				continue
+			}
+		}
+		if matchSubstrFoldAt(haystack, i, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// lowerASCIIAt lowers the rune starting at haystack[i] and returns it as a
+// byte plus that rune's encoded width. A rune whose lowercase form is not
+// ASCII returns 0xFF, a byte no lowercase-ASCII needle can contain.
+func lowerASCIIAt(haystack string, i int) (lc byte, size int) {
+	c := haystack[i]
+	if c < utf8.RuneSelf {
+		if 'A' <= c && c <= 'Z' {
+			return c + ('a' - 'A'), 1
+		}
+		return c, 1
+	}
+	r, sz := utf8.DecodeRuneInString(haystack[i:])
+	lr := unicode.ToLower(r)
+	if lr < utf8.RuneSelf {
+		return byte(lr), sz
+	}
+	return 0xFF, sz
+}
+
+// matchSubstrFoldAt reports whether the runes of haystack starting at byte
+// offset i lower, one for one, to the bytes of needle.
+func matchSubstrFoldAt(haystack string, i int, needle string) bool {
+	for k := 0; k < len(needle); {
+		if i >= len(haystack) {
+			return false
+		}
+		lc, size := lowerASCIIAt(haystack, i)
+		if lc != needle[k] {
+			return false
+		}
+		i += size
+		k++
+	}
+	return true
+}
+
 func parseCounterLimit(raw string) (maxN int, counterKind string) {
+	// r172 perf: st.Raw is re-scanned on every SBA pass but almost never
+	// matches. Skip the strings.ToLower allocation unless it can match.
+	if !containsSubstrFold(raw, counterLimitNeedle) {
+		return -1, ""
+	}
 	lower := strings.ToLower(raw)
-	idx := strings.Index(lower, "can't have more than ")
+	idx := strings.Index(lower, counterLimitNeedle)
 	if idx < 0 {
 		return -1, ""
 	}
-	rest := lower[idx+len("can't have more than "):]
+	rest := lower[idx+len(counterLimitNeedle):]
 	parts := strings.Fields(rest)
 	if len(parts) < 2 {
 		return -1, ""

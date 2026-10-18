@@ -22,6 +22,11 @@ const (
 	tpPersistentDrawEngine
 	tpGraveyardCastKeyword
 	tpManaOnlyAbility
+	// r172 — append-only: bit 5. The narrow four-needle cluster that
+	// scoreOpponentGraveyard ran inline and uncached. It is NOT
+	// tpGraveyardCastKeyword: see hasOpponentGraveyardRecastKeyword for
+	// the 132-card corpus differential that rules out sharing bit 3.
+	tpOpponentGraveyardRecastKeyword
 )
 
 // The wrappers below are the only call path the evaluator should use.
@@ -50,4 +55,8 @@ func cachedGraveyardCastKeyword(c *gameengine.Card) bool {
 
 func cachedManaOnlyAbility(c *gameengine.Card) bool {
 	return c.TextPredicate(tpManaOnlyAbility, isManaOnlyAbility)
+}
+
+func cachedOpponentGraveyardRecastKeyword(c *gameengine.Card) bool {
+	return c.TextPredicate(tpOpponentGraveyardRecastKeyword, hasOpponentGraveyardRecastKeyword)
 }

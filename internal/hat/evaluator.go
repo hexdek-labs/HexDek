@@ -3284,6 +3284,35 @@ func hasGraveyardCastKeyword(oracleLower string) bool {
 		strings.Contains(oracleLower, "jump-start")
 }
 
+// hasOpponentGraveyardRecastKeyword is the DELIBERATELY NARROWER
+// sibling of hasGraveyardCastKeyword, used only by
+// scoreOpponentGraveyard. It tests four needles where that one tests
+// ten — it omits disturb, aftermath, embalm, eternalize, encore and
+// jump-start.
+//
+// r172 checked whether the two could be collapsed onto one cached
+// predicate. They cannot. The needle sets nest (these four are a
+// subset of the ten), so this implies hasGraveyardCastKeyword, but
+// NOT the reverse: over a 38,753-card Scryfall oracle corpus the wide
+// predicate fires on 132 cards this one does not (encore 30,
+// disturb 28, aftermath 27, embalm 18, jump-start 16, eternalize 14),
+// and 0 cards go the other way. Substituting the wide predicate here
+// would apply the -0.15 opponent-graveyard threat to 132 extra cards
+// — an eval change wearing an optimisation's clothes.
+//
+// Whether the narrow set is the RIGHT one is a separate, open
+// question: encore/embalm/disturb do genuinely let an opponent re-use
+// a graveyard card, so this may be an under-detection. That is a
+// rules/eval call and is filed as such, not folded into a perf round.
+// This function exists to pin today's answer so the caching below is
+// provably behaviour-preserving.
+func hasOpponentGraveyardRecastKeyword(oracleLower string) bool {
+	return strings.Contains(oracleLower, "flashback") ||
+		strings.Contains(oracleLower, "escape") ||
+		strings.Contains(oracleLower, "unearth") ||
+		strings.Contains(oracleLower, "retrace")
+}
+
 // seatHasReanimatorEngine reports whether the seat has an active
 // reanimator engine on its battlefield — i.e. some permanent whose
 // oracle text suggests it can return creatures from any graveyard to
@@ -3657,8 +3686,6 @@ func (e *GameStateEvaluator) scoreOpponentGraveyard(gs *gameengine.GameState, se
 			if c == nil {
 				continue
 			}
-			ot := gameengine.OracleTextLower(c)
-
 			// High-CMC creatures are prime reanimation targets.
 			isCreature := false
 			for _, t := range c.Types {
@@ -3674,8 +3701,8 @@ func (e *GameStateEvaluator) scoreOpponentGraveyard(gs *gameengine.GameState, se
 			}
 
 			// Spells with flashback/escape/unearth/retrace can be re-cast.
-			if strings.Contains(ot, "flashback") || strings.Contains(ot, "escape") ||
-				strings.Contains(ot, "unearth") || strings.Contains(ot, "retrace") {
+			// r172 — cached on bit 5; same four needles as before.
+			if cachedOpponentGraveyardRecastKeyword(c) {
 				threat -= 0.15
 			}
 		}
