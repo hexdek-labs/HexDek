@@ -64,8 +64,13 @@ func (h *YggdrasilHat) bestOpponentRemovalScore(gs *gameengine.GameState, seatId
 				}
 			} else if p.Card.AST != nil {
 				// Has triggered abilities → engine piece.
-				ot := gameengine.OracleTextLower(p.Card)
-				if strings.Contains(ot, "whenever") || strings.Contains(ot, "at the beginning") {
+				// r180a — the disjunction is a pure function of the lowered
+				// oracle text, so it is memoized per Card. The AST != nil
+				// guard above is kept verbatim: OracleTextLower returns ""
+				// for a nil AST so the predicate would be false anyway, but
+				// keeping the guard makes the diff behaviour-preserving on
+				// its face.
+				if cachedHasTriggerWording(p.Card) {
 					if score < 0.55 {
 						score = 0.55
 					}
