@@ -74,7 +74,7 @@ func TestR169_GrinderLineWiresTheTriggerMemoField(t *testing.T) {
 			"tmemo:          tmemo,",
 		}},
 		{"grinder_line_r176.go", []string{
-			"guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk)",
+			"guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk,",
 		}},
 	} {
 		b, err := os.ReadFile(f.file)

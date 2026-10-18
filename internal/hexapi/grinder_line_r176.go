@@ -113,12 +113,28 @@ func renderGrinderLine(w grinderWindow) string {
 	if condUnk != "" {
 		condUnk = " condunk=" + condUnk
 	}
+	// r182 — per-GAME shape of the depth-cap swallows. guards= and
+	// guardtop= are window totals, so "1,857 games losing one
+	// dispatch" and "one game losing 1,857" print identically; this
+	// is the field that separates them. Empty until the cap fires.
+	capSwallow := gameengine.DepthCapSummary()
+	if capSwallow != "" {
+		capSwallow = " capswallow=" + capSwallow
+	}
+	// r182 — which event a game's FIRST swallow was on, counted once
+	// per game. guardtop= attributes per DISPATCH, so one looping game
+	// dominates it; this column says how many GAMES each event starts.
+	capFirst := gameengine.LoopGuardLabelsFor(gameengine.DepthCapFirstEventGuard)
+	if capFirst != "" {
+		capFirst = " capfirst=" + capFirst
+	}
 
 	return fmt.Sprintf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 		"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-		"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s%s",
+		"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s%s%s%s",
 		w.games, w.cumGPM, w.winGPM, w.turnsPerGame, w.gcPerGame,
 		w.eloPool, w.heapMB, w.sysMB, w.numGC, w.dLimited,
 		w.allocMB, w.dClones, w.ccRate, w.ccHits, w.ccLooks, w.ccInvalPerGame,
-		guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk)
+		guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk,
+		capSwallow, capFirst)
 }
