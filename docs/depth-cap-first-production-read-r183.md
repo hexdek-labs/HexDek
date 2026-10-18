@@ -117,3 +117,72 @@ lowering it makes more games wrong. **Depth is not the property that
 distinguishes the two cases** — 201-in-one-cascade and 8-on-a-wide-board
 are both "deep". The fix has to key on re-entry, not on depth. Get the
 deck attribution first.
+
+---
+
+# AMENDMENT, same day — r184 deployed, and the first attributed game
+# inverts the cascademax reading
+
+r184 (`b84ed81f...`, pid 299664) put the per-game swallow count onto
+the `SLOW GAME` line. The join works, and the first capped game it
+named changes the picture.
+
+```
+SLOW GAME 67.1s turns=80 s/turn=0.8 seed=1792356558926485417
+  decks=[winota_joiner_of_forces_b3 ozai_the_phoenix_king_b3
+         olivia_opulent_outlaw_b3   nita_forum_conciliator_b3]
+  swallowed=1920
+```
+
+**Two findings, and both cut against what this document said above.**
+
+**1. The first attributable capped game is NOT the Sorin deck.** It is
+**Winota**, the runner-up in the slow-game aggregation (12% of Oct-18
+slow games). The Sorin hypothesis was built on the event mix being
+*consistent* with the Conqueror / Blight-Priest pair, and the first
+actual attribution landed elsewhere. **n=1 — this does not refute the
+hypothesis, and one game is not a distribution.** But it is the first
+piece of real attribution evidence we have, and it does not support it.
+
+**2. The max / cascademax ratio has INVERTED, and that is the
+discriminator.**
+
+| process | max (worst GAME) | cascademax (worst CASCADE) | ratio |
+|---|---:|---:|---:|
+| r182 run, 10,357 games | 334 | 201 | 0.60 |
+| r184 run, 3,507 games  | **1,920** | **58** | **0.03** |
+
+In the r182 process one cascade accounted for most of the worst game's
+swallows, which is what an unbounded re-entrant pair looks like. **In
+the r184 process the worst game swallowed 1,920 dispatches while the
+largest single cascade swallowed 58** — so those swallows are spread
+over *at least* ~33 separate top-level cascades, and realistically far
+more.
+
+**That is not one runaway. That is the same moderate cascade recurring
+hundreds of times across an 80-turn game** — the signature of a wide,
+token-generating board producing many independent trigger cascades per
+turn, which is exactly what Winota does.
+
+**Retracting the hint, not the data.** Above, this document says
+`cascademax` "has not plateaued" and that the shape "fits re-entry
+better than width". The first sentence remains literally true of the
+r182 series. **The inference I hung on it does not survive this
+sample** — I was reading a rising maximum as evidence of unboundedness,
+and the moment a game with 6x the swallows appeared, its largest
+cascade was *three times smaller*. A rising max was sample-size
+artefact, which is precisely the caveat stated and then under-weighted.
+
+**What this means for the cap.** If the swallows are many small
+cascades rather than one large one, then raising the cap does NOT
+primarily risk letting a runaway run — it risks multiplying work across
+hundreds of cascades. And lowering it clips more of an already-ordinary
+distribution. **Still do not move it**, but the reason has changed: it
+is not "the only brake on a runaway", it is a per-cascade limit being
+asked to control a per-GAME volume problem. Those need different
+instruments.
+
+**Next:** accumulate joined lines until there are enough capped games
+to rank DECKS by swallow volume (the r111 audit script was repaired
+this round and now performs exactly this join). Do not generalise from
+one game — including not generalising away from Sorin.
