@@ -458,3 +458,86 @@ Instrument which EVENT recurs *within* one cascade, not just which
 event the cap first fires on. That distinguishes "Yarok doubled an ETB
 wave" from "a dies/ETB pair is re-entering", and it is the last
 question the current fields cannot answer.
+
+---
+
+# FIFTH AMENDMENT — r186 separates WIDE from RE-ENTRANT, and the answer
+# is BOTH, in a ratio that explains every earlier flip-flop.
+
+r186 (`401a6e2f`, pid 313383) classifies each top-level cascade by two
+axes: how many DISTINCT events were swallowed, and whether the swallow
+count exceeds the board's permanent high-water mark.
+
+```
+                  n <= boardMax        n > boardMax
+ 1 distinct       wave                 loop1
+ 2+ distinct      widemix              loopN
+```
+
+A wave of N permanents each firing once **cannot exceed the permanents
+in play**; re-entry has no such ceiling. So `n <= boardMax` is a
+reliable NEGATIVE — `wave`/`widemix` are trustworthy, `loop*` is a
+loop-hunt candidate rather than a verdict.
+
+## FIRST READ — n=88 attributed games
+
+| shape | games | | swallows | | per game |
+|---|---:|---:|---:|---:|---:|
+| **widemix** (wide, multi-event, board-bounded) | 79 | 90% | 1,441 | 59% | median 12 |
+| **loopN** (genuine re-entry, n > board) | 8 | 9% | 984 | 41% | median 133 |
+| wave | 1 | 1% | 1 | 0% | 1 |
+
+**Both mechanisms are real, and they are cleanly separable: 9% of
+capped games are runaways and produce 41% of all swallowed dispatches;
+90% are ordinary-but-wide boards and produce 59%.** Loop games swallow
+~11x more each (median 133 vs 12) on bigger boards (median 56 vs 36).
+
+## THIS RECONCILES EVERY EARLIER READING, INCLUDING THE RETRACTED ONES
+
+- "It is one runaway cascade" (per-game ratio 1.00 at 81%) — **true but
+  incomplete.** The swallows DO concentrate in one cascade. That
+  cascade is usually **wide, not deep.** One cascade is not the same
+  claim as one loop, and I treated them as the same claim.
+- "Many moderate cascades, not one runaway" — wrong as stated, but it
+  was reaching for the real majority case: wide boards.
+- "It slices an ordinary distribution" (r181, which I retracted in the
+  first amendment above) — **substantially right for 90% of capped
+  games**, and I retracted it on a denominator argument that was itself
+  correct. Both can hold: the cap fires in only 2.3% of games, AND
+  within those it is mostly clipping wide ordinary boards.
+
+**The pattern across five amendments: every reading was a projection of
+a two-population mixture onto one axis.** Each axis I had — depth,
+cascade count, game count, duration — made one population invisible.
+The two-axis classifier is the first instrument that does not force a
+choice, and it says the answer was never one of the options.
+
+## CONSEQUENCE FOR THE CAP — the r181 claim, earned properly this time
+
+**Raising the cap helps the 90% and hurts the 9%. Lowering it does the
+reverse.** That is exactly "wrong instrument for both jobs", which r181
+asserted and I retracted twice. It is now measured rather than
+asserted: the two populations want opposite changes to the same
+constant, so **no value of that constant is correct** and the fix has
+to be a different mechanism — detect re-entry directly rather than
+inferring it from depth.
+
+## CAVEATS, STATED BEFORE THEY BREAK
+
+**n=88 games.** Last tick three of my n=48 numbers broke at n=701, and
+the extremes broke first. **Do not quote the 90/9 split as settled** —
+re-measure every tick and expect it to move, especially the 9%.
+
+`namecap:41` — 41 cascades overflowed the 4-name table, so `distinct`
+is a lower bound there. That cannot flip a `widemix` verdict (more
+names keeps it widemix) but it can hide a `loop1`.
+
+**Known blind spot, from the agent and verified in its test:** a
+strictly alternating two-event cycle is reported as `distinct=1`,
+because every depth-9 attempt descends from depth-8 nodes of uniform
+parity, so **only one of the two names is ever swallowed.** A textbook
+Gerrard/Yarok mutual pair therefore reads as `loop1`, not `loopN`.
+**(a) self-feeding and (b) mutual-pair are NOT distinguishable at the
+cap site** — this contradicts my brief, which had predicted the
+(a)/(c) pair would be the problem. Separating them needs the nesting
+path, which means a push/pop on the hot uncapped dispatch path.
