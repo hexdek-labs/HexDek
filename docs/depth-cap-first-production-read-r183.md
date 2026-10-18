@@ -541,3 +541,97 @@ Gerrard/Yarok mutual pair therefore reads as `loop1`, not `loopN`.
 cap site** — this contradicts my brief, which had predicted the
 (a)/(c) pair would be the problem. Separating them needs the nesting
 path, which means a push/pop on the hot uncapped dispatch path.
+
+---
+
+# SIXTH AMENDMENT — n=347. There are THREE regimes, not two, and my
+# own volume split was a unit error.
+
+## FIRST, THE ERROR, BECAUSE IT IS MINE AND IT IS THE SAME ONE TWICE
+
+Last amendment I published "widemix 59% of swallows / loopN 41%", and
+this tick's larger sample first gave me "82% / 18%". **Both numbers are
+invalid.** On the `CAPPED GAME` line, `shape`/`distinct`/`dom`/`board`
+describe the **PEAK CASCADE**, while `swallowed` is the **GAME TOTAL**.
+Summing game totals and attributing them to the peak cascade's shape
+compares two different units.
+
+I caught it only because a row looked impossible: `swallowed=3122
+board=32`, which by the classifier's own rule (`n > boardMax` → loop)
+should not have been `widemix`. It was not a classifier bug — the
+classifier is internally consistent on **347 of 347 rows**. That game's
+peak cascade swallowed **7**, not 3,122.
+
+**This is the error I wrote a memory about two amendments ago** (never
+combine two numbers that describe different units) and then committed
+again in my own analysis script. Noticing the rule is not the same as
+applying it.
+
+**What can honestly be said about volume: nothing per-shape.** The
+per-game line cannot attribute swallows to cascade shapes, and the
+process-wide `capshape=` histogram counts CASCADES without volume.
+By cascade count: **widemix 1,412 / loopN 25 / wave 3** — 98% wide.
+
+## THE THREE REGIMES (n=347 games)
+
+| regime | definition | games | median swallows | median duration | max duration |
+|---|---|---:|---:|---:|---:|
+| **1 — one wide cascade** | `cascademax == swallowed` | 285 (82%) | 11 | 0.30s | 1.3s |
+| **2 — re-entry** | `loopN` (n > boardMax) | 25 (7%) | 77 | **0.20s** | **0.7s** |
+| **3 — fan-out** | >=20 separate cascades | 3 (1%) | **2,157** | **89.7s** | **203.3s** |
+
+**The result that inverts an assumption I never examined: regime 2 —
+the genuine runaways — are the FASTEST games in the entire capped
+population.** Median 0.20s, max 0.7s. The cap catches re-entry
+immediately and cheaply. **A runaway costs CORRECTNESS, not time.**
+
+**All the time is in regime 3**, which is neither a wide cascade nor a
+loop: it is **hundreds of independent small cascades across a long
+game**. The worst had `swallowed=3122, cascademax=7` — at least **446
+separate top-level cascades**, 80 turns, 203 seconds.
+
+**Regime 3 is where the cap population and the stall population
+meet.** Both of the only two capped games over 10 seconds are regime 3.
+Earlier amendments called the two populations "mostly disjoint" without
+being able to describe the overlap; this is the overlap.
+
+## THE MECHANISM FOR REGIME 3 — one deck, in 3 of 3
+
+**`winota_joiner_of_forces_b3_kaputtzimon` is at the table in all three
+regime-3 games**, including both 10s+ games, and is separately 14% of
+Oct-18 slow games (31/222) and the top deck by raw swallow volume.
+
+Oracle text, fetched this session:
+
+> **Winota, Joiner of Forces** — *"Whenever a non-Human creature you
+> control attacks, look at the top six cards of your library. You may
+> put a Human creature card from among them onto the battlefield tapped
+> and attacking..."*
+
+**That is one INDEPENDENT trigger per attacking creature, each putting
+a permanent onto the battlefield.** A wide board of non-Human attackers
+produces not one deep cascade but **one separate top-level cascade per
+attacker** — which is regime 3's signature exactly, and explains
+`cascademax=7` alongside `swallowed=3122`.
+
+So the three regimes have three different mechanisms:
+- **1, wide:** many permanents responding to one event.
+- **2, re-entry:** a cascade feeding itself (the Yarok/Gerrard shape).
+- **3, fan-out:** many independent cascades, one per attacker.
+
+**n=3 for regime 3.** Winota in 3 of 3 with a mechanism that predicts
+the signature is a strong lead, not a verdict.
+
+## CONSEQUENCES
+
+- **The cap still cannot be tuned**, and regime 3 makes it worse: that
+  regime is not controlled by a per-cascade depth limit at all, since
+  each of its 446 cascades is individually shallow.
+- **Regime 2 is the cheapest to leave alone and the most expensive to
+  get wrong.** It is fast precisely because the cap truncates it; the
+  damage is silently dropped triggers.
+- `namecap:928` of ~1,440 cascades — **64% overflowed the 4-name
+  table**, so `distinct` is a saturated lower bound in two thirds of
+  cascades and `dom%` is unreliable there. The table is undersized for
+  the real width; that is a measurement limit to fix before leaning on
+  `distinct`.
