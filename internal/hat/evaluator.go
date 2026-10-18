@@ -466,8 +466,10 @@ func handQualityBonus(seat *gameengine.Seat) float64 {
 			continue // a cantrip-tutor would double-count; cantrip wins
 		}
 		// Tutor: "search your library for" OR name contains "tutor".
+		// r174 — foldContainsASCII is the case-insensitive name probe
+		// without the throwaway lowercased copy of the name.
 		if strings.Contains(ot, "search your library for") ||
-			strings.Contains(strings.ToLower(c.DisplayName()), "tutor") {
+			foldContainsASCII(c.DisplayName(), "tutor") {
 			tutorCount++
 		}
 	}
@@ -1087,7 +1089,9 @@ func ritualNetMana(c *gameengine.Card) int {
 	if c == nil {
 		return 0
 	}
-	return ritualNetByName[strings.ToLower(c.DisplayName())]
+	// r174 — same lookup, key folded in a stack buffer. See
+	// fold_ascii_r174.go.
+	return intByFoldedName(ritualNetByName, c.DisplayName())
 }
 
 // ritualFuelBonus returns a small positive eval bonus when the seat
@@ -1215,9 +1219,11 @@ func fastManaExtraYield(seat *gameengine.Seat) int {
 		if p == nil || p.Card == nil || p.PhasedOut {
 			continue
 		}
-		if extra, ok := fastManaExtraYieldByName[strings.ToLower(p.Card.DisplayName())]; ok {
-			total += extra
-		}
+		// r174 — intByFoldedName is the allocating
+		// `m[strings.ToLower(name)]` with the key folded in a stack
+		// buffer; a miss still yields 0, so dropping the `ok` guard
+		// adds nothing. See fold_ascii_r174.go.
+		total += intByFoldedName(fastManaExtraYieldByName, p.Card.DisplayName())
 	}
 	return total
 }

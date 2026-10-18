@@ -996,7 +996,22 @@ func (gs *GameState) HasSupertypeOf(p *Permanent, want string) bool {
 	}
 	want = strings.ToLower(strings.TrimSpace(want))
 	for _, t := range GetEffectiveCharacteristics(gs, p).Supertypes {
-		if strings.ToLower(t) == want {
+		// r174 — the per-element strings.ToLower that stood here was
+		// provably redundant. Supertypes is populated ONLY by
+		// partitionTypes, which appends `lt` (the already-lowercased
+		// token), and by one copy from another Characteristics at
+		// layers.go:1110. There is no struct-literal writer and no raw
+		// append anywhere in non-test code, so the element is lowercase
+		// BY CONSTRUCTION, not by observation.
+		//
+		// The same removal would NOT be safe on chars.Keywords, and the
+		// difference is worth recording: layers.go passes an AST keyword
+		// name straight through (`c.Keywords = append(c.Keywords,
+		// kw.Name)`). All 15,989 AST keyword names in the live
+		// 32,418-card corpus happen to be lowercase, but that is an
+		// OBSERVATION about today's exporter output, not an invariant
+		// the code enforces -- so HasKeywordOf keeps its defensive fold.
+		if t == want {
 			return true
 		}
 	}

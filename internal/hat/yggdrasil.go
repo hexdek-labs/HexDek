@@ -2970,7 +2970,11 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 		if len(h.Strategy.CommanderThemes) > 0 {
 			ot := gameengine.OracleTextLower(c)
-			tl := strings.ToLower(c.TypeLine)
+			// r174 — TypeLineLower is the same strings.ToLower memoised
+			// on the Card and keyed on the TypeLine it was built from.
+			// The inline call re-lowered a mixed-case type line (so it
+			// allocated) once per card per scoring pass.
+			tl := gameengine.TypeLineLower(c)
 			for _, theme := range h.Strategy.CommanderThemes {
 				lt := strings.ToLower(theme)
 				if strings.Contains(ot, lt) || strings.Contains(tl, lt) {

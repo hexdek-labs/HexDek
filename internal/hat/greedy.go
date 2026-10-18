@@ -1385,9 +1385,13 @@ func typeLineContains(card *gameengine.Card, substr string) bool {
 	if card == nil {
 		return false
 	}
-	ss := strings.ToLower(substr)
+	// r174 — fold during the search instead of materialising a
+	// lowercased copy of each type token and of the needle. Every
+	// production call site passes a lowercase literal and Card.Types is
+	// built lowercase by deckparser.parseTypes, but the fold is kept so
+	// the answer cannot change for a mixed-case token either way.
 	for _, t := range card.Types {
-		if strings.Contains(strings.ToLower(t), ss) {
+		if foldContainsASCII(t, substr) {
 			return true
 		}
 	}
