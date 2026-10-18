@@ -4160,20 +4160,22 @@ func (e *GameStateEvaluator) scoreStaxLock(gs *gameengine.GameState, seatIdx int
 		if p == nil || p.Card == nil {
 			continue
 		}
-		ot := gameengine.OracleTextLower(p.Card)
+		// r180a — each case is a pure function of the lowered oracle text,
+		// so the ANSWER is memoized per Card (keyed on Card.AST). The switch
+		// is still ORDERED: first match wins, same order as before.
 		value := 0.0
 		switch {
-		case strings.Contains(ot, "nonland permanents") && strings.Contains(ot, "don't untap"):
+		case cachedStaxNonlandDontUntap(p.Card):
 			value = 1.5
-		case strings.Contains(ot, "can't cast") || (strings.Contains(ot, "each opponent") && strings.Contains(ot, "can't")):
+		case cachedStaxCantCast(p.Card):
 			value = 1.2
-		case strings.Contains(ot, "additional") && strings.Contains(ot, "cost") && strings.Contains(ot, "pay"):
+		case cachedStaxAdditionalCostPay(p.Card):
 			value = 1.0
-		case strings.Contains(ot, "enters the battlefield tapped") && strings.Contains(ot, "opponents"):
+		case cachedStaxEntersTappedOpp(p.Card):
 			value = 0.8
-		case strings.Contains(ot, "whenever") && strings.Contains(ot, "opponent") && (strings.Contains(ot, "loses") || strings.Contains(ot, "damage")):
+		case cachedStaxWheneverOppLoses(p.Card):
 			value = 0.6
-		case strings.Contains(ot, "sacrifice") && strings.Contains(ot, "each") && strings.Contains(ot, "opponent"):
+		case cachedStaxSacEachOpponent(p.Card):
 			value = 0.8
 		}
 		if value > 0 {
