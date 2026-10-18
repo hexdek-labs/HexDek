@@ -1553,6 +1553,17 @@ type Card struct {
 	textPredSet uint64
 	textPredAST *gameast.CardAST
 
+	// r180 — memoized "could any ability on this AST ever match the
+	// observer-ETB scan", keyed on the AST it was derived from, same
+	// discipline as the two memos above. fireObserverETBTriggers walks
+	// every seat's whole battlefield on EVERY permanent entering, and
+	// for each permanent walks its ability list doing string compares;
+	// the overwhelming majority of permanents — and every vanilla token
+	// in a swarm — can never match. See observer_triggers.go
+	// cardHasObserverETBCandidate.
+	obsETBCand bool
+	obsETBAST  *gameast.CardAST
+
 	// TypeLineLowerCache — lowercased TypeLine, computed lazily.
 	//
 	// r157 — same defect, same fix. TypeLine is likewise reassigned on

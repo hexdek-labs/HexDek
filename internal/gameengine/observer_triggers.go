@@ -52,6 +52,61 @@ func observerTriggeredFromAbility(ab gameast.Ability) (*gameast.Triggered, bool)
 	return nil, false
 }
 
+// cardHasObserverETBCandidate reports whether ANY ability on this card's
+// AST could ever reach the dispatch body of the observer scan below.
+//
+// Why this exists: fireObserverETBTriggers runs on EVERY permanent that
+// enters, and walks every seat's entire battlefield. For each permanent
+// it then walks the whole ability list, calling observerTriggeredFromAbility
+// and EventEquals on each. Almost nothing on a board observes ETBs, and a
+// token swarm is thousands of permanents that observe nothing at all, so
+// the scan spends its time proving a negative it has already proved.
+//
+// The answer is a pure function of Card.AST — observerTriggeredFromAbility
+// reads only the ability, and EventEquals only a static alias table — so it
+// memoizes with NO invalidation hook required. The key is the AST POINTER,
+// not a ready bool: a DFC transform reassigns Card.AST in place, and keying
+// on the pointer makes that staleness impossible to reintroduce (the r157
+// lesson, same shape as OracleTextCache and the r164 predicate bits).
+//
+// Contrast the soulbond/evolve scans, which cannot be memoized this way:
+// their key would have to be charCacheEpoch, which is bumped by any
+// characteristics mutation INCLUDING a permanent entering, so the memo
+// would hit 0% exactly in the swarm that needs it. Card.AST does not change
+// when a permanent enters. It changes when the card transforms, which is
+// exactly when this answer should change.
+//
+// Equivalence: the loop below can only produce an effect for an ability
+// that passes `trig != nil && trig.Effect != nil` AND then either takes the
+// landfall branch or satisfies EventEquals(event, "etb"). Everything before
+// those tests is pure. So a card for which no ability satisfies that
+// disjunction makes the entire inner loop a no-op, and skipping it outright
+// reaches the identical state. The later gates (isSelfTrigger, the actor
+// matchers, the per_card hook guards) only filter FURTHER, so this
+// candidate test is a strict superset of what can survive them.
+func cardHasObserverETBCandidate(c *Card) bool {
+	if c == nil || c.AST == nil {
+		return false
+	}
+	if c.obsETBAST == c.AST {
+		return c.obsETBCand
+	}
+	v := false
+	for _, ab := range c.AST.Abilities {
+		trig, landfall := observerTriggeredFromAbility(ab)
+		if trig == nil || trig.Effect == nil {
+			continue
+		}
+		if landfall || EventEquals(trig.Trigger.Event, "etb") {
+			v = true
+			break
+		}
+	}
+	c.obsETBCand = v
+	c.obsETBAST = c.AST
+	return v
+}
+
 func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 	if gs == nil || entering == nil || entering.Card == nil {
 		return
@@ -71,6 +126,11 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 				continue
 			}
 			if observer == entering {
+				continue
+			}
+			// r180 — one memo hit instead of an ability walk for the
+			// overwhelming majority of permanents, which observe nothing.
+			if !cardHasObserverETBCandidate(observer.Card) {
 				continue
 			}
 
