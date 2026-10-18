@@ -186,3 +186,78 @@ instruments.
 to rank DECKS by swallow volume (the r111 audit script was repaired
 this round and now performs exactly this join). Do not generalise from
 one game — including not generalising away from Sorin.
+
+---
+
+# SECOND AMENDMENT — the r184 join has a 99.3% sampling hole, and
+# capped games are mostly NOT slow games
+
+First full tick of r184 data, 13,509 games in one process.
+
+```
+13,509  games in the process
+   280  hit the depth cap            (capswallow games:280 — 2.07%)
+     8  crossed slowGameThreshold    (10s) and emitted a SLOW GAME line
+     2  of those 8 had swallowed > 0
+```
+
+**278 of 280 capped games — 99.3% — are invisible to the join I shipped
+last round.** `swallowed=` rides on the `SLOW GAME` line, which only
+fires above a 10-second wall-clock threshold (`showmatch.go:1053`), and
+capped games overwhelmingly finish faster than that.
+
+This is the standing rule turned on its author: **a detector that
+cannot see the cases you already know exist is not yet a detector.**
+r184 was correct and useful; it simply answers the wrong sampling
+question, and I did not notice because the one game it did catch was
+spectacular enough (`swallowed=1920`) to look like a result.
+
+## THE FINDING UNDERNEATH IT, WHICH IS BIGGER THAN THE BUG
+
+**Depth-cap pressure and slow games are two different populations, and
+this document has been treating them as one.** The cap lives in the
+stall investigation because that is where it was found. The data says
+that was a filing error:
+
+- **Capped games are fast.** 99.3% complete inside ten seconds while
+  swallowing dispatches. Whatever the cap is doing, it is not what
+  makes games slow.
+- **Slow games are mostly not capped.** 6 of the 8 slow games this
+  process reported `swallowed=0`.
+
+## AND IT WEAKENS THE SORIN CAUSAL STORY FURTHER
+
+Of the 8 joined slow games, **Sorin
+(`sorin_of_house_markov // sorin_ravenous_neonate`) was at the table in
+6 — and swallowed ZERO in five of them.** The single Sorin game that
+was capped swallowed 14, against Winota's 1,920.
+
+**n=6 is not a result and this is not a refutation.** But the direction
+is consistent and worth stating plainly: **Sorin makes games SLOW
+without hitting the depth cap.** Slow-game frequency (where Sorin
+dominates at ~39% of Oct-18 slow games, 76/196) and cap pressure (where
+it so far does not appear) are measuring different things. They were
+conflated because one deck topped the only ranking available.
+
+## RATIO TRACKING (the discriminator, per the standing instruction)
+
+| process / sample | max (worst GAME) | cascademax | ratio |
+|---|---:|---:|---:|
+| r182 run, 10,357 games |   334 | 201 | 0.60 |
+| r184 run,  3,507 games | 1,920 |  58 | 0.03 |
+| r184 run, 13,509 games | 1,920 | **147** | 0.077 |
+
+**`cascademax` rose 58 → 147 inside one process while `max` did not
+move.** That is the third independent demonstration that `cascademax`
+is itself a maximum statistic climbing with sample size — the exact
+property whose caveat I wrote and then leaned against last round. The
+ratio remains an order of magnitude below the r182 run's, so the
+"many moderate cascades, not one runaway" reading stands for now.
+
+## NEXT
+
+Attribute capped games independently of duration, so the ranking covers
+280 games instead of 2. Until that lands, **no deck ranking from this
+join should be quoted** — it is a 0.7% sample selected on a variable
+(duration) that we now know is nearly uncorrelated with the thing being
+measured, which is the worst kind of sample to generalise from.
