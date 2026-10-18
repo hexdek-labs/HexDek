@@ -1917,6 +1917,14 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	// gameRng it feeds; declaring it here changes nothing about the
 	// stream, it only widens the scope to cover the deferred log.
 	var gameSeed int64
+	// r184 — hoisted for exactly the same reason, and solved the same
+	// way. The depth-cap swallow count is per-GAME state living on the
+	// GameState (gameengine/depth_cap_swallow_r182.go), and `gs :=`
+	// sits a hundred lines below this defer, so the deferred log could
+	// not see it. Widening the scope is the whole change: the
+	// assignment below becomes `gs =`, the stream is untouched, and
+	// nothing reads this variable except the log.
+	var gs *gameengine.GameState
 
 	// r78 — name the slow games.
 	//
@@ -1956,8 +1964,47 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 			// abortContext already prints it for aborts; the slow-game
 			// line is the one place it was missing. Same key order as
 			// abortContext (game_census_r131.go:78) so the two join.
-			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f seed=%d decks=%v",
-				d.Seconds(), turnsPlayed, perTurn, gameSeed, deckKeys)
+			// r184 — carry the per-game DEPTH-CAP SWALLOW COUNT, so a
+			// capped game can be named. r182 made the swallows
+			// countable per game but only published process-wide
+			// aggregates: over 5,794 production games, 138 (2.4%) hit
+			// the cap and swallowed 2,936 dispatches between them,
+			// worst game 334 — and not one of those 138 could be
+			// attributed to a deck or re-run from a seed, because the
+			// counters are global. This line already prints both
+			// halves of that identity. Joining them here is the
+			// cheapest place it can happen.
+			//
+			// PRINTED EVEN WHEN ZERO, on purpose. An omitted field is
+			// ambiguous between "this game swallowed nothing" and
+			// "this build predates r184", and the second reading is
+			// the one that silently poisons an aggregate over a mixed
+			// log. swallowed=0 is a measurement; a missing key is not.
+			// (DepthCapSummary above omits itself when games==0 for
+			// the opposite reason — it is a once-per-window summary
+			// line, not a per-record field, so there is no record to
+			// mis-attribute.)
+			//
+			// APPENDED AFTER decks=, which preserves the abortContext
+			// join (game_census_r131.go): what the two lines share is
+			// the literal substring "seed=%d decks=[...]", and decks=%v
+			// renders a []string as [a b c], so nothing that parses
+			// decks with a bracket-terminated group sees the new field
+			// at all. Verified against both existing parsers.
+			//
+			// n/a, not 0, when gs is nil. A game can be logged slow
+			// before the GameState exists — the empty-pool path sleeps
+			// 5s and returns, and a panic during deck setup unwinds
+			// through this defer — and in neither case did a game run
+			// to swallow anything. Printing 0 there would feed a real
+			// zero into a count of capped games; "n/a" simply does not
+			// match a swallowed=(\d+) scan, which is the honest answer.
+			swallowed := "n/a"
+			if gs != nil {
+				swallowed = strconv.Itoa(gs.DepthCapSwallowedCount())
+			}
+			log.Printf("grinder: SLOW GAME %.1fs turns=%d s/turn=%.1f seed=%d decks=%v swallowed=%s",
+				d.Seconds(), turnsPlayed, perTurn, gameSeed, deckKeys, swallowed)
 		}
 	}()
 	defer func() {
@@ -2013,7 +2060,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 
 	gameSeed = time.Now().UnixNano()
 	gameRng := rand.New(rand.NewSource(gameSeed))
-	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
+	gs = gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
 	gs.EventPolicy = gameengine.EventLogNone
 	// Arm the wall-clock backstop (gameengine/game_deadline.go). Opt-in:
