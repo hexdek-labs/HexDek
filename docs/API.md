@@ -7,14 +7,21 @@ each protocol. Three surfaces serve different needs:
   party + showmatch / gauntlet controls. ~127 endpoints, all under
   `/api/`. The canonical contract is the OpenAPI spec at
   `docs/hexapi-openapi.yaml`.
-- **GraphQL** (PR #334) — query-side overlay for cross-cutting fetches
-  (e.g. "deck + analysis + ELO + matchups in one round-trip"). Mounted
-  at `/graphql` for queries / mutations, `/graphql/subscriptions` for
-  WS-transported subscriptions.
+- **GraphQL** (PR #334) — **NOT MOUNTED. Code only.** A query-side
+  overlay for cross-cutting fetches (e.g. "deck + analysis + ELO +
+  matchups in one round-trip"). The handlers are implemented and
+  tested, but `RegisterGraphQL` and `NewGraphQLSubscriptionsHandler`
+  have **zero non-test callers** — `cmd/hexdek-server` never mounts
+  them, and `/graphql` and `/graphql/subscriptions` both return **404
+  on production** (verified against the live server 2026-10-18).
+  `graphql.go:94` records the reason: deliberately kept off the
+  default `Handler.Register` chain while GraphQL is a POC. Mounting it
+  is an owner decision, not a doc fix — it would expose
+  `importDeck`/`deleteDeck` mutations.
 - **WebSocket streaming** (PR #338) — live event bridge over the
-  internal EventBus. Two transports: `/ws/events` (raw events,
-  REST-adjacent) and `/graphql/subscriptions` (typed via the GraphQL
-  schema). Also `/ws/showmatch/...` for spectator streams and
+  internal EventBus. One mounted transport: `/ws/events` (raw events,
+  REST-adjacent). (`/graphql/subscriptions` is written but unmounted —
+  see above.) Also `/ws/showmatch/...` for spectator streams and
   `/ws/party/{id}` for live game state.
 
 ## REST quick-start
@@ -67,8 +74,15 @@ endpoint registered in code but undocumented in YAML fails the
 
 ## GraphQL quick-start
 
-Mount: `POST /graphql` (queries + mutations) and
-`GET /graphql/subscriptions` (WS-transport subscriptions).
+> **These examples do not work against a running HexDek server.**
+> Neither route is mounted; both 404. They describe the shape the
+> handlers implement, and are reachable only from a test that calls
+> `RegisterGraphQL` on its own mux. Everything below is a
+> specification of unmounted code, not a usable API.
+
+Routes the code defines (unmounted): `POST /graphql` (queries +
+mutations) and `GET /graphql/subscriptions` (WS-transport
+subscriptions).
 
 A deck-page fetch — name + commander + bracket + ELO + recent games
 in one round-trip:
@@ -92,8 +106,10 @@ Schema lives in `internal/hexapi/graphql_schema.go`. Three root types:
 
 - `Query` — Deck, ELOEntry, GameSummary, MatchupMatrix, ...
 - `Mutation` — submitArchetypeFeedback, voteDeckFavorite, ...
-- `Subscription` — gameTurns, eloUpdates, gauntletProgress (delivered
-  via the WS transport at `/graphql/subscriptions`)
+- `Subscription` — **`gameEnded` only.** (This list previously read
+  "gameTurns, eloUpdates, gauntletProgress". None of those three exist
+  in `graphql_schema.go`; the Subscription root has exactly one field,
+  which fires once per completed game.)
 
 See [`docs/rest-to-graphql-roadmap.md`](rest-to-graphql-roadmap.md)
 for which REST endpoints are mirrored, which are pending, and the
@@ -117,13 +133,18 @@ wscat -c 'ws://localhost:8090/ws/events?kind=game_finished'
 Connection cap: 100 concurrent subscribers per process (see
 `maxEventSubscribers` in `events_ws.go`).
 
-### `/graphql/subscriptions` — typed GraphQL subscriptions
+### `/graphql/subscriptions` — typed GraphQL subscriptions (UNMOUNTED)
+
+> **This endpoint returns 404.** The command below fails twice over:
+> the route is not registered, and `eloUpdates` is not a field on the
+> Subscription root. The only subscription field is `gameEnded`.
 
 ```bash
-# Use the graphql-ws protocol (sub-protocol: graphql-transport-ws)
+# Shape only — NOT runnable against a live server.
+# sub-protocol: graphql-transport-ws
 wscat -c ws://localhost:8090/graphql/subscriptions -s graphql-transport-ws
 > {"type":"connection_init"}
-> {"id":"1","type":"subscribe","payload":{"query":"subscription { eloUpdates(deckKey:\"josh/my_deck\") { rating delta finishedAt } }"}}
+> {"id":"1","type":"subscribe","payload":{"query":"subscription { gameEnded { winnerName turns endReason } }"}}
 ```
 
 Each `next` message carries the same JSON shape as a one-shot
