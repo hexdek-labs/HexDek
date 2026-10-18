@@ -479,11 +479,41 @@ func sba704_5d(gs *GameState) bool {
 			case "library":
 				zone = &s.Library
 			}
-			removed := 0
-			kept := (*zone)[:0]
-			// Iterate explicitly so we can rebuild in place.
+			// r178 — find the first token before compacting anything.
+			//
+			// This is the r176 shape, applied to 5e's sibling. The commit
+			// below was ALREADY gated on `removed > 0`, so nothing
+			// observable was wrong -- but the per-element writes were not
+			// gated: `kept := (*zone)[:0]` followed by an append for every
+			// surviving card rewrote the whole slice over itself even when
+			// no token was present, and those are pointer stores into a
+			// heap-backed slice, so each takes a GC write barrier.
+			//
+			// 5d sweeps hand, graveyard, exile and library for all four
+			// seats on every state-based-action pass, and the libraries
+			// dominate -- a production profile put ~370 non-battlefield
+			// cards per pass against ~28 permanents, 84-95% of them
+			// library. Tokens in a hidden zone are rare, so the no-token
+			// case is the one that runs constantly.
+			//
+			// The scan is read-only and takes no barriers. Past it, at
+			// least one token exists, so `removed >= 1` is guaranteed and
+			// the commit no longer needs its guard.
 			src := *zone
-			for _, c := range src {
+			first := -1
+			for i, c := range src {
+				if cardIsToken(c) {
+					first = i
+					break
+				}
+			}
+			if first < 0 {
+				continue
+			}
+
+			removed := 0
+			kept := src[:first] // the clean prefix is already in place
+			for _, c := range src[first:] {
 				if cardIsToken(c) {
 					// §704.5d — the token ceases to exist. Cease its
 					// InstanceID so the Phase 4 census doesn't flag the
@@ -500,21 +530,19 @@ func sba704_5d(gs *GameState) bool {
 				}
 				kept = append(kept, c)
 			}
-			if removed > 0 {
-				*zone = kept
-				changed = true
-				gs.LogEvent(Event{
-					Kind:   "sba_704_5d",
-					Seat:   s.Idx,
-					Target: -1,
-					Amount: removed,
-					Details: map[string]interface{}{
-						"rule":   "704.5d",
-						"reason": "token_in_nonbattlefield_zone",
-						"zone":   zoneName,
-					},
-				})
-			}
+			*zone = kept
+			changed = true
+			gs.LogEvent(Event{
+				Kind:   "sba_704_5d",
+				Seat:   s.Idx,
+				Target: -1,
+				Amount: removed,
+				Details: map[string]interface{}{
+					"rule":   "704.5d",
+					"reason": "token_in_nonbattlefield_zone",
+					"zone":   zoneName,
+				},
+			})
 		}
 	}
 	return changed
