@@ -261,3 +261,96 @@ Attribute capped games independently of duration, so the ranking covers
 join should be quoted** — it is a 0.7% sample selected on a variable
 (duration) that we now know is nearly uncorrelated with the thing being
 measured, which is the worst kind of sample to generalise from.
+
+---
+
+# THIRD AMENDMENT — r185 settles it: IT IS ONE RUNAWAY CASCADE.
+# My second amendment was wrong, and so was the ratio I retracted it with.
+
+r185 (`cd8f2693`, pid 304711) emits a `CAPPED GAME` line for every
+capped game regardless of duration, carrying a **per-game** cascademax.
+First 48 attributed games:
+
+```
+capped games attributed                                48
+duration: median 0.30s   p90 0.70s   max 1.40s   >=10s: ZERO
+swallowed: median 10, max 537
+
+games where ONE cascade accounts for ALL swallows:  44 of 48  (92%)
+  ratio 1.00  44
+  >=0.75       1
+  >=0.50       3
+  <0.50        0
+among the 14 games with >=16 swallows: 13 of 14 at ratio 1.00
+```
+
+**The worst game: `swallowed=537, cascademax=537`. Every single
+swallow in that game happened inside ONE top-level cascade.**
+
+## I HAVE FLIPPED TWICE AND THIS IS WHY
+
+The first amendment above said the shape fitted unbounded re-entry. The
+second retracted it, on the strength of this:
+
+```
+r184 run: max 1920 (worst GAME)   cascademax 58 (worst CASCADE)   ratio 0.03
+```
+
+and concluded "many moderate cascades, not one runaway".
+
+**That ratio is meaningless, and I should have caught it when I wrote
+it.** `max` and `cascademax` are two INDEPENDENT process-wide maxima.
+Nothing makes them come from the same game. Dividing the worst game's
+total by some *other* game's worst cascade produces a number with no
+referent. I noticed the concern in passing this tick — "the ratio
+compares two maxima that may come from different games" — and had
+already built the conclusion on it a tick earlier.
+
+**The per-game measurement is the only one that could ever have
+answered this**, and it says the opposite of the aggregate: the
+swallows are not spread across many cascades, they are 92% of the time
+*entirely inside one*.
+
+**So the original reading was right, the retraction was wrong, and
+both were produced by the same underlying error — reasoning about a
+per-game property from process-wide aggregates.** The honest lesson is
+not "I was right all along"; it is that neither the first claim nor its
+retraction was entitled to be made from the data available at the time.
+
+## WHAT IS NOW ESTABLISHED
+
+1. **Capped games are a single runaway cascade, truncated.** 92% ratio
+   1.00; 13 of 14 among the heavy games.
+2. **Capped games are FAST.** Median 0.30s, max 1.40s, **none** reached
+   the 10s slow-game threshold. The cap is doing its job quickly. This
+   is why the r184 join saw 2 of 280.
+3. **Depth-cap pressure and slow games remain disjoint populations.**
+   Reconfirmed, now from the cap side with a complete sample.
+4. **Sorin is in ZERO of the 48 capped games.** Not "under-represented"
+   — absent. Sorin is a SLOWNESS phenomenon and has no measured
+   relationship to the depth cap.
+
+## THE DECKS (first complete attribution, n=48, still small)
+
+| by swallow volume | swallows | games |
+|---|---:|---:|
+| marrow_gnawer_b3 | 604 | 3 |
+| mayael_the_anima_b3 | 543 | 2 |
+| avacyn_angel_of_hope_b4 | 537 | 1 |
+| urza_chief_artificer_b4 | 537 | 1 |
+| krenko_mob_boss_b4 | 449 | 3 |
+
+**Marrow Gnawer (Rat tokens) and Krenko (Goblin tokens) lead on both
+count and volume.** Consistent with a token swarm feeding an ETB/dies
+cascade that re-enters. **n=48 — do not harden this into a suspect list
+yet; one deck appearing beside another at a four-player table is not
+attribution.**
+
+## CONSEQUENCE FOR THE CAP
+
+The earlier conclusion — "a per-cascade limit being asked to control a
+per-game volume problem" — **is withdrawn.** It is a per-cascade limit
+facing a per-cascade problem, which is the case where the instrument
+and the pathology actually match. Raising it genuinely does risk
+letting a runaway run. **Still do not move it**, but the target is now
+clear: find what re-enters inside a single cascade on a token board.
