@@ -128,13 +128,29 @@ func renderGrinderLine(w grinderWindow) string {
 	if capFirst != "" {
 		capFirst = " capfirst=" + capFirst
 	}
+	// r186 — the SHAPE of each capped cascade, counted per CASCADE
+	// (capswallow= above counts GAMES; two denominators do not belong
+	// in one bracketed list). capfirst= names the event, but a
+	// re-entering chain and a wide finite wave that is merely wider
+	// than the cap print the SAME name. This crosses the distinct
+	// swallowed-event count with the battlefield population the
+	// cascade ran against: `wave`/`widemix` mean the cascade could not
+	// have swallowed more than the board supplied, so the cap is the
+	// problem; `loop1`/`loopN` mean it outran the board and is worth a
+	// loop hunt. loop1-vs-loopN is NOT self-versus-mutual — see the
+	// header of cascade_composition_r186.go. Empty until a cascade is
+	// classified.
+	capShape := gameengine.DepthCapShapeSummary()
+	if capShape != "" {
+		capShape = " capshape=" + capShape
+	}
 
 	return fmt.Sprintf("grinder: %d games (%.1f g/min cum, %.1f g/min now), "+
 		"turns/game=%.1f gc/game=%.2f, ELO pool: %d, heap=%.0fMB, sys=%.0fMB, gc=%d, limited=%d, "+
-		"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s%s%s%s",
+		"alloc=%.0fMB clones=%d, chit=%.1f%% (%d/%d) cinval/game=%.0f%s%s%s%s%s%s%s%s%s%s",
 		w.games, w.cumGPM, w.winGPM, w.turnsPerGame, w.gcPerGame,
 		w.eloPool, w.heapMB, w.sysMB, w.numGC, w.dLimited,
 		w.allocMB, w.dClones, w.ccRate, w.ccHits, w.ccLooks, w.ccInvalPerGame,
 		guards, deadlines, w.tmemo, guardTop, tdepth, tpField, condUnk,
-		capSwallow, capFirst)
+		capSwallow, capFirst, capShape)
 }

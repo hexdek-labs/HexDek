@@ -2099,9 +2099,17 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 		if gs != nil {
 			swallowed := gs.DepthCapSwallowedCount()
 			if swallowed >= cappedGameThreshold {
-				log.Printf("grinder: CAPPED GAME %.1fs turns=%d seed=%d decks=%v swallowed=%d cascademax=%d",
+				// r186 — the shape of the PEAK cascade, the one
+				// cascademax= is counting. distinct= is how many
+				// event names fed it, dom= the busiest one's share,
+				// board= the largest battlefield population it ran
+				// against. shape= is "" only when the game never
+				// capped, which this branch has already excluded.
+				shape, distinct, domPct, boardMax := gs.DepthCapPeakCascadeShape()
+				log.Printf("grinder: CAPPED GAME %.1fs turns=%d seed=%d decks=%v swallowed=%d cascademax=%d shape=%s distinct=%d dom=%d%% board=%d",
 					d.Seconds(), turnsPlayed, gameSeed, deckKeys,
-					swallowed, gs.DepthCapCascadeMaxCount())
+					swallowed, gs.DepthCapCascadeMaxCount(),
+					shape, distinct, domPct, boardMax)
 			}
 		}
 	}()

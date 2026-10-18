@@ -374,6 +374,18 @@ type GameState struct {
 	// int written only on the already-rare capped path.
 	depthCapCascadeGameMax int // largest single-cascade swallow run this game
 
+	// r186 — the COMPOSITION of the current top-level cascade, and of
+	// the cascade that set depthCapCascadeGameMax. See
+	// cascade_composition_r186.go: distinct swallowed event names
+	// (fixed array, never a map) crossed with the largest battlefield
+	// population the cascade was running against, which is what
+	// separates a self-feeding loop from a wide finite wave. Written
+	// only on the already-rare capped path; NoteCascadeRoot resets
+	// cascadeCur, and only when the previous cascade swallowed.
+	// CloneForRollout does not copy them.
+	cascadeCur  cascadeComp
+	cascadePeak cascadePeak
+
 	// cacheID identifies this GameState to the per-Permanent cache slot.
 	// Assigned lazily on first use so that a bare &GameState{} literal
 	// (which tests and some callers build) still gets a distinct one

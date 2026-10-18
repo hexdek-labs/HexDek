@@ -101,7 +101,17 @@ func (gs *GameState) NoteCascadeRoot() {
 	if gs == nil {
 		return
 	}
-	gs.depthCapCascade = 0
+	// r186 — depthCapCascade is non-zero if and ONLY if the cascade
+	// that is ending swallowed at least one dispatch, so this compare
+	// is simultaneously the reset that was already here (storing 0
+	// over 0 is a no-op) and the gate that keeps every r186 line off
+	// the uncapped dispatch path. The common case is now one int
+	// compare where it used to be one int store.
+	if gs.depthCapCascade != 0 {
+		gs.depthCapCascade = 0
+		gs.finishCascade()
+		gs.cascadeCur = cascadeComp{}
+	}
 }
 
 // NoteDepthCapSwallow records one dispatch refused by the per-card
@@ -152,8 +162,15 @@ func (gs *GameState) NoteDepthCapSwallow(event string) {
 	// the branch that already does up to four atomic operations — and
 	// not on the uncapped dispatch path, which is untouched. No
 	// allocation, no map.
+	// r186 — fold this swallow's event into the current cascade's
+	// composition BEFORE the peak snapshot below, so the snapshot
+	// describes the cascade as it stands at its record swallow.
+	gs.noteCascadeEvent(event)
 	if gs.depthCapCascade > gs.depthCapCascadeGameMax {
 		gs.depthCapCascadeGameMax = gs.depthCapCascade
+		// r186 — the per-game peak cascade's SHAPE, taken at the same
+		// moment as its size, so the two always describe one chain.
+		gs.notePeakCascade()
 	}
 	bumpAtomicMax(&depthCapCascadeMax, uint64(gs.depthCapCascade))
 }
