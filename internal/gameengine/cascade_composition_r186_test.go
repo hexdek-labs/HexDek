@@ -1,6 +1,9 @@
 package gameengine
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 // r186 — per-cascade composition.
 //
@@ -225,14 +228,19 @@ func TestR186_NameTableIsBoundedAndVisible(t *testing.T) {
 	r186reset(t)
 	gs := r186gs(2)
 	gs.NoteCascadeRoot()
-	for _, e := range []string{"e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8"} {
-		gs.NoteDepthCapSwallow(e)
+	// r187 — derived from the constant rather than a hard-coded nine,
+	// so widening the table (4 -> 32 this round) retunes the test
+	// instead of silently disarming it. The old literal list would
+	// have gone green-and-vacuous at any slot count above 9.
+	n := cascadeCompSlots + 5
+	for i := 0; i < n; i++ {
+		gs.NoteDepthCapSwallow("e" + strconv.Itoa(i))
 	}
 	gs.NoteCascadeRoot() // finishes the cascade
 
 	if !gs.cascadePeak.capped {
-		t.Fatalf("nine distinct events in one cascade did not trip the "+
-			"%d-slot name table", cascadeCompSlots)
+		t.Fatalf("%d distinct events in one cascade did not trip the "+
+			"%d-slot name table", n, cascadeCompSlots)
 	}
 	_, distinct, _, _ := gs.DepthCapPeakCascadeShape()
 	if distinct != cascadeCompSlots+1 {

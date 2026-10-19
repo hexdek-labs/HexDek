@@ -68,7 +68,9 @@ func TestR182_PerGameTotalAndSurvivalCurve(t *testing.T) {
 		t.Fatalf("bucket >=8 = %d with only %d swallows (%v)", got, n, buckets)
 	}
 
-	want := "games:1,max:5,cascademax:5,mixed:0,hist[1:1,2:1,4:1]"
+	// r187 appended cascadesmax: between cascademax: and mixed:; the
+	// five swallows above are all in one cascade, so it reads 1.
+	want := "games:1,max:5,cascademax:5,cascadesmax:1,mixed:0,hist[1:1,2:1,4:1]"
 	if got := DepthCapSummary(); got != want {
 		t.Fatalf("summary = %q, want %q", got, want)
 	}

@@ -129,15 +129,66 @@ import (
 // implies 2+ distinct events, which is the only thing the first axis
 // asks — it only makes the reported distinct count a lower bound.
 //
+// r187 AMENDMENT — THE NAMES ARE RAW, NOT CANONICAL. fireTrigger
+// calls NoteDepthCapSwallow(event) at the cap, BEFORE it computes
+// `canonical := NormalizeEventSingle(event)`, so two aliases of one
+// canonical event are two distinct names here. distinct= is
+// therefore an upper bound on the number of canonical events as well
+// as (when capped) a lower bound on the number of raw ones, and a
+// cascade can be pushed from loop1 into loopN by aliasing alone.
+// Normalizing at the cap site would be a one-map-lookup change on
+// the capped path only and is affordable, but it would silently
+// re-base every distinct=/dom%/shape number against the existing
+// window, so it is recorded here rather than slipped into a round
+// whose job was counting.
+//
 // Clone note: CloneForRollout builds from an explicit field list, so
 // a rollout clone starts with an empty composition and is classified
 // as its own game. Same trade r163/r182/r185 took; grinder clones=0.
 
-// cascadeCompSlots bounds the per-cascade distinct-event table. Four
-// is deliberately tight: the shapes this file exists to separate turn
-// on 1-vs-2+, and production has never shown a capped cascade carrying
-// more than two events. A fifth name overflows rather than allocating.
-const cascadeCompSlots = 4
+// cascadeCompSlots bounds the per-cascade distinct-event table.
+//
+// r187 — WAS 4, AND THE DATA SAID 4 WAS WRONG. The sentence that
+// stood here claimed "production has never shown a capped cascade
+// carrying more than two events". The first window that reported
+// namecap= refuted it: 928 name-capped cascades out of roughly
+// 1,440, so 64% of cascades carried at least FIVE distinct event
+// names and the distinct= they reported was the saturated lower
+// bound 5. dom% is computed over the tracked slots only, so in those
+// two thirds it was unreliable too. The claim was never measured; it
+// was an expectation, and namecap= existed precisely so that an
+// expectation of this kind could be caught. It was, and this is the
+// correction.
+//
+// WHY 32, AND WHAT I CANNOT TELL YOU. I CANNOT estimate the fraction
+// that would still overflow at 32, and will not pretend otherwise.
+// namecap is a single saturating bit per cascade: it says "more than
+// cascadeCompSlots" and carries no distribution above that, so the
+// 928 constrain the truth only to ">= 5". Nothing in the window
+// distinguishes a population sitting at 6 from one sitting at 60.
+//
+// What IS known bounds the ceiling. The names tracked here are the
+// RAW event strings fireTrigger is called with, before
+// NormalizeEventSingle; a static count of the literal event names
+// passed to FireCardTrigger across internal/ is 98, and the alias
+// table adds no more than its own key count on top. So no fixed size
+// below ~100 can be proven overflow-free, and a table that large is
+// not worth 1.5KB on every GameState for a measurement this far from
+// the hot path's concerns. 32 is six times the only floor the data
+// establishes and eight times the size it replaced, at +672 bytes
+// per GameState (slots*(16+8)), allocated once per game — the
+// grinder reports clones=0, so GameStates are not a per-node cost.
+//
+// The honest part is that this choice MEASURES ITSELF. If namecap=
+// reads 0 over the next window, 32 was enough and the distinct=
+// counts under it are exact. If it is still non-zero, the next size
+// is again a guess, and the right answer then is a distinct-count
+// histogram rather than a wider array. Either way the output says
+// which, which is the same contract r162's "~other" has.
+//
+// The 33rd distinct name in one cascade still overflows rather than
+// allocating, and still trips namecap.
+const cascadeCompSlots = 32
 
 // Cascade shape codes. The zero value is deliberately "unclassified"
 // so a GameState that never capped reports nothing rather than

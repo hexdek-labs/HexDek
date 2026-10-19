@@ -374,6 +374,14 @@ type GameState struct {
 	// int written only on the already-rare capped path.
 	depthCapCascadeGameMax int // largest single-cascade swallow run this game
 
+	// r187 — how MANY top-level cascades swallowed this game, which
+	// neither of the two fields above can supply: swallowed= is a
+	// total and cascademax= is a maximum, and their quotient is a
+	// loose lower bound whenever the cascades differ in size. See
+	// cascade_count_r187.go. Written only on the already-rare capped
+	// path, at the first swallow of each cascade.
+	depthCapCascadesSwallowed int // top-level cascades that swallowed, this game
+
 	// r186 — the COMPOSITION of the current top-level cascade, and of
 	// the cascade that set depthCapCascadeGameMax. See
 	// cascade_composition_r186.go: distinct swallowed event names

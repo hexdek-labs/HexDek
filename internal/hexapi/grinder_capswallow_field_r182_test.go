@@ -49,7 +49,10 @@ func TestR182_CapSwallowFieldsReachTheRenderedGrinderLine(t *testing.T) {
 	quiet.NoteDepthCapSwallow("creature_dies")
 
 	line := renderGrinderLine(grinderWindow{games: 1})
-	if !strings.Contains(line, " capswallow=games:2,max:9,cascademax:9,mixed:0,hist[1:2,2:1,4:1,8:1]") {
+	// r187 appended cascadesmax: between cascademax: and mixed:. Both
+	// games here run exactly one swallowing cascade, so the per-game
+	// maximum is 1.
+	if !strings.Contains(line, " capswallow=games:2,max:9,cascademax:9,cascadesmax:1,mixed:0,hist[1:2,2:1,4:1,8:1]") {
 		t.Fatalf("capswallow= did not carry the real per-game shape; got: %s", line)
 	}
 	if !strings.Contains(line, " capfirst=creature_dies:1,life_gained:1") {

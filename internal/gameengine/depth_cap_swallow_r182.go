@@ -151,6 +151,19 @@ func (gs *GameState) NoteDepthCapSwallow(event string) {
 	bumpAtomicMax(&depthCapMaxPerGame, uint64(n))
 
 	gs.depthCapCascade++
+	// r187 — depthCapCascade is zeroed by NoteCascadeRoot at every new
+	// top-level cascade and incremented only on the line above, so a
+	// post-increment value of 1 is true exactly once per cascade that
+	// swallows anything: at its FIRST swallow. Counting here rather
+	// than in NoteCascadeRoot's `depthCapCascade != 0` arm is
+	// deliberate — that arm only runs when a LATER top-level cascade
+	// starts, so it would miss the last swallowing cascade of every
+	// game, which in the 82% of capped games that have exactly one is
+	// the whole measurement. Cost on the uncapped path: none; this
+	// line is inside the capped branch.
+	if gs.depthCapCascade == 1 {
+		gs.noteSwallowingCascade()
+	}
 	// r185 — keep the per-GAME maximum alongside the process-wide one.
 	// NoteCascadeRoot zeroes depthCapCascade at every new top-level
 	// cascade, so without this the only surviving record of "how hard
@@ -207,7 +220,7 @@ func DepthCapStats() (games, mixed, maxPerGame, cascadeMax uint64, buckets map[u
 // DepthCapSummary renders the accounting for the grinder line, or ""
 // when the cap has never fired so the caller omits the field entirely.
 //
-// Shape: games:932,max:1842,cascademax:57,mixed:88,hist[1:932,2:700,4:300]
+// Shape: games:932,max:1842,cascademax:57,cascadesmax:446,mixed:88,hist[1:932,2:700,4:300]
 func DepthCapSummary() string {
 	games, mixed, maxPerGame, cascadeMax, buckets := DepthCapStats()
 	if games == 0 {
@@ -220,6 +233,15 @@ func DepthCapSummary() string {
 	b.WriteString(strconv.FormatUint(maxPerGame, 10))
 	b.WriteString(",cascademax:")
 	b.WriteString(strconv.FormatUint(cascadeMax, 10))
+	// r187 — the per-GAME count of SWALLOWING cascades, at its
+	// largest. It belongs in this field and not in r186's capshape=
+	// for the denominator reason capshape='s own header gives:
+	// everything here is per GAME and everything there is per
+	// CASCADE. Named cascadesmax: rather than cascades: so it cannot
+	// be read as a run total — like max: and cascademax: beside it,
+	// it is one game's worst, not a sum over the window.
+	b.WriteString(",cascadesmax:")
+	b.WriteString(strconv.FormatUint(DepthCapCascadesMaxPerGame(), 10))
 	b.WriteString(",mixed:")
 	b.WriteString(strconv.FormatUint(mixed, 10))
 	if len(buckets) > 0 {
@@ -251,6 +273,9 @@ func ResetDepthCapForTest() {
 	for i := range depthCapBuckets {
 		depthCapBuckets[i].Store(0)
 	}
+	// r187 — kept here rather than exported separately so no test has
+	// to learn a second reset for the same family of counters.
+	ResetDepthCapCascadeCountForTest()
 }
 
 // DepthCapSwallowedCount is this ONE game's swallow total — the same

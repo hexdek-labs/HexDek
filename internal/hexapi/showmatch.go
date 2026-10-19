@@ -2106,9 +2106,19 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 				// against. shape= is "" only when the game never
 				// capped, which this branch has already excluded.
 				shape, distinct, domPct, boardMax := gs.DepthCapPeakCascadeShape()
-				log.Printf("grinder: CAPPED GAME %.1fs turns=%d seed=%d decks=%v swallowed=%d cascademax=%d shape=%s distinct=%d dom=%d%% board=%d",
+				// r187 — cascades= is how many top-level cascades
+				// swallowed anything, counted and not inferred. It
+				// sits immediately after cascademax= because the two
+				// are read together: the three production regimes are
+				// cascades=1 (one wide chain), cascades small with
+				// cascademax large (re-entry), and cascades large
+				// with cascademax small (fan-out, which is where all
+				// the wall-clock cost is). The r186 shape group stays
+				// last so the field order ahead of it is unchanged.
+				log.Printf("grinder: CAPPED GAME %.1fs turns=%d seed=%d decks=%v swallowed=%d cascademax=%d cascades=%d shape=%s distinct=%d dom=%d%% board=%d",
 					d.Seconds(), turnsPlayed, gameSeed, deckKeys,
 					swallowed, gs.DepthCapCascadeMaxCount(),
+					gs.DepthCapSwallowingCascadeCount(),
 					shape, distinct, domPct, boardMax)
 			}
 		}

@@ -117,6 +117,12 @@ func renderGrinderLine(w grinderWindow) string {
 	// guardtop= are window totals, so "1,857 games losing one
 	// dispatch" and "one game losing 1,857" print identically; this
 	// is the field that separates them. Empty until the cap fires.
+	//
+	// r187 — it now also carries cascadesmax:, the largest per-game
+	// count of cascades that swallowed anything. max: and cascademax:
+	// together cannot produce it (their quotient is a loose lower
+	// bound), and it is what names the fan-out regime that holds all
+	// of the capped population's wall-clock cost.
 	capSwallow := gameengine.DepthCapSummary()
 	if capSwallow != "" {
 		capSwallow = " capswallow=" + capSwallow
