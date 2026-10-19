@@ -1081,3 +1081,124 @@ still 1,980; cascades maximum still 550. Alias contamination in
 `distinct`/`dom%`/`shape` unchanged — everything above rests on the
 board, cascade-count and duration-rank axes, none of which read event
 names.
+
+---
+
+## Eleventh amendment (r191 tick) — the watcher's FILL RATE was the signal. Throughput dips are long-game worker occupancy, NOT an r187 regression, and my pre-registered revert gate is confounded.
+
+### How this started: an ops number that refused to fit
+
+READ 0 showed **104 watcher files in 47 minutes = 133/hour**, against
+the **62/hour** model confirmed on the two previous runs. The fill
+rate had doubled.
+
+`stallwatch7.sh` captures when `g/min now` sits **below 760 for three
+consecutive windows**. So its fill rate is not housekeeping — **it is
+the stall indicator.** A doubled capture rate means throughput spent
+twice as long in the degraded band. The rotation threshold was the
+least interesting thing about that number.
+
+### Throughput by hour, and the gate I nearly tripped
+
+```
+hour             median    p25     <760    <840
+2026/10/18 16     907.6   862.8      5%     12%
+2026/10/18 19     846.9   668.2     36%     44%
+2026/10/18 23     873.0   769.9     23%     33%
+2026/10/19 01     671.0   636.2     80%     85%
+2026/10/19 04     769.5   619.8     48%     66%
+```
+
+r187 deployed at **00:12Z**. Pre-deploy hourly medians run 847-908;
+post-deploy they run 650-854. **My pre-registered revert threshold is
+"clean median below 840", and three post-deploy hours are under it.**
+
+### It is not r187. It is worker occupancy, and the correlation is -0.892
+
+.206 runs **four grinder workers**, so a single long game removes 25%
+of capacity for its whole duration. Summing `SLOW GAME` durations per
+hour against a fixed denominator of **4 x 3600 = 14,400 worker-seconds**:
+
+```
+hour            median  slow-secs  % of 4w-hour   905*(1-frac)
+2026/10/18 16    907.6       259       1.8%            889
+2026/10/18 19    846.9      1548      10.8%            808
+2026/10/19 01    671.0      2814      19.5%            728
+2026/10/19 02    839.2       953       6.6%            845
+2026/10/19 03    854.3      1113       7.7%            835
+2026/10/19 04    769.5      2338      16.2%            758
+
+pearson(occupancy fraction, hourly median g/min) = -0.892  (13 full hours)
+```
+
+A one-parameter model — clean rate 905 scaled by remaining capacity —
+tracks the observed median within a few percent across the whole
+range. **The hours that breached my revert threshold are exactly the
+hours with the heaviest long-game occupancy.** There is no r187
+signal left to find once occupancy is accounted for.
+
+Only 05:00 misses (observed 650, predicted 867), and that is an
+artifact with a known sign: a game is logged when it **finishes**, so
+a partial hour under-counts the games still running inside it.
+
+### The gate is wrong, and it is my own
+
+**"Clean median below 840" cannot distinguish a code regression from
+an unlucky hour of deck pairings.** It fires on the deck mix. Had I
+applied it as written this tick I would have rolled back r187 for a
+Winota game and a handful of 600-second stalls.
+
+**Replacement: gate on the RESIDUAL**, observed median minus
+`905 x (1 - occupancy)`. That holds the deck mix constant and leaves
+only what the code did. The raw median stays as a service-health
+number; it is not a regression detector. Recorded here rather than
+changed silently.
+
+This is the same error class as the wall-clock share two ticks ago —
+**a statistic whose denominator moves for reasons unrelated to what I
+am trying to measure.** The fix is the same: find the denominator
+that is actually fixed. Worker-seconds per hour is genuinely constant
+at 14,400, which is why this instrument works where the share did not.
+
+### Where the occupancy comes from: a 600s wall that leaks
+
+Distribution of the 1,477 `SLOW GAME` durations:
+
+```
+    10-20s   622
+    20-60s   436
+    60-120s  179
+   120-300s  117
+   300-590s   35
+   590-610s   45   <- spike
+     >610s    43   max 3,102.6s
+```
+
+**45 games land in 590-610s, every one between 599.1 and 600.3**,
+against only 35 in the whole 300-590s range. That is a 600-second
+limit firing. But **43 games run past it, out to 3,102.6s — 51
+minutes on one of four workers.** Whatever enforces 600s is not
+enforced on these. Worth a look on its own; not chased this tick.
+
+### The four populations — fourth consecutive read, n=5,214
+
+```
+                    n=1795  n=2866  n=4397  n=5214
+1 cascades==1        82.2%   82.1%   81.6%   81.8%
+2 loop* re-entry      5.2%    4.7%    4.9%    4.9%
+3 cascades>=20        2.1%    2.3%    2.6%    2.4%
+medians r1/r2/r3   .30/.30/1.05  ->  .30/.30/0.90
+```
+
+Rank signatures, unchanged to within a point:
+
+```
+Winota (42 of 5,214, base 0.81%)   top5 80% 99x | top10 50% 62x | top20 40% 50x | top50 24% 30x
+Sorin  (43 of 5,214, base 0.82%)   top5  0%  0x | top10 40% 49x | top20 50% 61x | top50 50% 61x
+```
+
+**And this now joins up with the throughput finding.** Winota owns
+the extreme tail of game duration; the extreme tail of game duration
+is what consumes worker capacity; worker capacity is what sets
+throughput. The chain from one card's oracle text to the hourly
+throughput number is complete and measured at every link.
