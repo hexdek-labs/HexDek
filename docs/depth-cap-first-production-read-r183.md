@@ -3271,3 +3271,111 @@ churn, consistent with r207.
   Rotated before it could self-terminate; archive 15 dirs, 0 loose;
   relaunched and verified (2 procs).
 
+
+---
+
+## Twenty-eighth amendment — r209 (n=20,038 capped games, run age 22.0h)
+
+### A. LAST TICK'S REFUSAL TO CALL IT DECELERATION PAID OUT WITHIN ONE TICK
+
+At r208 the 10-minute floor increments were falling (+608 down to +83) and I
+reported them while explicitly declining to call it deceleration, on the
+grounds that "the growth is slowing" is the claim I got most wrong in this
+investigation. **They went back up.**
+
+```
+  time    floor   d/10min        time    floor   d/10min
+  20:00    3168                  21:20    4444     +334
+  20:30    3684     +104         21:30    4415      -29
+  20:50    3896      +83         21:40    4438      +23
+  21:00    3832      -64         21:50    4462      +24
+  21:10    4110     +278         22:00    4553      +91
+                                 22:10    4854     +301  PARTIAL n=3
+```
+
+Hourly: **+1772 (h19) -> +664 (h20) -> +721 (h21).** Not monotone. **The
+increments are NOISY, not trending**, and a two-point read of them would have
+produced a published claim that was wrong one hour later. The discipline held
+this time; recording it because the near-miss is the evidence that the rule
+is load-bearing.
+
+### B. THE RESIDUAL HELD AT −446 IN THE QUIETEST HOUR OF THE SEQUENCE
+
+```
+hour   n     median g/min   occ%    r_spread
+ 18   120       478.0       19.5%    -251
+ 19   120       363.9       10.0%    -451
+ 20   120       370.1       11.4%    -432
+ 21   120       413.2        5.1%    -446
+```
+
+**SIX consecutive hours past the gate.** Hour 21 ran at **5.1% occupancy —
+the lowest of the whole sequence** — and still read −446. Item (1b) records
+that the 905 model's bias makes **quiet hours look BETTER**, so if anything
+−446 is understated here. The busy-hour caveat that bound hour 18 now works
+in the opposite direction and cannot explain hour 21.
+
+**Throughput is RECOVERING while the heap climbs**: 366 (h19) -> 372 (h20)
+-> 413 (h21) -> 436 (h22 partial), against floors 1396 -> 3168 -> 3832 ->
+4553. **The two series continue to move independently** and should not be
+described as one phenomenon.
+
+### C. THE GC-FLOOR REGRESSION IS NOW FULLY DOMINATED BY THE BREAK
+
+```
+  full 2h -> 22.0h     +60.88 +/- 40.05   n=19   <- DO NOT QUOTE
+  DROP LAST BIN        +28.17 +/- 13.15   n=18   (= r208's headline exactly)
+  DROP LAST TWO        +17.20 +/-  2.09   n=17   (= r207's headline exactly)
+  pre-break 2h -> 18h  +16.54 +/-  2.21   n=16   (= r206's headline exactly)
+```
+
+**Each successive dropped bin recovers the PREVIOUS TICK'S published number
+exactly.** That is a clean demonstration that every new bin since the break
+is its own outlier, and that the headline figure is now reporting the newest
+bin rather than the system. The CI has gone ±2.21 -> ±13.15 -> ±40.05.
+**The old-regime number remains +16.54 ± 2.21 and nothing else from this
+instrument is quotable while the regime is broken.**
+The regression also still lags: its newest complete age-bin reads floor 3388
+while the live 22:10 floor is 4,854.
+
+### D. THE PHASE-MATCHED inuse CAPTURE — BUILT, AND MY FIRST ATTEMPT SILENTLY DID NOT RUN
+
+r208's named next step was two `inuse` profiles captured at a MATCHED
+sawtooth phase. Implemented as `~/phasecap.sh` on .206: poll the grinder
+line's `heap=` every 10s, fire a capture only when the value DROPS by
+>=300 MB (i.e. immediately after a GC), repeat 13 minutes later. Watcher
+stopped for the whole window.
+
+**The first attempt never ran and I nearly did not notice.** I wrote the
+script through a nested heredoc over ssh AND launched it in the same
+backgrounded call. The heredoc quoting failed, the file was never created,
+and because the write and the launch were bundled into one backgrounded
+command, **the failure produced no visible error** — I only caught it by
+checking for the log file afterwards. Rewritten as a local file, `scp -O`'d
+across, `bash -n` syntax-checked, existence verified, and only then launched.
+
+**THE LESSON, WHICH IS A PROCESS ONE: DO NOT BUNDLE A STEP THAT NEEDS
+VERIFYING WITH A STEP THAT NEEDS BACKGROUNDING.** The backgrounding hides the
+verification.
+
+### E. STANDING RE-MEASURE
+
+- **600s wall: deadlines 32 vs 32 games >=590s — SEVENTEENTH consecutive**,
+  both from ONE snapshot.
+  `token_create:26, stack_drain:2, trigger_drain:2, turn_phase_boundary:2`
+- **Tripwire NOT tripped: `process heap` aborts still 3,628** (frozen since
+  Oct 16). Heap 4,755 MB against the 6,442 MB HeapAlloc ceiling; hour-21
+  peak 5,046 MB. Box 9.0 GB free of 15.8 GB. **No extrapolation offered.**
+- **Populations, TWENTY-FIRST stable read (four OVERLAPPING filters):**
+  r1 82.3% | r2 4.9% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+- **Rank signatures:** Winota base 0.87%, top20 65%, top50 46%; Sorin base
+  0.64%, top20 15%, top50 42%. Within the usual small-k wobble.
+- **Threshold sweep, THIRTEENTH replication — every level IDENTICAL to r208**
+  (70/85/90/95/90/75, 15/10/5/5/5/5, 0/0/0/0/5/20) despite n growing.
+- `total_cap` frozen at 9,504. Aborts frozen (22 / 3,628). **Zero grinder
+  gaps >=180s this run.** EXITED 2 = 7.
+- Oct-18 stalls unchanged (Sorin 95/238 = 40%). Oct-19 still partial.
+- **Watcher: 224 files / 56.7 min = 237/hour — at the ceiling a FOURTH tick
+  running.** Rotated; archive 16 dirs, 0 loose. **Deliberately left STOPPED
+  for the phase-matched capture window** and relaunched after.
+
