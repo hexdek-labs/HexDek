@@ -2238,3 +2238,136 @@ hour   n    median   occ%    r905    rfit
 Gate still not tripped. This is the same class of hazard as r199's
 stale `gmin.txt`: an unchanged table looks like a confirmation unless
 you say why it could not have changed.
+
+## Twenty-first amendment (r202) — n=15,072 capped games, heap n=1,792
+
+**A. POST-TRANSIENT HEAP: NO CURVATURE INSIDE THE POST-2h WINDOW. The r201 correction holds.**
+
+```
+full-run slope   26.32 (10.20h) -> 25.20 -> 24.33 -> 23.98 -> 24.30 -> 23.28 (14.92h)
+  cut      n             first half            second half   verdict
+  0.0h   1792   +30.08 +/- 2.85        +21.49 +/- 3.25       DISJOINT gap 2.50
+  2.0h   1552   +26.49 +/- 3.56        +19.70 +/- 4.12       OVERLAP
+  3.0h   1432   +24.32 +/- 4.15        +18.02 +/- 4.67       OVERLAP
+  4.0h   1312   +21.78 +/- 4.84        +18.38 +/- 5.32       OVERLAP
+  5.0h   1192   +18.69 +/- 5.55        +19.34 +/- 6.21       OVERLAP
+  6.0h   1072   +26.88 +/- 6.62        +25.96 +/- 7.24       OVERLAP
+```
+
+**THE T=0 GAP WIDENED 0.53 -> 2.50 AND THAT IS STRUCTURAL, NOT A RETURN OF DECELERATION.**
+The 0-2h transient is a FIXED block of 240 high-slope points permanently sitting in the
+first half of any T=0 split. As n grows the CIs narrow while the transient's contribution
+does not, so the T=0 test will drift further "disjoint" forever. **The T=0 split can never
+clear and must not be quoted again.** Under the old reading I would have reported
+"deceleration is back" this tick. It is not: every cut from 2h on overlaps, and at 5h and
+6h the two halves are equal to within 0.7 MB/h.
+
+**B. NEW INSTRUMENT — THE SPAN-CAPPED CONTROL. Strongest separation measured so far.**
+The age-matched control still compares unequal spans (control 8.6h, treatment 12.9h).
+Capping the treatment at the control's exact age range removes that asymmetry:
+
+```
+r186 control    age 2h -> 10.6h    -4.35 +/-  2.26 MB/h   n=1024
+r187 treatment  age 2h -> 14.9h   +22.36 +/-  1.36 MB/h   n=1552
+r187 CAPPED at the control's span (2h -> 10.6h)
+                                  +25.99 +/-  2.40 MB/h   n=1030
+```
+Matching the spans exactly makes the separation LARGER, not smaller. The result does not
+depend on the treatment run being longer.
+
+**C. STEADY-STATE SLOPE DRIFTED DOWN BUT NOT OFF ~23.5.**
+```
+                 r201               r202
+steady 2h+   +23.54 +/- 1.58   +22.36 +/- 1.36   (CI [21.00, 23.72])
+steady 4h+   +22.02 +/- 2.16   +20.76 +/- 1.80
+```
+Both fell by ~1.2, comfortably inside the intervals, and 23.5 is still inside the 2h+ CI —
+**but only just.** This is the pre-registered watch item from r201 and it is now at its
+edge. If 2h+ reads below 21 next tick with a comparable CI, that IS a departure. **Do not
+call it one yet, and do not re-open "decelerating" if it does — a lower steady slope on a
+longer window is not the same claim.**
+
+**D. THE 0-2h TRANSIENT IS UNCHANGED BECAUSE ITS WINDOW IS CLOSED — NOT BECAUSE IT
+REPLICATED.** +70.79 +/- 19.24, n=240, byte-identical to r201. Same 240 observations. It
+can only be re-measured on a NEW process start.
+
+**E. STATUS OF EVERY CLAIM — unchanged from r201.** Still withdrawn: "+26.3 MB/h", "~8.3
+days", "the growth is decelerating". Reopened and now better evidenced: a steady ~+22 MB/h
+against a flat control. **Still not offered: any extrapolation.**
+
+**F. THE 600s WALL — 18/18, TENTH CONSECUTIVE CLEAN READ.**
+```
+deadlines=token_create:14,stack_drain:2,trigger_drain:1,turn_phase_boundary:1  = 18
+games >=590s this run = 18
+```
+The run-on set is unchanged: 2033.3s, 1400.8s, 871.0s; everything else landed in [599.1,
+603.5]. The unwind leak is still exactly 3 of 18.
+
+**G. `percard_dispatch_total_cap` — TWO NEW EVENTS, SIX TOTAL.**
+```
+10/19 12:36   8,016 ->  8,193   (+177)
+10/19 14:29   8,193 ->  8,939   (+746)
+10/19 14:46   8,939 ->  9,504   (+565)
+```
+Two medium events 17 minutes apart is a new sub-pattern — previous events were separated
+by hours of total freeze. Still invisible to `guardtop=`: the top-5 is all
+`percard_dispatch_depth_cap` (zone_change 135,583 / permanent_ltb 105,854 / creature_dies
+102,084 / permanent_etb 29,392 / graveyard_leave 28,329), so a guard at 9,504 can never
+enter. **(6b) remains the only path to attribution.**
+
+**H. POPULATIONS — FOURTEENTH CONSECUTIVE HOLD, n=15,072.**
+```
+            9322 10331 11173 11921 13064 13757 15072
+r1 casc==1  82.0  82.3  82.2  82.3  82.3  82.3  82.2
+r2 loop*     4.7   4.8   4.8   4.8   4.9   5.0   5.0
+r3 casc>=20  2.3   2.2   2.2   2.1   2.1   2.1   2.1
+big >=300    0.8   0.8   0.8   0.7   0.7   0.7   0.7
+```
+r3 x big overlap 6 (was 3). Maxima unchanged: board 3,058, cascades 555, capped 449.5s,
+SLOW GAME 3,102.6s. 0 of 15,072 reached distinct>=32; max distinct 11.
+
+**I. SPREAD RESIDUAL — TWO GENUINELY NEW COMPLETE HOURS. Gate NOT tripped.**
+```
+hour   n    median   occ%   r_spread
+ 08   120   830.0    2.3%     -54
+ 09   120   808.1    6.4%     -39
+ 10   120   811.1    8.9%     -13
+ 11   120   817.5    2.2%     -67
+ 12   120   786.9    7.5%     -50
+ 13   120   780.5    8.9%     -44    NEW
+ 14   120   786.1    7.9%     -48    NEW
+mean |residual| 35.6 spread / 43.4 naive
+```
+Every hour n=120 — no grinder downtime. Hour 15 is partial (16 samples), not judged.
+**Hours 06-14 are now NINE consecutive negatives**, up from seven. The gate is on
+MAGNITUDE (two consecutive below -60) and only hour 11 qualifies. **Still a watch item.
+Do not invent a run-length gate after seeing a longer run.**
+
+**J. THRESHOLD SWEEP — SIXTH REPLICATION. Sorin's monotone exit holds.**
+```
+  thr      n    winota top20   sorin top20   gerrard top20
+   20   4211         70%           20%            0%
+   50   1173         80%           15%            0%
+  100    594         95%            0%            0%
+  200    329        100%            0%            0%
+  500    130         75%            0%           25%
+ 1000     54         55%            0%           45%
+```
+Winota/Gerrard swapped direction again at thr=500 and 1000 (70/30 -> 75/25, 50/50 ->
+55/45). **The shape replicates; the levels are small-k noise. Still no winner named.**
+All-capped ranks: Winota base 0.88% top20 55% / top50 42%; Sorin base 0.68% top20 25% /
+top50 50%.
+
+**K. OCT-18 STALLS UNCHANGED** — Sorin 95/238 (40%), Winota 33/238 (14%). Oct-19 reads 57%
+at n=192 and is PARTIAL — not quoted.
+
+**L. GRINDER GAPS >=180s: still 5.** Newest remains 10/18 13:05:18 -> 13:25:19 (1201s).
+Both abort strings frozen (22 / 3,628, last 10/16 17:35).
+
+**M. CAUGHT BEFORE PUBLISHING — A STALE LABEL ON A SCRIPT.** `r194.py` prints the
+unexplained class under the heading "r1 plain, board<300, cascades==1", but its `grp()`
+assigns `r1 plain` as the RESIDUAL bucket, not `cascades==1`. A third row appeared this
+tick (14.3s, turns=80, board=59, sw=43, **casc=2**) which the heading would have let me
+report as the class growing to three. **It is not a member. The (5b) class is still exactly
+2** (150.4s and 114.3s, both cascades==1). A script's printed description is not its
+filter — read the code, not the header.
