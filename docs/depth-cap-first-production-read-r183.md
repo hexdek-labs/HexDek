@@ -2770,3 +2770,133 @@ only so nobody later mistakes it for a signal.
 - Oct-18 stalls unchanged (Sorin 95/238 = 40%). Oct-19 partial, not quoted.
 - Watcher ROTATED at 11:06Z (pids 441680/441682); archive 12 dirs, 0 loose.
 
+
+---
+
+## Twenty-fifth amendment — r206 (n=18,563 capped games, run age 18.9h)
+
+### A. THE COLLAPSE — HOUR 18 READ −251, THREE CONSECUTIVE HOURS PAST THE GATE
+
+```
+hour   n     median g/min   occ%    r_spread
+ 16   120       769.7        8.4%     -60
+ 17   120       733.0       10.0%     -82
+ 18   120       478.0       19.5%    -251
+ 19    18       280.5         —        —     PARTIAL, NOT JUDGED
+```
+
+n=120 for hour 18 — complete, no gap. No grinder gaps >=180s anywhere in the run.
+Health 200, pprof 200, all abort counters frozen, EXITED 2 still 7.
+
+**THE CAVEAT THAT BINDS THIS, AND IT IS LARGE: hour 18 is the
+HIGHEST-OCCUPANCY HOUR OF THE ENTIRE RUN (19.5% against 2-10% typical), and
+item (1b) records that the 905 model's known bias direction is to make BUSY
+HOURS LOOK WORSE.** The two previous high-occupancy hours read −43 (21.2%)
+and −81 (19.1%), so −251 is far beyond them — but the instrument is being
+read exactly where its misspecification is largest, and I am not going to
+pretend otherwise. Hour 18 carried four ~600s games plus a 934.7s overrun.
+
+Heap floors over the same window: 1025, 1040, 1090, 1121, then **1396** in
+hour 19 — a +275 MB step against a ~16 MB/h trend.
+
+### B. ELIMINATED THIS TICK
+
+- **Goroutine leak: DEAD.** `goroutine profile: total 18`. Not a leak.
+- **Grinder gap: DEAD.** Zero gaps >=180s; n=120 every hour.
+- **Deck spike: NOT SUPPORTED.** Hour 18's slow games are the usual mix.
+
+### C. A LOG LINE I HAD NEVER AGGREGATED — AND MY OWN MISREADING OF IT, CAUGHT INSIDE THE TICK
+
+`grinder: ALLOC SPIKE` has fired **64 times all-time, 29 in this run**, and I
+have never once aggregated it. It carries a per-window allocation figure, a
+games count, and the detector's own rolling median of MB/game.
+
+The rolling median sat at **14.7-15.9 MB/game for eighteen hours**, then:
+
+```
+19:02:02   vs median 51.1   (77.0 MB/game)
+19:10:33   vs median 68.0  (213.7 MB/game)
+```
+
+**I FIRST READ THAT AS "PER-GAME ALLOCATION QUADRUPLED" AND CALLED IT A
+BETTER EXPLANATION OF THE COLLAPSE THAN ANYTHING TESTED AT r205. THAT WAS
+WRONG.** The detector prints both sides and I read past them:
+
+```
+18:37:01   alloc  7639MB / 314 games =  24.3 MB/game
+18:37:31   alloc 11683MB / 229 games =  51.0
+19:02:02   alloc  9081MB / 118 games =  77.0
+19:10:33   alloc  9615MB /  45 games = 213.7
+```
+
+**Allocation per window is roughly FLAT at 7-12 GB. The GAMES DENOMINATOR
+collapsed 314 -> 45.** MB/game is a ratio and it moved because of its
+denominator. The log line literally says **"DENOMINATOR FELL — fewer games
+completed, check for a SLOW GAME"** in its own text.
+
+**So ALLOC SPIKE is a SYMPTOM of the throughput collapse, not a cause — the
+same error class as the watcher at r205, found the same way.** It remains
+worth aggregating as a cheap detector; it is NOT evidence of an allocation
+regression, and no such regression is claimed.
+
+### D. I NEARLY PUBLISHED A BROKEN STREAK OFF MY OWN STALE SNAPSHOT
+
+The 600s wall has matched exactly for thirteen reads. This tick it appeared
+to break: **deadlines=28 vs 27 games >=590s.** I was about to report the
+first excess, with "a game is mid-unwind" as the explanation.
+
+**It was my own error.** `slow.txt` was pulled at 19:09; the deadline total
+came from a live query at 19:19; a 599.7s game logged at 19:11:18 in between.
+**Two numbers from two different moments.** Re-pulled in a single snapshot:
+
+```
+deadlines=token_create:22,stack_drain:2,trigger_drain:2,turn_phase_boundary:2  = 28
+games >=590s this run                                                          = 28
+```
+
+**28/28 — FOURTEENTH CONSECUTIVE. The streak holds.** (0c) says refresh every
+input at the top of the tick; the sharper form is **two numbers being compared
+must come from the SAME snapshot**, which a top-of-tick refresh does not
+guarantee when one side is queried live later.
+
+### E. THE GC FLOOR WENT BACK UP, CONFIRMING THE r205 WITHDRAWAL
+
+```
+r204   2h -> 16.60h   +16.30 +/- 2.72   n=14   published 16.30  <- EXACT
+r205   2h -> 17.87h   +15.93 +/- 2.38   n=15
+r206   2h -> 18.93h   +16.54 +/- 2.21   n=16
+```
+
+Down then up. **A number that wanders both ways with the window is not a
+trend** — the same confirmation r204 gave for the r203 withdrawal, now for the
+floor. Trough split-half still OVERLAPS (+21.09 ± 5.85 vs +16.93 ± 6.24).
+Hour 19's 1396 MB floor is in a partial bin and NOT yet in the regression.
+Minor: `r205chk.py` labels its new row "r205"; the span printed beside it is
+correct, so the row is unambiguous, but the label is stale.
+
+### F. THE WATCHER SATURATED AND TURNED ITSELF OFF
+
+It ran 18:06:11 -> 19:07:24 (61.2 min), produced **241 files**, hit its 240-file
+/ 60-capture cap and **exited**. It was blind from 19:07 until the relaunch.
+
+**Fill rate 236/hour — but that is the INSTRUMENT'S CEILING, not a measurement
+of the system.** 60 captures in 61 minutes is back-to-back capturing, which
+means throughput sat under 760 almost continuously. **A saturated counter
+cannot report a rate**, so the fill-rate series (… 54.2 -> 106.3 -> 236) is
+right-censored at this end and must not be extrapolated.
+
+**OPERATIONAL PROBLEM WORTH NAMING: the watcher self-terminates after ~1 hour
+at this capture rate, so it goes blind exactly when conditions are worst.**
+Rotated; archive now 13 dirs, 0 loose; relaunched and verified (2 procs).
+
+### G. STANDING RE-MEASURE
+
+- **600s wall 28/28, FOURTEENTH consecutive** (see D).
+- **Populations, EIGHTEENTH stable read (four OVERLAPPING filters):**
+  r1 82.3% | r2 4.9% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+- **Threshold sweep, TENTH replication.** One level moved: thr=20 winota
+  70% -> 65%. Everything else identical. Sorin still 20/15/5/5/5/5.
+- `total_cap` frozen at 9,504. Aborts frozen (22 / 3,628). Gaps 5.
+- Oct-18 stalls unchanged (Sorin 95/238 = 40%). Oct-19 partial, not quoted.
+- Maxima unchanged.
+
