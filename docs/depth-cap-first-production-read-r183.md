@@ -1933,3 +1933,173 @@ r3 x big-board overlap still 2 in 11,921 — never "exactly 0"
 watcher       136 files / 234.1 min = 34.9/hour -> ROTATED (over the 120 threshold)
               new pids 400766/400768, verified single instance, server untouched
 ```
+
+---
+
+## Nineteenth amendment (r199) — n=13,064 capped games, r187 run at 12.88h
+
+### A. The heap deceleration still holds, but the deceleration is itself decaying
+
+Same process (pid 322631, no restart), so this is the same single r187
+treatment run, now 12.88h and n=1,548 samples.
+
+```
+full run      heap +23.98 +/- 1.33   sys +39.02 +/- 0.77
+SPLIT-HALF    first  n=774  heap +31.19 +/- 3.48   sys +62.48 +/- 2.47
+              second n=774  heap +20.56 +/- 3.99   sys +38.47 +/- 0.58
+              -> CIs [27.71, 34.67] vs [16.57, 24.55] STILL DISJOINT
+THIRDS        +24.18 +/- 6.18 | +16.96 +/- 6.71 | +21.49 +/- 7.63
+hourly mean heap: 916 1002 996 1017 1052 1096 1123 1128 1144 1172 1205 1193 1234 1271
+```
+
+**The split-half result replicates for a third time and remains the
+only claimable resolution.**
+
+**THE THIRDS DID NOT REPLICATE, AND THAT MATTERS.** At r198 the thirds
+read +28.42 / +25.29 / +18.29 — monotone decline. They now read
++24.18 / +16.96 / +21.49, which is not monotone. At r198 the CIs
+overlapped and the monotone reading was explicitly NOT claimed. That
+restraint was correct: the pattern is gone one tick later. Logged as a
+worked example — an overlapping-CI pattern is a coin flip, and
+publishing it would have required a retraction here.
+
+### B. The free consistency check has nearly stopped moving — watch this
+
+Full-run linear slope as the run extends:
+
+```
+  r196  10.20h   26.32
+  r197  10.95h   25.20     delta -1.12 over 0.75h   = -1.49 / h
+  r198  11.77h   24.33     delta -0.87 over 0.82h   = -1.06 / h
+  r199  12.88h   23.98     delta -0.35 over 1.11h   = -0.32 / h
+```
+
+A straight line fitted through a bending curve has its slope dragged
+down as data extends. That drag is **decaying fast**: -1.49, -1.06,
+-0.32 per hour. In the same direction, the second-half slope is RISING
+across ticks: 15.79 (r197) -> 18.69 (r198) -> 20.56 (r199).
+
+**Read: the curve is straightening.** Per the standing rule, this is
+NOT a prediction of a plateau and NOT a return to the withdrawn linear
+claim. It is the one thing the brief flagged as new if it happened, so
+it is recorded as a watch item, not a finding. Residual variance has
+also grown (full-run CI +/- 0.77 -> +/- 1.33 despite more n), meaning
+the recent hours swing wider.
+
+**STILL WITHDRAWN AND NOT RE-ASSERTED:** "+26.3 MB/h leak" and the word
+"leak". What survives is unchanged: r187 settles ~250MB above r186's
+flat baseline, ceiling 6442MB on a 15.8GB box, nothing is heading
+anywhere.
+
+### C. The 905-vs-fitted question has resolved itself — do not re-base
+
+At r195 the two-parameter refit looked clearly better. At 18 more hours
+of data it largely does not:
+
+```
+                    r195 (n=28)      r199 (n=36)
+mean |residual|   30.5 -> 27.2     34.9 -> 33.3
+corr(occ, resid)  -0.393 -> 0.000  -0.211 -> +0.116
+```
+
+The occupancy bias in the 905 model has **weakened on its own**
+(-0.393 -> -0.211), and the fitted model now over-corrects in the
+opposite direction (+0.116). The refit was partly fitting noise in a
+narrow occupancy range. **The r195 decision not to re-base is
+vindicated.** Keep 905; keep knowing its direction.
+
+### D. Residual: gate NOT tripped, but seven consecutive negative hours
+
+Every hour carries n=120 g/min samples — **no grinder downtime**, so
+every residual below is a real reading.
+
+```
+hour   n    median   occ%    r905    rfit
+ 06   120   801.8    8.6%     -26     -27
+ 07   120   802.0    8.9%     -22     -22
+ 08   120   830.0    2.3%     -54     -72
+ 09   120   808.1    6.4%     -39     -46
+ 10   120   811.1    8.9%     -13     -13
+ 11   120   817.5    2.2%     -67     -86
+ 12   120   786.9    7.5%     -50     -55
+```
+
+**GATE NOT TRIPPED** under either model: it requires two CONSECUTIVE
+hours below -60, and hour 11 (-67) is followed by hour 12 (-50).
+Under the fitted model hour 11 reads -86, still with no qualifying
+neighbour.
+
+Hours 06-12 are seven consecutive negatives. **This is deliberately NOT
+being promoted to a finding.** The pre-registered gate is on magnitude;
+inventing a run-length gate after seeing a run is how a null becomes a
+result. Residuals are also autocorrelated, so a naive run test is
+invalid. `corr(time, residual)` is -0.161 (was -0.145) — still no
+drift. Recorded as a watch item for the next tick.
+
+### E. `percard_dispatch_total_cap` — a FOURTH event, and it breaks the size pattern
+
+```
+ 01:25     0 -> 347
+ 06:35   347 -> 2,116      then frozen FOUR hours
+ 11:37  2,116 -> 4,333 -> 6,829 -> 8,016   (~5,900 in 90s)
+ 12:36  8,016 -> 8,193     (+177, single 30s window)   <- NEW
+```
+
+The r198 characterisation "compressed into 60-90s with a total freeze
+between" survives as to TIMING, but **the magnitudes span 30x** and
+"burst" is the wrong word for a +177 step. Amended: these are brief
+isolated events of widely varying size, separated by total freezes.
+
+**NOT RETRIED, BY DESIGN:** the finish-time cross-reference. r198
+proved it cannot work (~400 games finish even in a single 30s window,
+and only capped/slow games emit a line). A +177 event is small enough
+to plausibly be one or two games, which makes attribution more
+valuable, not more tractable. **The one-line `LoopGuardLabelsFor`
+wiring remains the only path. Owner call.**
+
+### F. Standing re-measure
+
+```
+            9322 10331 11173 11921 13064
+r1 casc==1  82.0  82.3  82.2  82.3  82.3
+r2 loop*     4.7   4.8   4.8   4.8   4.9
+r3 casc>=20  2.3   2.2   2.2   2.1   2.1
+big >=300    0.8   0.8   0.8   0.7   0.7
+```
+
+- **Populations hold for a TWELFTH consecutive read.**
+- **r3 x big-board overlap is now 3 in 13,064** (was 2 at 11,921, 1 at
+  9,322, 0 at 2,866). Still creeping, exactly as warned. Never "zero".
+- **600s deadline: 15/15 — EIGHTH consecutive full hold.** `deadlines=`
+  reads token_create:11, stack_drain:2, trigger_drain:1,
+  turn_phase_boundary:1 = 15, against 15 games >=590s this run. The
+  same three games overrun as draws (+1433s, +801s, +271s); no new
+  overruns. 0 of 13,064 reached distinct>=32; max distinct 11.
+- **Grinder gaps >=180s: no new ones.** Only the known Oct-18
+  13:05:18 -> 13:25:19 (1201s). Both abort strings frozen since Oct 16.
+- **Rank signatures** (top-20/top-50, never top-5 alone): Winota base
+  1.09%, top20 55% / top50 38%. Sorin base 0.70%, top20 25% / top50 52%.
+- **Threshold sweep replicates a FIFTH time** — Sorin's exit monotone
+  (15/15/0/0/0/0), Winota and Gerrard still swapping at 500/1000, and
+  thr=200 again reads Winota 100%, the known artifact. Note Sorin's
+  thr=20 level moved 35% -> 15% between ticks: the SHAPE replicates,
+  the LEVELS are small-k noisy.
+- **Stalls, Oct-18 (complete day, the quotable one): Sorin 40%
+  (95/238), Winota 14%** — unchanged. Oct-19 is partial, not quoted.
+- **Watcher fill rate 66.7/hour** (76 files / 68.4 min), roughly double
+  r198's 34.9. Projected ~143 at next tick, under the 200 gate, so NOT
+  rotated. Per (0b) this is ~88% an occupancy meter, not a stall signal.
+
+### G. A process error worth recording
+
+`resid2.py` reads `gmin.txt`, which I did not refresh at the start of
+this tick. The residual table it printed was **last tick's data wearing
+this tick's timestamp**, and it would have been published as a fresh
+reading. Caught because the table ended at hour 10 when hours 11 and 12
+exist. The two new hours are the only ones that moved — so the stale
+run would have silently hidden the single most interesting number in
+the section (hour 11 at -67).
+
+**Rule: a script with a hardcoded input filename does not announce that
+its input is stale. Refresh every input at the top of the tick, or have
+the script print its input's mtime and row count.**
