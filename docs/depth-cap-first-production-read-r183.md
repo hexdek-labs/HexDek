@@ -1851,3 +1851,85 @@ ranks         winota top20 50% / top50 34%   sorin top20 35% / top50 58%
 watcher       116 files / 186.5 min = 37.3/hour — no rotation (116 <= 120, projected 153)
 r3 x big-board overlap is now 2 in 11,173 (was 1) — still NEVER "exactly 0"
 ```
+
+## Eighteenth amendment (r198) — the deceleration replicates; and a NEGATIVE result on attributing the total_cap burst
+
+n = 11,921 capped games (prev 11,173).
+
+### A. r187 heap — the r197 correction REPLICATES
+
+```
+full run n=1413 over 11.77h   heap +24.33 +/- 0.77   sys +40.40 +/- 0.47
+SPLIT-HALF          first  n=706  heap +31.97 +/- 2.03   sys +69.39 +/- 1.42
+                    second n=707  heap +18.69 +/- 2.28   sys +38.78 +/- 0.37
+  CIs do not overlap (27.9 vs 23.3) — deceleration confirmed a second time
+THIRDS   0.0-3.9h +28.42 +/- 3.58 | 3.9-7.8h +25.29 +/- 4.07 | 7.8-11.8h +18.29 +/- 4.25
+hourly mean heap: 919 1012 1007 1020 1056 1108 1116 1138 1135 1192 1192 1205
+```
+
+**The thirds decline monotonically but their CIs OVERLAP — that finer resolution is
+suggestive, not established.** The split-half is the result that holds.
+
+**A free consistency check:** the full-run linear slope keeps falling as the run extends —
+**26.32 (10.2h) -> 25.20 (10.95h) -> 24.33 (11.77h)**. That is exactly what a straight-line
+fit does to a decelerating curve, and it is independent confirmation that r196's
+constant-rate extrapolation was the wrong model.
+
+Still rising, just slower (1192 -> 1192 -> 1205). **Still NOT predicting where it lands.**
+Throughput result unchanged and still separate.
+
+### B. `percard_dispatch_total_cap` BURST CAUGHT LIVE — and a failed attribution
+
+Frozen at 2,116 for FOUR hours, then:
+
+```
+2026/10/19 11:37:26   4,333
+2026/10/19 11:37:56   6,829
+2026/10/19 11:38:26   8,016      <- ~5,900 in 90 seconds, then frozen again
+```
+
+Three bursts now characterised (10/18 18:51-18:52, 10/19 06:35, 10/19 11:37-11:38): all
+**compressed into 60-90s, totally frozen between.** The bursty reading is now well
+supported.
+
+**`guardtop=` structurally cannot show it, confirmed again:** the current top-5 is
+103,825 / 81,177 / 78,141 / 22,341 / 21,562 — all `percard_dispatch_depth_cap` labels. A
+guard at 8,016 cannot enter that list. This is exactly (6b)'s point.
+
+**NEGATIVE RESULT — I tried to shortcut the label wiring and it does not work.** Idea:
+games log when they FINISH, so cross-reference decks in games finishing inside each burst
+window. Gerrard appeared in both readable windows and looked like a hit:
+
+```
+                              gerrard share
+base rate, all 16,338 games        3.8%
+10/19 06:35-06:40 (burst)          5.1%   (6/118)
+10/19 11:37-11:42 (burst)          5.5%   (4/73)
+--- CONTROLS, quiet windows ---
+10/19 09:37-09:42                  5.0%   (4/80)
+10/19 10:37-10:42                  4.4%   (3/68)
+10/19 07:35-07:40                  5.8%   (4/69)
+```
+
+**The controls read the same as the bursts. There is no signal.** I would have reported a
+Gerrard association off the two burst numbers alone; three quiet windows cost one command
+and killed it.
+
+**Why the method cannot work here, stated so nobody retries it:** at ~800 games/min across
+4 workers, a 90-second burst overlaps roughly 1,200 games, of which only a handful are
+logged at all (only capped/slow games emit a line). The window cannot isolate one game.
+**(6b)'s one-line `LoopGuardLabelsFor("percard_dispatch_total_cap")` wiring remains the
+ONLY path to attribution.** Still owner-gated, still needs a deploy.
+
+### C. Standing re-measure
+
+```
+populations (ELEVENTH consecutive hold)  r1 82.3  r2 4.8  r3 2.1  big 0.7
+deadline      14 games >=590s vs guards=game_deadline:14   <- SEVENTH consecutive
+              no new >=590s games this tick
+residual      08 -54, 09 -39, 10 -13; hour 11 partial (117 samples) — not judged
+abort strings 22 / 3,628 unchanged since Oct 16; no new grinder gaps >=180s
+r3 x big-board overlap still 2 in 11,921 — never "exactly 0"
+watcher       136 files / 234.1 min = 34.9/hour -> ROTATED (over the 120 threshold)
+              new pids 400766/400768, verified single instance, server untouched
+```
