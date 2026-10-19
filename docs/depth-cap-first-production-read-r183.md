@@ -1464,3 +1464,120 @@ so the next read does not repeat the same mis-attribution.
 The general lesson, which is the same one three amendments running: a
 top-N column answers "what is busiest", never "what is this specific thing
 doing". When the question names a guard, read a per-guard instrument.
+
+---
+
+## Fourteenth amendment (r194) — the rank instrument has two flaws I had not seen: k=5 is a 5-observation statistic, and half the top-20 are not cap-driven at all
+
+**n=7,987** capped games. Standing results first, then the correction.
+
+### A. Standing — all three invariants replicate
+
+```
+SLOW GAMEs >=590s this run : 11      guards=game_deadline : 11      <- 11/11, third read
+deadlines=token_create:7,stack_drain:2,trigger_drain:1,turn_phase_boundary:1
+
+populations (seventh consecutive hold)   r1 82.0%  r2 4.9%  r3 2.3%  big 0.8%
+watcher fill rate   124 files / 95.3 min = 78.0/hour   (rotated; was 57.6)
+percard_dispatch_total_cap   FROZEN at 2,116 all hour   <- confirms (6b): bursty, not accumulating
+
+hour            median  naive_occ  res_naive  true_occ  res_true
+2026/10/19 05    651.8     12.4%      -141      19.1%      -81
+2026/10/19 06    801.8     15.3%       +35       8.6%      -26
+2026/10/19 07    802.0      8.9%       -22       8.9%      -22
+mean |residual|  naive 42.8 -> spread 33.1
+```
+
+No two consecutive hours below −60. **Gate does not fire. No regression.** Both
+abort strings still frozen at Oct 16.
+
+### B. CORRECTION 1 — the top-5 rank statistic is fragile, and I have been quoting it as a headline
+
+Winota's top-5 share went **80% (103x) -> 60% (76x)** this read. Nothing about
+Winota changed. One new game arrived at rank 5 — `114.3s cascades=1 board=90`,
+no Winota — and displaced Winota's 66.2s game out of the set.
+
+**A rank over k=5 is a 5-observation statistic.** One arrival moves it 20
+points, and because the base rate is ~0.8%, that 20 points reads as a 27-point
+swing in the enrichment multiple. I adopted rank statistics at r190 because
+they survive heavy tails, which is true and still true — but tail-robustness
+and small-n robustness are independent properties, and fixing the first did
+nothing for the second. The same "a median of four games is not a median" rule
+applies to ranks and I did not apply it.
+
+**Quote top-20 and top-50. They moved 50->45% and 26->30% on the same data.**
+
+### C. CORRECTION 2 — half of the top 20 by duration are not cap-driven games
+
+The deeper problem. `CAPPED GAME` lines exist for any game that touched the
+depth cap at all, so ranking that population by duration silently mixes two
+different things:
+
+```
+top-10 by duration        swallowed    verdict
+   449.5s                      3871    cap load-bearing
+   224.6s                      2901    cap load-bearing
+   150.4s                         9    CAP INCIDENTAL
+   147.6s                      2648    cap load-bearing
+   114.3s                         6    CAP INCIDENTAL
+    66.2s                      1806    cap load-bearing
+    48.2s                      1498    cap load-bearing
+    38.9s                        70    CAP INCIDENTAL
+    18.4s                       135    cap load-bearing
+    15.7s                        19    CAP INCIDENTAL
+
+of the top 20 by duration, 10 have swallowed<100
+```
+
+A 150-second game that swallowed 9 triggers did not spend its time on the cap.
+It is in the population by accident. **So "deck X is in k% of the longest
+capped games" has been answering a slightly different question than the one I
+thought it answered.**
+
+Only **321 of 7,987 (4%)** of capped games have `swallowed>=100`.
+
+### D. What that correction does to the three mechanisms
+
+Re-ranking inside the cap-load-bearing subset, and — because the threshold is
+my choice, not a property of the data — sweeping it:
+
+```
+  thr      n    winota top20   sorin top20   gerrard top20
+   20   2270         60%           35%            0%
+   50    633         75%           10%            5%
+  100    321         80%            0%           10%
+  200    180         80%            0%           15%
+  500     73         50%            0%           50%
+ 1000     32         35%            0%           60%
+```
+
+**Sorin's exit is MONOTONE across the whole sweep — 35% to 0%.** The more
+load-bearing the cap, the less he appears. That is robust to the threshold and
+it corrects his story: his mid-band position in the all-capped ranking came
+from games where **the cap is incidental**, which is exactly what a board-growth
+mechanism should look like. Board growth was never a cap phenomenon; the
+instrument now agrees with the mechanism instead of muddling it.
+
+**Winota and Gerrard SWAP, and I will not name a winner.** Winota leads at
+moderate thresholds and Gerrard at extreme ones. Part of this is structural:
+`swallowed` and duration are correlated, so thresholding on one and ranking by
+the other partly conditions on the outcome, and at high thresholds the ranking
+mostly rewards whoever has the most such games — which is Gerrard (39.6% of the
+load-bearing pool by base rate, the largest single contributor).
+
+**Had I picked 100 and reported it, I would have published "Winota is 100% of
+the top-5 cap-driven games" as a clean result.** It is an artifact of the cut.
+
+### E. What still stands
+
+- Winota's mechanism (unbounded fan-out) remains the only one that produces
+  games in the thousands of swallows AND hundreds of seconds. The four longest
+  cap-load-bearing games are all his, at swallowed 1,498–3,871.
+- Sorin's mechanism (board growth, bounded by turn count) stands and is now
+  better supported: he is absent from cap-driven duration at every threshold.
+- Gerrard generates cap-load-bearing games in volume but not in length.
+- **A new, small, genuinely unexplained class:** 2 games of 7,987 are long
+  (150.4s, 114.3s) with `cascades=1`, small boards, and almost no swallows.
+  They are 2 of the 6 games over 60 seconds. No mechanism here explains them
+  and I am not going to invent one — recorded so the next read does not
+  mistake them for fan-out.
