@@ -2483,3 +2483,140 @@ While rotating I found **432 capture files sitting loose at the root of
 directory. I have been reporting "9 archive dirs" for several ticks; the true structure was
 9 dirs plus a 432-file pile. Rehomed into `stallwatch-20261018T1105Z-loose/`; the archive
 is now 11 directories and 0 loose files. Nothing live was touched.
+
+## Twenty-third amendment (r204) — n=16,699 capped games, heap n=1,995
+
+**A. THE POPULATION TABLE HAS BEEN DESCRIBED WRONG FOR FIFTEEN READS. Three errors, all in
+the standing block, all confirmed by reading the scripts rather than trusting the heading.**
+
+`regimes.py` lines 17-19 compute the three groups as **independent overlapping filters**:
+```
+r1=[r for r in rows if r['casc']==1]
+r2=[r for r in rows if r['shape'].startswith('loop')]
+r3=[r for r in rows if r['casc']>=20]
+```
+There is **no priority logic anywhere in the script**, and **no big-board group at all** —
+that comes from `board.py`, a separate script with its own independent filter.
+
+**ERROR 1 — "Groups MUTUALLY EXCLUSIVE: r3 > big > r2 > r1" is FALSE.** They are four
+independent filters that **sum to 90.0%**, not 100%.
+```
+  r1 x r2 : 699 games in BOTH      r1 x big : 41
+  r2 x big:   5                    r3 x big :  4
+```
+**ERROR 2 — "r3 x big-board overlap is 6" IS THE WRONG PAIR.** `regimes.py` prints
+`overlap loop*&>=20`, which is **r2 x r3 = 6**. The actual **r3 x big overlap is 4.** The
+standing warning "NEVER say exactly 0" survives — it is 4, not 0 — but the figure 6 has
+been attached to the wrong pair of populations in every report that quoted it.
+
+**ERROR 3 — under the partition the brief DESCRIBES, 14.5% of games are UNCLASSIFIED.**
+```
+  TRUE exclusive partition (r3 > big > r2 > r1):
+  r1 77.9%  r2 4.9%  r3 2.2%  big 0.6%  UNCLASSIFIED 14.5%   (sums to 100)
+```
+That 14.5% bucket — cascades 2-19, board<300, non-loop — **has never appeared in any
+report.** Under the exclusive reading r1 is 77.9%, not 82.3%.
+
+**WHAT SURVIVES: the stability streak itself.** The same computation has been run every
+tick and produced the same numbers, so "these shares have not moved in sixteen reads" is
+still true and still meaningful. **What was wrong is the description, not the measurement.**
+Future reports must say *four overlapping filters*, quote the 14.5% unclassified bucket if
+they claim a partition, and attribute the overlap 6 to r2 x r3.
+
+This is the same failure as the `r194.py` heading caught at r202 — a script's prose
+description diverging from its code — but on a headline table rather than a footnote.
+**Read the code of every script whose output you have been quoting, not just the one that
+surprised you.**
+
+**B. HEAP — NEW INSTRUMENT, AND IT IS THE BEST ONE IN THE FILE: GC-FLOOR REGRESSION.**
+
+Point samples on a ~500MB sawtooth are meaningless and a fit through all of them mixes
+live set with garbage. Binning to 1h and regressing the **per-bin minimum** (the GC floor)
+is immune to sawtooth phase entirely:
+```
+  r187 treatment  TROUGH (live set)  +16.30 +/-  2.72 MB/h   n=14 bins  (2h -> 16.6h)
+  r187 treatment  PEAK               +22.25 +/-  4.76 MB/h   n=14 bins
+  r186 control    TROUGH              -0.20 +/- 11.59 MB/h   n= 8 bins  (2h -> 10.6h)
+  r186 control    PEAK               -11.44 +/- 18.62 MB/h   n= 8 bins
+  SPAN-MATCHED TROUGH (both 2h -> 10.6h):
+    r186 control    -0.20 +/- 11.59      r187 treatment  +21.09 +/- 5.85
+```
+**THE GC FLOOR IS RISING. That is a qualitatively stronger statement than "the heap
+grows" — it means memory is surviving collection, which is what retention looks like.**
+Every earlier instrument measured total heap, which cannot separate a growing live set
+from a faster garbage churn.
+
+**CAVEATS THAT BIND THIS RESULT:**
+- **The control arm is weak: 8 bins, +/-11.59. It is "not distinguishable from zero", NOT
+  "proven flat".** The span-matched pair is disjoint but barely (15.24 vs 11.39).
+- Per-bin minimum is a biased estimator of the true floor (it depends on sampling
+  density), but every bin holds ~120 samples, so the bias is near-constant and the SLOPE
+  is approximately unbiased. The levels are not trustworthy; the slope is.
+- Peak rises faster than trough (22.25 vs 16.30), which would mean the sawtooth is also
+  widening — **but those CIs overlap, so that is not claimed.**
+
+**C. THE PARTIAL TRAILING BLOCK LOOKED LIKE THE BLOCKS SEPARATING. IT IS NOT ESTABLISHED.**
+The newest block jumped to +49.01 +/- 16.40 and tested z=+3.03 against everything before
+it. Three reasons it does not stand:
+1. **It is a PARTIAL block (2.6h of 3h) whose endpoint is unconstrained.** The sawtooth
+   check shows it **starts near a trough and ends near a peak** (last 3h: min 996, max
+   1579, final sample 1465; previous 3h ended at 1077, near its trough). That alone
+   inflates the fitted slope.
+2. Among COMPLETE blocks only **1 of 6** pairwise comparisons separated (5h vs 11h,
+   z=-2.12). The Bonferroni threshold for 6 comparisons is z~2.64. **Not significant.**
+3. **The phase-immune instrument says no.** A split-half on the trough series gives first
+   half +18.63 +/- 6.97, second half +11.17 +/- 7.91 — **OVERLAP, no acceleration.**
+
+**PREDICTION RECORDED BEFORE RUNNING, AND IT WAS RIGHT THIS TIME** (noting it because the
+r203 prediction was wrong): I predicted the rise was partly a sawtooth-phase artifact
+because a partial block ending at an arbitrary instant has an unconstrained endpoint, while
+allowing some of it might be real since the 11-14h complete block was already the highest.
+Both halves of that held.
+
+**D. THE 2h+ FIGURE WENT UP THIS TICK — 22.07 -> 22.74 — WHICH INDEPENDENTLY CONFIRMS THE
+r203 WITHDRAWAL.** I withdrew "the steady slope is drifting down" last tick as a
+lengthening-window artifact. It has now moved in the opposite direction on a still-longer
+window. A number that wanders both ways with the window is not a trend. `r203chk.py` again
+reproduces every past published figure exactly at its own span.
+
+**E. THE 600s WALL — 20/20, TWELFTH CONSECUTIVE CLEAN READ.** No new overruns this tick;
+the run-on set is still the SAME 3 (2033.3s, 1400.8s, 871.0s). The unwind leak is 3 of 20.
+
+**F. SPREAD RESIDUAL — ONE NEW COMPLETE HOUR.**
+```
+hour   n    median   occ%   r_spread
+ 12   120   786.9    7.5%     -50
+ 13   120   780.5    8.9%     -44
+ 14   120   786.1    7.9%     -48
+ 15   120   765.8   10.1%     -47    NEW
+mean |residual| 35.9 spread / 43.7 naive
+```
+**Hours 06-15 are now TEN consecutive negatives.** Gate is on MAGNITUDE (two consecutive
+below -60) and only hour 11 (-67) qualifies. **NOT TRIPPED.** Every complete hour n=120, so
+no grinder downtime. Hour 16 partial (99 samples), not judged.
+
+**G. THRESHOLD SWEEP — EIGHTH REPLICATION, AND SORIN NO LONGER EXITS TO ZERO.**
+```
+  thr      n    winota top20   sorin top20   gerrard top20
+   20   4639         70%           20%            0%
+   50   1316         80%           15%            0%
+  100    671         90%            5%            0%
+  200    372         95%            5%            0%
+  500    141         85%            5%           10%
+ 1000     58         65%            5%           30%
+```
+Sorin is still **weakly monotone** (20/15/5/5/5/5) but the "exits to 0 above thr=100"
+framing is now false — he holds 5% to thr=1000. **At n=58 that 5% is ONE GAME.** This is
+precisely the small-k noise the standing note warns about, and it is a useful reminder that
+a streak described as "monotone and therefore robust" was always one game from losing its
+cleanest feature. The monotone direction survives; "exits to zero" does not.
+All-capped ranks: Winota base 0.88% top20 **60%** / top50 **44%**; Sorin base 0.67% top20
+20% / top50 48%.
+
+**H. UNCHANGED.** `total_cap` frozen at 9,504 since 14:46 (~2h, no seventh event). Grinder
+gaps >=180s still 5. Both abort strings frozen (22 / 3,628, last 10/16 17:35). Oct-18
+stalls Sorin 95/238 (40%), Winota 14% — Oct-19 partial, not quoted. Peak board 4,720.
+Regime 2 max 29.9s. The (5b) unexplained class is still exactly 2.
+
+**I. WATCHER NOT ROTATED.** 52 files / 57.6 min = **54.2/hour**; projected 106 at next
+tick, below both triggers. Archive is 11 dirs / 0 loose files, as corrected at r203.
