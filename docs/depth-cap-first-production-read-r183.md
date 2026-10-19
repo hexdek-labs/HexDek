@@ -635,3 +635,95 @@ the signature is a strong lead, not a verdict.
   cascades and `dom%` is unreliable there. The table is undersized for
   the real width; that is a measurement limit to fix before leaning on
   `distinct`.
+
+---
+
+# SEVENTH AMENDMENT — r187: cascades COUNTED, not divided; and a
+# contamination in every `distinct=` number published so far.
+
+r187 (`9ce95c01`, pid 322631) adds a per-game **count** of cascades
+that swallowed anything, and widens the distinct-event name table from
+4 slots to 32.
+
+## THE INFERENCE I HAD BEEN USING WAS WRONG BY 2x
+
+Previous amendments estimated cascades per game as
+`swallowed / cascademax`, described as a lower bound. First counted
+data, n=91 games:
+
+```
+counted=69   my inferred bound >=34    swallowed=234  cascademax=7
+counted= 9   inferred >=5              swallowed=35   cascademax=7
+counted= 9   inferred >=7              swallowed=21   cascademax=3
+```
+
+**The bound was honest but weak — the worst game had twice as many
+cascades as the division implied**, because the division assumes every
+cascade ran at the maximum and real cascades vary. The regime-3 "at
+least 446 cascades" figure in the sixth amendment should be read as a
+floor that is probably far below the truth.
+
+## THE REGIMES HOLD AT n=91 WITH COUNTED DATA
+
+| regime | definition | n=91 | (n=347 inferred) |
+|---|---|---:|---:|
+| 1 — one swallowing cascade | `cascades == 1` | 82% | 82% |
+| 2 — re-entry | `loop*` | 4% | 7% |
+| 3 — fan-out | `cascades >= 20` | 1% | 1% |
+
+Median cascades per game **1**, p90 **2**, max **69**. The shape of
+the population is unchanged by measuring it properly, which is the
+outcome worth having: the counter confirmed the classification rather
+than overturning it.
+
+## THE NAME TABLE WAS TRUNCATING, AND IS NOT ANY MORE
+
+At 4 slots, `namecap` was firing on **64%** of cascades. At 32 slots
+**`namecap` has disappeared from the grinder line entirely** — zero
+overflows. Measured width: `distinct` median **3**, max **7**. So the
+real cardinality sat just above the old ceiling, which is the worst
+place for a ceiling to be: high enough to look plausible, low enough
+to saturate most samples.
+
+## CONTAMINATION IN EVERY `distinct=` NUMBER I HAVE PUBLISHED
+
+Found by the agent, verified here: `fireTrigger` calls
+`NoteDepthCapSwallow(event)` **before** `canonical :=
+NormalizeEventSingle(event)` (`per_card/registry.go`, the
+`depth > 8` branch precedes the normalisation). **The name table
+therefore holds RAW, PRE-ALIAS event names**, and
+`internal/gameengine/event_aliases.go` carries 241 entries.
+
+Consequences for numbers already in this document:
+
+- **`distinct` is an UPPER bound on canonical event cardinality.** Two
+  aliases of one event count as two names.
+- **`widemix` (2+ distinct) is over-reported** at the expense of
+  `wave`; **`loopN` is over-reported** at the expense of `loop1`. A
+  cascade can be pushed `loop1 -> loopN` by aliasing alone.
+- **r182's `mixed` flag has the same contamination**, so "100% of
+  capped games are mixed" is also an upper bound.
+
+**What SURVIVES: everything resting on the board axis.** `n <=
+boardMax` knows nothing about names, so **wave+widemix vs loop1+loopN
+— the re-entry finding, the three regimes, and regime 2 being the
+fastest population — are unaffected.** What is contaminated is only
+the subdivision WITHIN each row of the 2x2.
+
+Not fixed this round, deliberately: normalising at the cap site is one
+map lookup on the capped path and therefore affordable, but it would
+silently re-base every `distinct`/`dom%`/`shape` number against the
+existing window. That is a measurement change to make on purpose, with
+the discontinuity noted, not to slip into a counting round.
+
+## METHOD NOTE — the brief sent the agent to the wrong site
+
+I told it to count in `NoteCascadeRoot`'s existing `depthCapCascade !=
+0` arm. That arm only runs when the NEXT cascade begins, so for the
+82% of games whose single swallowing cascade is also their last, it
+would have reported **`cascades=0`**. The agent read r186's own
+`finishCascade` header, found the documented under-count, rejected the
+placement, and counted at the `0 -> 1` transition inside
+`NoteDepthCapSwallow` instead. Its mutation M1 implements my version:
+**10 tests red.** Four agents in this chain have now contradicted a
+brief of mine and been right each time.
