@@ -2947,3 +2947,128 @@ none should be until the window's games are identified.**
 whether a replacement-effect-heavy deck is over-represented among them.** The
 profiles are read-only artifacts already on disk; `go tool pprof` is NOT
 installed on .206, so `scp -O` them off and diff locally.
+
+---
+
+## Twenty-sixth amendment — r207 (n=18,969 capped games, run age 19.9h)
+
+### A. AN ACUTE MEMORY EVENT STARTED AT ~19:10Z. THIS IS A REGIME CHANGE, NOT THE +16 MB/h DRIFT.
+
+Five-minute trace, clock time:
+
+```
+  time    n   g/min med   heap min   heap max   sys max
+  19:00   10     283.5       1396       1593      2300
+  19:10   10     316.0       1586       2024      3071
+  19:20   10     367.9       2194       2569      4005
+  19:30   10     286.2       2609       3071      4487
+  19:40   10     414.2       2711       3155      4491
+  19:50   10     423.9       3070       3401      4495
+  20:00    7     406.1       3168       3499      5241
+```
+
+**The floor climbed 1396 -> 3168 MB in one hour: +1772 MB/h against the
+standing +16 MB/h. The sawtooth amplitude is also collapsing** (19:55 range
+328 MB vs the usual ~500) — GC still runs and recovers less each cycle.
+Process RSS 4,406 MB; `GOMEMLIMIT=10GiB`; box has 10.3 GB of 15.8 GB
+available, so **no OOM risk and no action taken.**
+
+### B. IT IS NOT ONE PATHOLOGICAL GAME — GAMES KEPT COMPLETING THROUGHOUT
+
+```
+19:00:26  836,609 games        19:42:26  849,757
+19:12:26  839,828              19:54:26  854,624
+19:24:26  844,154              20:06:26  859,559
+```
+
+**~1,400-2,500 games completed every 6 minutes while the floor climbed and
+never recovered.** Thousands of games began and ended inside the window.
+**That is retention ACROSS game boundaries — leak-shaped, not a single stuck
+game.** No grinder gaps; n=120 for every complete hour.
+
+### C. THE ALLOC PROFILES NOW NAME THE SUBSYSTEM UNAMBIGUOUSLY
+
+Diff of 19:10 -> 19:25 (15 minutes, 272.44 GB allocated, same process, same
+Build ID `d463a22e`):
+
+```
+  ReplEvent.SetCount   109.66GB  40.25%
+  NewReplEvent          73.43GB  26.95%
+  pickReplacement       12.24GB   4.49%
+                                ------
+  replacement machinery           71.7%
+  BaseCharacteristics   15.51GB   5.69%  <- the run's LARGEST lifetime allocator
+```
+
+**Its share rose 16.1% -> 40.3% between the r206 window and this one, and
+`BaseCharacteristics` has been displaced from the top.** At r206 I wrote that
+the ReplEvent concentration was "not a mechanism" and could be one
+replacement-heavy deck. **(B) now rules that out** — it persists across
+thousands of completed games and is intensifying.
+
+**STILL NOT PROVEN: that these allocations are the RETAINED bytes.** An
+`alloc_space` profile counts bytes allocated, not bytes still live. The
+retention is inferred from the non-recovering floor, and the allocation
+dominance is measured separately. **The clean next step is an `inuse_space`
+profile, which names what is actually held** — read-only, and not yet taken.
+
+### D. A NAMED TRIPWIRE, WITH THE EXTRAPOLATION CAVEAT ATTACHED
+
+The engine's own ceiling is concrete, from its abort text:
+
+```
+grinder: aborting game at turn 10 — process heap 7231MB exceeds the 6442MB ceiling
+```
+
+That counter (`process heap`) has been **frozen at 3,628 since Oct 16** and
+has not moved. At the current heap (3,476 MB) and the observed one-hour rate,
+the ceiling is roughly 1.7 hours away.
+
+**THE CAVEAT BINDS: that is a ONE-HOUR rate, and a slope only says "rising" —
+an extrapolation needs "the rate is constant", which I have NOT established.
+This is NOT an estimate of time-to-failure.** It is offered only because it
+names a **cheap observable with a known baseline**: if the `process heap`
+abort count rises above 3,628, the ceiling was reached. **Check it in READ 0
+every tick.**
+
+### E. THE GC-FLOOR REGRESSION HAS NOT SEEN THE EVENT YET — AND I NEARLY SAID IT HAD
+
+```
+r204   2h -> 16.60h   +16.30 +/- 2.72   n=14   published 16.30  <- EXACT
+r205   2h -> 17.87h   +15.93 +/- 2.38   n=15
+r206   2h -> 18.93h   +16.54 +/- 2.21   n=16
+r207   2h -> 19.85h   +17.20 +/- 2.09   n=17
+```
+
+**My first reading was that the instrument had broken — reporting +17.20 MB/h
+while the last hour ran at +1772. That was wrong.** The hourly age-bins end at
+the 18-19h bin (clock 18:12-19:12, floor 1121); the 19:12-20:05 climb falls
+outside the last complete bin and **is not in the fit at all.** The instrument
+is **LAGGING, not broken.**
+
+**WHAT THIS MEANS FOR NEXT TICK: the event will enter as ONE bin and will pull
+the line hard. When it does, check that a single bin is not doing all the
+work** — and prefer the pre-break fit (2h -> 18h: **+16.54 ± 2.21**, which
+reproduces r206 exactly) as the "old regime" number. **A line fitted across a
+regime change is the mixture error from r201 in a new costume.**
+The split-half still prints "OVERLAP — no acceleration detected", which is
+**true of its window and false of the system.** Do not quote it this tick.
+
+### F. STANDING RE-MEASURE
+
+- **600s wall: deadlines 29 vs 29 games >=590s — FIFTEENTH consecutive.**
+  Both from ONE snapshot, per the r206 lesson.
+  `token_create:23, stack_drain:2, trigger_drain:2, turn_phase_boundary:2`
+- **Residual, FOUR consecutive hours past the gate and escalating:**
+  hour 16 −60, 17 −82, 18 −251, **19 −451** (n=120 each, no gaps).
+  The (1b) caveat still binds hour 18 (19.5% occupancy); **hour 19's occupancy
+  was an ordinary 10.0%, so that caveat does NOT excuse −451.**
+- **Populations, NINETEENTH stable read (four OVERLAPPING filters):**
+  r1 82.3% | r2 5.0% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+- **Threshold sweep, ELEVENTH replication.** thr=20 winota back to 70% (was
+  65% at r206, 70% before) and sorin 20->15: **small-k wobble, as warned.**
+- `total_cap` frozen at 9,504. Aborts frozen (22 / 3,628). Gaps 5. EXITED 2 = 7.
+- **Watcher: 182 files / 46 min = 237/hour, at the instrument ceiling again
+  (second consecutive tick).** Rotated before it could self-terminate;
+  archive 14 dirs, 0 loose; relaunched and verified (2 procs).
+
