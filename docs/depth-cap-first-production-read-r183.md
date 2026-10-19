@@ -1776,3 +1776,78 @@ Rollback binary `~/hexdek/hexdek-server.bak-pre-r187-20261019` (= r186) is in pl
 rollback is a production action and an OWNER CALL — not taken.** Nothing here is urgent at
 8 days of headroom. The cheap next step that needs no decision is simply to re-read the
 slope next tick.
+
+## Seventeenth amendment (r197) — CORRECTION: the r187 heap growth is DECELERATING. "8.3 days to the ceiling" is WITHDRAWN.
+
+n = 11,173 capped games (prev 10,331). The correction first, because it is mine.
+
+### A. CORRECTION — r196's headline extrapolation was invalid
+
+r196 published **"+26.32 MB/h, ~8.3 days to the 6442MB ceiling"**. The rate is not
+constant, so the extrapolation does not hold. Re-fit over the full run (n=1,316, 10.95h):
+
+```
+full-run heap slope   +25.20 +/- 0.85 MB/h      <- matches r196; the SLOPE replicated
+DECELERATION TEST
+  first half   n=658   heap +27.89 +/- 2.23   sys +74.90 +/- 1.56
+  second half  n=658   heap +15.79 +/- 2.53   sys +36.14 +/- 0.47
+quadratic      heap = 923 +36.70*t -1.050*t^2   (curvature clearly negative)
+```
+
+**The half-slope CIs do not overlap** (first half low end 23.4, second half high end 20.9).
+The growth rate roughly HALVED across the run, and `sys` fell even harder, 74.9 -> 36.1.
+
+**WITHDRAWN:** the 8.3-day figure, and the word "leak" as the characterisation. A constant
+rate was never tested — I fitted one line to a bending curve and extrapolated 8 days out.
+
+**WHAT SURVIVES, and it is a weaker claim:** r187 still reaches a **higher steady state**
+than r186. The two r186 controls were flat (-0.70 +/- 0.81 and +4.91 +/- 1.71) at ~900-950MB
+across 10.8h and 6.6h; r187 rose 920 -> ~1194 and is now bending over. That is roughly
+**+250MB of baseline**, on a box with 15.8GB and a 6442MB ceiling. **Not operationally
+interesting.** The r186-vs-r187 difference is real; the trajectory is not a leak.
+
+**I am NOT predicting the plateau either.** The quadratic's vertex (~1244MB at ~17.5h) is
+as much an extrapolation as the line was, and a downward-bending parabola is physically
+wrong past its peak. What the DATA says is only that the rate is falling. Another few
+hours of this run settles where it lands.
+
+### B. A near-miss in the OPPOSITE direction, same tick
+
+READ 0 returned `heap=952MB`, down from 1219MB, and my first reaction was that it had
+collapsed and the whole finding was dead. **It had not.** Heap is a ~500MB sawtooth:
+
+```
+age h   mean   min    max
+    0    920   736   1088
+   10   1194   947   1470
+```
+
+952 sits near the bottom of age 10's own range. **A single point sample cannot confirm or
+refute a regression over 1,316 samples** — it nearly made me over-correct as badly as I had
+over-claimed. Both errors were stopped by the same thing: fitting the series instead of
+reading a number. Note also that r196's "age 10 = 1216" came from n=20; with n=116 it is
+1194.
+
+### C. The throughput result is UNCHANGED and is still a separate finding
+
+```
+age-matched over 0-10.9h   r186 813.7 g/min (n=1285)   r187 762.9 (n=1310)   -6.2%
+```
+
+Unaffected by the correction above, and still not attributed to memory.
+
+### D. Standing re-measure — everything holds
+
+```
+populations (TENTH consecutive hold)   r1 82.2  r2 4.8  r3 2.2  big 0.8
+deadline      14 games >=590s vs guards=game_deadline:14   <- SIXTH consecutive
+  both new games stopped CLEANLY (599.3, 600.1); token_create now :10
+total_cap     FROZEN at 2,116 for a FOURTH hour
+residual      08 -54, 09 -39, 10 -13 — recovering; no two consecutive below -60
+abort strings 22 / 3,628 unchanged since Oct 16; no new grinder gaps >=180s
+stalls        Oct-18 holds exactly: Sorin 40% (95/238), Winota 14%
+ranks         winota top20 50% / top50 34%   sorin top20 35% / top50 58%
+  sweep replicates a FOURTH time: Sorin monotone 35%->0%; Winota/Gerrard swap. No winner.
+watcher       116 files / 186.5 min = 37.3/hour — no rotation (116 <= 120, projected 153)
+r3 x big-board overlap is now 2 in 11,173 (was 1) — still NEVER "exactly 0"
+```
