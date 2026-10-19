@@ -684,3 +684,54 @@ Procession, Phylactery Lich). Precision on newly-read flags 4/6; the
 unread 10/12 is circular and is not quoted.
 
 All of it remains **filed, awaiting the owner gate.**
+
+---
+
+## Bucket table RECONCILED at r202 — bucket D is wrong by ~3x
+
+The flag raised in the r200 verification section ("619 vs my 191, ~504
+unexplained") is now resolved. **The agent's detector keyed on the literal
+comment prefix `// Oracle text:` and the corpus overwhelmingly does not use
+it.** Measured on `internal/gameengine/per_card`, non-test `.go` only,
+current origin/main:
+
+```
+total non-test .go files                                  1184
+files carrying an oracle block under ANY '// Oracle...:'   984
+  ...using the literal '// Oracle text:'                   439
+  ...using only a parenthesised or short variant           545
+files with NO oracle block marker of any kind              200
+```
+
+The 545 are not undocumented. They carry full, sourced oracle blocks under
+headers the detector did not match — e.g. `// Oracle text (Scryfall, verified
+2026-05-17 via hexdek.dev oracle):`, `// Oracle text (Instant, {1}{R}):`,
+`// Oracle:`. Spot-checked `abrade.go`, `abzan_falconer.go`,
+`acererak_the_archlich.go`: all three hold complete oracle text.
+
+**Corrections to the r200 report:**
+
+- **Bucket D "single card, no `// Oracle text:` block" = 619 is WITHDRAWN.**
+  The honest number for "no oracle block of any kind" is **200**. Bucket D
+  as published counts ~420 files that are properly documented.
+- **"947 attributions with no `// Oracle text:` comment at all" is
+  WITHDRAWN** for the same reason. Most of those attributions do have oracle
+  text; the detector could not see the header.
+- The partition is still internally consistent (417 + 619 = 1036 =
+  1184 − 64 − 12 − 72), which is exactly why it looked sound. **An
+  arithmetically consistent partition built on a wrong predicate is still
+  wrong — summing to the population checks the bookkeeping, not the test.**
+- My own "191" in the r200 verification section was approximately right but
+  not exact; the correct figure under the `//[[:space:]]*Oracle[^:]*:`
+  regex is **200**. I had used a looser case-insensitive match.
+- **Unaffected:** every card-level verdict. The eleven confirmed wrong-card
+  handlers were each read and oracle-checked individually and do not depend
+  on this table. The 1184 file count, the 72 multi-card files, and the
+  withdrawal of r178's "426" all stand.
+
+**The transferable lesson: a detector that keys on a comment marker is
+measuring the project's comment conventions, not its code.** The r200 report
+already recorded that a detector scoring the comment is not scoring the code;
+this is the same error one level up — the *presence* test for the comment was
+itself wrong, and it produced a number three times too large that reconciled
+perfectly against the population.
