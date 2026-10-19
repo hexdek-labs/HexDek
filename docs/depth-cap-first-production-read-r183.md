@@ -1353,3 +1353,114 @@ the 300 threshold.
 
 Both abort strings unchanged since Oct 16. Only grinder gap >=180s remains the
 known Oct 18 13:05 (1201s).
+
+---
+
+## Thirteenth amendment (r193) — the deadline invariant holds a second read; a second guard surfaces, and the instrument that would attribute it is wired for only two guards
+
+**n=7,207** capped games.
+
+### A. The 600s invariant replicates
+
+```
+SLOW GAMEs >=590s this run : 10   (+599.9 since r192)
+guards=game_deadline       : 10
+deadlines=token_create:6,stack_drain:2,trigger_drain:1,turn_phase_boundary:1
+```
+
+Ten for ten, a second consecutive read. The new game was noticed at
+`token_create` (5 -> 6) and **unwound promptly, at 599.9s**. That is worth
+recording because it refines r192: the noticing SITE does not by itself
+determine whether the game unwinds. `token_create` produced both a clean
+599.9s stop and the +1,433s overrun. What decides the outcome is how much work
+the in-progress turn has left, not which inner loop happened to look at the
+clock.
+
+### B. Throughput — no regression, and hour 06 shows why the spread matters
+
+```
+hour            median  naive_occ  res_naive   true_occ  res_true
+2026/10/19 05    651.8     12.4%      -141      19.1%       -81
+2026/10/19 06    801.8     15.3%       +35       8.6%       -26
+
+mean |residual|  naive 43.6   spread 33.5
+```
+
+Hour 06 **changes sign** under the corrected numerator: naive +35, spread −26.
+It had been credited with seconds belonging to games that actually ran in 05.
+A sign flip is a stronger demonstration than r192's magnitude change — the
+naive instrument was not merely imprecise, it pointed the wrong way.
+
+05 = −81 and 06 = −26, so **no two consecutive hours below −60. The gate does
+not fire.** Post-r187 mean residual −15.6 over seven full hours against
+pre-r187 +2, well inside the sd ≈ 45 scatter. **No regression.**
+
+Watcher fill rate **57.6/hour** (46 files / 47.9 min), down from 111.6. Per the
+standing rule that the fill rate is itself the stall indicator, the halving
+says there were materially fewer sub-760 windows this hour — consistent with
+the residuals above. No rotation (projected ~104 by next tick).
+
+### C. Sixth consecutive hold
+
+```
+                  n=5214  n=6375  n=7207
+1 cascades==1      81.8%   82.0%   82.0%
+2 loop* re-entry    4.9%    5.0%    4.9%
+3 cascades>=20      2.4%    2.3%    2.3%
+4 board>=300        0.9%    0.8%    0.8%
+
+Winota  56/7207 (0.78%)  top5 80% 103x | top10 50% 64x | top20 50% 64x | top50 26% 33x
+Sorin   57/7207 (0.79%)  top5  0%   0x | top10 30% 38x | top20 40% 51x | top50 60% 76x
+```
+
+Maxima unchanged (board 3,058; cascades 550; capped 449.5s). Name table still
+0 of 7,207 at >=32. Regime 2 still 352 of 353 under 2.6s.
+
+### D. NEW — a second guard moved, and I cannot attribute it
+
+`percard_dispatch_total_cap` went **347 -> 2,116** inside a single 30-second
+window at 06:35:26. It is not a slowly-accumulating counter:
+
+```
+2026/10/18 18:50:16   1028
+2026/10/18 18:52:46  10096      <- ~9,000 in 150 seconds
+2026/10/19 01:25:26    347      <- this run, first appearance
+2026/10/19 06:35:26   2116      <- this run, one window
+```
+
+It resets with the process, and it arrives in bursts. Two bursts this run, each
+confined to one 30s window.
+
+**I could not attribute either burst, and the reason is an instrument gap I
+walked into and had to back out of.** My first read of the label counters said
+the guard fires exclusively on `permanent_etb`, which would have tied it
+straight to item (17), the ETB scan class. That was wrong twice over:
+
+1. The value I read (`permanent_etb:9699`) is a **pre-restart** figure. The
+   guard counter for this run reads 2,116; 9,699 belongs to the 10/18 18:52
+   burst.
+2. `guardtop=` is a **top-5 column**, and the current top 5 is entirely
+   `percard_dispatch_depth_cap` labels in the tens of thousands. The total-cap
+   label is not in it at all. So "exclusively `permanent_etb`" was a selection
+   effect: `permanent_etb` is simply the only one of this guard's labels that
+   ever grows large enough to become visible.
+
+Three labels have been observed for this guard across the whole log —
+`permanent_etb`, `creature_dies`, `creature_attacks`. **Which of them owns the
+current 2,116 is unknown, and the aggregate alone cannot tell deep from broad.**
+
+This is precisely the failure r167 wrote `LoopGuardLabelsFor` to fix, and its
+own comment says so: a guard "rank ~15th by volume and therefore invisible".
+That renderer prints EVERY label for ONE named guard and is already wired —
+but for only two guards, `game_deadline` and `DepthCapFirstEventGuard`
+(`grinder_line_r176.go:97` and `:133`). Wiring a third call for
+`percard_dispatch_total_cap` would answer this outright, costs a few bytes on a
+line only when the guard fires, and reuses machinery that is already written
+and already tested.
+
+**Proposed, not done — needs the owner gate and a deploy.** Recording it here
+so the next read does not repeat the same mis-attribution.
+
+The general lesson, which is the same one three amendments running: a
+top-N column answers "what is busiest", never "what is this specific thing
+doing". When the question names a guard, read a per-guard instrument.
