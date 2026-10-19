@@ -2103,3 +2103,138 @@ the section (hour 11 at -67).
 **Rule: a script with a hardcoded input filename does not announce that
 its input is stale. Refresh every input at the top of the tick, or have
 the script print its input's mtime and row count.**
+
+---
+
+## Twentieth amendment (r201) — n=13,757 capped; THE DECELERATION WAS A STARTUP TRANSIENT
+
+### A. I have to correct my own last three reports
+
+At r198 and r199 I reported, twice, that the r187 heap growth was
+**decelerating**, on a split-half test whose CIs were disjoint. That
+characterisation is **wrong, and it was wrong for a reason I can now
+name.**
+
+This tick the falling full-run slope **stopped falling and ticked up**:
+
+```
+  r196  10.20h   26.32
+  r197  10.95h   25.20     -1.49 / h
+  r198  11.77h   24.33     -1.06 / h
+  r199  12.88h   23.98     -0.32 / h
+  r201  13.63h   24.30     +0.43 / h    <- BROKE
+```
+
+The brief said a stabilising slope would be the new finding. It is, but
+not in the direction of a plateau. Dropping the first T hours and
+re-splitting what remains:
+
+```
+cut      n          first half              second half         verdict
+0.0h   1637   +30.96 +/- 3.24 (n=818)  +23.51 +/- 3.67 (n=819)  disjoint, gap 0.53
+2.0h   1397   +28.68 +/- 4.22          +24.13 +/- 4.70          OVERLAP
+3.0h   1277   +27.16 +/- 4.92          +23.88 +/- 5.47          OVERLAP
+4.0h   1157   +22.32 +/- 5.70          +24.51 +/- 6.47          OVERLAP (sign REVERSES)
+5.0h   1037   +13.98 +/- 6.83          +22.27 +/- 7.57          OVERLAP
+6.0h    917   +19.40 +/- 8.26          +25.40 +/- 9.20          OVERLAP
+```
+
+**The deceleration exists only when the first two hours are included,
+and at full span its margin had already collapsed to 0.53.** Decomposed:
+
+```
+transient  0-2h   +70.79 +/- 19.24   n= 240
+steady     2h+    +23.54 +/-  1.58   n=1397   (11.6 hours)
+steady     4h+    +22.02 +/-  2.16   n=1157
+```
+
+The series is a **mixture of a ~2h startup ramp and a steady state.**
+Fitting one line across both produces an apparent bend. That is the
+standing rule — *repeated flip-flopping on good data is the tell of a
+mixture; add an axis, not more n* — and adding the age axis resolved it
+in one command. r198 and r199 were measuring the transient.
+
+### B. The age-matched control, same method, is the cleanest result in this file
+
+Both runs, first two hours dropped, identical fit:
+
+```
+r186 (control, age 2h -> 10.8h)    -4.24 +/- 2.19 MB/h   n=1047
+r187 (treatment, age 2h -> 13.6h) +23.54 +/- 1.58 MB/h   n=1397
+```
+
+Nowhere near each other. **r187 grows in steady state and r186 does
+not.** This is the same conclusion as r196 but on a properly matched
+control with the transient removed from both sides.
+
+### C. What is and is not withdrawn — read this carefully
+
+- **STILL WITHDRAWN: "+26.3 MB/h" and "~8.3 days to the 6442MB
+  ceiling".** The rate was wrong and the timeline was asserted without
+  a linearity test.
+- **NOW WITHDRAWN: "the growth is decelerating".** It is not. That was
+  an artifact of the startup transient, and I published it twice.
+- **REOPENED: the substance.** A sustained +23.5 +/- 1.6 MB/h over 11.6
+  hours against a flat control is the thing I originally flagged, now
+  better evidenced than when I first raised it.
+- **STILL NOT OFFERED: any extrapolation.** 11.6 hours of undetectable
+  curvature does not license a multi-day projection, and "no
+  deceleration detected" is not "proven constant" — the post-4h halves
+  carry CIs of +/-5.7 and +/-6.5. Headroom is ~5,100MB on a 15.8GB box.
+  **I am deliberately not dividing one by the other.** The arithmetic
+  that produced "8.3 days" would produce a similar number today, and it
+  would be exactly as unjustified.
+
+**The honest shape of my error:** at r197 I withdrew a claim for a
+*correct* reason (no linearity test) and replaced it with a *wrong*
+characterisation (deceleration) that I then replicated twice without
+testing whether the apparent bend was a mixture. Withdrawing an
+overclaim does not make the replacement safe.
+
+### D. Standing re-measure
+
+```
+            9322 10331 11173 11921 13064 13757
+r1 casc==1  82.0  82.3  82.2  82.3  82.3  82.3
+r2 loop*     4.7   4.8   4.8   4.8   4.9   5.0
+r3 casc>=20  2.3   2.2   2.2   2.1   2.1   2.1
+big >=300    0.8   0.8   0.8   0.7   0.7   0.7
+```
+
+- **Populations hold for a THIRTEENTH consecutive read.**
+- **600s deadline: 17/17 — NINTH consecutive full hold.**
+  `deadlines=token_create:13,stack_drain:2,trigger_drain:1,turn_phase_boundary:1`
+  = 17, against 17 games >=590s this run. Two new deadline games since
+  r199, both stopping cleanly; the same three historical overruns
+  (+271s, +801s, +1433s) and no new ones.
+- **r3 x big-board overlap unchanged at 3 in 13,757.** Never "zero".
+- **Grinder gaps >=180s: still 5, none new.** Both abort strings frozen
+  since Oct 16. `percard_dispatch_total_cap` frozen at **8,193** for
+  ~1h15m — no fifth event.
+- **Ranks:** Winota base 1.10%, top20 55% / top50 38%. Sorin base
+  0.71%, top20 25% / top50 52%. Stable.
+- **Stalls, Oct-18 (the quotable complete day): Sorin 40% (95/238),
+  Winota 14%** — unchanged.
+- **Watcher: 140 files / 112.8 min = 74.5/hour, over the 120 gate ->
+  ROTATED.** New pids 413211/413213, verified single instance, 0 files,
+  9 archive dirs, server pid 322631 untouched.
+
+### E. A reporting honesty note
+
+**The residual table is unchanged from r199 and is not a fresh
+reading.** Both ticks ran inside hour 13, so no new complete hour
+exists; the last complete hour is still 12. Reproduced here only so the
+table is not silently absent:
+
+```
+hour   n    median   occ%    r905    rfit
+ 08   120   830.0    2.3%     -54     -72
+ 09   120   808.1    6.4%     -39     -46
+ 10   120   811.1    8.9%     -13     -13
+ 11   120   817.5    2.2%     -67     -86
+ 12   120   786.9    7.5%     -50     -55
+```
+
+Gate still not tripped. This is the same class of hazard as r199's
+stale `gmin.txt`: an unchanged table looks like a confirmation unless
+you say why it could not have changed.
