@@ -966,3 +966,118 @@ a small sample — **quote the Oct-18 figure.** No new grinder gaps
 Alias contamination unchanged and unaddressed: `distinct`/`dom%`/
 `shape` remain upper bounds. Everything above rests on the board and
 cascade-count axes, which do not read event names.
+
+---
+
+## Tenth amendment (r190 tick) — n=4,397. The populations held a THIRD time, and a rank-based instrument succeeds where the share failed.
+
+n: 1,795 -> 2,866 -> **4,397**. Third consecutive read, no structural
+movement:
+
+| | n=1,795 | n=2,866 | n=4,397 |
+|---|---|---|---|
+| regime 1 `cascades==1` | 82.2% | 82.1% | **81.6%** |
+| regime 2 `loop*` | 5.2% | 4.7% | **4.9%** |
+| regime 3 `cascades>=20` | 2.1% | 2.3% | **2.6%** |
+| big board `board>=300` | 0.9% | 0.9% | **0.9%** |
+| median dur r1/r2/r3 | .30/.30/1.05 | .30/.30/1.05 | **.30/.30/1.00** |
+| median cascades/game | 1 | 1 | **1** |
+| r3 x big-board overlap | 0 | 0 | **0** |
+| name table >=32 | 0 | 0 | **0** (max distinct 10) |
+
+### The share LOOKED stable this tick. That is a coincidence, not convergence.
+
+Regime 3's wall-clock share reads **36.3%**, against 36.6% last tick.
+That near-identity is worthless: the tail composition changed
+completely. Last tick's top five were `[449.5, 66.2, 12.4, 10.6, 9.5]`;
+this tick's are **`[449.5, 224.6, 66.2, 48.2, 18.4]`** — two new
+large games arrived and held the ratio up by accident.
+
+```
+                 now    drop top1   drop top2   drop top3   drop top5
+regime 3        36.3%     22.7%       13.4%       10.2%       7.8%
+regime 1        54.5%     66.1%       74.0%       76.8%      79.7%
+```
+
+Range **7.8%-36.3%**, essentially last tick's 6.9%-36.6%. **A point
+estimate that repeats is not thereby confirmed** — check whether the
+observations underneath it are the same ones. Here they were not.
+
+### What IS robust: Winota's position in the duration RANKING
+
+Rank statistics survive heavy tails where means and shares do not.
+Applying that deliberately this tick:
+
+```
+Winota is in 34 of 4,397 capped games — a 0.77% base rate.
+
+   top-5  by duration:  4  (80%)   103x
+   top-10 by duration:  5  (50%)    65x
+   top-20 by duration:  8  (40%)    52x
+   top-50 by duration: 12  (24%)    31x
+```
+
+A clean monotone decay from 103x to 31x, computed from ranks alone —
+**no durations are summed, so no single game can move it.** This is
+the instrument the wall-clock share should have been.
+
+Winota was named as regime 3's mechanism **from oracle text alone**
+two ticks ago, before any of these games existed. It is now in **four
+of the five most expensive games in the window** (449.5s, 224.6s,
+66.2s, 48.2s).
+
+### Sorin has the OPPOSITE rank signature, and the mechanisms predict it
+
+```
+Sorin is in 38 of 4,397 capped games — a 0.86% base rate.
+
+   top-5  by duration:  0  ( 0%)     0x
+   top-10 by duration:  4  (40%)    46x
+   top-20 by duration: 10  (50%)    58x
+   top-50 by duration: 24  (48%)    56x
+```
+
+**Zero in the top five, then ~50% from top-10 outward.** Sorin does
+not produce extreme outliers; he dominates the moderately-slow band.
+
+This is exactly what the two mechanisms imply, and neither was fitted
+to it:
+
+- **Fan-out (Winota)** — one independent trigger per attacker, each
+  opening its own cascade. Attackers multiply, so the cost is
+  **unbounded** and lands in the extreme tail.
+- **Board growth (Sorin)** — `+2: Create a Food token`, one permanent
+  per activation. That is **bounded by the number of turns**, so it
+  produces a consistent multi-second band and never an outlier.
+
+Two mechanisms, two different rank signatures, each matching its
+mechanism's growth law. This is the first prediction in this chain
+that constrains the SHAPE of the distribution rather than naming a
+deck.
+
+### One number to soften: regime 2's tail
+
+Regime 2's maximum was 2.6s at n=2,866 and is **18.4s** now — a
+single game, `cascades=1 cascademax=135 shape=loopN board=99`, one
+cascade swallowing 135 events. **Exactly 1 of 217 `loop*` games
+reaches 5s; the other 216 are all under 2.6s.** So "a runaway costs
+correctness, not time" holds in the body of the distribution but is
+not absolute. State it as 216 of 217.
+
+### Enrichments, stable across three reads
+
+```
+                        n=1,795      n=2,866      n=4,397
+winota    regime 3       34.6x        28.9x       26.1x  (23 of 34, 68%)
+gerrard   regime 3       14.8x        13.7x       13.6x  (76 of 216, 35%)
+sorin     big board      89.8x       101.9x      101.2x  (35 of 38, 92%)
+```
+
+### Other instruments
+
+Watcher rotated at 149 files (62/hour, matching). No new grinder gaps
+>=180s. Both heap-abort strings unchanged since Oct 16. Board maximum
+still 1,980; cascades maximum still 550. Alias contamination in
+`distinct`/`dom%`/`shape` unchanged — everything above rests on the
+board, cascade-count and duration-rank axes, none of which read event
+names.
