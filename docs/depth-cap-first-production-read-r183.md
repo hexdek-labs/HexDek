@@ -2371,3 +2371,115 @@ tick (14.3s, turns=80, board=59, sw=43, **casc=2**) which the heading would have
 report as the class growing to three. **It is not a member. The (5b) class is still exactly
 2** (150.4s and 114.3s, both cascades==1). A script's printed description is not its
 filter — read the code, not the header.
+
+## Twenty-second amendment (r203) — n=15,741 capped games, heap n=1,878
+
+**A. THE r202 WATCH ITEM IS WITHDRAWN. The "steady-state slope is drifting down" was a
+LENGTHENING-WINDOW ARTIFACT — the same error as the retired T=0 split, one level in.**
+
+At r202 I reported the steady 2h+ slope falling 23.54 -> 22.36 and flagged it as a live
+watch item "at its edge". This tick it read 22.11, which looked like the drift continuing.
+It is not a drift. **Each tick's published figure reproduces EXACTLY from today's data at
+that tick's own span:**
+
+```
+                recomputed from TODAY'S log        published
+  r201  2h -> 13.60h   +23.67 +/- 1.58  n=1394      23.54
+  r202  2h -> 14.92h   +22.36 +/- 1.36  n=1552      22.36   <- exact
+  r203  2h -> 15.63h   +22.07 +/- 1.27  n=1636      (new)
+```
+
+No new data produced the change. **The number fell purely because the window got longer**,
+and the window gets longer every tick by construction. I was comparing two fits over
+DIFFERENT spans and reading the difference as change over time. **A statistic tracked
+tick-over-tick must have its window held fixed, or you are measuring your window, not the
+system.** This is the third instrument in three ticks to fail on exactly this axis (the
+T=0 split, the "unchanged" transient, now this).
+
+**B. REPLACEMENT INSTRUMENT — FIXED-WIDTH TRAILING BLOCKS. Underpowered; says no change.**
+```
+  age  2.0- 5.0h   +28.68 +/- 10.79 MB/h  n=360
+  age  5.0- 8.0h   +16.20 +/- 11.70 MB/h  n=360
+  age  8.0-11.0h   +22.98 +/- 12.65 MB/h  n=360
+  age 11.0-14.0h   +35.15 +/- 13.02 MB/h  n=360
+  age 14.0-15.6h   +38.31 +/- 32.06 MB/h  n=198  (partial)
+```
+**No block differs significantly from any other** — every interval overlaps every other.
+**The instrument cannot resolve anything smaller than roughly a 2x change**, because the
+~500MB sawtooth over a 3h span gives a +/-11-13 MB/h standard error. That is a real limit,
+not a result: a 3h block is too short to say anything useful here.
+
+**PREDICTION MADE IN WRITING BEFORE RUNNING IT, AND IT WAS WRONG.** I predicted "roughly
+equal blocks with wide CIs". The CIs are wide and nothing is significant, so the
+inferential call held — but the point estimates are not roughly equal (16.2 to 38.3) and
+they run UPWARD over the last three blocks, not flat. **Do not read that as acceleration.**
+It is three overlapping intervals. Recording the miss because the ordering was the part I
+would have quoted if it had agreed with me.
+
+**C. THE SPAN-CAPPED CONTROL IS FROZEN BY CONSTRUCTION — +25.99 +/- 2.40, n=1030,
+IDENTICAL TO r202. THAT IS NOT A REPLICATION.** Its window is defined by r186's span,
+which is fixed, so it cannot move until a new control run exists. Same closed-window
+caveat as the 0-2h transient (+70.79 +/- 19.24, n=240, unchanged for the third tick).
+
+**D. THE FINDING ITSELF IS UNTOUCHED BY ANY OF THIS.**
+```
+r186 control    age 2h -> 10.6h    -4.35 +/-  2.26 MB/h   n=1024
+r187 treatment  age 2h -> 15.6h   +22.11 +/-  1.26 MB/h   n=1638
+r187 CAPPED to the control's own span   +25.99 +/- 2.40   n=1030
+```
+Every post-2h cut of the drop-first-T sweep still OVERLAPS (2h/3h/4h/5h/6h), and at 5h and
+6h the halves are equal to within 0.7. **Still withdrawn: "+26.3 MB/h", "~8.3 days",
+"decelerating". Still not offered: any extrapolation.**
+
+**E. THE 600s WALL — 20/20, ELEVENTH CONSECUTIVE CLEAN READ.**
+```
+deadlines=token_create:16,stack_drain:2,trigger_drain:1,turn_phase_boundary:1  = 20
+games >=590s this run = 20
+```
+Two new, both clean (599.5, 599.8). The run-on set is still the SAME 3 (2033.3s, 1400.8s,
+871.0s); everything else landed in [599.1, 603.5]. The unwind leak is 3 of 20.
+
+**F. POPULATIONS — FIFTEENTH CONSECUTIVE HOLD, n=15,741.** 82.2 / 5.0 / 2.1 / 0.7.
+r3 x big overlap 6. 0 of 15,741 reached distinct>=32; max distinct 11.
+
+**TWO MAXIMA MOVED AND BOTH ARE CORRECTIONS TO STANDING TEXT:**
+- **Peak board 3,058 -> 4,720.** This is the number item (17) leans on; quote 4,720.
+- **Regime 2's maximum duration 18.4s -> 29.9s.** Standing item (5) says "regime 2's max is
+  18.4s but nearly all are under 2.6s". **The 18.4 figure is superseded.** The shape of the
+  claim survives — the median is still 0.30s — but the stated maximum was wrong within one
+  tick of being written down, which is what a max does on a heavy tail.
+
+**G. RESIDUAL TABLE UNCHANGED, AND IT COULD NOT HAVE CHANGED.** r202 ran at 15:08Z and r203
+at 15:51Z — **both inside clock hour 15**, which is still partial (102 of ~120 samples).
+The last complete hour is still 14. Hours 06-14 remain nine consecutive negatives; only
+hour 11 (-67) is below the gate and the gate needs TWO consecutive. **NOT TRIPPED.** Every
+complete hour n=120, so no grinder downtime.
+
+**H. THRESHOLD SWEEP — SEVENTH REPLICATION.**
+```
+  thr      n    winota top20   sorin top20   gerrard top20
+   20   4397         65%           20%            0%
+   50   1232         80%           10%            0%
+  100    627         90%            0%            0%
+  200    349         95%            0%            0%
+  500    135         75%            0%           20%
+ 1000     55         55%            0%           40%
+```
+Sorin's monotone exit holds a seventh time. Winota/Gerrard still swap. All-capped ranks:
+Winota base 0.88% top20 55% / top50 42%; Sorin base 0.67% top20 20% / top50 48%.
+
+**I. `total_cap` FROZEN at 9,504 since 14:46 — no seventh event.** Six events stand.
+Grinder gaps >=180s still 5. Both abort strings frozen (22 / 3,628, last 10/16 17:35).
+Oct-18 stalls unchanged: Sorin 95/238 (40%), Winota 33/238 (14%). Oct-19 partial, not
+quoted. The (5b) unexplained class is still exactly 2.
+
+**J. WATCHER ROTATED — and my own archive bookkeeping was wrong.** 164 files / 120.2 min =
+**81.9/hour**, over the 120-file trigger. Rotated to pids 426854/426856, verified 2 procs /
+0 files / server pid untouched. Fill rate by tick: 9.5 -> 30.1 -> 37.3 -> 34.9 -> 66.7 ->
+74.5 -> 55.9 -> **81.9**. The r202 dip did not persist.
+
+While rotating I found **432 capture files sitting loose at the root of
+`~/stallwatch-archive`**, from an early rotation that moved contents instead of the
+directory. I have been reporting "9 archive dirs" for several ticks; the true structure was
+9 dirs plus a 432-file pile. Rehomed into `stallwatch-20261018T1105Z-loose/`; the archive
+is now 11 directories and 0 loose files. Nothing live was touched.
