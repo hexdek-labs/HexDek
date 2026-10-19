@@ -861,3 +861,108 @@ Every `distinct` / `dom%` / `shape` number remains **alias-contaminated**
 241-entry table), so `widemix` is over-reported vs `wave` and `loopN`
 vs `loop1`. **Everything above rests on the board and cascade-count
 axes, neither of which looks at event names.**
+
+---
+
+## Ninth amendment (r189 tick) — n=2,866. The populations held; the WALL-CLOCK SHARE did not, and it is not a quotable statistic.
+
+n rose 1,795 -> 2,866. Every structural number held:
+
+| | n=1,795 | n=2,866 |
+|---|---|---|
+| regime 1 (`cascades==1`) | 82.2% | **82.1%** |
+| regime 2 (`loop*`) | 5.2% | **4.7%** |
+| regime 3 (`cascades>=20`) | 2.1% | **2.3%** |
+| big board (`board>=300`) | 0.9% | **0.9%** |
+| median dur r1 / r2 / r3 | 0.30 / 0.30 / 1.05 | **0.30 / 0.30 / 1.05** |
+| median cascades/game | 1 | **1** |
+| r3 x big-board overlap | 0 | **0** |
+| name-table saturation (>=32) | 0 | **0** (max distinct 10) |
+
+### The number that moved, and why it should never have been published as one
+
+Last tick I corrected **"ALL wall-clock cost is regime 3"** to
+**"15.2%"**. This tick the same calculation gives **36.6%**. Nothing
+about the engine changed — **one game arrived.**
+
+```
+                        449.5s game IN     drop top 1   drop top 2   drop top 5
+regime 3 share              36.6%            12.7%        7.6%         6.9%
+regime 1 share              54.9%            75.6%       80.1%        82.4%
+```
+
+**A single game is 27.4% of all capped wall-clock.** The top five
+games — **0.17% of the sample** — are 33.4% of it. The duration
+distribution is median 0.30s, p99 2.10s, p99.9 12.40s, **max 449.5s**:
+a 36x jump from p99.9 to the maximum.
+
+**So "15.2%" was not a measurement, it was one draw from a
+tail-dominated estimator**, and I presented it with two significant
+figures. The correction I made was right in substance and wrong in
+form: I replaced an overclaim ("all") with a spurious precision.
+
+**What is actually stable, and what should be quoted:**
+
+- **The ordering: r1 > r3 > big board > r2 in every variant above.**
+- **The qualitative correction HOLDS and is the real finding:** the
+  rare expensive tail does NOT own the total. Regime 1 is between
+  51% and 82% of capped wall-clock on every slicing — 2,353 cheap
+  games outweigh everything else even when the single worst game in
+  the window is included.
+- **Regime 3's share is not estimable at this n.** Range 6.9%-36.6%.
+  Quote the range or quote nothing.
+
+This is the companion rule to the one written last tick. Computing
+the share was right; treating a share of a heavy-tailed total as a
+point estimate was not. **A SHARE OF A HEAVY-TAILED TOTAL IS ITSELF
+A TAIL STATISTIC.**
+
+### The two extremes confirm the two mechanisms, by opposite routes
+
+The two most expensive games in the window are the cleanest evidence
+yet that these are genuinely different phenomena:
+
+```
+449.5s  cascades=550  swallowed=3871  board=115    <- fan-out
+ 12.4s  cascades=1    swallowed=9     board=1980   <- board growth
+```
+
+The 12.4s game took **one cascade and nine swallows**. The depth cap
+is essentially irrelevant to it; it is slow because there are 1,980
+permanents. The 449.5s game has a board of 115 — unremarkable — and
+550 separate top-level cascades.
+
+**Predicted-deck check, and it paid out.** Winota was named last tick
+as regime 3's mechanism from oracle text alone (one independent
+trigger per attacker). **Winota is in BOTH the 449.5s and the 66.2s
+games** — the two worst in the window. Sorin is in the 12.4s
+board=1,980 game. Each extreme belongs to the deck predicted for its
+population.
+
+### Conditional enrichment — stable across the n increase
+
+```
+                                        n=1,795            n=2,866
+regime 3   winota_..._kaputtzimon    11/15  34.6x     16/24  67%  28.9x
+           gerrard_..._bingusblaster 22/70  14.8x     41/130 32%  13.7x
+big board  sorin_..._khazad_doom     17/20  89.8x     24/27  89%  101.9x
+```
+
+All three held their rank and rough magnitude. Sorin remains
+near-deterministic: **89% of his capped games are big-board ones.**
+
+### New maximum for the record
+
+`board` max 1,568 -> **1,980** permanents at peak cascade.
+`cascades` max 258 -> **550**. Population median board is still **38**.
+
+### Other instruments this tick
+
+Slow games: Sorin **61.1% of Oct-19 (n=36)**, against 39% of Oct-18
+(n=222). Consistent across two reads today (65.5% at n=29) but still
+a small sample — **quote the Oct-18 figure.** No new grinder gaps
+>=180s. Both heap-abort strings unchanged since Oct 16.
+
+Alias contamination unchanged and unaddressed: `distinct`/`dom%`/
+`shape` remain upper bounds. Everything above rests on the board and
+cascade-count axes, which do not read event names.
