@@ -1581,3 +1581,108 @@ the top-5 cap-driven games" as a clean result.** It is an artifact of the cut.
   They are 2 of the 6 games over 60 seconds. No mechanism here explains them
   and I am not going to invent one — recorded so the next read does not
   mistake them for fan-out.
+
+## Fifteenth amendment (r195) — the throughput model's SLOPE is occupancy-biased; the watcher's fill rate is ~88% an occupancy meter
+
+n = 9,322 capped games (prev 7,987). Standing re-measure first, then the finding.
+
+### A. Standing re-measure — all holds
+
+```
+populations (EIGHTH consecutive hold)   r1 82.0  r2 4.7  r3 2.3  big 0.8
+   (r2 drifted 4.9 -> 4.7; r3 x big-board overlap still 1, never "exactly 0")
+deadline            11 games >=590s vs guards=game_deadline:11   <- FOURTH consecutive 11/11
+   same three overruns: +271s, +801s, +1433s; the other 8 stopped within 3.5s
+percard_dispatch_total_cap   FROZEN at 2,116 for a second hour — bursty, confirmed again
+abort strings       22 / 3,628, both unchanged since Oct 16
+grinder gaps >=180s none new; latest remains the known Oct-18 13:25 (1201s)
+stalls              Oct-18 holds at Sorin 40% (95/238), Winota 14%
+rank signatures     winota top20 45% / top50 30%    sorin top20 40% / top50 60%
+   threshold sweep REPLICATES r194 exactly: Sorin monotone 30%->0% (robust);
+   Winota/Gerrard swap with the cut (65/80/85/90/55/40 vs 0/0/5/10/40/55) — NO WINNER STATED
+watcher fill rate   9.5 files/hour  <- 8x below the previous low (62, 133, 111.6, 57.6, 78.0)
+```
+
+The fill-rate collapse is REAL, not a wedged watcher: the process was mid-capture at the
+read, and the trigger condition itself collapsed — three-in-a-row sub-760 windows went
+66 (hour 05) -> 35 (07) -> **4** (08). 12 files = 3 captures matches 5 trigger windows.
+
+### B. NEAR-MISS, caught before publishing — a "Winota surge" that was arithmetic
+
+Winota's cumulative capped count went 63 -> 92 while the population grew 7,987 -> 9,322
+(+46% vs +17%), which reads as a 3x rate increase. It is not. Per-hour share:
+
+```
+10/18 21..23   1.7%  2.3%  1.6%
+10/19 04..08   0.9%  1.5%  0.7%  1.1%  1.7%
+```
+
+0.7-2.3%, no trend. The "surge" came from differencing two CUMULATIVE totals computed
+over differently-filtered sets. **Differencing two cumulative totals is not a rate.**
+
+### C. THE FINDING — the residual gate has an occupancy-dependent bias
+
+`residual = median - 905*(1-occupancy)` is a ONE-parameter through-origin model. If 905 is
+wrong the residual is not orthogonal to occupancy, and it is not:
+
+```
+corr(occupancy, residual) = -0.393        (should be ~0 if the slope is right)
+fitted  median = -249.6 + 1179.2*(1-occupancy)     mean |resid| 30.5 -> 27.2
+corr(occupancy, fitted-residual) = +0.000 (by construction)
+```
+
+**Consequence — the bias has a direction, and it is large against a -60 threshold:**
+
+```
+                                905 model     fitted slope
+lowest-occupancy third  (1.8-5.2%)    +4.8          -9.3
+highest-occupancy third (9.8-21.5%)  -19.9          -1.7
+```
+
+The 905 model makes BUSY hours look ~25 g/min worse and QUIET hours better. Reading that
+spread as "the engine degrades under load" would have been a slope artifact.
+
+**It changes which hour is flagged today.** Hour 08 is a QUIET hour (occupancy 2.3%) at
+residual -54, which the 905 model under-states: under the fitted slope it is **-72**.
+
+```
+hours below -60:  905 model -> 10/18 11, 10/19 05
+                  fitted    -> 10/18 11, 10/19 08
+```
+
+**NEITHER MODEL PRODUCES TWO CONSECUTIVE HOURS BELOW -60. THE GATE DOES NOT TRIP.**
+
+### D. I am NOT re-basing the model — the slope is marginal
+
+```
+fitted slope 1179 +/- 129 (SE)   normal 95% CI [920, 1438]   excludes 905
+bootstrap 2.5-97.5%              [899, 1425]                 INCLUDES 905 (2.7% below)
+occupancy range only 1.8% - 21.5%
+```
+
+The two CI methods disagree about whether 905 is excluded, which is exactly the regime
+where a finding must not be declared. A 2-parameter fit also beats a 0-parameter one for
+free, and the fitted intercept (-249.6) is physically meaningless outside the observed
+range. **Recorded as a known bias with a direction, not a correction.** What would settle
+it is high-occupancy hours — the slope is poorly determined over a 20-point x-range.
+
+### E. Operational note for the next tick
+
+Hour 08 is the reading to watch, NOT to dismiss: it is the quietest hour in the table
+(2.3% occupancy, 15.0% sub-760, 4 trigger windows) and still ran 54 below model. If hour
+09 also comes in negative, that is two consecutive and the gate trips on a QUIET stretch,
+which no stall-based explanation covers.
+
+### F. The watcher's fill rate is mostly an occupancy meter
+
+```
+corr(occupancy, sub760%) = +0.937      (r^2 = 0.88)
+corr(sub760%, residual)        = -0.548
+corr(sub760%, fitted-residual) = -0.195   <- most of it was the slope artifact
+```
+
+The brief calls the fill rate "the stall indicator". It is ~88% explained by how many long
+games are occupying workers, which is already measured directly and better by occupancy.
+Once the slope artifact is removed, only -0.195 of independent signal remains. The fill
+rate remains useful as a CHEAP liveness/orientation number and for sizing the watcher's
+own cost — but it should not be read as evidence about engine stalls on its own.
