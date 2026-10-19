@@ -1202,3 +1202,154 @@ the extreme tail of game duration; the extreme tail of game duration
 is what consumes worker capacity; worker capacity is what sets
 throughput. The chain from one card's oracle text to the hourly
 throughput number is complete and measured at every link.
+
+---
+
+## Twelfth amendment (r192) — the 600s wall is `perGameWallClock`, nothing bypasses it, and the occupancy numerator was misattributed
+
+Three results this read, at **n=6,375** capped games. One is a correction to
+something this document has asserted twice.
+
+### A. CORRECTION — "r3 × big-board overlap is EXACTLY 0" is false from n=4,397
+
+The eighth amendment introduced the big-board population and recorded an
+overlap of exactly 0 with regime 3. The ninth, tenth and eleventh repeated it.
+Recomputing the raw predicate over the same log, truncated to each historical n:
+
+```
+n= 1795  raw overlap (cascades>=20 AND board>=300) = 0
+n= 2866  raw overlap                                = 0
+n= 4397  raw overlap                                = 1   <- already 1 when "0" was published
+n= 5214  raw overlap                                = 1   <- and again
+n= 6375  raw overlap                                = 1
+```
+
+The game is the 224.6s Winota game, `cascades=414 board=573`. It was in the
+data when the claim was last restated, so the claim was wrong at the time of
+writing, not overtaken by events.
+
+What survives: the two mechanisms are still overwhelmingly disjoint — **1 game
+in 6,375**. What does not survive is the word *exactly*. A count of zero in a
+sample is "none observed in n", never "cannot happen"; this is the same error
+as writing "none in 48" as "none", and it is the second time it has bitten
+this document.
+
+### B. The 600s wall — found, and it is not a bypass
+
+`internal/hexapi/showmatch.go:52`:
+
+```go
+perGameWallClock = 10 * time.Minute
+```
+
+Armed via `gameengine.SetGameDeadline` at showmatch.go:1442 and :2185; enforced
+by `CheckGameDeadline`, which is called from exactly four sites —
+`turn_phase_boundary` (tournament/turn.go:109), `token_create`
+(resolve.go:2411), `trigger_drain` (trigger_batch.go:167) and `stack_drain`
+(stack.go:107).
+
+**Nothing escapes the check.** In this server run (pid 322631, since 00:12Z):
+
+```
+SLOW GAMEs >=590s this run : 9    (599.6 2033.3 599.1 871.0 603.5 599.1 599.6 599.7 1400.8)
+guards=game_deadline       : 9
+```
+
+Nine for nine. The r191 framing — "something enforces 600s and something else
+escapes it" — was wrong. The detection is complete; the **unwind** is what
+leaks.
+
+The site attribution was already in the log, in a field this document had not
+read. `LoopGuardLabelsFor("game_deadline")` (r167) is wired into the grinder
+line at `grinder_line_r176.go:97` as `deadlines=`:
+
+```
+deadlines=token_create:5,stack_drain:2,trigger_drain:1,turn_phase_boundary:1
+```
+
+**Only 1 of 9 was noticed at a turn/phase boundary** — and that is the one
+place where returning true actually unwinds the game, because the grinder's
+end-check sits between turns. The other 8 are noticed deep inside a turn,
+where the bail exits only the inner loop and the turn carries on. That is
+exactly the shape the file's own r161 comment documented and it reproduces
+cleanly here:
+
+```
+6 of 9 ended within 3.5s of the deadline   (599.1 - 603.5)
+3 of 9 ran on as already-ended draws       (+271s, +801s, +1433s)
+```
+
+`token_create` being the majority site joins this to the stall population:
+Sorin (`+2: Create a Food token`, nothing consumes them) is **40% of Oct-18
+slow games (95/238)** and 92% of his capped games are big-board. The deadline
+is noticed inside the token loop because the token loop is where the time goes.
+
+Fix direction (not done, owner call): the unwind must propagate out of the
+in-progress turn rather than only marking the game ended. The four call sites
+are sufficient for detection and demonstrably so.
+
+### C. The occupancy numerator was misattributed — spreading it is strictly better
+
+A game is logged when it FINISHES, so r191 charged every one of its seconds to
+its final hour. A 2,033s game occupies one worker across parts of three hours
+but was billed entirely to the third. Spreading each SLOW GAME's seconds across
+the hours it actually ran:
+
+```
+hour            median  naive_occ  res_naive   true_occ  res_true
+2026/10/18 11    696.2     10.5%       -113      14.1%       -81
+2026/10/18 13    707.9      7.9%       -125       7.9%      -125
+2026/10/19 01    671.0     19.5%        -57      21.2%       -43
+2026/10/19 05    651.8     12.4%       -141      19.1%       -81
+
+mean |residual|   naive 44.0   ->   spread 33.9      (25 four-worker hours)
+```
+
+The worst hour halves (−141 → −81) because its true occupancy was 19.1%, not
+12.4%. **Use the spread numerator from here on.**
+
+`10/18 13` at −125 is fully explained and is not an engine signal: that hour
+carries the known 1,201s grinder gap (13:05:18 → 13:25:19) and logged only 79
+g/min samples against 120. **The per-hour sample count is a free gap detector —
+read it before reading a residual.**
+
+Verdict on r187, on the corrected instrument: post-r187 full hours (10/19
+00–05) mean residual **−14**; pre-r187 four-worker hours (10/18 05–23) mean
+**+2**. The 16-point difference is well inside the hour-to-hour scatter
+(sd ≈ 45), and no two consecutive hours sit below −60. **No regression. Do not
+revert.**
+
+A monitor-contamination check, since the heavy-capture hours are also the
+negative-residual hours: a capture is a 20s CPU profile plus two goroutine
+dumps, and 36 captures put profiling active ~20% of hour 05. At the few percent
+a Go CPU profile costs, that bounds the watcher's own effect near **1%, ~8
+g/min** — two orders off the −141 it would have had to explain. The watcher is
+not the cause. The correlation is also partly circular by construction: the
+watcher only fires when throughput is already low.
+
+### D. Standing measurements
+
+```
+watcher fill rate        136 files / 73.1 min = 111.6/hour   (rotated on rate)
+four populations (n=6375)   r1 82.0%   r2 5.0%   r3 2.3%   big-board 0.8%
+  shares at 1795/2866/4397/5214/6375:  82.2/82.1/81.6/81.8/82.0
+                                        5.2/ 4.7/ 4.9/ 4.9/ 5.0
+                                        2.1/ 2.3/ 2.6/ 2.4/ 2.3
+                                        0.9/ 0.9/ 0.9/ 0.9/ 0.8
+medians r1/r2/r3        0.30s / 0.30s / 0.90s      median cascades 1, p90 3
+maxima                  board 3,058 (was 1,980)  cascades 550  capped 449.5s  slow 3,102.6s
+name table              0 of 6,375 reached >=32; max distinct 10
+rank signatures   Winota 52/6375 (0.82%)  top5 80% 98x | top10 50% 61x | top20 50% 61x | top50 28% 34x
+                  Sorin  49/6375 (0.77%)  top5  0%  0x | top10 30% 39x | top20 40% 52x | top50 54% 70x
+regime 2 tail           n=316, max 18.4s, 315 of 316 under 2.6s
+```
+
+Fifth consecutive hold on the population shares. The top-5 by duration is
+**not** the same set as last read — `[449.5, 224.6, 66.2, 48.2, 18.4]` became
+`[449.5, 224.6, 150.4, 147.6, 66.2]` — so the stability in the rank signatures
+is a property of the ranking, not of a frozen sample. Note the new 150.4s game
+is `cascades=1 board=249`: a regime-1 game that is big-board in everything but
+the 300 threshold.
+
+Both abort strings unchanged since Oct 16. Only grinder gap >=180s remains the
+known Oct 18 13:05 (1201s).
