@@ -2620,3 +2620,153 @@ Regime 2 max 29.9s. The (5b) unexplained class is still exactly 2.
 
 **I. WATCHER NOT ROTATED.** 52 files / 57.6 min = **54.2/hour**; projected 106 at next
 tick, below both triggers. Archive is 11 dirs / 0 loose files, as corrected at r203.
+
+---
+
+## Twenty-fourth amendment — r205 (n=17,848 capped games, run age 17.9h)
+
+### A. THE RESIDUAL GATE HAS TRIPPED FOR THE FIRST TIME
+
+The pre-registered gate is "a SUSTAINED residual below about −60, meaning TWO
+CONSECUTIVE HOURS". Spread model, today:
+
+```
+hour   n     median g/min   occ%   r_spread
+ 13   120       782.0        8.9%    -44
+ 14   120       788.3        7.9%    -48
+ 15   120       767.9       10.1%    -47
+ 16   120       769.7        8.4%    -60   <- on the line
+ 17   120       733.0        9.7%    -85   <- clearly below
+```
+
+Hour 16 sits EXACTLY on the −60 threshold and hour 17 is well past it. I am
+calling this TRIPPED rather than arguing the boundary: softening a
+pre-registered gate after seeing the data is the same error as inventing one.
+
+**n=120 for both hours, so the free gap detector does NOT excuse them**, and
+occupancy was unremarkable (8.4% / 9.7%) — this is not a slow-game load spike.
+
+### B. TWO LEADING EXPLANATIONS ELIMINATED
+
+**B1. The watcher is NOT the cause.** Its fill rate this tick was a record
+106.3/hour (236 files / 133.3 min), far above the ~1% overhead measured at
+r192, so "do not re-litigate" did not apply — the conditions had changed.
+Capture files per hour tracked the residual exactly (hour 15: 6, hour 16: 86,
+hour 17: 124 vs −47 / −60 / −85). But captures TRIGGER on low throughput, so
+the correlation is expected and proves nothing by itself. Lead/lag separates
+cause from symptom:
+
+```
+lag   corr(capture activity[t], g/min[t+lag])
+ -2   -0.657      g/min BEFORE the capture
+ -1   -0.671      <- PEAK
+ +0   -0.547
+ +1   -0.460      g/min AFTER the capture
+ +2   -0.436
+ +6   -0.216
+```
+
+The coupling peaks BEFORE the capture and DECAYS after. Overhead would depress
+g/min most DURING the 20s profile. This is the symptom signature.
+**CAVEAT THAT BINDS IT: files are written at capture END, so lag −1 is roughly
+capture ONSET, not a clean lead.** The decay after onset is the load-bearing
+part, not the sign of the peak.
+
+**B2. GC PHASE pressure is NOT the cause.** If a rising heap were costing
+throughput through instantaneous collection pressure, the within-hour
+heap↔g/min coupling should STRENGTHEN late. It weakens:
+
+```
+mean within-hour corr(g/min, heap), hours <=10 : -0.225  (11 hours)
+mean within-hour corr(g/min, heap), hours >=14 : -0.130  ( 4 hours)
+```
+
+### C. CORRECTION TO THE SCOPE OF MY OWN TEST IN B2
+
+**B2 rules out PHASE coupling, not LEVEL coupling, and those are different
+claims.** The within-hour sawtooth can only see whether throughput dips when
+the heap is instantaneously high. It cannot see whether a permanently LARGER
+retained live set costs a steady amount every hour — that effect has no
+within-hour signature at all, because the level barely moves inside an hour.
+
+At the hourly level the two do move together, from hour 08 onward:
+
+```
+hour  median g/min  heap floor        hour  median g/min  heap floor
+ 08       830.1       924 MB           13       782.0      1010 MB
+ 09       808.2       931 MB           14       788.3       996 MB
+ 10       812.4       947 MB           15       767.9      1025 MB
+ 11       818.3       944 MB           16       769.7      1040 MB
+ 12       787.7      1015 MB           17       733.0      1090 MB
+```
+
+**This is NOT offered as evidence.** Both series trend with time over the same
+16 hours, so they are obliged to correlate; with n=16 autocorrelated hours
+there is no honest test available in this data. The standing "throughput is
+NOT attributed to memory" therefore STANDS — but it now stands on a narrower
+basis than I had been treating it as, and I had been quoting the weak
+within-run corr(heap, g/min) = −0.186 as though it settled the level question.
+It never addressed the level question.
+
+### D. A PREDICTION WRITTEN DOWN BEFORE THE EVENT
+
+A restart resolves C immediately and is the only thing that will. At restart
+the heap floor resets to ~736 MB while the binary, decks and load are unchanged.
+
+- **If the LEVEL story is right:** throughput returns to ~830 g/min and the
+  residual returns to near zero, then both decay again over the following hours.
+- **If it is wrong:** throughput stays near ~733 g/min at a 736 MB floor.
+
+A restart is ALSO the only way to re-measure the 0-2h transient and the only
+way to strengthen the 8-bin control arm. **I am not restarting production to
+run this test** — it resolves itself on the next restart, whenever that comes.
+
+### E. THE NEW PRIMARY INSTRUMENT HAS THE SAME LENGTHENING-WINDOW PROPERTY
+
+The GC-floor fit runs "age 2h -> now", so `now` advances every tick and the
+slope moves BY CONSTRUCTION — exactly the defect that killed four instruments
+before it. It read 16.30 last tick and 15.93 this tick. **That is the window.**
+
+```
+tick   span            trough slope        n    published
+r204   2h -> 16.60h   +16.30 +/- 2.72     14    +16.30 +/- 2.72   <- exact
+r205   2h -> 17.87h   +15.93 +/- 2.38     15    (new)
+```
+
+`r205chk.py` reproduces r204's figure exactly at its own span. **DO NOT REPORT
+THE FLOOR SLOPE AS FALLING.** Fixed-window trough fits, all overlapping:
+
+```
+   2.0h ->  8.0h   +18.01 +/-  9.31   n= 6 bins
+   2.0h -> 12.0h   +17.36 +/-  4.74   n=10 bins
+   8.0h -> 16.0h   +12.41 +/-  6.03   n= 8 bins
+```
+
+Span-matched control comparison is UNCHANGED and could not have changed — the
+control's span is closed (−0.20 ± 11.59 vs +21.09 ± 5.85). **NOT a replication.**
+
+### F. THE r204 PARTIAL BLOCK COMPLETED, AND THE CAUTION PAID OUT
+
+Published at r204 as "NOT ESTABLISHED": the age 14-17h block read
+**+49.01 ± 16.40** as a partial, z=+3.03. Now complete it reads
+**+33.15 ± 13.34** — 16 MB/h lower. The stated reason (a partial window
+starting near a trough and ending near a peak) was the correct reason.
+Pairwise separation among the 5 complete blocks is still 1 of 10 at z=−2.12,
+against a Bonferroni threshold of ~2.81. **Still not established.**
+The new partial tail (17.0-17.9h) reads +66.19 ± 88.55 — uninformative, quoted
+only so nobody later mistakes it for a signal.
+
+### G. STANDING RE-MEASURE
+
+- **600s wall: 23 deadlines vs 23 games >=590s — THIRTEENTH consecutive.**
+  `token_create:18, stack_drain:2, trigger_drain:2, turn_phase_boundary:1`
+- **Populations, SEVENTEENTH stable read (four OVERLAPPING filters, sum 89.8%):**
+  r1 82.2% | r2 4.9% | r3 2.1% | big 0.6%. Overlaps r2xr3 = 6, r3xbig = 4.
+- **Threshold sweep, NINTH replication — levels IDENTICAL to r204** despite n
+  growing: winota 70/80/90/95/85/65, sorin 20/15/5/5/5/5, gerrard 0/0/0/0/10/30.
+- Unexplained class still EXACTLY 2 (150.4s, 114.3s).
+- `total_cap` frozen at 9,504; aborts frozen (22 / 3,628); EXITED 2 = 7; gaps 5.
+- Maxima unchanged: board 4,720, cascades 735 (capped-parse), regime-2 dur 29.9s.
+- Oct-18 stalls unchanged (Sorin 95/238 = 40%). Oct-19 partial, not quoted.
+- Watcher ROTATED at 11:06Z (pids 441680/441682); archive 12 dirs, 0 loose.
+
