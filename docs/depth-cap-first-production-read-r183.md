@@ -3072,3 +3072,62 @@ The split-half still prints "OVERLAP — no acceleration detected", which is
   (second consecutive tick).** Rotated before it could self-terminate;
   archive 14 dirs, 0 loose; relaunched and verified (2 procs).
 
+
+### G. THE inuse PROFILE SAYS ReplEvent IS CHURN, NOT THE RETAINED SET
+
+Taken live at 20:14Z (read-only `/debug/pprof/heap`). Total sampled live
+heap **2.44 GB**:
+
+```
+  text/tabwriter.(*Writer).append    0.68GB  28.09%
+  text/tabwriter.(*Writer).addLine   0.48GB  19.83%
+  os.readFileContents                0.41GB  16.83%
+  ReplEvent.SetCount                 0.15GB   6.10%
+  NewReplEvent                       0.11GB   4.41%
+  deckparser.buildCard               0.08GB   3.17%
+  deckparser.CloneLibrary            0.07GB   2.73%
+  ...
+  runtime/pprof.writeHeapInternal    (cum)    49.62%
+```
+
+**ReplEvent is ~10% of live heap while being 71.7% of allocation. It is
+CHURN — allocated and collected — NOT the retained set.** Section (C)
+established that ReplEvent dominates *allocation*; it was heading toward the
+inference that ReplEvent is therefore what is being retained. **That
+inference is now refuted by direct measurement and is withdrawn before it
+was ever published.** The (C) caveat — "an `alloc_space` profile counts bytes
+allocated, not bytes still live" — was the right caveat and it paid out
+within the hour.
+
+**What holds the live set is still unidentified.** The honest answer is that
+this profile cannot say, because **~1.21 GB of its own 2.44 GB is
+`runtime/pprof.writeHeapInternal` and its tabwriter buffers — the profiling
+machinery itself.** Capturing a heap profile on this process allocates over a
+gigabyte. **Measuring perturbed the thing measured**, and any future inuse
+read needs that subtracted or avoided.
+
+### H. THE WATCHER IS EXONERATED AGAIN — BY A NATURAL EXPERIMENT ALREADY IN THE DATA
+
+(G) raised a fair worry: tabwriter buffers come from `debug=1` goroutine
+dumps, which is exactly what the stall watcher does, and the watcher had been
+running **saturated** (back-to-back captures, ~236/hour) right as the heap
+took off. The r205 lead/lag exoneration was measured at ~106/hour, so it did
+not cover this regime.
+
+**It did not need re-running. The watcher DIED at 19:07:24** (hit its 240-file
+cap, per r206) **and was not relaunched until ~19:22.** During those ~15
+minutes with no watcher running at all:
+
+```
+  19:10   heap min 1586
+  19:20   heap min 2194      +608 MB with ZERO watcher captures
+```
+
+**The heap climbed hardest while the watcher was dead.** That is a cleaner
+control than any correlation — an unplanned 15-minute off-period in the
+middle of the event. The watcher is not driving the memory event.
+
+**Worth keeping anyway: a `debug=1` goroutine dump allocates ~1 GB on this
+process.** That is a real cost of the instrument, separate from whether it
+caused this event, and it argues for shortening the dump rather than raising
+the caps if the watcher is ever retuned.
