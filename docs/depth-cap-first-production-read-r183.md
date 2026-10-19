@@ -3379,3 +3379,78 @@ verification.
   running.** Rotated; archive 16 dirs, 0 loose. **Deliberately left STOPPED
   for the phase-matched capture window** and relaunched after.
 
+
+### r209 ADDENDUM — THE PHASE-MATCHED DIFF LANDED, AND IT REVERSES THE WORKING STORY
+
+Capture A 22:19:33Z (heap=4672MB), capture B 22:42:08Z (heap=5209MB), both
+fired immediately after a GC drop >=300MB, watcher stopped for the whole
+window. **The method worked.**
+
+**FIRST, A NEAR-MISS ON READING THE OUTPUT.** The diff prints
+`Showing nodes accounting for 365.38MB, 11.47% of 3186.65MB total`, which
+reads as "only 11% accounted, 187 nodes dropped, the growth is DIFFUSE".
+**That reading is wrong.** The 3,186.65MB denominator is not the net change.
+The absolute totals are:
+
+```
+  profile A   3.25 GB live
+  profile B   3.61 GB live
+  net growth  ~368 MB   vs top-16 sum 365.38 MB
+```
+
+**The top 16 nodes are essentially ALL of the growth.**
+**A PERCENTAGE IN A pprof DIFF IS NORMALISED AGAINST A DENOMINATOR THAT IS
+NOT THE NET CHANGE — COMPARE THE ABSOLUTE TOTALS.**
+
+**SECOND, WHAT THE GROWTH ACTUALLY IS:**
+
+```
+  text/tabwriter.(*Writer).append    +273.59MB
+  text/tabwriter.(*Writer).addLine    +85.40MB
+                                     ---------
+  profiler's own buffers             +358.99MB   ~97% of all live growth
+
+  CreateCreatureToken                 +18.51MB   <- largest ENGINE mover, new
+  NewReplEvent                        +15.00MB
+  os.readFileContents                 +10.60MB
+  ReplEvent.SetCount                   +7.00MB
+  pickReplacement                      +6.50MB
+  bytes.growSlice                     -47.43MB
+  huginnAdapter.IngestCoTriggers (cum)-31.83MB
+  Snapshot / LogEvent / BaseCharacteristics / cardColors   all NEGATIVE
+                                     ---------
+  ENGINE-SIDE NET                        ~+6 MB over 23 minutes
+```
+
+**AT PHASE-MATCHED POINTS 23 MINUTES APART, THE ENGINE'S OWN LIVE SET GREW
+BY ROUGHLY 6 MB.** Over the same window the reported heap floor rose by
+hundreds of MB.
+
+**THIS CUTS AGAINST THE RETENTION STORY FOR THIS WINDOW.** If the live set is
+flat at matched phase, the floor's rise is not a growing live set — it is
+garbage not yet collected, or the measurement apparatus, or both.
+
+**THREE CAVEATS THAT BIND IT, AND THEY ARE LARGE:**
+1. **23 minutes is a short window** against an event measured in hours.
+   One window is not the event.
+2. **97% of the measured growth is MY OWN INSTRUMENT.** Four heap profiles
+   have now been captured on this process (r207, r208, r209a, r209b) and
+   each allocates ~1 GB of tabwriter buffer. **Whether those buffers are
+   RETAINED across captures is now an open question, and if they are, I have
+   been adding to the heap I am measuring.** That must be checked before any
+   further inuse work.
+3. **It does NOT overturn the r207 natural experiment**, where the heap
+   climbed +608 MB in 15 minutes with no watcher and no captures of mine.
+   The underlying event is not mine. What is now in question is how much of
+   the *recent* heap is my own measurement.
+
+**NEXT STEP, AND IT IS A CONTROL, NOT MORE MEASUREMENT: stop capturing for a
+full hour, then take ONE phase-matched profile and compare its tabwriter
+total against r209b's.** If tabwriter has fallen back, the buffers are
+transient and (2) is closed. If it has not, my own profiling is part of the
+heap growth and every inuse number so far needs re-reading.
+
+**STATUS: "retention across game boundaries" is NOT withdrawn — it rests on
+the floor never recovering across thousands of completed games — but it is
+now UNDER CHALLENGE from a direct measurement, and the challenge is cleaner
+than the evidence for it. Do not quote either side as settled.**
