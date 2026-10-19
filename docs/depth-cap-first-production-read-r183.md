@@ -3131,3 +3131,143 @@ middle of the event. The watcher is not driving the memory event.
 process.** That is a real cost of the instrument, separate from whether it
 caused this event, and it argues for shortening the dump rather than raising
 the caps if the watcher is ever retuned.
+
+---
+
+## Twenty-seventh amendment — r208 (n=19,478 capped games, run age 20.9h)
+
+### A. CORRECTION TO r207: THE SAWTOOTH AMPLITUDE EXPANDED, IT DID NOT COLLAPSE
+
+At r207 I wrote "sawtooth amplitude is COLLAPSING (328 MB range vs the usual
+~500)". **That is wrong, and the error is a window-length mismatch — my own
+recurring unit error in a new place.** The 328 came from a **5-minute**
+bucket; the "usual ~500" was an **hourly** amplitude. A 5-minute window
+cannot contain a full sawtooth cycle, so it will almost always read smaller.
+
+Measured consistently, per complete hour:
+
+```
+hour   floor   peak   AMPLITUDE
+ 17    1090   1538      448
+ 18    1121   1592      471
+ 19    1396   3436     2040
+ 20    3168   4386     1218
+```
+
+**The amplitude roughly QUADRUPLED during the event.** The inference I drew
+from the false reading — "GC runs and recovers less each cycle" — is
+**withdrawn**. GC is moving more per cycle, not less.
+
+### B. THE FLOOR'S 10-MINUTE INCREMENTS ARE FALLING — REPORTED, NOT PROJECTED
+
+```
+  time    floor   d(floor)/10min        time    floor   d(floor)/10min
+  19:00    1396                         20:10    3388     +220
+  19:10    1586     +190                20:20    3580     +192
+  19:20    2194     +608                20:30    3684     +104
+  19:30    2609     +415                20:40    3813     +129
+  19:40    2711     +102                20:50    3896      +83
+  19:50    3070     +359                21:00    3832      -64   PARTIAL n=18
+  20:00    3168      +98
+```
+
+Hourly: **+1772 (h19) -> +874 (h20).**
+
+**I AM NOT CALLING THIS DECELERATION.** "The growth is decelerating" is the
+single claim I got most wrong in this investigation — told to Josh three
+times before r201 showed it was a startup transient. What is different here
+is that these are **raw observed increments, not a fitted line**, which is
+what made the r201 version an artifact. **What is NOT different: a floor over
+a 10-minute bucket is a biased minimum over ~20 samples, the newest bucket is
+partial, and two hours is not a trend.** The observation stands; no
+projection is offered and none should be inferred.
+
+### C. THE TRIPWIRE METRIC IS HeapAlloc, NOT sys — I ALMOST COMPARED THE WRONG NUMBER
+
+READ 0 showed `sys=6176MB` against a "6442MB ceiling" and that looked
+alarming. **It is the wrong comparison.** `showmatch.go:2309` prints
+`float64(m.HeapAlloc)/1e6` against `maxProcessHeap`:
+
+```go
+case heapAbortCeiling:
+    log.Printf("grinder: aborting game at turn %d — process heap %.0fMB exceeds the %.0fMB ceiling (%s) %s",
+        turn, float64(m.HeapAlloc)/1e6, float64(maxProcessHeap)/1e6, ...)
+```
+
+**The ceiling reads HeapAlloc — the grinder line's `heap=` field.** Current
+heap 4,065 MB, hour-20 peak 4,386 MB, ceiling 6,442 MB. `sys` is a different
+quantity and is NOT what aborts. **The tripwire counter remains FROZEN AT
+3,628.** Box has 9.7 GB of 15.8 GB available; nothing touched.
+
+### D. THE DROP-LAST-BIN CHECK FIRED EXACTLY AS PREDICTED
+
+r207 said: when the event enters the GC-floor regression, check whether one
+bin carries it. It does.
+
+```
+  full 2h -> 20.9h       +28.17 +/- 13.15   n=18
+  DROP LAST BIN          +17.20 +/-  2.09   n=17
+  DROP LAST TWO BINS     +16.54 +/-  2.21   n=16
+  pre-break 2h -> 18h    +16.54 +/-  2.21   n=16   (reproduces r206 EXACTLY)
+```
+
+**+28.17 is one bin, and including it inflates the CI more than sixfold
+(±2.09 -> ±13.15). DO NOT QUOTE +28.17 AS A RATE.** The old-regime number
+remains **+16.54 ± 2.21**. The last complete age-bin is still 19-20h
+(clock 19:12-20:12, floor 1758) while the actual 20:50 floor is 3,896 — **the
+regression is STILL lagging the event**, as at r207.
+
+### E. THE inuse DIFF FAILED TO NAME THE LEAK — AND THE TWO REASONS ARE REUSABLE
+
+r207's named next step was two `inuse` profiles 20+ min apart, diffed.
+Taken at 20:14Z and 21:14Z. **It did not work, and I am reporting that
+rather than mining it for a headline.** Top movers:
+
+```
+  text/tabwriter.(*Writer).append    +175.09MB
+  text/tabwriter.(*Writer).addLine   +171.89MB
+  ReplEvent.SetCount                  +22.01MB
+  bytes.growSlice                     -16MB
+  fireObserverETBTriggers              +6.44MB
+  NewReplEvent                         -5MB
+  ...202 further nodes dropped at <= 11.02MB each
+```
+
+**Reason 1 — the profiler still dominates.** The top two movers are pprof's
+own tabwriter buffers, +347 MB of the +373 MB accounted. Engine-side, the
+largest mover is +22 MB.
+
+**Reason 2, AND THIS IS THE REUSABLE ONE — I diffed two point samples on a
+sawtooth without matching their phase.** The reported net total (+2,203 MB)
+is dominated by where in the GC cycle each capture happened to land, not by
+retention. **I solved exactly this problem for the heap SERIES at r204 by
+regressing the per-bin minimum, and then walked straight into it again with
+profiles.**
+
+**WHAT A WORKING VERSION NEEDS:** capture both profiles at a MATCHED sawtooth
+phase (poll `heap=` and fire the capture just after a trough), with the
+watcher stopped, and discount `runtime/pprof` + `text/tabwriter` nodes.
+Until then, **what holds the live set remains unidentified** — and
+`ReplEvent` growing only +22 MB live in an hour is further evidence it is
+churn, consistent with r207.
+
+### F. STANDING RE-MEASURE
+
+- **600s wall: deadlines 31 vs 31 games >=590s — SIXTEENTH consecutive**,
+  both from ONE snapshot.
+  `token_create:25, stack_drain:2, trigger_drain:2, turn_phase_boundary:2`
+- **Residual, FIVE consecutive hours past the gate, now plateauing:**
+  16 −60, 17 −82, 18 −251, 19 −451, **20 −432** (n=120 each, no gaps).
+  Occupancy for hour 20 was an ordinary 11.4%, so the (1b) busy-hour caveat
+  does not excuse it. **Throughput has levelled ~370 g/min** while the heap
+  kept climbing — the two series are still moving independently.
+- **Populations, TWENTIETH stable read (four OVERLAPPING filters):**
+  r1 82.3% | r2 4.9% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+- **Threshold sweep, TWELFTH replication.** thr=50 winota 80->85, sorin
+  15->10; thr=500 gerrard 10->5. **All small-k wobble at n=165 and below —
+  NOT movement**, same as the r206/r207 thr=20 flip-flop.
+- `total_cap` frozen at 9,504. Aborts frozen (22 / 3,628). Gaps 5. EXITED 2 = 7.
+- **Watcher: 240 files in 60.6 min — AT THE CAP for the third tick running.**
+  Rotated before it could self-terminate; archive 15 dirs, 0 loose;
+  relaunched and verified (2 procs).
+
