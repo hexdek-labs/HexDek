@@ -2900,3 +2900,50 @@ Rotated; archive now 13 dirs, 0 loose; relaunched and verified (2 procs).
 - Oct-18 stalls unchanged (Sorin 95/238 = 40%). Oct-19 partial, not quoted.
 - Maxima unchanged.
 
+
+### H. THE COLLAPSE WINDOW NAMES A SUBSYSTEM — ReplEvent
+
+The engine has been writing allocation profiles to `/tmp/hexdek-allocprof/`
+all along (**122 files**) and I have never read one. Diffing the 19:10 spike
+profile against the 16:43 one (same process, same Build ID
+`d463a22e`, no restart, `alloc_space` is cumulative so the diff is exact)
+gives allocation IN the collapse window: 1,752.91 GB over 2.45h, which is
+**14.0% of the run's lifetime allocation**. That is the uniform expectation
+for every function.
+
+```
+Share of each function's LIFETIME allocation landing in the 2.45h window:
+
+  ReplEvent.SetCount                   282.4GB /  293.3GB   96.3%   6.90x
+  NewReplEvent                         191.6GB /  230.5GB   83.1%   5.96x
+  ---------------------------------------------------------------------
+  collectPresentInstanceIDsForSweep     61.8GB /  606.8GB   10.2%   0.73x
+  applyLayer                            33.1GB /  325.9GB   10.2%   0.73x
+  json.MarshalIndent                    26.1GB /  257.1GB   10.2%   0.73x
+  GameState.Snapshot                    53.0GB /  522.5GB   10.2%   0.73x
+  per_card.fireTrigger                  53.0GB /  523.3GB   10.1%   0.73x
+  PriorityRound                         24.1GB /  239.4GB   10.1%   0.72x
+  GameState.LogEvent                    31.1GB /  309.1GB   10.1%   0.72x
+  cardColors                            67.7GB /  677.0GB   10.0%   0.72x
+  BaseCharacteristics                  252.6GB / 2528.6GB   10.0%   0.72x
+  partitionTypes                        29.0GB /  294.4GB    9.8%   0.71x
+```
+
+**EVERY OTHER FUNCTION SITS IN A 9.8-10.2% BAND. That tight clustering IS the
+control** — the whole engine allocated proportionally through the window, and
+exactly two functions, both in the replacement-effect event machinery, did
+not. `pickReplacement` (31.95GB) also enters the window's top-16 without
+appearing in the lifetime top-14.
+
+**WHAT THIS IS: the first concrete lead on what is different about the
+collapse window, and it names a subsystem.**
+**WHAT THIS IS NOT: a mechanism.** Concentration is not mechanism — this is
+equally consistent with one replacement-heavy game or deck running in that
+window as with a regression, and `BaseCharacteristics` remains the run's
+largest allocator overall by a wide margin. **No code change is proposed and
+none should be until the window's games are identified.**
+
+**NEXT STEP (cheap, next tick): identify which games ran 16:43-19:10 and
+whether a replacement-effect-heavy deck is over-represented among them.** The
+profiles are read-only artifacts already on disk; `go tool pprof` is NOT
+installed on .206, so `scp -O` them off and diff locally.
