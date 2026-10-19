@@ -727,3 +727,137 @@ placement, and counted at the `0 -> 1` transition inside
 `NoteDepthCapSwallow` instead. Its mutation M1 implements my version:
 **10 tests red.** Four agents in this chain have now contradicted a
 brief of mine and been right each time.
+
+---
+
+## Eighth amendment (r188 tick) — n=1,795. Three published numbers broke, and there is a FOURTH population.
+
+The r187 window now carries **1,795 capped games with the counted
+`cascades=` field**, up from the n=91 the previous read was published
+on. A 20x increase broke three numbers, all of them medians of tiny
+subgroups — the same failure mode as n=48 -> n=701, extremes first.
+
+### What held
+
+| claim | n=91 | n=1,795 | verdict |
+|---|---|---|---|
+| regime 1 share (`cascades==1`) | 82% | **82.2%** | HELD exactly |
+| regime 2 share (`loop*`) | 4-7% | **5.2%** | HELD, inside the band |
+| median cascades/game | 1 | **1** | HELD |
+| p90 cascades/game | 2 | **3** | essentially held |
+| name table saturation | fixed at 32 | **0 of 1,795 at >=32; max distinct 9** | HELD — the bounded-counter fix is sound |
+
+### What broke
+
+**1. Regime 2 is NOT the fastest population.** Published as SETTLED:
+"median 0.20s, the FASTEST games in the capped population". At n=1,795
+regime 2's median is **0.30s — identical to regime 1's 0.30s.** The
+0.20s came from roughly four games. The *interpretation* survives
+(re-entry is caught instantly; a runaway costs correctness, not time)
+but the comparative superlative does not. **Regime 2 is not
+distinguishable from regime 1 by duration.**
+
+**2. "ALL wall-clock cost is regime 3" is FALSE.** Measured share of
+the 772.9s of capped wall-clock:
+
+```
+cascades==1      n=1476  82.2%   523.5s   67.7% of capped wall
+loop* re-entry   n=  94   5.2%    31.8s    4.1%
+cascades>=20     n=  38   2.1%   117.5s   15.2%
+```
+
+Regime 3 is **15.2%**, not all of it. Regime 1 dominates total
+wall-clock purely by volume — 1,476 games at 0.30s outweigh 38
+expensive ones. This is the inverse of the error in
+[[feedback-a-big-aggregate-is-deep-or-broad]]: there I read a big
+total as widespread; here I read a concentrated tail as if it were
+the whole cost.
+
+**3. Regime 3's cost figures were n~1-3.** Median duration 89.7s ->
+**1.05s**; median swallows 2,157 -> **397**; max 203.3s -> 66.2s in
+this window. Only **2 of 1,795** capped games reach 10s at all.
+
+### NEW: a fourth population — huge boards with FEW cascades
+
+Sorting by duration surfaced a shape absent from the three-regime
+model: games lasting seconds with `cascades=1..6` and
+**`board` in the 800-1,568 range** against a population median of 38.
+
+```
+  66.2s casc=258  sw=1806  board=51     <- regime 3
+  10.6s casc=2    sw=47    board=1568   <- NEW
+   9.5s casc=67   sw=469   board=51     <- regime 3
+   8.4s casc=1    sw=21    board=1167   <- NEW
+   5.4s casc=6    sw=15    board=1461   <- NEW
+```
+
+Unit note, since this is exactly where I have erred three times:
+`board` describes the **peak cascade**, `cascades`/`swallowed` are
+**game totals**. These are not combined below.
+
+```
+board>=300   n=17  0.9% of capped games   median dur 3.30s   median casc 6   8.4% of capped wall
+board<300    n=1778                        median dur 0.30s   median casc 1
+overlap with cascades>=20:  EXACTLY 0
+```
+
+**Two disjoint duration mechanisms.** `pearson(cascades,dur)=0.495`,
+`pearson(swallowed,dur)=0.366` — moderate and neither dominant, which
+is what a mixture of two causes looks like projected onto one axis.
+Same shape as the error that cost three reversals; this time the
+second axis was `board`, already in the line and read past.
+
+### Attribution, conditional within the capped population
+
+Raw multipliers against `/api/live/elo` lifetime games
+(joined on `owner+"/"+deck_id`) give 205x / 354x, but those are
+confounded: these decks are over-represented in capped games
+generally. The honest test is **given this deck is in a capped game,
+how often is it this sub-population**, against that
+sub-population's base rate.
+
+```
+REGIME 3 (base rate 2.1% of capped games)
+  34.6x   winota_joiner_of_forces_b3_kaputtzimon   11 of its 15 capped games (73%)
+  14.8x   gerrard_weatherlight_hero_b4_bingusblaster  22 of its 70 (31%)  <- largest absolute
+
+BIG BOARD (base rate 0.9%)
+  89.8x   sorin_of_house_markov_..._b2_khazad_doom  17 of its 20 capped games (85%)
+```
+
+Winota's mechanism was already oracle-verified: *"Whenever a non-Human
+creature you control attacks... put a Human creature card onto the
+battlefield tapped and attacking"* = one independent trigger per
+attacker = fan-out. **Sorin is a new mechanism**, oracle-verified this
+session: the back face `Sorin, Ravenous Neonate` has **`+2: Create a
+Food token`** — a permanent minted per activation with no self-limit,
+and nothing in the deck consumes Food. That is a board-growth engine,
+not a cascade engine, which is why it lands in the population with
+`cascades=1..6`.
+
+**This refines, and does not overturn, the earlier Sorin finding.**
+"Sorin is a slowness phenomenon with no special relationship to the
+cap" still holds: Sorin is in only 20 of 1,795 capped games (1.1%,
+about expected). What is new is that **when a Sorin game is capped it
+is almost always (85%) a huge-board game**, and huge boards are a
+duration mechanism in their own right. The two phenomena touch here,
+not through the cap.
+
+### Consequence for the ETB scan class
+
+`FireEvolveTriggers`, `FireSoulbondTriggers` and `ApplyGraft` all scan
+every permanent and gate only on `IsCreature()`. Their cost is O(board).
+The previous argument for them was "82% of capped games are wide boards
+(median ~38)". The real argument is stronger and narrower: **there are
+live production games reaching 1,568 permanents at peak cascade**, and
+these three scans run across all four seats at that size. Still an
+owner call; the evidence behind it is now a measured maximum rather
+than a median.
+
+### Standing caveat, unchanged
+
+Every `distinct` / `dom%` / `shape` number remains **alias-contaminated**
+(`NoteDepthCapSwallow` runs before `NormalizeEventSingle` against a
+241-entry table), so `widemix` is over-reported vs `wave` and `loopN`
+vs `loop1`. **Everything above rests on the board and cascade-count
+axes, neither of which looks at event names.**
