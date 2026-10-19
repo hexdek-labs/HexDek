@@ -1686,3 +1686,93 @@ games are occupying workers, which is already measured directly and better by oc
 Once the slope artifact is removed, only -0.195 of independent signal remains. The fill
 rate remains useful as a CHEAP liveness/orientation number and for sizing the watcher's
 own cost — but it should not be read as evidence about engine stalls on its own.
+
+## Sixteenth amendment (r196) — r187 LEAKS HEAP AT +26 MB/h; r186 DOES NOT. Two controls, no CI overlap.
+
+n = 10,331 capped games (prev 9,322). Standing first, then the finding.
+
+### A. Standing re-measure — all holds, and (1c) resolves WITHOUT an alarm
+
+```
+populations (NINTH consecutive hold)   r1 82.3  r2 4.8  r3 2.2  big 0.8
+deadline        12 games >=590s vs guards=game_deadline:12   <- FIFTH consecutive
+   new game stopped CLEANLY at 599.8s via token_create (now :8) — again, the SITE
+   does not determine the unwind. Same three overruns: +271s, +801s, +1433s.
+total_cap       FROZEN at 2,116 for a THIRD hour
+abort strings   22 / 3,628, unchanged since Oct 16;  no new grinder gaps >=180s
+stalls          Oct-18 holds exactly: Sorin 40% (95/238), Winota 14%
+ranks           winota top20 45% / top50 32%    sorin top20 40% / top50 58%
+   sweep replicates a third time: Sorin monotone 30%->0%; Winota/Gerrard swap. No winner.
+watcher         68 files / 135.7 min = 30.1/hour cumulative (56 in the last hour alone)
+```
+
+**(1c) RESOLVED.** Hour 09 came in at **-39** (full 120 samples, occupancy 6.4%); under the
+fitted slope -46. Hour 08 was -54 / -72. **Neither model gives two consecutive hours below
+-60 — the gate does not trip.** `corr(time, residual) = -0.145`: no drift.
+
+### B. THE FINDING — r187 leaks heap; r186 does not
+
+07/08/09 being three mild negatives in a row sent me to the pre/post-r187 split (r187
+deployed 00:12Z 10/19; before that r186). The throughput gap survived every control I
+tried, so I looked at memory, age-matched by process.
+
+```
+run                          samples   span    heap slope MB/h    95% CI
+r186  Oct18 06:27-13:24          791   6.6h      +4.91 +/- 1.71   [ +1.5,  +8.3]
+r186  Oct18 13:24-Oct19 00:12   1285  10.8h      -0.70 +/- 0.81   [ -2.3,  +0.9]
+r187  Oct19 00:12-now           1220  10.2h     +26.32 +/- 0.93   [+24.5, +28.2]
+```
+
+**No overlap with either control.** RSS moves faster still: r186 -2.36 and +9.21 MB/h,
+r187 **+41.55** MB/h. Age-matched heap by process age makes it visual:
+
+```
+age h   r186 heap   r187 heap
+    0         941         920
+    3         965        1021
+    6        1015        1116
+    9         970        1193
+   10         940        1216
+```
+
+**The innocent explanation is ruled out:** `ELO pool` is 1425 and perfectly constant in
+BOTH runs, so this is not the ratings table growing.
+
+**Operational size: the ceiling is 6442MB** (`process heap NNNNMB exceeds the 6442MB
+ceiling`). From 1219MB at +26.3 MB/h that is **~8.3 days** to an abort. Not urgent —
+and that is exactly why it was never caught: **the leak is masked by restarts.** The
+process almost never survives 8 days between deploys and crashes.
+
+### C. Throughput: a SEPARATE result, not the leak's symptom
+
+```
+age-matched mean g/min   r186 813.7   r187 765.0    -48.7  (-6.0%), raw
+occupancy-controlled residual        pre +10.6  post -28.3   (-38.9)
+  under the fitted slope (removes the r195 bias)  +8.8 -> -23.6   (-32.5)
+  paired BY HOUR OF DAY (controls diurnal mix)    -34.1, 4/5 hours negative, t=-2.02
+  permutation test, unpaired                      p = 0.013 one-sided
+```
+
+Robust to which slope I use, so it is not the r195 artifact. **But I am NOT claiming the
+leak causes the slowdown:** within-run `corr(heap, g/min)` is only **-0.186** for r187 and
+-0.283 for r186 — if heap growth were throttling throughput that correlation should be
+strong and stronger than the control's. Two findings about the same build, reported
+separately.
+
+### D. What is weak here, stated plainly
+
+- **n=1 process on the treatment side.** Two r186 controls, one r187 run. The within-run
+  slope is tight (1,220 samples) but "r187 leaks" rests on a single process. **The current
+  process is still running — re-measure its slope next tick; linear continuation at ~26
+  MB/h would settle it.**
+- **I could not diff the binaries.** r186 `401a6e2f` is not in the worktree's object store,
+  so I have no idea what changed and cannot name a suspect line.
+- The paired hour-of-day test is n=5 (t=-2.02); the permutation p=0.013 is the stronger leg.
+- heap= is a sawtooth sampled point-in-time; mitigated by ~120 samples/hour, not eliminated.
+
+### E. FILED, NOT ACTED ON
+
+Rollback binary `~/hexdek/hexdek-server.bak-pre-r187-20261019` (= r186) is in place. **A
+rollback is a production action and an OWNER CALL — not taken.** Nothing here is urgent at
+8 days of headroom. The cheap next step that needs no decision is simply to re-read the
+slope next tick.
