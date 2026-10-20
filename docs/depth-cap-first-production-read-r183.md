@@ -3679,3 +3679,97 @@ in one command, and I am waiting.**
   guard, not the leak. The old-regime **+16.54 ± 2.21** remains the only
   quotable figure.
 
+
+---
+
+## Thirty-first amendment — r212 (incident hour 2 — still awaiting the owner)
+
+### A. THE ABORT LOOP HAS MORE THAN TRIPLED. NO RESTART; NO ANSWER YET.
+
+```
+ceiling aborts:  3,628 (Oct 16) -> 3,724 (r210) -> 42,602 (r211) -> 135,513 (now)
+by hour:   10/19 22:  96  |  10/20 00: 32,054  |  01: 78,436  |  02: 24,616 (partial)
+current rate ~1,750/min, still climbing
+heap oscillating 6,354-6,711 MB around the 6,442 ceiling | sys 10,628 MB
+box 9.0 GB used of 15.8, 6.8 GB available (was 7.1) — still NO OOM RISK
+```
+
+pid 322631 unchanged, `EXITED 2` still 7, health 200, pprof 200. **I have not
+restarted and will not without Josh.** No reply in #dev-work.
+
+### B. I NEARLY PUBLISHED "REAL OUTPUT IS ZERO" — AN INDEPENDENT INSTRUMENT SAYS 80-85%
+
+The games counter grew **+78,371** in hour 01 against **78,436 aborts**. That
+arithmetic says real completions are approximately zero, and I was one step
+from reporting it.
+
+**`CAPPED GAME` lines — a separate, independently emitted record — disagree:**
+
+```
+  10/19 21  528      10/20 00  452
+  10/19 22  465      10/20 01  427      <- only ~15% below the clean hours
+  10/19 23  537      10/20 02   90 (partial)
+```
+
+**Real games are still completing at roughly 80-85% of the pre-incident
+rate.** I do not actually know what increments the `games` counter — whether
+aborts increment it, and whether the two counts cover the same set — so
+**I cannot compute real throughput from it at all**, and the "~zero"
+inference is withdrawn before publication.
+
+**This is the SAME failure I had just written a rule about one tick earlier**
+("a counter can silently change meaning"). The rule caught it, but only
+because a second instrument existed to disagree. **The capped-game line is
+the trustworthy one; the games counter is not interpretable during the
+incident.**
+
+**It also moderates my own escalation: the engine is degraded, not dead.**
+The r211 framing of ~39,000 games/hour "destroyed" is about the aborts, which
+are real — but it should not have implied that useful output had stopped. It
+has not.
+
+### C. THE WATCHER HAS GONE BLIND, AND THE MECHANISM IS THE CONTAMINATION ITSELF
+
+**0 capture files in 59 minutes of running.** The process is alive and
+healthy in `ps`. `stallwatch7.sh` fires when `g/min now` is below **760 for
+3 consecutive windows** — and the abort-inflated metric now reads:
+
+```
+  1978.5 | 2165.6 | 1990.5 | 2019.1  g/min now
+```
+
+**More than double the healthy maximum, so the trigger can never fire.**
+
+At r211 I noted the fill rate was "doubly confounded". It is worse than
+confounded: **the monitor has silently switched itself off, and its output
+(zero files) is indistinguishable from "nothing to see".** A monitor keyed to
+a derived metric inherits every defect of that metric, including the ones
+that make it look healthy. **No change made — retuning the threshold
+mid-incident would change the instrument.**
+
+### D. STANDING RE-MEASURE
+
+- **600s wall: deadlines 34 vs 34 games >=590s — twentieth read, BUT THE
+  TEST WAS NEAR-VACUOUS THIS TICK.** **Zero new games reached 590s**: games
+  abort at turns 10-70, long before the 600-second wall can fire. By the
+  standing rule ("an unchanged number whose window is closed is not a
+  replication") this tick adds almost nothing to the streak, and I am
+  recording it as such rather than banking it as a twentieth confirmation.
+- **Populations, TWENTY-FOURTH stable read** (four OVERLAPPING filters),
+  n=21,905 parsed: r1 82.3% | r2 5.0% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+  **These come from `CAPPED GAME` lines, which (B) shows are still flowing,
+  so this read is NOT contaminated by the abort loop.**
+- `exceeds budget` frozen at 22. EXITED 2 = 7. No new grinder gaps.
+- **Residual and the GC-floor battery remain SUSPENDED** — the throughput
+  denominator and the heap floor are both captives of the abort loop. The
+  only quotable heap figure is the old-regime **+16.54 ± 2.21**.
+- **Watcher: 0 files, see (C).** Not rotated — there is nothing to rotate and
+  the process is alive. Archive unchanged at 18 dirs.
+
+### E. THE RECOMMENDATION STANDS, WITH ITS URGENCY HONESTLY RESTATED
+
+A restart clears the loop and is simultaneously the pre-registered r205
+experiment. **But (B) changes the cost of waiting**: useful output is
+continuing at ~80-85%, so this is a degraded system bleeding wasted CPU, not
+a stopped one. Users remain unaffected. **I still recommend the restart; I no
+longer describe the delay as urgent.**
