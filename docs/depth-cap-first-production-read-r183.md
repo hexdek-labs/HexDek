@@ -5079,3 +5079,147 @@ characterisation covers 10/18-10/20 06:56 and stops there.**
 `sba_max_passes` 4,263 -> **4,440**. Populations NOT re-read, CAPPED stream frozen.
 **CPU profiles read 28 of 1,097; goroutine dumps now 1,099 of ~1,099 for STATE
 (frame-level still unattempted and still underpowered per dump).**
+
+---
+
+## 42nd amendment (r223) — r222's "swap is cold" was wrong at the hourly scale; hour 12 produced ZERO games
+
+### Correction: I measured a bursty process with a spot check
+
+At r222 I wrote that swap was **cold and not filling**, on the strength of a clean
+60-second measurement showing `pswpout` delta = 0. **That instantaneous reading was
+correct and the conclusion drawn from it was wrong.** Differencing the cumulative
+counters over the hour between ticks:
+
+```
+pswpout  1,029,723 -> 1,098,176  = 68,453 pages in 65 min = 1,053/min = 4.1 MB/min = 247 MB/hour
+pswpin      54,210 ->    97,989  = 43,779 pages in 65 min =   674/min = 2.6 MB/min = 158 MB/hour
+net:  267 MB written out, 171 MB read back, net +96 MB
+VmSwap level  3,838,276 -> 3,933,604 kB = +93 MB   <- agrees with the net to within rounding
+SwapFree  195,740 kB = 191 MB   (was 279 MB at r222)
+```
+
+**The level change and the cumulative counters agree exactly**, which is what makes this
+trustworthy. **Swapping is episodic**: it happens in bursts between my samples, so a
+60-second window catches zero most of the time. Two spot checks an hour apart both read
+zero while 267 MB was written.
+
+**This tick's spot check again read `pswpout` 0/min, `VmSwap` −2,076 kB/min, and
+/proc/pressure/{io,memory} 0.00 across the board. Those numbers are real and they are
+not the whole picture. Use the cumulative counter, not the spot check.**
+
+The irony is worth recording: at r222 I correctly insisted "a level is not a rate", then
+measured the rate with an instrument too short to see it.
+
+**Factual comparison, not a projection:** free swap is **191 MB**, which is now smaller
+than the **267 MB** written to swap in the last hour. No time-to-anything is quoted.
+
+Process major faults, read from the **correct** field this time
+(`/proc/<pid>/stat` field 12): **85/min**. System `pgmajfault` 100/min. Still negligible
+— the box is not thrashing even though it is slowly accumulating swap.
+
+### Hour 12 produced ZERO completed games
+
+```
+CAPPED per hour  05: 561   06: 445   07: 14   08: 8   09: 3   10: 4   11: 1   12: 0   13: 1 (partial)
+LAST CAPPED 2026/10/20 13:03:19
+aborts  1,121,386 -> 1,291,121   per-min  hr10 2,780 | hr11 2,427 | hr12 2,478
+direct 60s measurement: 2,268/min
+health 200 | pprof 200 | goroutines 46 (was 28) | EXITED 2 = 7 | heap-delta aborts = 22
+VmRSS 5,180,144 kB | VmSwap 3,933,604 kB | VmHWM 9,762,364 kB unchanged | sys 13,594 static
+```
+
+**Hour 12 is the first fully empty hour of the incident.** The abort taper has also
+stopped — hour 12 is marginally above hour 11, so the system has settled at
+~2,450-2,500 aborts/min with no useful output.
+
+### The floor is flat and the PEAK is still rising — the sawtooth is widening
+
+```
+floor 12:0 8116  12:1 7990  12:2 8016  12:3 8056  12:4 8090  12:5 8013  13:0 8091  13:1 8232
+peak  12:0 8470  12:1 8731  12:2 8785  12:3 8768  12:4 8779  12:5 8858  13:0 8863  13:1 8854
+
+r221 win 10:30-11:10 HELD FIXED     +942.0 +/- 256.7 MB/h (n= 5)  drop-last +1204.2 +/- 359.1  REPRODUCES
+r222 win 10:30-12:00 HELD FIXED     +376.4 +/- 100.7 MB/h (n=10)  drop-last  +362.4 +/- 125.8  REPRODUCES
+SECOND RISE 10:30-13:10 extended    +224.2 +/-  39.7 MB/h (n=17)  drop-last  +221.5 +/-  44.9
+FLOOR 12:00-13:10 only               +95.9 +/-  66.5 MB/h (n= 8)  drop-last    +9.6 +/-  59.3
+PEAK  12:00-13:10                   +255.6 +/-  74.4 MB/h (n= 8)  drop-last  +305.8 +/-  91.9
+```
+
+**Both previously published windows reproduce exactly — consistency checks pass for the
+third tick running.**
+
+The new structure: **the floor is not distinguishable from flat while the peak is rising
+significantly.** Sawtooth amplitude (peak − floor) has roughly doubled inside this hour:
+354 MB at 12:00, 845 MB at 12:50, 772 MB at 13:00.
+
+**This is NOT a closure and it is NOT the mirror of the withdrawn "sawtooth amplitude is
+collapsing" claim** — that was a different window and the opposite direction; this is a
+measured 70-minute observation with its fits printed. **Regime D stays open.** At r220 I
+closed it on 8 flat bins and it broke 20 minutes later; a flat floor means nothing while
+the peak is climbing. **Separating the floor from the ceiling is what made this visible
+at all** — the combined series would have read "+96, flat".
+
+**(0c) RULING: heap profiles remain PROHIBITED.** Headroom against the 6,442 MB ceiling
+is deeply negative, and a ~1 GB profile now runs against **191 MB of free swap**. The
+case is stronger than last tick. **The 10:30 break remains characterised but not
+explained, and the instrument that would explain it is the one ruled out.**
+
+### Item (13) CLOSED: the frame-level comparison separates nothing
+
+r222 pinned goroutine **state** at 1,099/1,099 dumps. The remaining job was the
+**frame-level** comparison, which r221 explicitly refused to attempt at n=39.
+
+**Pre-registered before looking:** a frame separates only if it has **>=50 observations**,
+a **>=2x share ratio** between slow and fast, AND survives a two-sided exact binomial
+test at **p<0.01 Bonferroni-corrected** for the number of frames tested.
+
+Method: all 4,209 runnable engine-goroutine observations from the 1,099 dumps, each
+labelled by its 10-min `g/min` bucket, then split **slow/fast against its own
+directory's median** — the within-window design from r220 generalised, so era and
+game-mix drift cannot drive the split. 1,786 slow vs 1,750 fast; 673 at the median
+dropped. 11 frames cleared the >=50 threshold, giving alpha = 0.01/11 = 9.1e-4.
+
+```
+frame                                     slow  fast   slow%   fast%   ratio          p
+gameengine.FireCardTrigger                 162    96   9.07%   5.49%    1.65   8.20e-05
+gameengine.keywordActive                    51    25   2.86%   1.43%    2.00   3.97e-03
+hat.<closure>                              101   126   5.66%   7.20%    0.79   7.32e-02
+gameengine.NewReplEvent                     71    53   3.98%   3.03%    1.31   1.51e-01
+gameengine.BaseCharacteristics              35    25   1.96%   1.43%    1.37   2.47e-01
+gameengine.<closure>                       390   410  21.84%  23.43%    0.93   3.22e-01
+gameengine.OracleTextLower                  40    47   2.24%   2.69%    0.83   4.53e-01
+gameengine.GetEffectiveCharacteristics      38    35   2.13%   2.00%    1.06   8.16e-01
+gameengine.permSuppressesCreatureType       39    36   2.18%   2.06%    1.06   8.18e-01
+gameengine.NarsetBlocksDraw                 38    39   2.13%   2.23%    0.95   9.09e-01
+gameengine.cardIsToken                      67    67   3.75%   3.83%    0.98   9.31e-01
+```
+
+**FRAMES PASSING THE BAR: 0.**
+
+`FireCardTrigger` clears significance comfortably (p=8.2e-05 against alpha 9.1e-4) but
+its ratio is **1.65, under the 2x effect-size requirement**. `keywordActive` hits exactly
+**2.00x** but p=4.0e-03, **over alpha**. Each fails a different criterion. **I set both
+before looking and I am not relaxing either.** `FireCardTrigger` is recorded as a
+**candidate worth a targeted test, not a finding** — notable only because it is the
+trigger-dispatch entry point and therefore adjacent to the depth-cap and ETB-scan items,
+which is exactly the kind of story-fit that made r219 wrong.
+
+The largest bucket in both arms is anonymous closures at ~22%, which carries no
+information.
+
+**Consequence: the archived goroutine corpus is now exhausted** — 1,099/1,099 read for
+state and for frames, and it yields two strong negatives (nothing blocked; no frame
+separates) and no mechanism. **The cheapest evidence source is spent.** What remains is
+1,069 unread CPU profiles, and a heap profile, which is prohibited.
+
+### Standing
+
+**(6) 600s wall VACUOUS for the eighth tick** — `deadlines=` 38 unchanged, **0 games
+>=590s**. Not a pass.
+**(0d) Watcher blind for the sixth tick** — 0 files, 2 procs, trigger `g/min<760` against
+~2,450. **Not rotated** (no trigger applies) **and not retuned** (breaks comparability).
+This is still why no post-swap dumps or profiles exist.
+**(0j) No ALLOC SPIKE line since 06:00:04**; verdict text unchanged.
+`percard_dispatch_depth_cap` 776,475 -> **776,484**; `total_cap` still **15,792**;
+`sba_max_passes` 4,440 -> **4,712**. Populations NOT re-read, CAPPED stream frozen.
