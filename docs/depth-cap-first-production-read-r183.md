@@ -5378,3 +5378,126 @@ fire, and now there is no `g/min` at all. Not rotated, not retuned.
 still `alloc-spike-20261020T055956Z.pb.gz`.
 `deadlines=`, `guards=`, populations: **UNREADABLE this tick** — all live only in the
 status line. Last known: `deadlines=` 38, `depth_cap` 776,484, `total_cap` 15,792.
+
+---
+
+## 44th amendment (r225) — RETRACTION: there was no stall. And event 2 is over, self-resolved, no restart.
+
+### The retraction, first and plainly
+
+**r224's headline was wrong in its entirety.** I reported that `server.log` had gone
+silent at 13:57:12 for ~50 minutes, that no game had completed or aborted in that time,
+and therefore that **the 600s deadline had failed with games running ~5x past it**. I
+called it "the top engineering item" and said it superseded eight ticks of framing.
+
+**None of that happened.** The log has an unbroken flow of ~2,650 lines/minute straight
+through the supposed gap:
+
+```
+13:55  2712   13:56  2574   13:57  2637   13:58  2743   13:59  2651   14:00  2659   14:01  2712 ...
+lines timestamped 13:57-13:59: 8,031
+```
+
+**What actually happened is a read artifact.** At r224 (~14:47) `tail -1 server.log`
+returned the 13:57:12 line and `stat` gave mtime 13:59:52. Those readings were accurate:
+content generated from ~13:57 onward **was not yet visible on disk**, and only landed
+later, carrying its original timestamps. **A ~45-minute lag between log generation and
+durable write.** I observed the lag; I have **not** established its mechanism, and I am
+not going to guess at one.
+
+**The error I should have caught, from my own READ 0.** That same r224 read showed ceiling
+aborts going 1,291,121 -> 1,402,012, **+110,891**. At the then-current ~2,480/min that
+requires **~45 minutes of continuous aborting** — which my "silent since 13:57" story said
+had not happened. I wrote the two numbers four lines apart and rationalised the gap
+instead of reconciling it. **The number that killed the theory was already on the screen,
+in my own report.** I have that exact rule written down and did not apply it.
+
+**Specifically withdrawn from r224:**
+- "the log went silent / ~50 minutes of silence" — a stale read, not an outage
+- "no game completed or aborted in ~50 minutes" — false; aborting continued throughout
+- **"the 600s deadline has failed, games running ~5x past it"** — REFUTED
+- the claim that this **supersedes "(6) is vacuous"** — that supersession is itself
+  withdrawn. **(6) returns to: vacuous while the abort loop ran, not a pass.**
+- the framing of two live stacks as workers "stuck" in backlog items
+  (`SweepOrphanedInstanceIDs`, `strings.Contains`). Those stacks were real, but they were
+  **ordinary in-flight work sampled mid-execution in a healthy engine** — not pathology.
+  Items (20) and (22) revert to their prior status; neither is promoted.
+
+**What survives from r224:** the rotation check (inode and fds were genuinely unchanged);
+the goroutine census (8 runnable, nothing blocked — which describes a *working* engine);
+the `[select, 48 minutes]` = `auth.RunSessionGC` caution; and `RssAnon + VmSwap` as a
+proxy, which turns out to be useful for a better reason than I gave.
+
+### Event 2 is over. It self-resolved at ~14:40-14:50 with no restart.
+
+```
+10-min floor/peak       13:4  8209/8969   13:5  8225/8965   14:0  8268/9001
+                        14:1  8277/9045   14:2  8235/9075   14:3  8115/9037
+                        14:4  6154/10292  <- single large collection: peak 10,292 MB (a record), floor -2.0 GB
+                        14:5  6205/6558   15:0  6326/6565
+```
+
+At 14:40-14:50 one collection released ~2 GB and **took the heap back under the 6,442 MB
+ceiling.** The guard stopped firing and real output resumed immediately:
+
+```
+aborts/10min  14:3 24,504 -> 14:4 17,803 -> 14:5 5,505 -> 15:0 3,773   (~2,480/min -> ~377/min)
+CAPPED/hour   11: 1   12: ZERO   13: 1   14: 96   15: 21 (partial)
+LAST CAPPED   2026/10/20 15:02:14     turns/game 10.0 -> 17.9     g/min now 1,211.8
+heap=6335MB (BELOW the ceiling)  sys=13,597MB   pid 322631 UNCHANGED, etime 2-10:26
+```
+
+**The ceiling loop ran 06:53:57 -> ~14:47, about 7h53m, and ended with no intervention.**
+Total ceiling aborts 1,534,793. **The sawtooth also collapsed**: amplitude ~800 MB during
+the loop (8,235/9,075) against ~350 MB now (6,205/6,558).
+
+**(0b) earns its place a third time.** I was pushed toward a restart twice in event 1 and
+was wrong both times; the no-action branch produced the evidence. Here it has paid out
+again — **had a restart happened in the last eight hours, "my fix worked" would have been
+inseparable from "it cleared on its own", which is exactly what it then did.**
+
+### Swap drained hard, and the proxy fell for the first time
+
+```
+pswpout  1,098,176 -> 1,098,466   +290 pages = ~1 MB OUT (effectively nothing)
+pswpin     122,442 ->   511,895   +389,453 pages = 1,521 MB READ BACK
+VmSwap   3,834,632 -> 1,300,972 kB   = -2.53 GB     SwapFree 284 -> 2,757 MB
+VmRSS    5,437,596 -> 6,925,540 kB   = +1.49 GB     VmHWM 9,762,364 unchanged (5th tick)
+RssAnon + VmSwap:  8.82 GB -> 7.83 GB   = -1.0 GB   FIRST DECLINE
+```
+
+1.52 GB was read back while the level fell 2.53 GB — the ~1 GB difference is swap slots
+released without being faulted in, consistent with the big collection freeing pages that
+were already swapped out. **The proxy declining is the first unambiguous improvement in
+the process's memory footprint during this whole incident.**
+
+I am **not** declaring the memory problem solved. The heap is back under the ceiling and
+the footprint fell once; that is two data points in one direction after an eight-hour
+excursion. **Regime D is not being closed** — closing a regime on a favourable turn is the
+r220 error, and I have now also made its mirror image by over-reading a quiet log.
+
+### The watcher fired — first new capture since 06:56
+
+**12 files in `~/stallwatch`**, after seven consecutive ticks at zero. The trigger
+(`g/min < 760` for 3 windows) could not fire while `g/min` read ~2,500 during the loop;
+with real games back, `g/min now` is 1,211.8 and the throughput dip at recovery tripped
+it. **This is the first post-swap, post-loop capture in existence** and it closes the
+scope limit that has qualified every profile claim since r222. Not read this tick —
+it is still filling, and reading a live capture mid-write is how instruments get
+misread.
+
+**(0c) RULING: heap profiles remain PROHIBITED this tick.** Headroom is now *positive*
+(6,335 vs 6,442) for the first time since 06:53, but by ~107 MB, and the peak still
+reaches 6,565. That is not the ~1 GB of margin the rule requires. **If the floor holds
+near 6,200 with peaks under 6,600 next tick, the prohibition should be revisited — state
+that as a condition, not a decision.**
+
+### Standing
+
+**(6)** returns to **vacuous while the loop ran** — and for hour 14-15 it is testable
+again for the first time since 06:53. `deadlines=` readable again next tick.
+**(0d) The watcher is no longer blind** — 12 files, 2 procs. Still not rotated and not
+retuned; no rotate trigger applies (files 12 < 120).
+Populations and guard counters are readable again but **NOT re-read this tick** — the
+CAPPED stream has only just restarted and an immediate re-read would be the same data
+relabelled.
