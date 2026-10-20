@@ -6285,3 +6285,118 @@ the first notable move in several ticks; noted, not interpreted.
 
 **Hour 22 note:** only 3 SLOW GAME lines but totalling **2,011 seconds** — a single very
 long game. Flagged for item (16), not analysed here.
+
+## 51st amendment (r232) — the deck/content mix did NOT shift; and one of my own pre-registered predictions rested on a false premise
+
+### Item (13): the era-split populations read
+
+With the GC-assist mechanism withdrawn at r231, the cause of the ~540 wall is open.
+Rather than a fourth profile comparison, this tick attacked **the one variable the wall
+comparison itself names as uncontrolled: deck mix and pool composition.**
+
+Pre-registered before any data was pulled:
+
+> **Unit** = one `grinder: CAPPED GAME` line (`regimes.py` parses ONLY capped games — the
+> four populations are shares **of the capped subset**). **Eras:** HEALTHY 10/19
+> 15:00-17:59, POST 10/20 15:20-22:59 (10/20 00-02 and 07:00-14:50 excluded: `g/min`
+> inverted and both memory events sit inside). **Bar for "the mix shifted":** a regime
+> share moves **>=3 absolute pp AND chi-square p<0.01**. **Truncation control:** median
+> turns; if it falls >=10% relative, report truncation instead of mix.
+
+```
+parsed HEALTHY n=2850   POST n=4463   unparsed 0
+
+regime                 HEALTHY            POST        delta pp    chi2 p
+r1 casc==1       2350  82.46%     3640  81.56%          -0.90   3.3e-01   -
+r2 shape loop*    131   4.60%      234   5.24%          +0.65   2.2e-01   -
+r3 casc>=20        61   2.14%      118   2.64%          +0.50   1.7e-01   -
+big board>=300     16   0.56%       32   0.72%          +0.16   4.2e-01   -
+
+median turns  60.0 -> 60.0 (ratio 1.000)   median board 38 -> 37   median cascades 1 -> 1
+distinct decks: 1359 -> 1412.  LARGEST deck-share move of any deck: +1.01 pp
+  (marco-mestici/doomslayer 0.05% -> 1.06%; next largest +0.31, then -0.26)
+```
+
+**NOTHING CLEARS THE BAR. Not one regime moves 1 percentage point, and every p is above
+0.17.** Median turns is **identical at 60.0**, so this is not truncation masquerading as
+stability. **Deck mix and content mix are substantially weakened as an explanation for
+the wall** — the games being played after the recovery are, by every content measure
+available, the same games.
+
+**Scope, stated:** this covers the **capped subset only** (7,313 lines). A mix shift
+confined to uncapped games would be invisible here. **A negative result has a scope.**
+
+### My own pre-registration contained a prediction built on a false premise
+
+I wrote, as prediction (ii): *"capped games are selected ON duration, so a uniform
+slowdown lets ordinary games hit the 10-min cap and the capped population should get more
+ordinary."*
+
+**That is wrong and I had the disproof in my own brief.** `CAPPED GAME` is a
+**dispatch-cap** line, not the wall-clock deadline — the wall-clock overruns are
+`SLOW GAME`, which is exactly the distinction I recorded at (0q) after the r226
+instrument failure. The data says so plainly: **median CAPPED duration is 0.3s.** There
+is no duration selection to produce the effect I predicted.
+
+**Prediction (ii) is void — neither confirmed nor refuted, simply unfounded.** Prediction
+(i), no material mix shift, stands and is the result. **I separated the two rather than
+quietly harvesting (i) and dropping (ii).**
+
+### THE RESIDUAL GATE HAS BROKEN DOWN — ITS DENOMINATOR IS HEAVY-TAILED
+
+```
+hour 16 -393 | 17 -410 | 18 -409 | 19 -426 | 20 -427 | 21 -362 | 22 -295
+hour 22: SLOW n=11, 2,137.4 worker-s -> occupancy 0.1484; predicted 771; actual 475.4
+```
+
+Last tick I flagged -362 as an occupancy artifact. **This tick is worse and I am
+retiring the gate's tick-to-tick reading rather than quoting a third shallow number.**
+Hour 22's occupancy is **14.84%**, and **a single 1,400.0-second game supplies 9.72 of
+those 14.84 points — 65% of the denominator is ONE game.** The actual median did not
+improve at all; it rose trivially, 468.0 -> 475.4, while the prediction fell 830 -> 771.
+
+**A gate whose denominator is dominated by a single observation cannot be read
+tick-over-tick.** The occupancy correction was built assuming slow-game seconds are
+spread over many games. They are not: this is a heavy tail, and the fix is to quote the
+raw median alongside, or to winsorise the biggest game, before reading any movement.
+**I am not revising the 905 slope and I am not re-basing anything** — the gate's
+inputs are fine; its *interpretation* tick-to-tick is what fails.
+
+Hour 22's three biggest overruns: **1,400.0s, 599.9s, 25.9s.** Last tick's plain-English
+note that hour 22 held "one very long game" is **confirmed**, not corrected.
+
+### Standing measurements
+
+```
+window            n     max    >550         p10    med     p90    <400
+20 HELD FIXED   120   553.2   1 (0.83%)   351.7  465.5   524.2   23.3%   REPRODUCES
+21 HELD FIXED   120   560.3   1 (0.83%)   308.5  468.0   522.8   40.0%   REPRODUCES
+22 NEW          112   532.1   0 (0.00%)   178.0  475.4   520.1   28.6%
+ALL POST 15:20  912   560.3   2 (0.22%)   313.1  471.9   515.3   26.0%
+10/19 15-17     360   879.3 345 (95.83%)  572.3  754.1   817.8    0.6%
+```
+**No new crossing this hour** — the count holds at **2 of 912**, max 560.3. Both prior
+hours reproduce to the digit. Hour 22's **p10 of 178.0** is the lowest post-recovery p10
+recorded; the 1,400-second game sits inside this hour and is the obvious candidate, but
+that is an association, not a demonstration.
+
+**(6) DID NOT GROW — this is a CONSISTENCY CHECK, NOT A REPLICATION.**
+```
+deadlines = 31 + 7 + 4 + 3 = 45   guards=game_deadline:45   SLOW GAME >=590s: 33 + 12 = 45
+unchanged from r231 (38 -> 41 -> 42 -> 45 -> 45)
+```
+
+```
+FLOOR 15:20-21:00 HELD FIXED  drop-last +11.5 +/- 5.4   REPRODUCES EXACTLY
+PEAK  15:20-21:00 HELD FIXED  drop-last +17.5 +/- 3.8   REPRODUCES EXACTLY
+FLOOR 15:20-23:00 extended    drop-last +12.1 +/- 3.8 (n=47)  3.2 SE
+PEAK  15:20-23:00 extended    drop-last +19.8 +/- 3.1 (n=47)  6.4 SE
+CEILING ABORTS 1,540,966 UNCHANGED, 6th hour | CAPPED 19:511 20:609 21:513 22:514
+heap 1666MB | turns/game 55.2 | goroutines 18 | health 200 | log lag ~8s | CPU 99% of four
+VmSwap 377,984 UNCHANGED | pswpout 1,098,466 UNCHANGED | proxy 2.69 -> 2.64 GB (FELL)
+depth_cap 947,924 (was 931,823) | total_cap still 15,792 | sba_max_passes 5,639
+```
+Peak still rising faster than floor, both now tighter on n=47. **Peak 1,988 MB against a
+6,442 ceiling — watch item, no time-to-anything.** **(0c) re-checked and still met**
+(floor 1,393-1,605, proxy fell). **(0w)** watcher alive at 33 min, 132 files — relaunched
+last tick and not yet budget-exhausted, so **nothing to rotate this tick.**
