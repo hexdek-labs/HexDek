@@ -4407,3 +4407,104 @@ grinder gaps n=120 in every complete hour — none
 ~80%, and self-resolved in ~7h30m with no intervention and no user impact. Health is 200.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 37th amendment (r218) — event 2 is WORSE than event 1: real output has stopped, and my own calibration was wrong
+
+Read 07:47-08:00Z on 2026/10/20. `pid 322631` unchanged (~31h), health **200**, pprof 200.
+`EXITED 2` still 7, heap-delta aborts still 22.
+
+### 1. THE ABORT LOOP IS SUSTAINED AND ROUGHLY TWICE EVENT 1's RATE
+
+```
+ceiling aborts  204,321 -> 393,253   (+188,932 in one hour)
+aborts/min      07:43 3455 | 07:44 3498 | 07:45 3276 | ... | 07:53 3328   (steady ~3,300)
+                event 1's peak was ~1,870/min — this is ~1.8x
+heap            6,932-7,566 MB, well ABOVE the 6,442 ceiling
+sys             10,645 -> 11,796 MB   <- grew again, having been pinned ~10,640 for hours
+VmRSS           8.06 GB (was 7.44) | VmHWM 8.00 GB | box 9,434 MB used, 334 MB free
+```
+
+**(0c) ruling: heap profiling remains PROHIBITED.** Headroom is not merely under 1 GB, it
+is negative — the heap is above the ceiling.
+
+### 2. REAL OUTPUT HAS STOPPED — AND THIS IS WHERE EVENT 1's PRECEDENT BREAKS
+
+`CAPPED GAME` lines, the output measure whose semantics are known:
+
+```
+per 10 min   05: 106 109  86  84  87  89
+             06:  77  68  85  86  77  52
+             07:  11   2   0   1   0   0
+per hour     05: 561   06: 445   07: 14 (in ~54 min)
+LAST CAPPED LINE: 07:34:03 — roughly 21 minutes with zero completed games
+```
+
+**I have to correct myself prominently here.** Last tick I wrote, and told Josh in plain
+English, that event 1 "held real output near 80% and cleared itself, expect the same". I
+used that precedent to calibrate *don't worry*. **It is not holding.** Event 1 never saw
+`CAPPED` fall below 393/hour. Event 2 has taken it to effectively zero inside forty
+minutes of hitting the ceiling. The engine is spinning — starting games, aborting them at
+their first turn checkpoint, and completing none.
+
+That correction matters because it was load-bearing for an owner's decision not to act.
+**Per (0b) I am not recommending a restart**, and I am not going to smuggle one in by
+implication. What I owe is the fact that the prediction I supplied has failed, so the
+inputs to that decision have changed.
+
+### 3. THE CONTAMINATED COUNTER HAS NEVER BEEN MORE WRONG
+
+```
+segment                       n    p10      med      p90     heap
+06a 06:00-06:52 PRE-CEILING 106  319.9    373.8    407.6   4606-6258
+06b 06:53-06:59 CEILING      14  326.0   2054.5   2781.8   5803-6838
+07  CEILING LOOP            111 3228.0   3454.3   3590.1   6318-7566
+```
+
+**`g/min` now reads 3,454 — the highest figure ever recorded on this system, 3.8x the
+healthy maximum of ~905 — at the exact moment real output is zero.** Aborted games
+increment the counter and finish in milliseconds, so the metric inverts under load. This
+is the r212 lesson at its most extreme, and the two instruments disagreeing by a factor
+of infinity is itself the diagnostic.
+
+06a is the clean read of event 2's working state before the ceiling: **p10 319.9, median
+373.8, p90 407.6** — consistent with r217's event-2 distribution, and still the bimodal
+low state with the fast mode gone.
+
+### 4. THE WATCHER IS BLIND AGAIN, FOR THE SAME REASON, AND I AM LEAVING IT ALONE
+
+`watcher files: 0` with **2 processes alive**. Its trigger is `g/min < 760 for 3
+consecutive windows`; `g/min` currently reads ~3,300. **It can never fire.** This is the
+identical failure to r212 — a monitor keyed to a derived metric inheriting the defect that
+makes the metric look healthy — and it is now a *recurrence*, not a one-off.
+
+**Not rotated this tick, deliberately.** The (0d) triggers are files>120, projected>200,
+or process-missing-with-files-present. None apply: it is running and has produced nothing.
+Rotating a blind watcher would destroy nothing and achieve nothing; the problem is the
+threshold, not the directory. **Changing the threshold mid-incident would break
+comparability with every prior capture, so I am not doing that either.**
+
+### 5. Standing measures
+
+```
+600s wall    38 deadlines vs 38 games >=590s — UNCHANGED a THIRD tick. NOT banked.
+             Predicted at r217: games cannot reach 590s during an abort loop, so this
+             stays vacuous while event 2 runs. It did. Reporting it as vacuous, not a pass.
+ALLOC SPIKE  no new line since 06:00 — the emitter needs completed games, and there are
+             almost none. Last verdict text still "neither side moved much", median 55.4.
+CAPPED/hour  03:583  04:561  05:561  06:445  |  07:14 PARTIAL and collapsing
+populations  NOT re-read this tick — the capped stream has added ~14 games since r217,
+             so any "stable read" would be the same data relabelled. An unchanged number
+             whose population did not grow is not a replication.
+```
+
+### 6. What would distinguish the two live hypotheses, recorded not recommended
+
+Event 1 self-resolved when GC caught up. If event 2 does the same, `CAPPED` should
+recover to ~450/hour and aborts should taper the way they did at 02:45-02:48. If instead
+the abort rate holds near 3,300/min with `CAPPED` at zero for several more hours, event 2
+is a different failure from event 1 despite the identical presentation, and the
+self-resolution precedent should be retired rather than re-quoted.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
