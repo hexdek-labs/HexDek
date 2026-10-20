@@ -3873,3 +3873,158 @@ never broken; it was reading a metric that had stopped meaning what it meant.
   as the first fully clean hour since 23:00. **Heap profiling is SAFE AGAIN** —
   headroom is now ~4.8 GB against a ~1 GB instrument, so (0a3) lifts.
 
+
+---
+
+## 33rd amendment (r214) — the first fully clean hour: the level hypothesis' strong form is refuted
+
+Read at 04:10-04:15Z on 2026/10/20. `pid 322631` unchanged (now ~28h old), health 200,
+pprof 200. **The incident remains closed:** ceiling aborts still frozen at **196,938**,
+`EXITED 2` still 7, heap-delta aborts still 22. `heap=1591MB, sys=10636MB`; box 3.9 GB
+used of 15.8. Headroom vs the 6,442 MB ceiling is **~4.8 GB**, so heap profiling stays
+safe under (0c).
+
+### 1. Hour 03 — the first fully clean hour since 23:00
+
+| hour | n | median g/min | true occ | residual |
+|---|---|---|---|---|
+| 10/19 19 | 120 | 363.9 | 10.0% | −451 |
+| 10/19 20 | 120 | 370.1 | 11.4% | −432 |
+| 10/19 21 | 120 | 413.2 | 5.1% | −446 |
+| 10/19 22 | 120 | 393.1 | 12.3% | −400 |
+| 10/19 23 | 120 | 434.4 | 4.7% | −428 |
+| 10/20 00-02 | 120 ea | — | — | **ABORT-CONTAMINATED, UNCOMPUTABLE** |
+| **10/20 03** | **120** | **458.1** | **8.5%** | **−370** |
+
+**The residual gate is still tripped — hour 03 is the ninth consecutive hour past it.**
+Every hour carries n=120, so there is no grinder gap anywhere in the window.
+
+### 2. The level-coupling hypothesis: strong form REFUTED, a weak form survives
+
+The GC floor fell from **5,144 MB (hour 23) to 1,364 MB (hour 03)** — a 73% reduction,
+−3,780 MB. The residual moved from **−428 to −370**: the deficit closed by 58 g/min out
+of 428, about **14%**.
+
+The pre-registered criterion written at r213 was *"if throughput climbs back toward 830
+over hours, it survives."* **It did not.** Throughput is 458.1 against a healthy ~830-905.
+**Dropping the heap by three-quarters bought back a seventh of the deficit.** The strong
+form — that the heap level is what costs the throughput — is refuted.
+
+**What survives, and the caveat that binds it:** the 58 g/min improvement may be real but
+it is barely outside noise. Hours 19-23 ranged −400 to −451, a spread of 51; −370 sits
+only 30 beyond the least-negative of them, and this is **one hour**. A weak heap-linked
+component of order a few tens of g/min is consistent with the data; the main deficit is
+not the memory. **The r187 binary difference remains the standing candidate, and it has
+not been re-attached to memory.**
+
+### 3. GC-floor battery — the pre-break fit reproduces exactly, and drop-last-bin PASSES
+
+The run has crossed midnight. **`r204env.py`'s treatment loader keys on the literal
+string `"2026/10/19"`, so it was silently blind to every post-recovery hour.** Replaced
+with `r214env.py`, which carries `t` continuously across the date boundary. This is the
+**sixth** instrument to fail on the window axis.
+
+```
+A. PRE-BREAK (2h -> 18.97h), window HELD FIXED
+     TROUGH          +16.54 +/-  2.21 MB/h   n=16 bins   <- reproduces r206 exactly
+     drop-last-bin   +15.93 +/-  2.38 MB/h   n=15 bins   -> STABLE (inside CI)
+B. EVENT REGIME (18.97 -> 26.60h), fitted SEPARATELY
+     TROUGH         +630.17 +/- 173.68 MB/h  n= 7 bins
+     drop-last-bin  +705.11 +/- 229.90 MB/h  n= 6 bins   -> inside CI
+     floors: 19.0h:1586 20.0h:3388 21.0h:4110 22.0h:4587 23.0h:5144 24.0h:5384 25.4h:6098
+C. POST-RECOVERY (26.60 -> 27.97h), span 1.37h — LEVEL ONLY, 1 bin, NO SLOPE QUOTED
+     n=165 samples  heap min=1364 max=1730 median=1554 MB
+D. CONTROL r186 (FROZEN)  -0.20 +/- 11.59 (8 bins) | r187 span-matched +21.09 +/- 5.85
+```
+
+**The drop-last-bin check passes for the first time since it was introduced.** That is not
+an improvement in the data — it is because the pre-break window is now a *closed* regime
+with a known end, rather than a window that lengthens every tick. Closing the window is
+what fixed the instrument.
+
+### 4. Three corrections to carried numbers
+
+**(a) `r1xr2 = 699` is wrong and has been carried for several ticks.** Recomputed at its
+own n=22,205 the value is **937**, not 699. Holding the window fixed across all five
+reads shows the real invariant:
+
+```
+n=20976  r2=1036  r1xr2=878 (85%)   n=21470  r2=1057  r1xr2=897 (85%)
+n=21905  r2=1088  r1xr2=924 (85%)   n=22205  r2=1102  r1xr2=937 (85%)
+n=22974  r2=1147  r1xr2=975 (85%)
+```
+
+**85% of regime-2 games have `cascades==1`, stable across all five reads.** The 699 could
+never have been right: r2's own total has only ever been ~1,100.
+
+**(b) The "EXCLUSIVE PARTITION" line is mislabelled for three of its four rows.** Only r1
+is exclusive. True exclusive membership is **r1 77.9%, r2 0.7%, r3 2.1%, big 0.3%,
+unclassified 14.4%** — the published 4.9/2.2/0.6 for r2/r3/big are *totals*. The row
+summed to ~100% only because r2, r3 and big barely overlap each other (7/5/6 games).
+
+**(c) CAPPED hour 02 is 413, not 393.** The 393 was a partial hour — r213 ran at ~02:50,
+inside hour 02. "Never judge the current hour" applies to counts, not only to rates.
+
+### 5. CAPPED output per hour — hour 03 is the best since hour 17
+
+```
+10/19 15:934  16:954  17:962  18:717  19:434  20:460  21:528  22:465  23:537
+10/20 00:452  01:427  02:413  03:583   (04 partial, not judged)
+```
+
+### 6. The 600s wall — 36/36, and NON-VACUOUS again
+
+From one snapshot across both date prefixes:
+`deadlines=token_create:27,stack_drain:3,trigger_drain:3,turn_phase_boundary:3` = **36**,
+against **36** games ≥590s (33 on 10/19, 3 on 10/20). **Two new games reached 590s since
+the 34/34 banked at r211**, so the population is non-empty and this replication is banked
+— unlike r212 and r213, which were not.
+
+### 7. The ALLOC SPIKE median rose to 68.7 — and it is the denominator again
+
+```
+02:48 median=14.8 | 02:49 median=14.8 | 03:34 median=50.8 | 03:45 median=68.7
+```
+
+This looks like a second memory event and is not one. The lines diagnose themselves:
+`games 142 vs 233 prev (-39%)` and `games 84 vs 130 prev (-35%)`, with absolute
+allocation **−10%** then **+12%**. The cause is visible in the slow-game stream: a
+**599.5s game at 03:45:35** (turns=53, s/turn=11.3) held one of four workers for ten
+minutes, alongside a 113.7s and a 75.3s game. **The r206 rule fired and caught this
+before it was published — recording it as a near-miss.** The heap is unmoved (floor
+1,364, current 1,591) and ceiling aborts are still frozen, which independently confirms it.
+
+### 8. The watcher hit its capture cap — the fill rate is now saturated and uninformative
+
+242 files and exactly **60 win-files = its 60-capture cap**. It did not crash; it ran to
+completion in ~1 hour and exited. It saturates now because real throughput (~458) sits
+permanently below its 760 trigger, so every window qualifies.
+
+**The fill rate is therefore 100% and has stopped being a measurement.** A saturated
+counter cannot report a rate; it can no longer serve even as the ~88% occupancy proxy
+established at r195. Rotated (archive now 20 directories, 0 loose), relaunched, 2 procs
+verified, already capturing.
+
+One methodological note: `pgrep -f 'stallwatch7[.]sh'` returned 1 while `ps | grep` showed
+nothing, because the pattern was evaluated against a process list that included the ssh
+wrapper carrying the same string. **The bracket trick protects `grep` from matching itself;
+it does not protect `pgrep -f` from matching the shell you typed it into.** `ps | grep -v grep`
+was the correct reading.
+
+### 9. Populations — twenty-sixth stable read (n=22,974)
+
+```
+r1 cascades==1  82.4% | r2 loop* 5.0% | r3 cascades>=20 2.1% | big board>=300 0.6%
+overlaps: r1xr2 975 | r1xbig 49 | r2xbig 5 | r3xbig 6 | r2xr3 7
+maxima UNCHANGED: board 4,720 | cascades 735 | capped dur 449.5s | regime-2 dur 29.9s
+median cascades/game 1, p90 3 | 0 reached distinct>=32, max distinct 11
+```
+
+### 10. Stalls — Oct-19 is a complete day now
+
+**Sorin is 55.0% of Oct-19 slow games (155/282)**, against **40% of Oct-18 (95/238)**.
+Winota 8.5% (24), Krenko 5.0% (14), Sythis 3.5% (10). Quote the day with the figure; the
+concentration deepened but Oct-19 contains the memory event, so the two days are not
+cleanly comparable.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
