@@ -4508,3 +4508,113 @@ is a different failure from event 1 despite the identical presentation, and the
 self-resolution precedent should be retired rather than re-quoted.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 38th amendment (r219) — Branch B fired; and the SLOW STATE IS CHARACTERISED for the first time
+
+Read 08:47-09:05Z on 2026/10/20. `pid 322631` unchanged (~32h), health **200**, pprof 200.
+`EXITED 2` still 7, heap-delta aborts still 22.
+
+### 1. THE PRE-REGISTERED FORK: BRANCH B FIRED. RETIRE THE SELF-RESOLUTION PRECEDENT.
+
+Written at r218 before the data: *self-resolution* would show CAPPED climbing back toward
+~450/hour with aborts tapering as they did at 02:45-02:48; *a different failure* would show
+the abort rate holding near 3,300/min with CAPPED at zero for several more hours.
+
+```
+aborts/min 08:46-08:53   3139 2965 3164 3282 3281 3314 3291 3125   — NO taper, two hours
+total                    393,253 -> 593,272  (+200,019 this hour, ~3,333/min)
+CAPPED/10min  07: 11 2 0 1 0 0 = 14   |   08: 1 1 2 1 1 2 = 8
+last CAPPED   08:52:51 — a trickle, ~1.5% of the 445-561/hour norm, not literally zero
+```
+
+**Branch B. The event-1 self-resolution precedent is retired and will not be quoted again.**
+Event 1 tapered to zero aborts inside four minutes and never took CAPPED below 393/hour.
+This has run two hours at a flat rate with output at ~1.5%.
+
+**A new fact: the heap has stopped growing and settled into a pathological equilibrium
+ABOVE the ceiling.**
+
+```
+07:00 floor 6385 peak 7043     08:00 floor 6956 peak 7480
+07:20 floor 6318 peak 7335     08:20 floor 6968 peak 7568
+07:40 floor 6924 peak 7566     08:40 floor 6987 peak 7565
+07:50 floor 6932 peak 7539     08:50 floor 7153 peak 7511
+```
+
+The floor rose to ~7,000 and stopped. Aborting games frees enough to keep the process
+alive but never enough to get back under 6,442, so the guard fires forever. `sys` is
+unchanged at 11,796; `VmRSS` 8.13 GB; **`VmHWM` rose to 8.21 GB, a new high-water mark**;
+box 9,054 MB used, 531 MB free. **(0c) ruling: heap profiling remains PROHIBITED** —
+headroom is still negative.
+
+### 2. THE SLOW STATE IS CHARACTERISED — and my own prediction was wrong
+
+(0d2) has been open for three ticks: 23 archived watcher directories, 247 MB, never
+opened. They cost nothing — they are already on disk. The 05:23Z rotation holds 58 CPU
+profiles from 04:24 onward, and r217's bucket table says **04:30-04:50 were slow
+(328/341/347 g/min) and 05:00-05:10 were fast (477/454)**. That is a controlled
+fast-vs-slow pair inside one process, one binary, thirty minutes apart.
+
+**Prediction written before looking:** a concentrated shift in the diff would mean the slow
+state is different work; proportionally identical profiles would mean "same work, less of
+it". **The second branch is refuted.**
+
+```
+Duration/total CPU   slow1 79.82s  slow2 79.82s  fast1 79.65s  fast2 79.55s
+                     (20s wall, 4 cores, ~398% in ALL FOUR)
+
+path                       slow1  slow2  fast1  fast2
+runInstantPriorityAPNAP    60.70  51.43  35.73  34.10
+DrainStack                 55.39  49.87  33.07  31.97
+ActivateAbility            33.01  26.55   9.67   7.32    <- 3.4x, cleanest separator
+CastSpell                  25.67  26.82  28.55  29.77    <- FLAT
+StateBasedActions          18.80  14.02  22.89  21.72    <- LOWER when slow
+runtime.gcBgMarkWorker     12.88  13.43  13.79  13.90    <- IDENTICAL
+```
+
+**The CPU totals are identical to within 0.3%.** The machine is exactly as busy in the slow
+state as in the fast one — it is not stalling, waiting, or idling. It is burning the same
+four cores and producing 30% fewer games.
+
+**Where it goes is the finding.** The slow state is the engine grinding in the
+instant-speed priority loop, draining the stack, and the dominant separator is
+**`ActivateAbility` at 26.6-33.0% versus 7.3-9.7% — a 3.4x shift with no overlap between
+the two states.** `runInstantPriorityAPNAP` 51-61% vs 34-36% and `DrainStack` 50-55% vs
+32-33%, also non-overlapping.
+
+**What it is NOT, stated because each kills a candidate:**
+- **Not GC.** `gcBgMarkWorker` is 12.9-13.4% slow against 13.8-13.9% fast — identical, and
+  if anything marginally *lower* when slow. This is an independent third refutation of the
+  GC story, from a measurement that shares no arithmetic with gc/kgame.
+- **Not more spellcasting.** `CastSpell` is flat and slightly lower when slow.
+- **Not state-based actions.** `StateBasedActions` is *lower* when slow.
+
+So: **the slow state is activated-ability resolution inside the instant-priority /
+stack-drain machinery.** That is the first mechanistic description of it, and it points at
+code paths already on this backlog — the AST-driven `ActivateAbility` dispatcher, and the
+`percard_dispatch_depth_cap` guard sitting at 750k+.
+
+**Limits that bind this claim.** n=2 profiles per state, and within each state they are
+*consecutive minutes* (04:30:58/04:31:58 and 05:00:05/05:01:05), so they are
+autocorrelated rather than independent draws — this is one slow episode and one fast
+episode, not four. State assignment comes from r217's 10-minute medians. The separation is
+large and consistent, but **the next step is sampling several well-separated episodes from
+the other 22 archive directories before treating the magnitudes as estimates.**
+
+### 3. Standing measures
+
+```
+600s wall   38 vs 38 — UNCHANGED a FOURTH tick. VACUOUS, not a pass: games cannot reach
+            590s during an abort loop. Predicted r217, confirmed r218 and again here.
+watcher     0 files, 2 procs — blind for the second incident running, same mechanism
+            (trigger g/min < 760; g/min reads ~3,300). NOT rotated (no trigger applies)
+            and NOT retuned (would break comparability with every prior capture).
+ALLOC SPIKE no new line since 06:00 — the emitter needs completed games.
+populations NOT re-read: the capped stream has added ~22 games since r217. An unchanged
+            number whose population did not grow is not a replication.
+archives    23 dirs, 247 MB. ONE now read. 22 remain.
+```
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
