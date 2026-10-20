@@ -4028,3 +4028,135 @@ concentration deepened but Oct-19 contains the memory event, so the two days are
 cleanly comparable.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 34th amendment (r215) — throughput is a plateau, and GC cycles per game have TRIPLED
+
+Read at 05:14-05:25Z on 2026/10/20. `pid 322631` unchanged (~29h old), health 200,
+pprof 200. **Incident still closed:** ceiling aborts frozen at **196,938**, `EXITED 2`
+still 7, heap-delta aborts still 22. `heap=1502MB, sys=10640MB`; box 3.99 GB used.
+Headroom ~4.9 GB, so profiling stays safe.
+
+### 1. Hour 04 — ~455 g/min is a PLATEAU, not a climb
+
+| hour | n | median g/min | true occ | residual |
+|---|---|---|---|---|
+| 10/19 19-23 | 120 ea | 363.9-434.4 | — | −451 / −432 / −446 / −400 / −428 |
+| 10/20 00-02 | 120 ea | — | — | ABORT-CONTAMINATED, UNCOMPUTABLE |
+| 10/20 03 | 120 | 458.1 | 8.5% | **−370** |
+| **10/20 04** | **120** | **454.1** | **9.9%** | **−361** |
+
+Two consecutive clean hours, −370 and −361. **The answer to r214's question is
+"plateau".** Throughput is not climbing back toward 830 over hours. **The residual gate
+is now past its tenth consecutive hour.** n=120 in every hour — no grinder gap.
+
+Hour 03's residual recomputed at −370, identical to r214. It could not have changed: the
+hour is closed and both its inputs are frozen. That is a consistency check, not a
+replication.
+
+### 2. THE FINDING: GC cycles per unit of work have tripled and stayed tripled
+
+```
+hour      g/min  heapMed  sysMed   gc/h   CAPPED  gc/CAPPED  gc/kgame
+10/19 15  765.8    1294    2142    1449     934      1.55       33.4
+10/19 16  768.9    1348    2172    1487     954      1.56       34.2
+10/19 17  732.5    1340    2200    1374     962      1.43       32.9
+10/19 23  434.4    5595    8802     812     537      1.51       32.7
+10/20 01 1599.2    6407   10621     743     427      1.74        7.8   <- abort loop
+10/20 03  458.1    1555   10634    2648     583      4.54      104.3
+10/20 04  454.1    1571   10638    2559     561      4.56      102.7
+```
+
+**Post-recovery the engine runs about three times as many GC cycles per game as it did
+when healthy, at a similar mean heap** (1,571 vs ~1,300 MB). This holds on **two
+independent denominators**: the `games` counter (33-34 → ~103 per 1,000) and the
+independently emitted `CAPPED GAME` stream (1.43-1.56 → 4.55 per capped game). The two
+disagree violently during hours 00-02 — exactly as expected, since the games counter was
+abort-inflated — and agree closely on the clean hours either side.
+
+**The heap recovered. The process's GC behaviour did not.** This is the same binary and
+the same process throughout — hours 15-17 and hours 03-04 are one 29-hour run — so this
+is not a build difference. It is the first clean, large, *mechanistic* signal that tracks
+the throughput deficit rather than merely co-occurring with it.
+
+**I do not have the mechanism, and the obvious one is ruled out — see §3.**
+
+### 3. A mechanism I built and then killed before publishing it
+
+`sys` is the one number that never came back: it rose 1,948 → 10,640 MB and stayed there
+while the heap fell 4.8 GB. `GOMEMLIMIT=10GiB` (= 10,240 MB) is confirmed from
+`/proc/322631/environ`. The chain was obvious and attractive: **sys 10,640 > limit 10,240
+→ the GC believes it is permanently over budget → it runs continuously → throughput
+loss**, which is precisely the failure mode noted in (0g).
+
+**It is wrong.** Go's soft memory limit is not accounted against `MemStats.Sys`; it
+counts mapped-and-not-released memory. The check that kills it is cheap and was already
+available:
+
+```
+VmRSS:   3,278,648 kB  = 3.13 GB     <- the memory WAS returned to the OS
+VmHWM:   8,393,272 kB  = 8.00 GB
+VmSize: 12,108,972 kB  = 11.55 GB    <- address space, which is what sys tracks
+```
+
+With RSS at 3.13 GB and the heap at 1.5 GB, the runtime's own accounting is far under
+10 GiB. **`sys=10,640MB` is retained address space, not retained memory**, and the
+box-level `free -m` agreed all along at 3.99 GB used. A full-box figure I had been
+printing in READ 0 every tick contradicted the mechanism before I built it.
+
+**Also checked and discarded:** the grinder line's `limited=` field is
+`gameengine.TriggerLimitSuppressions()` (`showmatch.go:1199`) — trigger suppressions,
+nothing to do with GC. And the `alloc=` field is a **gauge, not a cumulative counter**:
+differencing it hourly yields negative gigabytes. Any "MB per game" computed from it is
+meaningless, and no such figure is quoted here.
+
+### 4. CORRECTION — `percard_dispatch_total_cap` was never frozen at 9,504
+
+The carried claim was *"FROZEN at 9,504 since 14:46 on 10/19"*. The counter's actual
+history:
+
+```
+14:29 8939 | 14:46 9504 | 18:18 10469 | 19:27 11943 | 20:32 14586 | 22:13 15792
+```
+
+**It advanced five times after 14:46** and has been genuinely static only since **22:13**
+— about seven hours, and that freeze began *during* the memory event, not before it. The
+r214 note that it "is moving again" was also wrong in the other direction: it is not
+moving now, it moved earlier than I thought and stopped earlier than I thought. The
+original claim came from reading a stale last-line rather than the counter's trajectory.
+
+### 5. The 600s wall — 38/38, grown, banked
+
+One snapshot across both prefixes:
+`deadlines=token_create:28, stack_drain:4, trigger_drain:3, turn_phase_boundary:3` = **38**
+vs **38** games ≥590s (33 on 10/19, 5 on 10/20). **Grown from 36 at r214**, so the
+population is live and this is a real replication, not a vacuous one. `stack_drain` took
+its first new hit in many ticks (3 → 4).
+
+### 6. Standing measures
+
+```
+CAPPED/hour  19:434 20:460 21:528 22:465 23:537 00:452 01:427 02:413 03:583 04:561
+             (05 partial, not judged)   — hour 02 holds at 413, confirming r214's fix
+populations  n=23,537, TWENTY-SEVENTH stable read
+             r1 82.4% | r2 5.0% | r3 2.2% | big 0.6% | r2xr3 7
+maxima UNCHANGED: board 4,720 | cascades 735 | capped 449.5s | regime-2 29.9s
+ALLOC SPIKE  04:31 reads "neither side moved much" (games -10%, alloc -2%) — the first
+             post-recovery spike NOT explained by the denominator. Rolling median 51.6.
+watcher      200 files in 50 min; rotated (archive 21 dirs, 0 loose), relaunched
+```
+
+### 7. What a restart would now test — stated as a prediction, not a recommendation
+
+The GC-rate finding gives the r205 restart experiment a far sharper instrument than
+throughput alone. A restart predicts **gc/CAPPED returns to ~1.5 and gc/kgame to ~34**,
+and throughput to ~800. If it restarts and gc/CAPPED stays near 4.5, the cause is in the
+binary (r187) and not in accumulated process state.
+
+**I am not re-recommending a restart.** I pushed for one twice at r211/r212 and was wrong
+to; the no-action branch produced the evidence that refuted my own hypothesis. Recording
+the prediction so that whenever a restart happens for any reason, the measurement is
+already specified. **Owner call, as before.**
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
