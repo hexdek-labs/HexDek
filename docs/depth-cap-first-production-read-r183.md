@@ -5646,3 +5646,126 @@ DENOMINATOR FELL — fewer games completed, check for a SLOW GAME`. Median 55.4 
 (static since 22:13 10/19); `sba_max_passes` 4,712 -> **5,198**. `SLOW GAME` lines are
 back (1,775 total). Populations **not re-read** — the stream restarted ~90 minutes ago and
 a read now would be mostly the old population relabelled.
+
+---
+
+## 46th amendment (r227) — the memory recovered and the throughput did NOT. A time-matched, same-process 37% deficit.
+
+### The headline, with the innocent explanation killed first
+
+The heap is at its pre-incident baseline and the abort loop is completely gone:
+
+```
+CEILING ABORTS 1,540,966 -> 1,540,966    EXACTLY UNCHANGED — zero new aborts this hour
+CAPPED/hour  14: 96   15: 480   16: 598   17: 59 (partial)      LAST CAPPED 17:05:03
+heap 1738MB | floor 1,390-1,540, peak 1,700-1,787 | goroutines 18 | health 200 | LOG LAG ~0
+FLOOR 15:20-16:00 HELD FIXED  drop-last -205.8 +/- 16.8   REPRODUCES EXACTLY
+FLOOR 15:20-17:00 extended    drop-last   +3.4 +/- 48.5   <- the decline has STOPPED; floor settled ~1,450
+PEAK  15:20-17:00 extended    drop-last  +18.8 +/- 29.2   flat
+proxy RssAnon+VmSwap 2.56 -> 2.60 GB (+35 MB) | VmSwap 426,712 kB unchanged | pswpout unchanged
+```
+
+**CAPPED hour 16 = 598 is above the healthy band I have been quoting (445-583).** Completed
+output is not merely back, it is at the top of its range.
+
+**And yet throughput is not.** Per (0a2), quantiles not a bare median — and the three
+standing rows reproduce to within 0.3, which is what licenses the fourth:
+
+```
+window                        n    p10    p25    med    p75    p90     <400
+10/19 15-17 HEALTHY         360  572.3  616.1  754.1  796.0  817.8     0.6%
+10/20 03-04 PLATEAU         240  308.2  338.6  456.1  483.2  499.6    35.0%
+10/20 05b-06 EVENT2         200  309.9  334.8  371.1  390.2  410.5    83.0%
+10/20 15:20-17 POST-RECOV   200  300.8  392.6  474.9  504.1  516.1    26.0%
+10/20 16 ONLY (full hour)   120  370.2  433.2  483.0  507.4  515.9    17.5%
+```
+
+**Post-recovery is the PLATEAU distribution, not the healthy one.** Median 474.9 against
+the plateau's 456.1 and the healthy 754.1; p90 516.1 against 499.6 and 817.8.
+
+**The innocent explanation was tested first and killed.** Longer games would depress
+g/min mechanically. They have not changed:
+
+```
+turns/game   10/19 15h 55.9   16h 55.8   17h 56.0      10/20 16h 54.6   17h 54.5
+```
+
+A 2% difference. **Games are the same size.** So the work rate, time-of-day matched:
+
+```
+10/19 15-17     754.1 g/min x 55.9 turns = 42,154 turns/min
+10/20 15:20-17  474.9 g/min x 54.6 turns = 25,930 turns/min   = 61.5% of healthy
+```
+
+**The comparison is unusually well controlled**: same process (pid 322631, uptime
+2d12h — it was running during both windows), same binary (`d463a22e`), **same hours of
+the day 24 hours apart**, same game length. Median throughput fell **37%** and the share
+of samples below 400 g/min went **0.6% -> 26.0%**.
+
+**What this settles.** The heap returned to its pre-event baseline and throughput did
+not follow. **This is the strongest evidence yet that the heap level is not what costs
+the throughput** — a claim already withdrawn, now refuted by a natural experiment rather
+than an inference. It also fits (0a4): the drop is a **step at onset** that survives the
+excursion ending. Event 1 stepped throughput down; event 2 came and went without moving
+it back.
+
+**What this does NOT settle.** The cause. Deck mix and the ELO pool are not controlled
+here (pool reads 1425 in both windows, but I have not audited composition), and a single
+24-hour pair is one comparison, not a series. **r187 remains FILED, NOT ACTED ON** — this
+is new evidence that a throughput deficit survives a full memory recovery, not a
+re-test of the binary claim, which needs its own age- and span-matched design.
+
+### The residual gate: still tripped, and deeper
+
+```
+hour 16: SLOW GAME n=12, 461 worker-seconds -> occupancy 0.032
+predicted median = 905 * (1 - 0.032) = 876      actual = 483.0      RESIDUAL = -393
+```
+
+**Tripped since r205 and this is the deepest reading yet** (plateau era was -370/-361).
+First time it has been runnable on a clean hour since 06:53. Occupancy is tiny — 3.2% —
+so slow games explain almost none of the gap.
+
+### Equal-CPU confirmed at a new timescale and by a new instrument
+
+```
+utime+stime +1,562,992 jiffies over 65 min = 401% of one core = 100% of four
+```
+
+**The box is fully loaded and producing 61.5% of the healthy work.** (0a)'s first
+load-bearing negative — total CPU invariant to throughput — was established from 20-second
+pprof samples. It now holds across a **one-hour jiffies difference on the same process
+24 hours apart**, an instrument sharing no machinery with pprof. **Two timescales, two
+instruments, same answer.**
+
+### Standing
+
+**(6) 41/41 holds** — `deadlines=` 30+5+3+3 = 41, `guards=game_deadline:41`, SLOW GAME
+>=590s 33 (10/19) + 8 (10/20) = 41. **No new crossings this hour, so this is a
+consistency check, not a replication** — the population did not grow.
+
+**(0c) condition RE-CHECKED and still met**: floor 1,390-1,540 against the <=6,200 bar,
+peak 1,787 against <6,600, proxy flat (+35 MB). **Heap profiles remain PERMITTED.** No new
+profile taken — the r226 baseline is two hours old and nothing has changed to re-measure.
+
+**(0j) ALLOC SPIKE fired again.** Verdict text: `alloc 10873MB vs 11695MB prev (-7%),
+games 138 vs 216 prev (-36%): DENOMINATOR FELL — fewer games completed, check for a SLOW
+GAME`. **Second consecutive self-diagnosed denominator artifact — not an alarm.**
+
+**(0w) The watcher tripped `files>120` again — 212 files only 53 minutes after the r226
+rotation.** Rotated per the rule to `stallwatch-20261020T1708Z`; relaunch verified with a
+separate ssh (2 procs, fresh dir). Disk 30% used, 156 GB free.
+
+**Worth recording: the watcher's trigger is now mis-calibrated by the new normal.** It
+captures when `g/min < 760`. Post-recovery g/min sits at ~450-480, **permanently below
+the threshold**, so the watcher now runs continuously and will trip the rotate trigger
+roughly hourly. For seven ticks it was blind because g/min read ~2,500; it is now
+always-on for the opposite reason. **"The watcher fired" has stopped being a signal.**
+Not retuned — that remains the standing rule and the incident is too recent.
+
+`percard_dispatch_depth_cap` 797,574 -> **819,349**; `total_cap` still **15,792**;
+`sba_max_passes` 5,198 -> **5,266**.
+
+**Item (13) not done this tick.** `stallwatch-20261020T1611Z` (60 CPU profiles) remains
+unread; the throughput result above was the better use of the window, and it is stated
+plainly rather than quietly skipped. Two archives now await reading.
