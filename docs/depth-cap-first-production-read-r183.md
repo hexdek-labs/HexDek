@@ -3454,3 +3454,127 @@ heap growth and every inuse number so far needs re-reading.
 the floor never recovering across thousands of completed games — but it is
 now UNDER CHALLENGE from a direct measurement, and the challenge is cleaner
 than the evidence for it. Do not quote either side as settled.**
+
+---
+
+## Twenty-ninth amendment — r210 (n=20,976 capped games, run age 23.8h)
+
+### A. THE TRIPWIRE TRIPPED. 96 GAMES DESTROYED IN TWO SECONDS.
+
+`process heap` aborts went **3,628 -> 3,724**, the first movement since Oct 16.
+This was the pre-registered observable and it fired.
+
+```
+2026/10/19 22:24:49  aborting game at turn 20 — process heap 6444MB exceeds the 6442MB ceiling
+2026/10/19 22:24:49  aborting game at turn 10 — process heap 6454MB ...
+2026/10/19 22:24:49  aborting game at turn 70 — process heap 6457MB ...
+   ... 96 aborts total ...
+2026/10/19 22:24:51  aborting game at turn 10 — process heap 6888MB ...
+   worst values seen: 6990, 7007 (x2), 7026, 7028, 7038 (x2), 7048 MB
+```
+
+**All 96 fall inside a TWO-SECOND window, 22:24:49 -> 22:24:51.** Not a
+sustained condition — a brief excursion. The shape is a fast-fail loop: once
+the heap is over the ceiling, every game aborts at its first turn checkpoint,
+so the grinder burns through ~96 games in two seconds before the heap drops
+back. **Those 96 games produced no valid result.**
+
+### B. THE SAMPLED `heap=` SERIES NEVER SAW IT — EVERY PEAK I HAVE QUOTED IS A LOWER BOUND
+
+Per-minute maxima from the grinder line around the burst:
+
+```
+   22:23  max 5122      22:24  max 4961   <- 96 ABORTS HERE, at 6444-7048MB
+   22:25  max 5229      22:26  max 5367
+```
+
+**The sampler read 4,961 MB in the very minute the abort path was reading
+6,444-7,048 MB.** The grinder line samples every ~30 s; `CheckGameDeadline`'s
+sibling heap guard calls `runtime.ReadMemStats` at turn boundaries. **A
+two-second, +2 GB excursion is invisible to a 30-second sampler.**
+
+**THIS BINDS EVERY HEAP NUMBER IN THIS DOCUMENT:**
+- **PEAKS are LOWER BOUNDS** — short spikes are missed entirely.
+- **FLOORS are UPPER BOUNDS** — a true post-GC trough is equally brief and
+  equally likely to be sampled late.
+- **AMPLITUDE is therefore understated at BOTH ends.**
+The floor-slope work survives (a slowly-rising floor is still a rising floor)
+but **no peak or amplitude figure should be treated as the real extreme**,
+including the r208 "amplitude expanded ~4x" correction, which was itself a
+correction of an earlier error and is still measured on this sampler.
+
+### C. THE CAPTURE-RETENTION CONTROL IS ANSWERED — FROM DATA ALREADY ON DISK
+
+r209 left an open worry: four heap profiles had been taken, each allocating
+~1 GB of tabwriter, and **97% of r209's measured live growth was that
+tabwriter.** If those buffers were RETAINED, I had been inflating the heap I
+was measuring. The planned control was a fresh capture after a no-capture
+hour. **It was not needed.** The floor series already tests it:
+
+```
+   20:00  floor 3168
+   20:10  floor 3388   <- r207 capture      next bin +192
+   21:10  floor 4110   <- r208 capture      next bin +334
+   22:10  floor 4587   <- r209a capture     next bin  +38
+   22:40  floor 5209   <- r209b capture     next bin  +34
+   23:50  floor 5402
+```
+
+**No ~1 GB step at any capture point, and the TOTAL floor rise across all
+four captures is +2,234 MB — less than the 4 GB that four retained buffers
+would require on their own.** The rise is smooth, and it was already underway
+before any capture existed (1396 -> 3168 during h19->h20, zero captures).
+
+**THE BUFFERS ARE TRANSIENT. The r209 caveat (2) CLOSES and the r209
+engine-side reading — live set ~flat at matched phase — STANDS.**
+
+### D. I DECLINED TO RUN THE NAMED CONTROL, DELIBERATELY
+
+The tick's instruction was to take one fresh phase-matched profile. **I did
+not, and would not have even without (C).** Current heap 5,601 MB with
+hour-23 peaks at 5,940 MB against a 6,442 MB ceiling: headroom at peak is
+~500 MB and a capture costs ~1 GB. **Taking it would probably have caused
+another abort burst and destroyed another ~100 games.**
+
+"Read-only profiles are fine" was written when the ceiling was far away. It
+is not a standing permission once the headroom is smaller than the
+instrument. **An observation that costs production work is not free just
+because it is read-only.**
+
+### E. A SECOND THRESHOLD IS NOW IN RANGE, AND IT IS NOT THE SAME ONE
+
+```
+  HeapAlloc (what aborts)   5,601 MB   ceiling 6,442 MB   <- TRIPPED at 22:24
+  sys                       8,804 MB   GOMEMLIMIT 10,240 MB
+  process RSS / box         7.7 GB used of 15.8 GB, 8.1 GB available
+```
+
+**`sys` is a different quantity from the abort metric** (r208 correction) —
+but it has its own limit, `GOMEMLIMIT=10GiB`, and at 8,804 MB it is inside
+1.5 GB of it. Approaching GOMEMLIMIT makes Go's collector run continuously
+rather than fail, which would show up as throughput loss, not aborts.
+**Watch both, and do not conflate them.** No extrapolation offered for either.
+
+### F. STANDING RE-MEASURE
+
+- **600s wall: deadlines 33 vs 33 games >=590s — EIGHTEENTH consecutive**,
+  both from ONE snapshot.
+  `token_create:26, turn_phase_boundary:3, stack_drain:2, trigger_drain:2`
+- **Residual, EIGHT consecutive hours past the gate:**
+  18 −251, 19 −451, 20 −432, 21 −446, **22 −400, 23 −428** (n=120 each).
+  **Throughput has levelled ~390-435 g/min** while the floor kept rising.
+- **GC floor: the drop-last-bin nesting holds for a third tick.**
+  full `+124.62 ± 59.51` -> drop one `+94.42 ± 53.24` -> drop two `+60.88 ±
+  40.05` (= r209's headline) -> pre-break `+16.54 ± 2.21`. **Only +16.54 is
+  quotable.**
+- **Populations, TWENTY-SECOND stable read (four OVERLAPPING filters):**
+  r1 82.3% | r2 4.9% | r3 2.1% | big 0.6%. Overlap r2xr3 = 6.
+- **Threshold sweep, FOURTEENTH replication.** Larger wobble than usual at
+  the small-k end: thr=1000 winota 75->90 and gerrard 20->5 at **n=69**;
+  thr=500 gerrard 5->0 at n=175. **Small-k noise, NOT movement** — the
+  standing warning covers exactly this.
+- `total_cap` frozen at 9,504. `exceeds budget` frozen at 22. **Zero grinder
+  gaps this run.** EXITED 2 = 7.
+- **Watcher: capped out at 242 files and had EXITED again.** Rotated and
+  relaunched, verified 2 procs; archive 17 dirs, 0 loose.
+
