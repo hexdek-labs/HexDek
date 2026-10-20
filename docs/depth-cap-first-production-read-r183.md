@@ -4160,3 +4160,122 @@ the prediction so that whenever a restart happens for any reason, the measuremen
 already specified. **Owner call, as before.**
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 35th amendment (r216) — a SECOND memory event began at 05:20Z, and it refutes my own r215 headline
+
+Read at 06:17-06:35Z on 2026/10/20. `pid 322631` unchanged (~30h), health 200, pprof 200.
+`EXITED 2` still 7, heap-delta aborts still 22, **ceiling aborts still frozen at 196,938
+— no abort event yet.**
+
+### 1. A SECOND MEMORY EVENT, started ~05:20Z
+
+The heap floor was flat at ~1,450 MB through 05:19 and then broke cleanly:
+
+```
+05:10  1450 1537 1692 1587 1518 1546 1623 1568 1502 1590 1698 1710 1450 1605 1571 1604 1626 1658 1664 1786
+05:20  1788 1910 2088 2169 2168 2398 2531 2665 2567 2585 2774 2699 2781 2873 3009 2824 2993 3157 3191 3120
+05:30  ~3330   05:40  ~3800   05:50  ~4200   06:00  ~4900   06:17  5201
+```
+
+At 06:17 READ 0: `heap=5166MB, sys=10643MB`, **VmRSS 6.13 GB** (was 3.13 at r215), box
+7.44 GB used (was 4.0). Eighteen minutes later the heap read **5,707 MB**. Floor rise
+over the hour ≈ **+3,200 MB/h**, steeper than the first event's opening hour (+1,800).
+
+**Headroom is now ~735 MB against the 6,442 MB ceiling.** Per (0g) no time-to-ceiling is
+quoted; the conditional statement is that *if this rate holds* the ceiling is close. Per
+(0f) the sampled series understates peaks, so the true peak is at or above these figures.
+
+**(0c) PROHIBITION REINSTATED: no heap profiles this tick.** Headroom is inside the
+~1 GB trigger against a ~1 GB instrument.
+
+**Precedent, stated so nobody over-reacts:** the first event (19:10Z-02:48Z) hit the
+ceiling, destroyed games in a fast-fail loop, kept real output at ~80% throughout, and
+**self-resolved in ~7h30m with no restart and no user impact.** No action is recommended
+here; the no-action branch is what produced the evidence that corrected me twice.
+
+**No trigger found.** The 05:12-05:26 log window is dominated by `anomaly:` lines, which
+looked dramatic until I counted them: they date to **2026/09/17** and hour 05 carried
+1,800, in line with hours 03 (1,866) and 04 (1,957). **Not new, not the trigger** — they
+merely fire about once a second and so flood any window you open.
+
+### 2. Hour 05 — the worst residual of the entire run, but it is a MIXTURE
+
+| hour | n | g/min | residual | heap floor |
+|---|---|---|---|---|
+| 10/20 03 | 120 | 458.1 | −370 | 1364 |
+| 10/20 04 | 120 | 454.1 | −361 | 1379 |
+| **10/20 05** | **120** | **377.0** | **−509** | **1450** |
+| 10/20 06 | 35 | 380.0 | — | 4606 (partial, not judged) |
+
+−509 is the worst hour recorded, beating the first event's −451. **But hour 05 straddles
+the 05:20 break and is two regimes in one bucket**, so it is not a clean reading. Split
+at the break, the clean part is squarely on the plateau:
+
+```
+segment                     n   g/min  heapFlr  gc/min  gc/kgame
+05a (05:00-05:19 CLEAN)    40   466.6     1450    42.0      94.3
+05b (05:20-05:59 EVENT)    80   365.9     1788    16.7      47.8
+06  (06:00-06:17 EVENT)    35   380.0     4606    12.6      35.7
+```
+
+**05a at 466.6 g/min continues the ~455-466 plateau exactly.** The hour's −509 is
+entirely the event segment. Hours 03 and 04 recomputed unchanged at −370 and −361; both
+are closed hours with frozen inputs and **could not have changed**.
+
+### 3. MY r215 HEADLINE DOES NOT SURVIVE — "GC per game tripled" was the wrong variable
+
+Last tick I published the ~3x GC-per-game rise as the best lead and a mechanistic signal
+for the throughput deficit. **The new event tests it immediately and it fails.**
+
+**GC per game fell 94.3 → 47.8 → 35.7 — all the way back to the healthy 33-34 — while
+throughput fell 466.6 → 365.9 → 380.0.** If a high GC rate were costing throughput, the
+segment where GC normalised should have been the fast one. It is the slowest.
+
+What the number actually tracks is the heap floor, inversely, which is just the GC pacer
+working correctly: `NextGC` scales with the live heap, so a larger heap means fewer,
+larger collections. `gc/kgame` is approximately `allocPerGame / liveHeap`, and I had been
+reading a ratio while its denominator moved — **the exact error I have a standing rule
+about.**
+
+**The reframing that survives.** Rearranging, `allocPerGame ∝ gc/kgame × floor`. This is
+*derived*, resting on the GOGC proportionality, not measured — but it is stable exactly
+where the raw figure is wild:
+
+```
+                floor   gc/kgame   relative allocPerGame
+15-17 HEALTHY    1050      33.5          1.00x
+03               1364     104.3          4.04x
+04               1379     102.7          4.03x
+05a clean        1450      94.3          3.89x
+05b event        1788      47.8          2.43x
+06 event         4606      35.7          4.67x
+```
+
+**Allocation per game is up roughly 4x and has stayed up**, through a 104→36 swing in the
+quantity I reported last tick. And the **`ALLOC SPIKE` rolling median says the same thing
+on a completely independent instrument: 14.8 → 50.8 → 51.6 → 55.4, about 3.7x.** Two
+instruments that share no arithmetic converge on ~4x.
+
+**So the candidate is allocation per unit of work, not GC rate.** That also makes the two
+memory events candidates for the same cause rather than coincidences. **I am not claiming
+it — the 4x is derived, and I have now been wrong about this system's memory twice in
+three days.** It is the thing to measure next.
+
+### 4. Standing measures
+
+```
+600s wall    deadlines=token_create:28,stack_drain:4,trigger_drain:3,turn_phase_boundary:3 = 38
+             vs 38 games >=590s (33 on 10/19, 5 on 10/20) — UNCHANGED from r215.
+             The population did NOT grow, so this tick is NOT banked. 38/38 stands from r215.
+populations  n=24,066, TWENTY-EIGHTH stable read
+             r1 82.4% | r2 5.0% | r3 2.2% | r2xr3 8
+             maxima UNCHANGED: board 4,720 | cascades 735 | capped 449.5s | regime-2 29.9s
+ALLOC SPIKE  06:00 reads "neither side moved much" (games -14%, alloc -7%), median 55.4 —
+             the SECOND consecutive post-recovery spike not explained by its denominator
+watcher      214 files; rotated (archive 22 dirs, 0 loose), relaunched
+grinder gaps n=120 in every complete hour — none
+```
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
