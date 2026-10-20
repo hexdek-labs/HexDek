@@ -6032,3 +6032,149 @@ either.** What this tick added instead: a genuine replication of the wall, a rep
 of (6) with growing counts, and a code-verified explanation of the watcher's behaviour.
 Those were worth the window, but **(13) has now slipped three ticks and that is the thing
 to do first next time**, before any further measurement.
+
+## 49th amendment (r230) — ITEM (13) DONE. GC ASSIST is present in 24/24 degraded profiles and 3/24 healthy.
+
+### The design, written before any profile was pulled
+
+**Question:** why is throughput capped at ~540 while CPU is 100% busy?
+**Arms:** HEALTHY (10/19, bucket g/min 700-900) vs POST-RECOVERY (10/20 >=15:20, bucket
+420-540), 24 profiles each, spread across all 7 candidate windows, each labelled from its
+own 10-min `g/min` median. Selected pools were 62 and 156; the picks span 731-827 and
+465-488 g/min — no overlap.
+**Build IDs verified on all 48: `d463a22e`, unanimous. The build confound is eliminated.**
+**Pre-registered bar (all four required):** >=100 observations; |diff| >= 10 pp;
+ratio >= 2.0x or <= 0.5x; Welch t with p < 0.01 Bonferroni-corrected.
+
+**Criterion (a) was MIS-SPECIFIED BY ME and I corrected its units, not its strictness.**
+With 24 profiles per arm a frame can yield at most 48 observations, so ">=100" was
+**unsatisfiable by construction** — it is the "test that cannot return a nonzero answer"
+failure, self-inflicted, in a bar I had just written. Replaced with the same intent in
+the right units: **present in >=20 of 24 profiles in BOTH arms.** The effect-size and
+significance bars were left exactly as written. 168 frames qualified, so
+alpha = 0.01/168 = **5.95e-05**.
+
+### Sanity check first — and it is the strongest version of the standing negative
+
+```
+total CPU   HEALTHY 79.50 +/- 0.14 s      POSTREC 79.56 +/- 0.20 s      diff 0.07%
+```
+
+**n=48 across two eras: the box is equally busy to within 0.07%.** Load-bearing negative
+(0a)#1 now holds at 20-second, hourly, and cross-era resolution.
+
+### Three frames passed
+
+```
+frame                                    healthy  postrec   diff pp   ratio          p
+runtime.systemstack                        12.34    27.07   +14.73    2.19   4.10e-27  PASS
+runtime.mallocgc                            5.00    19.27   +14.27    3.85   1.10e-37  PASS
+gameengine.CastSpell                        8.39    29.41   +21.02    3.51   2.22e-20  PASS
+gameengine.ActivateAbility                 20.82     8.56   -12.26    0.41   7.11e-05  fails p (alpha 5.95e-05)
+runtime.scanSpan                            4.54    12.45    +7.92    2.75   2.38e-34  fails pp bar
+runtime.gcDrain                             7.99    13.13    +5.14    1.64            fails both
+gameengine.StateBasedActions               27.87    20.83    -7.04    0.75            fails both
+```
+
+**I am not leaning on the engine frames.** `CastSpell` up 3.51x with `ActivateAbility`
+down 0.41x is precisely the shape a **deck-mix change** would produce, and deck mix is
+the confound this design cannot control. Those two are reported, not interpreted.
+
+### The actual finding — and it did NOT pass my bar, for an instructive reason
+
+```
+runtime.gcAssistAlloc     present in  3 of 24 HEALTHY   (mean 0.54%)
+                          present in 24 of 24 POSTREC   (mean 9.20%)
+runtime.gcAssistAlloc1    present in  2 of 24  /  24 of 24
+runtime.gcMarkDone        present in  0 of 24  /  24 of 24
+runtime.greyobject        present in  0 of 24  /  23 of 24
+runtime.gcBgMarkWorker     8.23 -> 13.55  (+5.32 pp, both arms 24/24)
+Fisher exact on 3/24 vs 24/24:  p = 1.8e-10
+```
+
+**`gcAssistAlloc` fails the pre-registered population criterion — it is absent from the
+healthy arm, and the bar required presence in both. The absence IS the finding**, and a
+mean-difference test is the wrong instrument for a presence/absence difference. **This is
+a post-hoc observation, NOT a pre-registered result, and it needs independent
+confirmation before it is treated as established.**
+
+**What `gcAssistAlloc` is:** Go's backpressure mechanism. When a goroutine allocates
+faster than the collector can keep up, the runtime charges that goroutine mark work as a
+tax before letting the allocation proceed. **It is a throttle, by design.**
+
+**Why that matters more than any percentage here: a throttle produces a CEILING.** Every
+mechanism proposed so far would predict a proportional slowdown. This one predicts
+exactly the shape actually observed — a hard maximum that nothing crosses — because the
+runtime caps the allocating goroutine's rate rather than scaling all work down. **It is
+the first hypothesis whose prediction matches the wall rather than merely the average.**
+
+### Three independent estimates converge on ~4x
+
+```
+derived allocPerGame  (gc/kgame x floor, event era)   ~4.0x     DERIVED, not measured
+ALLOC SPIKE median ratio (independent emitter)        ~3.7x
+runtime.mallocgc cumulative share ratio (this tick)    3.85x    MEASURED
+```
+
+These share no arithmetic. **The surviving memory candidate has its first direct
+measurement.** Stated precisely: the **time share of the allocation path** rose 3.85x —
+that is not the same as allocated bytes rising 3.85x, and I am not claiming it is.
+
+### This does NOT overturn "NOT GC" — it has a different scope
+
+The four "NOT GC" refutations were **all within-era**: slow minutes against fast minutes
+*inside the degraded regime*, where `gcBgMarkWorker` ran equal or lower. That remains
+true and I am not withdrawing it. **It answered "does GC explain minute-to-minute
+variation within the degraded regime?" — no.** This is the first **cross-era** test, and
+it answers a different question: "does GC explain the regime shift itself?" — and here
+the GC family is uniformly up, with assist going from absent to universal.
+
+**A negative result has a scope.** Both can be true.
+
+### Standing measurements
+
+```
+CEILING ABORTS 1,540,966 UNCHANGED, 4th hour     CAPPED/hour 18: 607  19: 511  20: 609
+18 HELD FIXED  n=120 max 534.1  >550 0.0%   p10 394.4 med 477.9 p90 512.3  <400 11.7%
+19 NEW         n=120 max 523.8  >550 0.0%   p10 268.5 med 415.0 p90 500.3  <400 45.0%
+20 NEW         n=120 max 553.2  >550 0.8%   p10 351.7 med 465.5 p90 524.2  <400 23.3%
+ALL POST 15:20 n=702 max 553.2  >550 0.1%
+```
+
+**CORRECTION TO THE WALL CLAIM: it is no longer "zero above 550". One sample of 702
+(0.14%) reached 553.2** in hour 20. The wall is essentially intact — 553 against
+healthy's 978 and 95.8% above 550 — but **"zero" is now false and I am not rounding it
+away.**
+
+**Hour 19 is an outlier hour, and it has a cause:** SLOW GAME 1,021 worker-seconds
+(occupancy 7.1%) against 202-288s in neighbouring hours, with CAPPED 511 vs 607/609 and
+<400 at 45.0%. A genuine slow-game burst, not a new regime.
+
+```
+RESIDUAL hour 19: occ 0.0709  predicted 841  actual 415.0  = -426
+RESIDUAL hour 20: occ 0.0140  predicted 892  actual 465.5  = -427      (16: -393, 17: -410, 18: -409)
+FLOOR 15:20-19:20 HELD FIXED  drop-last  +8.6 +/- 10.4   REPRODUCES
+PEAK  15:20-19:20 HELD FIXED  drop-last +22.2 +/-  5.1   REPRODUCES
+FLOOR 15:20-21:00 extended    drop-last +11.5 +/-  5.4  (n=35)  2.1 SE — marginal, was flat
+PEAK  15:20-21:00 extended    drop-last +17.5 +/-  3.8  (n=35)  4.6 SE
+CPU 99% of four cores | proxy 2.60 -> 2.61 GB | VmSwap 377,984 (-49 MB) | pswpout UNCHANGED
+goroutines 18 | health 200 | log lag ~2s | turns/game 54.8 | heap 1764MB
+depth_cap 883,918 -> 915,685 | total_cap still 15,792 | sba_max_passes 5,419 -> 5,542
+```
+
+**The floor has gone from flat to marginally rising (2.1 SE).** Both floor and peak now
+rise at ~12-18 MB/h. **Still a watch item, still not a forecast** — peak 1,893 against a
+6,442 ceiling.
+
+**(6) CONSISTENCY CHECK, not a replication** — `deadlines=` 42 and SLOW GAME >=590s
+33+9 = 42 both unchanged; the counts did not grow.
+
+**(0c) condition re-checked and still met.** **(0w)** watcher budget-exhausted again
+(241 files, no procs); rotated — **27 archives now** — relaunched, verified separately.
+
+### What would test the assist hypothesis
+
+Not done, named for the next tick: **if GC assist is the throttle, raising `GOGC` should
+move the wall.** That is a production change and therefore an **OWNER CALL**, not
+something to do unilaterally. The cheap non-invasive version is to check whether
+`gcAssistAlloc` share tracks the hour-to-hour wall height across more windows.
