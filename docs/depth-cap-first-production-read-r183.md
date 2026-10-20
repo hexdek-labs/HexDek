@@ -4812,3 +4812,133 @@ CAPPED stream. The populations were NOT re-read — the stream added ~0 games.
 **Still unread: all 1,097 goroutine dumps (`goro`/`goro2`) across the 23 directories.**
 The CPU-profile corpus is now 28 of 1,097 read.
 
+
+---
+
+## 40th amendment (r221) — the equilibrium BROKE at 10:30Z; goroutine dumps confirm equal-CPU independently
+
+### The live finding: regime D-equilibrium is reopened, and my r220 closure was premature
+
+At r220 I fitted the heap floor over 09:00-10:10 at **-13.1 +/- 25.7 MB/h**, called it
+flat, and **closed regime D's equilibrium sub-regime**. One tick later it broke.
+
+```
+10-min floor  09:0 7218  09:2 7220  09:4 7196  10:0 7195  10:1 7252  10:2 7210
+              10:3 7228  10:4 7682  10:5 7727  11:0 7882  11:1 7913
+10-min peak   pinned 7482-7568 through 10:2, then 8393 / 8358 / 8516 / 8603 / 8614
+sys           11,796 static since 07:30  ->  13,593 at 10:30   (+1,798 MB, one step)
+```
+
+```
+r220 window 09:00-10:10 HELD FIXED    -13.1 +/-  25.7 MB/h (n=7)  drop-last-bin  -20.1 +/-  35.9 (n=6)
+extended flat 09:00-10:20             +16.5 +/-  20.8 MB/h (n=9)  drop-last-bin  +19.4 +/-  26.8 (n=8)
+NEW RISE 10:30-11:10                 +942.0 +/- 256.7 MB/h (n=5)  drop-last-bin +1204.2 +/- 359.1 (n=4)
+```
+
+The r220 window reproduces exactly at its own span — that is a **consistency check and it
+passes**. The flat stretch was real. **Calling it an equilibrium and closing the regime
+was the error**: nothing in 8 flat bins licensed "settled", and the correct label was
+"flat so far". The rise that followed is **steeper than event 1's +630 MB/h**.
+
+**Regime D is reopened with three sub-regimes:** rise (05:20-06:53), pause
+(06:53-10:20, floor flat), **second rise (10:30 onward, +942 +/- 257 MB/h)**.
+
+### Live state
+
+```
+aborts  835,657 -> 1,007,393      per-min  hr08 3,350 | hr09 3,126 | hr10 2,780  (-11.1%)
+CAPPED/hour  07: 14  08: 8  09: 3  10: 4        LAST CAPPED 2026/10/20 10:44:52
+heap now 8,193MB | sys 13,594MB | VmRSS 8,711,204 kB | VmHWM 9,762,364 kB NEW HIGH (+1.15 GB)
+box 478MB free, 5,934MB available | health 200 | pprof 200 | EXITED 2 = 7 | heap-delta = 22
+goroutines live: 38
+```
+
+**Aborts are falling while the heap rises.** Those are not independent: each abort frees
+memory, so fewer aborts per minute is less freeing. Whether the slowing abort rate is a
+cause of the rise or a symptom of it is **not established by this data** and I am not
+asserting a direction. Output is unchanged at a trickle (4 CAPPED in hour 10).
+No time-to-anything is quoted.
+
+**(0c) RULING: heap profiles remain PROHIBITED.** Headroom is more negative than at r220
+(floor 7,913 vs the 6,442 ceiling). The box has 5,934 MB available so a ~1 GB profile
+would not OOM the host, but it would deepen the abort loop. The prohibition stands, and
+it is worth stating plainly that **the one instrument that could explain the 10:30 break
+is the one I have ruled out.** The break is characterised, not explained.
+
+### Two boring explanations tested and killed on base rate
+
+**(a) The `anomaly:` emitter.** 285,206 lines, running at ~1,900 per 10 min. It looked
+like a candidate. **It has existed since 2026-09-17**, and it jumped 8x (297 -> 1,119 ->
+2,453) at **06:50** — i.e. it is a *consequence* of the ceiling loop, since aborted games
+increment each deck's game counter and re-trip the z-score check. **It did not move at
+10:30** (1,962 / 1,905 / 1,841 / 1,800 / 1,699 / 1,636). Not the trigger.
+
+**(b) `[selfplay] rotated samples file (50 MB)`**, 2-3 per 10 min. **Also since
+2026-09-17**, 2,551 rotations total, 11-22/hour, and **declining** across the break
+(22 at hour 07 -> 18 at hour 10). Disk is 29% used with 159 GB free. Not the trigger.
+
+**(c) Goroutine leak — ruled out for almost nothing.** `/debug/pprof/` index reports
+**38 goroutines live**. No leak. This is not a heap profile and costs nothing.
+
+### Item (13): the goroutine dumps, and an independent confirmation of equal-CPU
+
+The archived `goro` dumps are plain text, ~20 KB, in `debug=2` format **with goroutine
+states** — a genuinely different instrument from the CPU profiles. They answer *where
+blocked*, not *where busy*.
+
+**Pre-registered before aggregating (P4):** r220's equal-CPU result says the workers are
+never idle. So in both states, engine goroutines should be `runnable`, with essentially
+**none blocked** on a mutex, channel or syscall. **If workers turn out to be blocked, one
+of the two instruments is wrong and equal-CPU is in trouble.**
+
+39 dumps from `stallwatch-20261020T0523Z`, labelled by r217's buckets — SLOW 04:30-04:50
+(328-347 g/min, 19 dumps), FAST 05:00-05:10 (454-477, 20 dumps). 18 goroutines per dump.
+
+```
+state of goroutines whose top frame is gameengine/tournament/hat:
+  SLOW (19 dumps):  779 runnable    38 sleep    0 blocked
+  FAST (20 dumps):  841 runnable    38 sleep    0 blocked
+  per dump:        41.0 runnable   vs   42.1 runnable
+```
+
+**P4 CONFIRMED.** Across 39 dumps and both states there is **not one engine goroutine
+blocked on a mutex, channel receive, IO wait or syscall**. The only non-runnable state is
+`sleep`, at exactly 38 in each arm (~2 per dump, a timer). The runnable count per dump is
+the same in both states.
+
+**This is independent confirmation of the equal-CPU result from an instrument that shares
+no arithmetic with it.** The CPU profile says *always busy*; the goroutine dumps say
+*never blocked*. Lock contention, channel starvation and IO stalls are jointly excluded
+as explanations of the slow state.
+
+**What this instrument CANNOT do, stated before anyone asks.** The top-frame distribution
+is a long thin tail with no hot spot in either state:
+
+```
+SLOW top frames: gameengine.<closure> 11, FireCardTrigger 8, NewReplEvent 5,
+                 MaybeDredgeReplaceDraw 5, GetEffectiveCharacteristics 4, keywordActive 3
+FAST top frames: gameengine.<closure> 22, NewReplEvent 8, hat.<closure> 5,
+                 NarsetBlocksDraw 4, sba704_5q 3, cardIsToken 3, OracleTextLower 3
+```
+
+With ~2-3 engine goroutines sampled per dump and per-frame counts of 2-11, **this has
+nowhere near the power to compare function distributions between states, and I am not
+reading one into it.** The state distribution is decisive; the frame distribution is not.
+Doing that comparison properly needs the ~1,100 dumps, not 39 — and after r220 I am not
+publishing a frame-level claim off a sample this size.
+
+### Standing items
+
+**(6) The 600s wall is VACUOUS for the sixth tick.** `deadlines=` = 38 unchanged;
+**0 games >=590s**. Not a pass.
+
+**(0d) The watcher is blind for the fourth tick** — 0 files, 2 procs, trigger `g/min<760`
+against a reading of ~2,800. **Deliberately not rotated** (no trigger applies) **and not
+retuned** (breaks comparability with every prior capture).
+
+**(0j) ALLOC SPIKE: still no new line since 06:00:04**, verdict text unchanged
+("neither side moved much", median 55.4). The emitter needs completed games.
+
+`percard_dispatch_depth_cap` 776,400 -> **776,473**; `percard_dispatch_total_cap` still
+**15,792**; `sba_max_passes` 3,970 -> 4,263. Populations NOT re-read — the CAPPED stream
+is frozen. CPU profiles read: 28 of 1,097. Goroutine dumps read: 39 of ~1,100.
