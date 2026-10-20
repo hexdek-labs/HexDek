@@ -5769,3 +5769,141 @@ Not retuned — that remains the standing rule and the incident is too recent.
 **Item (13) not done this tick.** `stallwatch-20261020T1611Z` (60 CPU profiles) remains
 unread; the throughput result above was the better use of the window, and it is stated
 plainly rather than quietly skipped. Two archives now await reading.
+
+---
+
+## 47th amendment (r228) — the duty-cycle framing is WRONG. There is a hard ceiling at ~540 g/min.
+
+### Correction to (0a2): degradation is a LEVEL, not a duty cycle
+
+(0a2) has said for eleven ticks: **"THE LOW END IS IDENTICAL; THE UPPER HALF VANISHED.
+DEGRADATION IS A DUTY CYCLE, NOT A LEVEL."** Hour 17 is the first fully clean hour since
+06:53 and it refutes that.
+
+**Pre-registered before looking:** if healthy has an upper mode near 750-800 and
+post-recovery one near 500 with both sharing a ~310 low mode, the fast state is itself
+slower and the duty-cycle reading is incomplete; if post-recovery shows ~310 and ~800
+with more mass at 310, duty cycle holds.
+
+Histogram of `g/min now`, 50-unit bins:
+
+```
+window                      n     250 300 350 400 450 500 550 600 650 700 750 800 850
+10/19 15-17 HEALTHY       360       0   0   2   0   0  13  50  55  15  39 107  73   6
+10/20 03-04 PLATEAU       240      15  57  10  25 107  24   0   0   0   0   0   0   0
+10/20 15:20-17 POSTREC    200       7  16  17  18  74  56   0   0   0   0   0   0   0
+10/20 17 CLEAN HOUR       120       0   2   7  24  65  22   0   0   0   0   0   0   0
+```
+
+**Healthy is unimodal and broad, centred ~750-800. The clean hour is unimodal and TIGHT,
+centred ~450-500.** There is no two-state mixture now:
+
+```
+10/20 17 CLEAN HOUR   n=120  p10 408.5  p25 447.6  med 479.4  p75 494.0  p90 511.6   <400  7.5%
+10/19 15-17 HEALTHY   n=360  p10 572.3  p25 616.1  med 754.1  p75 796.0  p90 817.8   <400  0.6%
+```
+
+**The low end is NOT identical to healthy** — p10 408.5 against 572.3. The 308/304 p10
+agreement quoted in (0a2) was between PLATEAU and EVENT2, two degraded windows; it was
+never a comparison with healthy, and I let it read as one.
+
+**What the duty-cycle reading did describe correctly** is the plateau and event-2
+windows, where a ~300 mode genuinely coexisted with a ~450 mode (35% and 83% below 400).
+**It does not describe healthy, and it does not describe the current state** — the clean
+hour's span is p10-to-p90 of only 103 g/min against healthy's 245.
+
+### The durable fact: a hard ceiling at ~540, and nothing has ever crossed it since
+
+```
+window                      n     max     share>550   share>700
+10/19 15-17 HEALTHY       360   879.3       95.8%       62.2%
+10/19 ALL (whole day)    2879   978.2       73.1%       51.8%
+10/20 03-04 PLATEAU       240   526.0        0.0%        0.0%
+10/20 15:20-17 POSTREC    200   540.0        0.0%        0.0%
+10/20 17 CLEAN HOUR       120   529.7        0.0%        0.0%
+```
+
+**560 samples across three separate post-event windows and not one exceeds 540**, against
+a healthy day that reached 978 and spent 73% of its samples above 550. This is not a
+shifted distribution with a tail — **it is a wall.** It appeared with event 1, survived
+the plateau, survived event 2, and survived a complete memory recovery.
+
+**That is the single most specific fact now available about the deficit**, and it is a
+better target than "throughput is down 37%": something is clamping the maximum rate at
+~540, not slowing everything proportionally.
+
+**Caveat on the comparison, repeated from r227:** deck mix and pool composition are
+uncontrolled. Process, binary, time of day and `turns/game` (55.9 vs 54.8) are matched.
+
+### A second correction, caught by the same check
+
+```
+10/20 00-02 (post-event-1)  n=360  max 2,377.9  share>700 76.9%
+```
+
+**Hours 00-02 on 10/20 are inflated by event 1's abort loop** — a max of 2,378 g/min is
+the counter inversion of (0a3), not real throughput. The current brief's (0a3) says
+"hours 07-14 are uncomputable"; **earlier revisions said "00-02 and 07+", and dropping
+00-02 was a transcription loss. It is restored.** Any residual or distribution work
+touching 10/20 00:00-02:48 is invalid.
+
+### Live state — frozen and stable
+
+```
+CEILING ABORTS 1,540,966 -> 1,540,966    EXACTLY UNCHANGED, second hour     NO NEW EVENT
+CAPPED/hour  15: 480   16: 598   17: 609      LAST CAPPED 17:59:31
+heap 1515MB | turns/game 54.8 | goroutines 18 | health 200 | log lag ~3s | pid 322631 up 2d13h
+VmSwap 426,712 UNCHANGED | pswpout UNCHANGED | proxy 2.60 -> 2.56 GB
+CPU +1,300,099 jiffies / 54.5 min = 398% of one core = 99% of four
+FLOOR 15:20-17:00 HELD FIXED  drop-last  +3.4 +/- 48.5   REPRODUCES EXACTLY
+FLOOR 15:20-17:50 extended    drop-last +22.6 +/- 17.5   (1.3 SE — NOT called a rise)
+PEAK  15:20-17:50 extended    drop-last +21.8 +/- 11.5   (1.9 SE — weak, watch it)
+```
+
+**An observation worth recording without over-reading it:** CAPPED is 598 and 609 in the
+last two full hours, at or above the 445-583 healthy band — **while total games are down
+37%.** At ~480 g/min that is ~28,800 games/hour and 2.1% capped; healthy was ~45,000/hour
+and ~1.1% capped. **The capped FRACTION has roughly doubled.** Stated as an observation;
+I have not established whether that is cause, consequence, or a change in what is being
+played.
+
+**Residual gate on the first full clean hour since 06:53:**
+
+```
+hour 17: SLOW GAME n=16, 244 worker-seconds -> occupancy 0.0169
+predicted = 905 * (1 - 0.0169) = 890    actual median = 479.4    RESIDUAL = -410
+```
+
+**Deepest reading yet** (hour 16 −393; plateau era −370/−361). Occupancy is **1.7%** —
+slow games account for essentially none of the gap.
+
+**(0c) condition re-checked and still met** (floor 1,384-1,540 vs the <=6,200 bar; peak
+1,787 vs <6,600; proxy flat-to-falling). **Heap profiles remain PERMITTED.** None taken —
+nothing has changed against the r226 baseline worth re-measuring.
+
+**(6) 41/41 holds** — `deadlines=` 30+5+3+3 = 41, `guards=game_deadline:41`, SLOW GAME
+>=590s 33+8 = 41. **Counts did not grow, so CONSISTENCY CHECK, not replication.**
+
+**(0j) ALLOC SPIKE unchanged** since the 15:55 line; same self-diagnosed verdict
+(`DENOMINATOR FELL — fewer games completed`). `depth_cap` 819,349 -> **838,637**;
+`total_cap` still **15,792**; `sba_max_passes` 5,266 -> **5,320**.
+
+**(0w) Watcher at 201 files**, tripping `files>120` again ~51 minutes after the last
+rotation — the mis-calibration noted at r227 is confirmed as a recurring, not one-off,
+condition. **Not rotated this tick**: two post-recovery archives are already unread and a
+third would add nothing but churn. Disk 30% used.
+
+### Item (13): not done, and the design has to change
+
+Two ticks running I have not read the post-recovery archives, and this result explains
+why the plan for them no longer works. **Both r220's within-window sign test and r223's
+frame design require a fast arm and a slow arm inside the same capture window.** The
+clean hour is unimodal with a p10-to-p90 span of 103 g/min — **there is no fast arm left
+to contrast against.**
+
+So the only available comparison is **post-recovery profiles against healthy-era archived
+profiles** — a cross-era design carrying exactly the confound r220 measured, where
+between-window SD was **1.7x** the within-pair effect. That is runnable, but it needs
+build IDs matched and a **large pre-registered effect-size bar** chosen for a noisy
+comparison, not the bars built for a paired one. Designing that is next tick's job.
+Saying so rather than quietly carrying the item.
