@@ -3578,3 +3578,104 @@ rather than fail, which would show up as throughput loss, not aborts.
 - **Watcher: capped out at 242 files and had EXITED again.** Rotated and
   relaunched, verified 2 procs; archive 17 dirs, 0 loose.
 
+
+---
+
+## Thirtieth amendment — r211 (LIVE INCIDENT — sustained ceiling aborts)
+
+### A. THE CEILING BURST IS NO LONGER A BURST. ~39,000 GAMES DESTROYED IN ONE HOUR.
+
+```
+ceiling aborts:  3,628 (frozen since Oct 16) -> 3,724 (r210) -> 42,602 (now)
+```
+
+Timeline: the 96-abort burst at 22:24:49-51, then **nothing until 00:14**,
+then sustained. Per-minute rate since:
+
+```
+  00:14   186     00:27   831     00:53  1975     01:04   922
+  00:20   382     00:31   569     00:55  2003     01:06   911
+  00:21   523     00:48  1517     00:57  1373     01:08  1005
+```
+
+**Sustained 900-2,000 aborts per minute for roughly an hour.** Current
+`heap=6375MB` sits just under the 6,442 MB ceiling, so almost every game
+trips the guard at its first turn checkpoint.
+
+**`sys` is now 10,616 MB, ABOVE `GOMEMLIMIT=10,240 MB`.** Box: 8.7 GB used
+of 15.8, 7.1 GB available — **no OOM risk, and users are unaffected: health
+200, pprof 200, the API serves normally.** The damage is confined to
+self-play data generation.
+
+### B. THE THROUGHPUT METRIC IS NOW INVALID — AND THIS RETROACTIVELY EXPLAINS A "RECOVERY" I REPORTED
+
+```
+hour    g/min    aborts in hour   status
+ 21     414.2            0        CLEAN — genuinely depressed
+ 22     393.5           96        CLEAN
+ 23     434.4            0        CLEAN
+ 00     702.0      ~29,000        CONTAMINATED
+ 01    1233.8      ~10,000        CONTAMINATED  <- ABOVE the healthy ~900 baseline
+```
+
+**A game that aborts at turn 10 finishes in milliseconds and still
+increments the games counter.** Of the +58,094 "games" between 00:09 and
+01:08, **38,878 were aborts — two thirds of apparent throughput is failure.**
+Hour 01's 1,233 g/min EXCEEDS the healthy maximum this box has ever
+sustained; that alone proves the metric is measuring failure speed.
+
+**WHAT THIS DOES AND DOES NOT TOUCH:** hours 21-23 had **zero or 96 aborts**,
+so the depressed 393-434 g/min readings and their −400 to −446 residuals are
+**NOT contaminated and still stand**. **No residual should be computed for
+hour 00 onward while aborts are running** — the denominator is no longer
+games.
+
+### C. THE GUARD CANNOT FIX A HEAP IT DOES NOT OWN — AND r209 PREDICTED THIS
+
+The heap guard's implicit model is that the heap is dominated by the games
+currently in flight, so aborting them should bring it down. **It is not
+coming down.** The loop is self-sustaining: heap at ceiling -> abort every
+game -> heap unchanged -> abort every game.
+
+**The r209 phase-matched inuse diff already said why.** At matched sawtooth
+phase the engine's own live set grew ~**+6 MB in 23 minutes** while the floor
+rose hundreds of MB. **If the retained memory is not in the games, killing
+games cannot release it.** That measurement was taken before this failure
+mode appeared and it predicts it exactly.
+
+**This is the strongest support the r209 result has received, and it arrived
+as a production failure rather than a statistic.**
+
+### D. STATE OF PLAY FOR THE OWNER — A RESTART IS BOTH THE FIX AND THE EXPERIMENT
+
+- A restart resets the floor to ~736 MB and would clear the abort loop.
+- **It is ALSO the pre-registered r205 experiment**: if throughput returns to
+  ~830 g/min and the residual to ~zero, then decays again, the LEVEL story is
+  right; if it stays low at a low floor, it is wrong.
+- **I have NOT restarted and will not without the owner.** The standing rule
+  gates destructive ops, and the distinction that makes waiting defensible is
+  that **users are unaffected** — this is self-play data, not user traffic.
+  The ongoing cost is ~39,000 discarded self-play games per hour.
+- A restart also re-opens safe heap profiling, which (0a3) currently forbids.
+
+**Stated plainly so the call is his: I recommend a restart, I can execute it
+in one command, and I am waiting.**
+
+### E. STANDING RE-MEASURE
+
+- **600s wall: deadlines 34 vs 34 games >=590s — NINETEENTH consecutive**,
+  one snapshot, both date prefixes. **It held THROUGH the incident.**
+  `token_create:26, stack_drain:3, turn_phase_boundary:3, trigger_drain:2`
+- **Populations, TWENTY-THIRD stable read** (four OVERLAPPING filters):
+  r1 82.3% | r2 4.9% | r3 2.1%. Overlap r2xr3 = 6. n=21,470 parsed.
+- Real games are still completing — 8 `SLOW GAME` lines in hours 00-01 — the
+  stream is swamped, not stopped.
+- `exceeds budget` frozen at 22. EXITED 2 = 7. No new grinder gaps.
+- **Watcher: 112 files / 64.3 min = 105/hour** — below the file trigger but
+  projected ~210 next tick, so rotated on the projection rule. Relaunched,
+  verified 2 procs; archive 18 dirs.
+- **GC floor / drop-last-bin NOT re-run this tick**: the floor series is now
+  pinned against the ceiling by the abort loop, so its slope is measuring the
+  guard, not the leak. The old-regime **+16.54 ± 2.21** remains the only
+  quotable figure.
+
