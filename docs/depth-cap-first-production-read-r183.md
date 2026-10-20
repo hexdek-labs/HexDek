@@ -4279,3 +4279,131 @@ grinder gaps n=120 in every complete hour — none
 ```
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 36th amendment (r217) — event 2 hit the ceiling at 06:53:57Z; and "the ~455 plateau" was a median over a BIMODAL distribution
+
+Read 06:52-07:05Z on 2026/10/20. `pid 322631` unchanged (~30h), health **200** throughout.
+`EXITED 2` still 7, heap-delta aborts still 22.
+
+### 1. THE CEILING FIRED — the freeze at 196,938 is broken
+
+```
+first new abort  2026/10/20 06:53:57  "process heap 6670MB exceeds the 6442MB ceiling" (turn 30)
+aborts/min       06:53 102 | 06:54 2370 | 06:55 1796 | 06:56 371   <- already tapering
+total            196,938 -> 201,577  (+4,639)
+heap after       6,309 MB (back under the ceiling)   health 200
+```
+
+**It was still frozen at 196,938 in READ 0 at 06:52 and had fired by 07:00** — the event
+crossed during this tick. Shape matches event 1's first touch (a burst, then taper), but
+far larger: event 1's first contact destroyed 96 games in 2 seconds, this one 4,639 in
+three minutes.
+
+**A concrete confirmation of (0f):** the guard's own line reports **6,670 MB** at a moment
+when my 30-second sampler's maximum for the whole bucket was **6,258 MB**. The sampler
+understates peaks by at least 412 MB here. Peaks are lower bounds, as stated — now with a
+measured gap.
+
+Floor trajectory through the event (10-min buckets; 06:50 partial, n=5):
+```
+05:20 1788 | 05:30 3205 | 05:40 3648 | 05:50 4087 | 06:00 4606
+06:10 4633 | 06:20 5092 | 06:30 5400 | 06:40 5538 | 06:50 5566
+```
+The later increments are smaller than the early ones, **but I am not calling this
+deceleration** — "the growth is decelerating" is an explicitly withdrawn claim from event
+1, and the per-bucket series is lumpy (+27 then +459). It needs more closed bins.
+
+### 2. Throughput was FLAT through a 3x heap rise — level-coupling refuted a SECOND time
+
+```
+segment       n    g/min  heapFlr  heapPk   gc/min  gc/kgame  DERIVED allc
+03  plateau 120    458.1     1364    1730     43.8     104.2       4.04x
+04  plateau 120    454.1     1379    1805     42.3     102.8       4.03x
+05a CLEAN    40    466.6     1450    1786     42.0      94.3       3.89x
+05b EVENT2   80    365.9     1788    4854     16.7      47.8       2.43x
+06a EVENT2   60    377.0     4606    5829     12.2      33.8       4.43x
+06b EVENT2   45    367.8     5400    6258     10.8      30.5       4.69x
+```
+
+**The floor tripled from 1,788 to 5,566 and throughput did not move** (365.9 / 377.0 /
+367.8). The drop happened once, **at the onset**, and then nothing — a step, not a
+dose-response. This independently replicates r214's refutation on a second event.
+
+**A limitation of my own derived estimator, found this tick.** `allocPerGame ~ gc/kgame ×
+floor` assumes the floor is roughly constant inside the segment. In 05b the floor goes
+1,788 → 4,854 *within the window*, so using the segment minimum badly understates the
+average live heap and the estimate collapses to 2.43x. In the five segments where the
+floor is comparatively flat it reads **4.04 / 4.03 / 3.89 / 4.43 / 4.69x**. The ~4x holds;
+**05b's 2.43x is an artifact of the estimator, not a real dip**, and the estimator must
+not be applied across a steep rise.
+
+### 3. THE CORRECTION THAT MATTERS: "a plateau at ~455" was a median over a MIXTURE
+
+At 10-minute resolution the engine is **bimodal**, and has been all along:
+
+```
+04:00 475.0 | 04:10 475.9 | 04:20 472.1 | 04:30 328.4 | 04:40 341.1 | 04:50 347.0
+05:00 477.2 | 05:10 454.3 | 05:20 354.9 | 05:30 372.0 ...
+```
+
+Hour 04's median of 454 is made of buckets at 475/476/472 and 328/341/347. **There is no
+455 state.** The distribution of 30-second samples:
+
+```
+window                n    p10    p25    med    p75    p90   share <400
+10/19 15-17 HEALTHY 360  572.2  616.1  753.8  796.0  817.6      0.6%
+10/20 03-04 PLATEAU 240  308.2  338.4  456.1  481.9  496.2     35.0%
+10/20 05b-06 EVENT2 185  303.9  334.0  368.0  386.0  400.2     88.6%
+```
+
+**The low end is identical between the plateau and event 2** — p10 308 vs 304, p25 338 vs
+334. What disappeared is the upper half: p75 482 → 386, p90 496 → 400. **Event 2 did not
+make the slow periods slower; it removed the fast periods.** Degradation here is a *duty
+cycle*, not a level: 0.6% of time slow when healthy, 35% on the "plateau", 89% now.
+
+**So the big open question is better posed as: what is the slow state, and why does the
+engine spend more and more time in it?** — not "why is throughput 455 instead of 900".
+And **"the plateau at ~455", reported three ticks running, is withdrawn as a description**;
+the hourly median was hiding a two-state mixture, which is a failure mode I have a
+standing rule about and walked into anyway.
+
+### 4. The obvious mundane explanation, tested and refuted
+
+With 4 workers, one tied up in a long game costs 25%, and 480 × 0.75 = 360 — which fits
+the two levels almost exactly. **It is wrong.** Slow-game worker-seconds per 10-minute
+bucket, spread backwards:
+
+```
+03:30  g/min 334.1   slow-game worker-seconds 0   (0.0% of 2400)
+04:30  g/min 328.4   slow-game worker-seconds 10  (0.4%)
+04:40  g/min 341.1   slow-game worker-seconds 0   (0.0%)
+corr(slow-game worker-seconds, g/min) = -0.100  over n=24 buckets
+```
+
+Occupancy never exceeds **2.1%** in any bucket and the deepest slow buckets carry
+**literally zero** logged slow-game time. **Caveat that bounds this:** `SLOW GAME` only
+logs above roughly 10 s, so occupancy from games slower than typical but under that
+threshold is unmeasured. Within what is measured, long games do not explain the switching.
+
+Run-length structure over hours 03-06: slow runs median 1.5 min (max 14), fast runs median
+1.0 min (max 21.5) — irregular, with 10-20 minute episodes. Not a clean periodic signal.
+
+### 5. Standing measures
+
+```
+600s wall    38 deadlines vs 38 games >=590s — UNCHANGED for a SECOND tick.
+             Population did not grow, so NOT banked again. The r215 reading stands.
+populations  n=24,354, TWENTY-NINTH stable read
+             r1 82.4% | r2 5.0% | r3 2.1% | r2xr3 8 | maxima all unchanged
+CAPPED/hour  03:583  04:561  05:561  |  06:424 PARTIAL at 06:52 — NOT judged
+ALLOC SPIKE  no new line since 06:00 (median 55.4, "neither side moved much")
+watcher      123 files in 31 min; rotated (archive 23 dirs), relaunched
+grinder gaps n=120 in every complete hour — none
+```
+
+**No restart is recommended** (0b). Event 1 reached this same state, held real output at
+~80%, and self-resolved in ~7h30m with no intervention and no user impact. Health is 200.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
