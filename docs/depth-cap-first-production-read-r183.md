@@ -5907,3 +5907,128 @@ between-window SD was **1.7x** the within-pair effect. That is runnable, but it 
 build IDs matched and a **large pre-registered effect-size bar** chosen for a noisy
 comparison, not the bars built for a paired one. Designing that is next tick's job.
 Saying so rather than quietly carrying the item.
+
+---
+
+## 48th amendment (r229) — the wall REPLICATES at n=504; the peak is now rising significantly; the watcher is budget-limited
+
+### The ~540 wall: a real replication, not a consistency check
+
+r228 called the wall on 320 post-recovery samples. The population has grown materially
+and it holds:
+
+```
+window                   n    max     >550      p10    p25    med    p75    p90   <400
+10/19 15-17 HEALTHY    360  879.3   95.8%    572.3  616.1  754.1  796.0  817.8   0.6%
+17 HELD FIXED          120  529.7    0.0%    408.5  447.6  479.4  494.0  511.6   7.5%
+18 NEW CLEAN HOUR      120  534.1    0.0%    394.4  460.4  477.9  496.0  512.3  11.7%
+ALL POST 15:20         504  540.0    0.0%    311.1  406.1  472.0  496.0  512.3  24.2%
+
+POST-RECOVERY histogram  250:26  300:31  350:49  400:61  450:214  500:107
+samples above 550 in ALL post-recovery data: 0 of 504
+```
+
+**Hour 17 reproduces to the decimal** (max 529.7, med 479.4, p90 511.6) and **hour 18 is a
+near-replica** (max 534.1, med 477.9, p90 512.3). The post-recovery population went
+320 -> **504 samples, still zero above 550.** Healthy spent 95.8% of its samples there.
+
+**This is the first genuine replication of the wall** — the earlier reads shared data with
+the original claim; hour 18 is 120 fresh samples the claim never saw.
+
+### (6) also replicates — and this time the counts grew
+
+```
+deadlines=token_create:30, stack_drain:6, trigger_drain:3, turn_phase_boundary:3 = 42
+guards=game_deadline:42
+SLOW GAME >=590s: 10/19: 33 + 10/20: 9 = 42
+```
+
+**`stack_drain` 5 -> 6 and the 10/20 count 8 -> 9 moved together.** 42 == 42. Unlike r227
+and r228, **the population grew, so this is a replication rather than a consistency
+check.** The gate has now tracked three separate increments (38 -> 41 -> 42) with the
+counter and the independent line-count agreeing each time.
+
+### The peak is rising significantly — a watch item, not a forecast
+
+```
+FLOOR 15:20-17:50 HELD FIXED   drop-last  +22.6 +/- 17.5   REPRODUCES
+PEAK  15:20-17:50 HELD FIXED   drop-last  +21.8 +/- 11.5   REPRODUCES
+FLOOR 15:20-19:20 extended     drop-last   +8.6 +/- 10.4  (n=25)   0.8 SE — FLAT
+PEAK  15:20-19:20 extended     drop-last  +22.2 +/-  5.1  (n=25)   4.4 SE — SIGNIFICANT
+```
+
+**Floor flat, peak rising at ~22 MB/h.** Amplitude has gone from 203 MB (15:20) to
+362 MB (19:20). r228 flagged the peak at 1.9 SE and said "watch it"; at n=25 it is 4.4 SE.
+
+**This is the same signature that preceded event 2's build-up** — floor flat while the
+peak climbs. **I am recording that as a shape match, NOT a prediction.** The absolute
+level is nowhere near dangerous: peak 1,893 MB against a 6,442 MB ceiling, and at
++22 MB/h the gap is enormous. **No time-to-anything is quoted.** What makes it worth
+tracking is that it is the one quantity in the system currently moving.
+
+### Residual gate: a third consecutive deep reading
+
+```
+hour 18: SLOW GAME n=17, 288 worker-seconds -> occupancy 0.0200
+predicted = 905 * (1 - 0.0200) = 887     actual median = 477.9     RESIDUAL = -409
+hour 17 -410  |  hour 16 -393  |  plateau era -370/-361
+```
+
+Three clean hours in a row at -393 / -410 / -409. Occupancy 1.4-3.2% throughout — **slow
+games account for essentially none of the gap, consistently.**
+
+### The watcher is BUDGET-LIMITED — it did not crash
+
+READ 0 found **no `stallwatch7.sh` processes with 242 files present**, which is the
+documented "process-missing-with-files-present" rotate trigger. **I read the script
+rather than hypothesising a crash** — `stallwatch7.sh:32` loops while `i` is under 1800
+AND **`n` is under 60**.
+
+**It stops after 60 captures.** Last file 18:08:46, launched ~17:08 — exactly 60
+one-minute captures. **It ran to completion and exited normally.**
+
+**This is the second, worse consequence of the (0w) mis-calibration.** Because `g/min` is
+now permanently below the 760 trigger, the watcher captures on *every* cycle, so it burns
+its 60-capture budget in **one hour** and exits. Before the deficit it would sit idle most
+cycles and that budget lasted days.
+
+**So the watcher is now DOWN more than it is UP** — it ran 17:08-18:08 and was dead from
+18:08 until this tick relaunched it at ~19:34, a ~86-minute gap. "Process missing" has
+stopped being an anomaly signal for the same reason "the watcher fired" did.
+
+Rotated to `stallwatch-20261020T1934Z` per the trigger; relaunched and **verified with a
+separate ssh** (2 procs, empty new dir). **Still not retuned** — that rule stands, and the
+fix is a judgement about capture budget vs threshold that belongs with the owner.
+**THREE UNREAD POST-RECOVERY ARCHIVES NOW.**
+
+### Live state
+
+```
+CEILING ABORTS 1,540,966 -> 1,540,966    UNCHANGED, third hour      NO NEW EVENT
+CAPPED/hour  16: 598   17: 613   18: 607        LAST CAPPED 19:07:01
+heap 1663MB | turns/game 53.6 | g/min now 424.1 | goroutines 18 | health 200 | log lag ~6s
+VmSwap 426,708 (-4 kB) | pswpout UNCHANGED | proxy 2.56 -> 2.60 GB | VmHWM unchanged, 9th tick
+CPU +1,610,269 jiffies / 67.5 min = 99% of four cores
+```
+
+**CAPPED has been flat at 598/613/607 for three hours** — stable, and still at the top of
+the 445-583 healthy band while total games run ~37% below healthy.
+
+**(0c) condition re-checked and still met** (floor 1,362-1,578 vs the <=6,200 bar; peak
+1,893 vs <6,600; proxy +40 MB, effectively flat). **Heap profiles remain PERMITTED.** None
+taken — nothing has changed against the r226 baseline worth re-measuring.
+
+**(0j) ALLOC SPIKE fired at 19:19:34**, verdict text
+`alloc 8905MB vs 8821MB prev (+1%), games 97 vs 133 prev (-27%): DENOMINATOR FELL — fewer
+games completed, check for a SLOW GAME`. **Third consecutive self-diagnosed denominator
+artifact.** `depth_cap` 838,637 -> **883,918**; `total_cap` still **15,792**;
+`sba_max_passes` 5,320 -> **5,419**.
+
+### Item (13): still not done — third tick, and the reason is unchanged
+
+The cross-era design from r228 is still the only one available and still needs its
+effect-size bar set before any profile is pulled. **It did not get designed this tick
+either.** What this tick added instead: a genuine replication of the wall, a replication
+of (6) with growing counts, and a code-verified explanation of the watcher's behaviour.
+Those were worth the window, but **(13) has now slipped three ticks and that is the thing
+to do first next time**, before any further measurement.
