@@ -4942,3 +4942,140 @@ retuned** (breaks comparability with every prior capture).
 `percard_dispatch_depth_cap` 776,400 -> **776,473**; `percard_dispatch_total_cap` still
 **15,792**; `sba_max_passes` 3,970 -> 4,263. Populations NOT re-read — the CAPPED stream
 is frozen. CPU profiles read: 28 of 1,097. Goroutine dumps read: 39 of ~1,100.
+
+---
+
+## 41st amendment (r222) — THE BOX IS SWAPPING, and my own READ 0 was cutting the line that said so
+
+### The new fact, and an instrument gap of my own making
+
+```
+VmRSS   8,711,204 kB (r221)  ->  5,104,712 kB   (-3.6 GB)
+VmSwap                            3,838,276 kB   <- 3.84 GB OF THE PROCESS IS ON DISK
+Swap    3,816 of 4,095 MB used = 93%,  279 MB free
+heap=8442MB (UP from 8193) | sys 13,594 static | VmHWM 9,762,364 kB unchanged
+RssAnon 5,116,632 kB | RssFile 19,880 kB
+```
+
+**This explains RSS < HeapAlloc exactly**, which is otherwise impossible: 5.14 GB resident
++ 3.84 GB swapped ~ 8.98 GB against a reported heap of 8,442 MB. Nothing was freed; the
+kernel moved it to disk.
+
+**The instrument gap is mine.** READ 0 has run `free -m | head -2` for this entire
+incident. That prints the header and the `Mem:` row and **cuts the `Swap:` row**. I have
+been one line short of this fact for days, while quoting "available" as though it were
+the safety margin. **The brief's READ 0 is corrected to `free -m | head -3`.** This is
+the same family as r215 (the disproof already on screen) with the sign flipped — there
+the number was printed and unread; here it was one row below where I cut.
+
+**Consequence worth stating for the owner:** the box's real headroom is thinner than
+"9,598 MB available" suggests, because 3.84 GB of swap is already consumed and only
+279 MB of swap remains.
+
+### But the alarming number is a LEVEL, and the RATE is zero
+
+Measured over a clean 60-second interval:
+
+```
+pswpout     1,029,723 -> 1,029,723      0 pages/min   <- NOTHING being written to swap
+VmSwap      3,836,612 -> 3,833,496 kB   -3,116 kB/min <- slightly DRAINING
+pgmajfault     30,468 ->    30,643      175/min
+pswpin         54,210 ->    55,113      903/min = 3.5 MB/min
+/proc/pressure/io      some avg10=0.00  full avg10=0.00
+/proc/pressure/memory  some avg10=0.00  full avg10=0.00
+```
+
+**Swapping is not in progress. The 3.84 GB is cold** — pages pushed out at some earlier
+point and not being touched since. The box is **not thrashing**: IO and memory pressure
+both read 0.00 at avg10, and 3.5 MB/min of swap-in is negligible.
+
+Had I reported the 93% figure without measuring the rate I would have published "swap is
+filling", which is false. **Measure the rate, not just the level** — and note that a cold
+3.84 GB in swap is consistent with freed-but-unreturned heap that GC does not scan, which
+is why it is not being faulted back.
+
+**I cannot date the swap onset** — my own logs do not contain it, for the reason above.
+It is not attributable to the 10:30 break without evidence I do not have.
+
+**An error caught before it was quoted.** I first read `/proc/<pid>/stat` field 10 as
+`majflt` and got 1,309,871/min, which would have been catastrophic. **Field 10 is
+`minflt`** (fields are pid, comm, state, ppid, pgrp, session, tty_nr, tpgid, flags,
+minflt, cminflt, majflt, ...). Minor faults at that rate are ordinary for a busy
+allocating Go process and involve no disk. Read the field index before quoting the number.
+
+### The second rise decelerated — and I am NOT calling it settled
+
+```
+10-min floor  10:3 7228  10:4 7682  10:5 7727  11:0 7882  11:1 7913
+              11:2 7895  11:3 7754  11:4 7925  11:5 7935  12:0 8116
+10-min peak   8393 8358 8516 8603 8614 8569 8684 8651 8665 8470   sys 13,594 throughout
+
+r221 window 10:30-11:10 HELD FIXED   +942.0 +/- 256.7 MB/h (n=5)  drop-last +1204.2 +/- 359.1 (n=4)  REPRODUCES
+SECOND RISE 10:30-12:00 extended     +376.4 +/- 100.7 MB/h (n=10) drop-last  +362.4 +/- 125.8 (n=9)
+11:10-12:00 only (post-r221 bins)    +223.9 +/- 147.8 MB/h (n=6)  drop-last   +44.4 +/- 161.0 (n=5)
+```
+
+The r221 window reproduces exactly at its own span — **consistency check passes for the
+second tick running**. Extending it, the rise is **steep for its first 40 minutes and
+much shallower since**; the last six bins alone are not distinguishable from zero.
+
+**This is explicitly NOT a closure, and it is not the withdrawn "growth is decelerating"
+claim returning.** That withdrawn item was a global statement about the long-run slope.
+This is a bounded within-window observation with its fits printed. **One tick ago I
+called five flat bins an equilibrium and it broke twenty minutes later; six shallow bins
+licenses nothing.** Regime D stays open.
+
+### Live state
+
+```
+aborts  1,007,393 -> 1,121,386     per-min  hr09 3,126 | hr10 2,780 | hr11 2,427 (-12.7%)
+                                   direct 60s measurement: 2,494/min
+CAPPED/hour  07:14  08:8  09:3  10:4  11:1        LAST CAPPED 2026/10/20 11:52:18
+health 200 | pprof 200 | goroutines 28 | EXITED 2 = 7 | heap-delta aborts = 22
+```
+
+Output has fallen again: **1 CAPPED game in hour 11.** Aborts continue to taper.
+No time-to-anything quoted.
+
+**(0c) RULING: heap profiles remain PROHIBITED**, and the case is now stronger, not
+weaker: a ~1 GB profile against 279 MB of free swap and a heap already over the ceiling.
+**The 10:30 break remains characterised but not explained**, and the instrument that
+would explain it is still the one ruled out.
+
+### Item (13): zero-blocked pinned at the full archive
+
+r221 found 0 blocked in 39 dumps from one directory. **Pre-registered: the result holds
+across all 23 directories and ~1,100 dumps; kill criterion is any directory showing a
+meaningful blocked fraction.** Aggregated server-side with awk, zero production cost.
+
+```
+23 directories | 1,099 dumps | 5,280 engine-goroutine observations
+runnable  4,209   79.716%        3.83 per dump  (= the 4 workers)
+sleep     1,069   20.246%        0.97 per dump  (a timer)
+BLOCKED       2    0.0379%       one `IO wait`, one `sync.RWMutex.Lock` — both singletons
+```
+
+**The kill criterion did not fire.** Across three eras, four binaries and 1,099
+instantaneous samples, engine goroutines are blocked in **2 observations out of 5,280**.
+**Lock contention and IO blocking are excluded as explanations of the slow state**, now
+at a sample size that can carry the claim rather than merely suggest it. This is a 28x
+widening of r221's result and it strengthened rather than softened.
+
+**The binding scope limit, stated up front.** Every archived dump predates the swap
+condition — the newest directory is `stallwatch-20261020T0656Z` and the live watcher
+holds 0 files. **So this says nothing about the present regime.** A goroutine stalled on
+a major page fault is `running` to the Go scheduler while the CPU waits on disk, so
+neither this result nor r220's equal-CPU result describes a swapping process. **The
+characterisation covers 10/18-10/20 06:56 and stops there.**
+
+### Standing
+
+**(6) 600s wall VACUOUS for the seventh tick** — `deadlines=` 38 unchanged, **0 games
+>=590s**. Not a pass.
+**(0d) Watcher blind for the fifth tick** — 0 files, 2 procs, trigger `g/min<760` against
+~2,400. **Not rotated** (no trigger applies) **and not retuned** (breaks comparability).
+**(0j) No ALLOC SPIKE line since 06:00:04**; verdict text unchanged.
+`percard_dispatch_depth_cap` 776,473 -> **776,475**; `total_cap` still **15,792**;
+`sba_max_passes` 4,263 -> **4,440**. Populations NOT re-read, CAPPED stream frozen.
+**CPU profiles read 28 of 1,097; goroutine dumps now 1,099 of ~1,099 for STATE
+(frame-level still unattempted and still underpowered per dump).**
