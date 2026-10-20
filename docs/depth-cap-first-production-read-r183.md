@@ -4618,3 +4618,197 @@ archives    23 dirs, 247 MB. ONE now read. 22 remain.
 ```
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+
+---
+
+## 39th amendment (r220) — the r219 ActivateAbility attribution is REFUTED; equal-CPU survives and strengthens
+
+### Live state: the ceiling equilibrium is HOLDING on heap, DEEPENING on output
+
+Event 2 has now run ~3h20m in the abort loop (ceiling first fired 06:53:57Z).
+
+```
+aborts cumulative   593,272 (r219)  ->  835,657 (r220)
+aborts per minute   hour 07  3,397   hour 08  3,350   hour 09  3,126     (-8.0% 07->09)
+CAPPED per hour     hour 07     14   hour 08      8   hour 09      3
+CAPPED/10min 09     0 0 2 0 1 0            LAST CAPPED 2026/10/20 09:47:26
+health 200 | pprof 200 | EXITED 2 = 7 (unchanged) | heap-delta aborts = 22 (unchanged)
+```
+
+Heap floor per 10-min bucket, the equilibrium window:
+
+```
+07:0 6385  07:2 6318  07:4 6924  08:0 6956  08:2 6968  08:4 6987
+09:0 7218  09:2 7220  09:4 7196  10:0 7195        peak pinned 7526-7568 throughout
+fit over 09:00-10:10:  -13.1 +/- 25.7 MB/h   (n=7)    drop-last-bin -20.1 +/- 35.9 (n=6)
+```
+
+**The heap floor is not distinguishable from flat.** Regime D's second sub-regime
+(equilibrium) is therefore CLOSED as flat, and the earlier rise (06:53 -> ~09:00,
+6,385 -> ~7,200) is the approach to it, not a continuing trend. Peak is pinned in a
+40 MB band. sys static at 11,796 MB.
+
+`VmRSS 8,162,316 kB`; `VmHWM 8,605,700 kB` — **a new high, ~+400 MB over r219**, while
+the heap floor was flat. RSS and HeapAlloc have decoupled. Box has 267 MB free but
+6,712 MB available (6.8 GB in buff/cache) — not an OOM approach.
+
+**Aborts and CAPPED are BOTH declining.** That is not recovery: it is less total work
+of both kinds. Output is at ~0.7% of the 445-561/hour norm and still falling.
+No time-to-anything is quoted; only "if this rate holds".
+
+**(0c) RULING: heap profiles remain PROHIBITED.** Headroom against the 6,442 MB ceiling
+is NEGATIVE (floor ~7,195). A profile allocates ~1 GB here.
+
+**(6) The 600s wall is VACUOUS for the fifth tick**, as predicted at r217 and confirmed
+r218/r219. `deadlines=token_create:28,stack_drain:4,trigger_drain:3,turn_phase_boundary:3`
+= 38, unchanged; games reaching >=590s in the current log: 0. Not a pass.
+
+**(0d) The watcher is blind for the third tick running** — 0 files, 2 procs, trigger is
+`g/min < 760` and g/min reads ~3,150. Deliberately NOT rotated and NOT retuned: no
+rotate trigger applies and retuning mid-incident destroys comparability.
+
+**(0j) ALLOC SPIKE: no new line since 06:00:04.** Last verdict text unchanged:
+`84.8 MB/game vs median 55.4 (1.53x) [... neither side moved much]`. The emitter needs
+completed games and there are almost none.
+
+### The headline: r219's attribution was wrong, and the larger sample says why
+
+r219 concluded, from 4 profiles (2 slow, 2 fast, consecutive minutes within each state),
+that **the slow state is activated-ability resolution inside the instant-priority /
+stack-drain machinery**. I flagged the n=2-episodes limit at the time. Testing it
+properly refutes the specific attribution.
+
+The archive is far richer than assumed: **1,097 CPU profiles across 23 directories, and
+every one can be labelled** by joining its timestamp to the 10-min median `g/min` bucket
+from `server.log`.
+
+**Pre-registered before running pprof:**
+- **P1** — across >=6 well-separated episodes, `ActivateAbility` cum% is higher when slow
+  than fast, with **no overlap** (r219: slow 26.6-33.0, fast 7.3-9.7).
+- **P2** — total CPU within +/-5% between groups.
+- **P3** — a slow episode from the **healthy era** sits in the slow range and a healthy
+  fast episode in the fast range. If healthy-era slow looks like fast, the event-2 slow
+  state is a *different* state and r219 is event-specific.
+- **Kill criterion** — any fast episode exceeding any slow episode kills "no overlap".
+
+#### Arm 1 — 12 singleton episodes, 10/18 13:02 -> 10/20 05:26, g/min 280 -> 911
+
+Build IDs had to be checked first, and it mattered: **three of the 10/18 draws are
+different binaries** (`dff11a12`, `73f8ed82`, `bbcef8f0`) and are reported separately as
+build-confounded. Nine profiles share the current `d463a22e`.
+
+```
+label      g/min   era  build  totCPU  runInstPri  DrainStack  ActivateAb   CastSpell  StateBasedA  gcBgMark
+S1-ev1     280.2   ev1   d463   79.77       51.64       50.17       26.69       26.73        14.49     12.57
+S2-ev1     289.4   ev1   d463   79.77       44.50       42.41       23.04       22.85        12.44     10.03
+S3-ev1     293.0   ev1   d463   79.72       26.09       24.52        4.30       23.29        13.30      9.17
+S4-ev2     334.1   ev2   d463   79.69       44.03       41.59       18.47       27.05        14.61     13.03
+S5-ev2     354.9   ev2   d463   79.58       25.31       22.92        5.53       21.60        15.81     10.76
+Sh-heal    437.9  heal   d463   79.72       57.43       54.68       53.30        4.94        15.88      5.18
+F5-ev2     472.9   ev2   d463   79.17       34.27       31.97        8.17       28.67        21.36     13.19
+F4-rec     780.4   rec   d463   79.47       32.62       28.95        9.98       23.35        18.98      8.44
+F3-heal    806.8  heal   d463   79.61       38.56       34.37       32.76        7.27        23.05      7.31
+--- different binaries, build-confounded, reported for completeness only ---
+F6-heal    899.9  heal   dff1   79.47       15.84       12.33        9.45       10.57        28.68      4.98
+F1-heal    901.9  heal   73f8   79.48       17.39       14.47       11.40       10.72        30.56      5.49
+F2-heal    911.0  heal   bbce   79.47       18.17       14.50       12.21        9.79        31.11      5.84
+```
+
+**P1 is REFUTED and the kill criterion fired.** `S3-ev1` at 293 g/min reads
+ActivateAbility **4.30%** — lower than every fast profile. `F3-heal` at **807 g/min**
+reads **32.76%**, squarely inside r219's "slow" range. There is no separation; across
+windows the sign inverts.
+
+**P3 is REFUTED in the same stroke.** The two healthy-era same-binary profiles
+(`Sh-heal` 437.9 and `F3-heal` 806.8) both show high ActivateAbility and *low* CastSpell
+(4.94 / 7.27, against 21.6-28.7 everywhere else) despite sitting at opposite ends of the
+throughput range. They resemble **each other**, not their throughput class.
+
+**P2 is CONFIRMED, and this is now the strongest result in the file.** Total CPU is
+**79.17-79.81s in all 16 profiles** — a 0.80% spread — across 3 eras, 4 binaries and a
+**3.25x range of throughput**. The box is always ~398% of 4 cores. It never idles,
+never waits, never stalls. Whatever the slow state is, it is not an absence of work.
+
+#### Arm 2 — the paired test that explains the r219 error
+
+The failures above are all *across* windows and the successes *within* one, so: eight
+slow/fast pairs, each drawn from inside a single archive directory, all `d463a22e`.
+Pre-registered: slow>fast in all 8 if real; ~4/8 under the null; sign test 8/8 p=0.004,
+7/8 p=0.035.
+
+```
+window        gS     gF   gap   totS   totF  runInstPri  DrainStack  ActivateAb  CastSpell  StateBasedA  gcBgMark
+1019T1157  437.9  827.0   99m  79.72  79.31      +36.55      +37.83      +38.32      -3.67        -9.99     -1.79
+1019T1805  412.4  794.0   99m  79.17  79.58       +2.65      +19.57       +2.40      -1.68       -16.41     -4.29
+1019T1915  280.2  650.6   29m  79.77  79.47      +34.56      +34.84      +15.81     +15.90       -17.28     +3.67
+1020T0112  435.4  780.4   29m  79.64  79.47       -2.13       -1.44       -2.99      +1.79        -0.47     -0.42
+1019T1350  606.7  811.8   45m  79.63  79.64       +9.13      +24.53       +8.12      -0.80       -10.64     -3.07
+1019T1551  603.2  806.8    7m  79.55  79.61       -2.05       -1.26       -1.58      -0.03        -0.26     -0.33
+1020T0424  334.1  472.9   10m  79.69  79.17       +9.76       +9.62      +10.30      -1.62        -6.75     -0.16
+1020T0523  328.4  477.2   31m  79.81  79.59      +21.79      +19.17      +21.52      -3.66        -5.80     +0.36
+-----------------------------------------------------------------------------------------------------------------
+SIGN slow>fast                                       6/8         6/8         6/8        2/8          0/8       2/8
+one-sided sign p                                   0.145       0.145       0.145      0.965        1.000     0.965
+median diff (pp)                                   +9.45      +19.37       +9.21      -1.21        -8.37     -0.37
+```
+
+**ActivateAbility reaches 6/8, p=0.145 — it does NOT clear the pre-registered bar.**
+The direction survives; the claim does not. **I am not softening the bar after seeing
+the data: this is a negative result.**
+
+**Why r219 was fooled, quantified.** ActivateAbility ranges 4.30-53.30% across the nine
+same-binary profiles — a between-window SD of **15.90 pp** against a within-pair median
+effect of **+9.21 pp**. The noise is **1.7x the signal**. Two profiles from one window
+compared against two from another, 30 minutes apart, cannot distinguish them. A 20-second
+CPU profile is dominated by **which games happened to be running**, and the game mix
+drifts on a timescale of hours.
+
+#### What actually separates: StateBasedActions, at 0/8
+
+**`StateBasedActions` is LOWER when slow in all eight pairs** (sign p=0.004, median
+−8.37 pp), and it is monotone in throughput across the singletons as well
+(14.49 -> 23.05 over 280 -> 807 g/min).
+
+**This is a marker, not a mechanism, and must not be sold as one.** SBA work is
+proportional to game *progress*; completing fewer games necessarily means running fewer
+state-based-action passes. SBA share falling when slow is close to a restatement of the
+slow state's definition. Its value is that it is the one path that behaves *reliably*,
+so it is a usable state label — unlike ActivateAbility.
+
+Note this also **inverts the reading I gave at r219**, where SBA being lower when slow
+was offered as evidence *against* state-based actions mattering. It is neither for nor
+against; it is the progress counter.
+
+#### What survives, stated at its real strength
+
+1. **Total CPU is invariant to throughput.** n=16, 0.80% spread, 3.25x throughput range,
+   4 binaries. The slow state is not idling, blocking, or waiting.
+2. **CPU moves out of progress-proportional work and into the priority/stack-drain loop
+   when slow** — `DrainStack` median +19.37 pp, `runInstantPriorityAPNAP` +9.45 pp, both
+   6/8. **Directional only; p=0.145; not significant.**
+3. **NOT GC — a fourth independent refutation.** `gcBgMarkWorker` is 2/8, i.e. *lower*
+   when slow in six of eight pairs, median −0.37 pp.
+4. **NOT more spellcasting.** CastSpell 2/8, median −1.21 pp.
+
+#### Withdrawn at r220
+
+- **"The slow state is activated-ability resolution inside the instant-priority /
+  stack-drain machinery"** (r219 headline) — the ActivateAbility attribution is withdrawn.
+  What remains is a weaker, non-significant statement about the stack-drain loop as a
+  whole.
+- **"ActivateAbility 3.4x, cleanest separator, no overlap"** — withdrawn; the overlap is
+  total across windows.
+- **"StateBasedActions lower when slow" as evidence against SBA mattering** (r219) —
+  withdrawn; it is a progress counter.
+- The connection drawn at r219 between this result and `percard_dispatch_depth_cap` /
+  item (6b) is **suspended**, since the finding it rested on did not replicate.
+
+#### Carried forward
+
+`percard_dispatch_depth_cap` is at **776,400** (was 750k+); `percard_dispatch_total_cap`
+still static at **15,792** since 22:13 10/19. `capswallow games:24411` frozen with the
+CAPPED stream. The populations were NOT re-read — the stream added ~0 games.
+
+**Still unread: all 1,097 goroutine dumps (`goro`/`goro2`) across the 23 directories.**
+The CPU-profile corpus is now 28 of 1,097 read.
+
