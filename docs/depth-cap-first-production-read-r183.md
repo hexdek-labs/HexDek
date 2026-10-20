@@ -5501,3 +5501,148 @@ retuned; no rotate trigger applies (files 12 < 120).
 Populations and guard counters are readable again but **NOT re-read this tick** — the
 CAPPED stream has only just restarted and an immediate re-read would be the same data
 relabelled.
+
+---
+
+## 45th amendment (r226) — full recovery to the pre-incident baseline; and my 600s gate was measuring nothing for nine ticks
+
+### The instrument failure, first
+
+For nine consecutive ticks I reported **"0 games >=590s"** and read it as "vacuous — games
+cannot reach the limit during an abort loop". **The grep could never have returned
+anything else.**
+
+```
+my test:        grep 'grinder: CAPPED GAME' | grep -oE 'dur=[0-9]+' | awk '$2>=590' | wc -l
+actual line:    grinder: CAPPED GAME 0.4s turns=78 seed=... swallowed=2 cascademax=2 ...
+```
+
+**There is no `dur=` field on a CAPPED line.** The duration is a bare `<N>s` token. The
+grep matched zero lines by construction, and `wc -l` dutifully printed 0.
+
+**And even with the right field it could not have worked**, because a CAPPED game is by
+definition capped: **max CAPPED duration across the whole log is 449.5s.** A capped game
+can never be >=590s. **That figure has been sitting in section (2) of my own brief —
+"MAXIMA: ... capped dur 449.5s" — in every tick prompt while I reported CAPPED games over
+590s as zero.** Second tick running that the disproof was in my own materials (r225: the
+abort counter; here: the maxima line).
+
+**The 38 banked at r215 came from `SLOW GAME` lines, not CAPPED.** Measured correctly:
+
+```
+SLOW GAME durations >=590s:   10/18: 28    10/19: 33    10/20: 8     max 3,102.6s
+deadlines=token_create:30, stack_drain:5, trigger_drain:3, turn_phase_boundary:3  =  41
+guards=game_deadline:41
+33 (10/19) + 8 (10/20) = 41  ==  41
+```
+
+**The gate matches again, and this time it is a real pass, not a vacuous one** — the
+first since r215, on a live window where games are completing. The deltas reconcile too:
+r215 banked 33+5 = 38 against `deadlines=38`; the +3 since (token_create +2, stack_drain
++1) matches the 10/20 count going 5 -> 8. **(6) is GREEN at 41/41.**
+
+### The recovery is complete — back to the pre-incident baseline
+
+There was a **second** collapse, at 15:10, which I had not seen at r225:
+
+```
+10-min  floor  peak   turns/game
+14:3     8115  9037      10.0     <- abort loop
+14:4     6154 10292      17.0     <- first collapse (r225)
+14:5     6205  6558      28.2
+15:0     6036  6565      23.9
+15:1     1504  6331      49.4     <- SECOND collapse, -4.5 GB
+15:2     1499  1702      54.5
+15:5     1393  1705      54.6
+16:0     1390  1703      54.5  (n=17, partial)
+
+FLOOR 15:20-16:00  -166.8 +/- 24.5 MB/h (n=5)  drop-last -205.8 +/- 16.8   <- FALLING, significant
+PEAK  15:20-16:00   +19.8 +/- 92.7 MB/h (n=5)  drop-last  +73.2 +/- 151.5  <- flat
+```
+
+**The floor is now 1,390-1,499 MB, which is the regime-C baseline band (1,364 / 1,379 /
+1,450) from early 10/19 — i.e. the pre-event-1 level.** Amplitude ~313 MB against ~800
+during the loop. The floor is still *falling* significantly; the peak is flat.
+
+```
+CAPPED/hour  11: 1   12: ZERO   13: 1   14: 96   15: 480     LAST CAPPED 15:59:33
+aborts 1,534,793 -> 1,540,966  = +6,173 in an hour (was +132,781)
+heap=1476-1658MB | sys 13,600 | goroutines 18 | health 200 | log lag ZERO (15:59:43 vs 15:59:43)
+CPU: utime+stime +1,371,201 jiffies / 62 min = 369% of one core = 92% of four
+```
+
+**CAPPED hour 15 = 480 is inside the healthy band** (445-583 earlier the same day).
+
+**`turns/game` = 54.6, and I checked it rather than reporting it as an anomaly.** Hours
+03-06 the same day ran 55.4 / 55.3 / 55.5 / 51.5. **54.6 is the normal value**, not a new
+symptom. The 10.0 readings during the loop were the turn-10 abort.
+
+### Swap and the proxy
+
+```
+pswpout  1,098,466 -> 1,098,466   EXACTLY UNCHANGED — nothing written out all hour
+pswpin     511,895 ->   538,532   +26,637 pages = 104 MB read back
+VmSwap   1,300,972 ->   426,712 kB   = -854 MB      SwapFree 2,757 -> 3,611 MB
+VmRSS    6,925,540 -> 2,279,288 kB   = -4.5 GB      VmHWM 9,762,364 unchanged (6th tick)
+RssAnon + VmSwap:  8.82 (r224) -> 7.83 (r225) -> 2.56 GB   available 12,574 MB
+```
+
+The proxy has fallen **5.3 GB in two hours**. Headroom against the 6,442 MB ceiling is
+**5,052 MB**, against +107 MB at r225.
+
+### (0c) RULING: the pre-registered condition is met — heap profiles are PERMITTED
+
+The condition set in advance at r225 was: *floor near or below ~6,200, peaks under
+~6,600, proxy flat-or-falling*. Floor is **1,390**, peak **1,703**, proxy **down 5.3 GB**.
+**Met with ~5x the required margin, and decided against the stated condition rather than
+a new one invented after seeing the data.**
+
+**A clean inuse baseline was captured** — `~/heap-baseline-20261020T1610Z.pb.gz`, 11.9 MB.
+**Every heap/alloc profile in this investigation was taken during an event; this is the
+first control.**
+
+```
+inuse_space total 1,119.16 MB
+  430.34MB 38.45%  os.readFileContents                      <- static corpus, loaded once
+   85.54MB  7.64%  deckparser.CloneLibrary
+   79.04MB  7.06%  deckparser.buildCard
+   67.03MB  5.99%  gameengine.resolvePermanentSpellETB       (113.56MB cum)
+   54.51MB  4.87%  gameengine.(*ReplEvent).SetCount
+   49.01MB  4.38%  gameengine.BaseCharacteristics
+      35MB  3.13%  gameengine.NewReplEvent
+```
+
+**Working heap is ~690 MB once the 430 MB static corpus is excluded.** The ReplEvent
+machinery is ~90 MB = **8% of inuse** — a consistency check on the standing (0h) claim
+("71.7% of alloc, ~10% of inuse, IT IS CHURN"), and it passes.
+
+**The profile cost +10 MB of heap and +32 MB RSS, not the ~1 GB I had budgeted.** That
+~1 GB figure came from a `debug=1` goroutine dump with event-sized stacks, and I had been
+applying it to binary heap profiles too. **The cost estimate was era-specific and I never
+re-derived it.** On a healthy process a heap profile is nearly free.
+
+### The watcher: rotated, trigger applied
+
+200 files, which trips the documented `files>120` rotate trigger. Rotated per procedure:
+`pkill -f 'stallwatch7[.]sh'`, `mv ~/stallwatch ~/stallwatch-archive/stallwatch-20261020T1611Z`,
+`mkdir`, relaunch backgrounded, **verified with a separate ssh** — 2 procs, new dir at 2
+files. **`stallwatch-20261020T1611Z` holds 60 CPU profiles and is the first post-loop,
+post-swap capture in existence.** It is now stable on disk and is next tick's top job;
+reading it mid-write was the reason not to at r225.
+
+### What is NOT claimed
+
+**Regime D is still not closed.** The heap is at baseline and the floor is falling, which
+is the most favourable reading available — and closing a regime on a favourable window is
+precisely the r220 error. Two memory events occurred within 24 hours with no established
+cause; nothing here explains why either started or why both ended.
+
+The `ALLOC SPIKE` emitter fired again at 15:55:32, first line since 06:00. **Its own
+verdict text:** `alloc 12574MB vs 11560MB prev (+9%), games 143 vs 232 prev (-38%):
+DENOMINATOR FELL — fewer games completed, check for a SLOW GAME`. Median 55.4 -> 50.6.
+**The line diagnoses itself as a denominator artifact — not an alarm.**
+
+`percard_dispatch_depth_cap` 776,484 -> **797,574**; `total_cap` still **15,792**
+(static since 22:13 10/19); `sba_max_passes` 4,712 -> **5,198**. `SLOW GAME` lines are
+back (1,775 total). Populations **not re-read** — the stream restarted ~90 minutes ago and
+a read now would be mostly the old population relabelled.
