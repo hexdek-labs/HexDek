@@ -5223,3 +5223,158 @@ This is still why no post-swap dumps or profiles exist.
 **(0j) No ALLOC SPIKE line since 06:00:04**; verdict text unchanged.
 `percard_dispatch_depth_cap` 776,475 -> **776,484**; `total_cap` still **15,792**;
 `sba_max_passes` 4,440 -> **4,712**. Populations NOT re-read, CAPPED stream frozen.
+
+---
+
+## 43rd amendment (r224) — THE LOG WENT SILENT AT 13:57:12. The workers are alive and the 600s deadline has failed to fire.
+
+### The new state: process alive, output channel dead
+
+```
+LAST LINE OF server.log (any kind):  2026/10/20 13:57:12   ~50 minutes before this read
+LAST grinder STATUS line:            2026/10/20 13:56:56   "2498721 games"
+LAST CAPPED:                         2026/10/20 13:03:19   UNCHANGED from r223
+pid 322631 alive (etime 2-09:20) | health 200 | pprof 200 | goroutines 20-39
+```
+
+**This is NOT the known hang.** That signature is health 000 with an unchanged pid. Here
+the HTTP layer answers normally and the process is burning CPU — it has simply stopped
+emitting anything at all: no status lines, no aborts, no CAPPED, no `anomaly:` lines.
+
+**The boring explanation was tested first and killed.** A rotated log looks exactly like
+this. It is not that:
+
+```
+server.log inode 138425, mtime 13:59:52, size 953,075,383   (no .1 / .gz siblings)
+/proc/<pid>/fd/1 -> /home/josh/hexdek/server.log
+/proc/<pid>/fd/2 -> /home/josh/hexdek/server.log
+df: 157 GB free, 30% used
+```
+
+Same inode, both descriptors still pointed at the live file, disk fine. The file mtime
+(13:59:52) is ~2.5 min after the last line, which is the final buffered flush. **Nothing
+has been written since.**
+
+### What the workers are actually doing — they are running, not stuck
+
+Two live goroutine dumps. **This costs nothing extra: READ 0 already makes the server
+generate a goroutine profile every tick; reading the body instead of `head -1` is free.**
+Heap profiles remain prohibited; this is not one.
+
+`debug=2` state census, 20 goroutines:
+
+```
+8 [runnable]   3 [chan receive]   2 [select, 2268 min]   1 [syscall, 2268 min]
+1 [sleep]      1 [select]         1 [select, 48 min]     1 [running]   2 [IO wait]
+```
+
+**Nothing is blocked on a mutex.** Top engine frames, and they *change between samples* —
+the workers are progressing through code, not wedged on one instruction:
+
+```
+goroutine 34 [runnable]  gameengine.FireZoneChange
+goroutine 35 [runnable]  gameengine.NormalizeEventSingle
+goroutine 36 [runnable]  gameengine.MaybeDredgeReplaceDraw
+goroutine 24 [runnable]  hexapi.writeAllocProfile
+goroutine 37 [runnable]  huginn.readJSON
+```
+
+An earlier sample caught three different stacks, each a full game-in-progress:
+
+1. `runGrinder -> runOneGameFast -> TakeTurn -> CombatPhase -> FireCardTrigger ->
+   fireTrigger -> PushPerCardTrigger -> PriorityRound -> GetResponse -> ChooseResponse ->
+   classifyDecision -> isHighStakesDecision -> gameStatePressure -> effectiveBoardPower ->
+   survivabilityMultiplier -> HasKeyword`
+2. `TakeTurn -> takeTurnImpl -> ScanExpiredDurations -> SweepOrphanedInstanceIDs ->
+   collectPresentInstanceIDsForSweep`  — **this is backlog item (22), "unsized"**
+3. `runLoop -> runOneGame -> takeTurnImpl -> runMainPhase -> tryCastCommander ->
+   PriorityRound -> OppRestrictsDefenderToSorcerySpeed -> strings.Contains`
+   — **this is backlog item (20), the `strings.Contains` tax**
+
+**A caution I nearly got wrong:** the `[select, 48 minutes]` goroutine looked like a smoking
+gun matching the 13:57 silence. It is `auth.RunSessionGC.func1` — a routine timer. Checked
+before reporting. It means nothing.
+
+### The finding: the 600s wall has failed, live
+
+`perGameWallClock = 10 * time.Minute`. **No game has completed or aborted in ~50 minutes**
+across three or four workers. So at least one game per worker has run **~5x past its
+deadline without being terminated.**
+
+The mechanism is item (6), observed directly rather than inferred. `CheckGameDeadline` is
+called at exactly four sites (`turn_phase_boundary`, `token_create`, `trigger_drain`,
+`stack_drain`). **None of the stacks above is at a check site** — they are in AI
+evaluation, in an orphan-ID sweep, and in a substring scan. A turn that does not reach a
+check site cannot be interrupted, and `EndGameAsLoopDraw` cannot preempt an executing turn.
+
+**For eight ticks I have reported the 600s wall as "vacuous — games cannot reach 590s
+during an abort loop". That framing is now obsolete.** Games are not merely failing to
+reach 590s; they are blowing 5x past it undetected. I cannot read `deadlines=` to confirm
+the counter, **because the counter only appears in the status line that has stopped** —
+so this is argued from the stacks and the silence, not from the guard counter.
+
+**Scope, stated plainly:** I have not proven these particular games would otherwise have
+aborted, and I have not proven a single root cause. What is established is that the
+interrupt mechanism sits outside the unit of work it is meant to interrupt, and that this
+is now costing 100% of output rather than three overruns of 271s/801s/1433s.
+
+### Swap reversed direction — and I am not swinging with it
+
+```
+pswpout  1,098,176 -> 1,098,176   EXACTLY ZERO pages written in the hour (was 68,453)
+pswpin      97,989 ->   122,442   +24,453 pages = +95 MB read back
+VmSwap   3,933,604 -> 3,834,632 kB   = -97 MB      SwapFree 191 -> 284 MB
+VmRSS    5,180,144 -> 5,437,596 kB   = +251 MB     VmHWM 9,762,364 unchanged (4th tick)
+```
+
+Last hour swap took 267 MB out; this hour it took **none at all** and gave 95 MB back.
+**I am not now declaring "swap is draining and fine"** — that is the r222 error with the
+sign flipped. One hour of fill, one hour of drain. The level is what matters and it is
+still 3.83 GB.
+
+This is consistent with the stall: workers spinning inside existing turns allocate far
+less new game state, so nothing needs paging out.
+
+**New instrument, forced by the outage: `RssAnon + VmSwap` is a heap proxy that still
+works when the grinder stops logging.** The `heap=` series died with the status line.
+
+```
+RssAnon + VmSwap:  8.67 GB (r223) -> 8.82 GB (r224)   +155 MB this hour
+```
+
+The process is still growing even with zero games completing.
+
+### Floor and peak, windows held fixed — and drop-last-bin earns its place
+
+```
+FLOOR 12:00-13:10 as quoted at r223     +95.9 +/- 66.5 MB/h (n= 8)  drop-last  +9.6 +/- 59.3
+FLOOR 12:00-13:10 with 13:1 COMPLETE    +59.4 +/- 52.7 MB/h (n= 8)  drop-last  +9.6 +/- 59.3
+PEAK  12:00-13:10 with 13:1 COMPLETE   +260.1 +/- 73.4 MB/h (n= 8)  drop-last +305.8 +/- 91.9
+FLOOR 12:00-13:40 (13:5 partial dropped)+93.7 +/- 28.6 MB/h (n=11)  drop-last +78.9 +/- 33.4
+PEAK  12:00-13:40 (13:5 partial dropped)+199.3 +/- 41.6 MB/h (n=11)  drop-last +199.9 +/- 51.0
+```
+
+**The r223 window moved when re-run, and the reason is instructive.** Its last bin (13:1)
+had n=10 then and n=20 now; the complete bucket has a lower floor. So the headline figure
+fell from +95.9 to +59.4 — **while the drop-last-bin figure is identical at +9.6 +/- 59.3,
+because that rule had already excluded the partial bin.** This is the first time the
+protection has visibly paid out, and it is the argument for quoting drop-last-bin first.
+
+Over the fuller window the floor is rising modestly but now significantly
+(+93.7 +/- 28.6, n=11) and **the peak is still rising about twice as fast** — the sawtooth
+continues to widen. **Regime D stays open.** The series simply ends at 13:57 and cannot be
+extended until the process logs again.
+
+**(0c) RULING: heap profiles remain PROHIBITED.** Unchanged and unaffected by the outage.
+The goroutine dumps used here are explicitly not heap profiles and are free at the margin.
+
+### Standing
+
+**(6) is no longer merely vacuous — see above. This supersedes the r217-r223 framing.**
+**(0d) Watcher blind for the seventh tick** — 0 files, 2 procs; trigger `g/min<760` cannot
+fire, and now there is no `g/min` at all. Not rotated, not retuned.
+**(0j) No ALLOC SPIKE line since 06:00:04** — but `hexapi.writeAllocProfile` was caught
+**runnable in the live dump**, so the emitter is executing; the newest file on disk is
+still `alloc-spike-20261020T055956Z.pb.gz`.
+`deadlines=`, `guards=`, populations: **UNREADABLE this tick** — all live only in the
+status line. Last known: `deadlines=` 38, `depth_cap` 776,484, `total_cap` 15,792.
