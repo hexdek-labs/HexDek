@@ -6178,3 +6178,110 @@ Not done, named for the next tick: **if GC assist is the throttle, raising `GOGC
 move the wall.** That is a production change and therefore an **OWNER CALL**, not
 something to do unilaterally. The cheap non-invasive version is to check whether
 `gcAssistAlloc` share tracks the hour-to-hour wall height across more windows.
+
+## 50th amendment (r231) — the GC-assist dose-response test FAILED, in the REVERSE direction
+
+### My own kill criterion fired against my own lead
+
+r230 proposed GC assist as the throttle behind the ~540 wall. **This tick's test was
+pre-registered before a profile was touched**, exactly as the brief required:
+
+> unit = one CPU profile; x = its own 10-min bucket median `g/min`; y = its
+> `gcAssistAlloc` cum% (0 when absent); population = post-recovery only, build
+> `d463a22e`. **Bar: Spearman rho <= -0.4 with p < 0.01.** If assist is the throttle,
+> lower throughput should come with MORE assist. A null kills the dose-response reading
+> but not the presence/absence result.
+
+**Sample:** 45 profiles drawn **bin-balanced** across the throughput range (10 per
+25-unit bin) rather than evenly from the sorted list — a first attempt at the latter put
+36 of 60 in one bin, because the post-recovery distribution is tight by nature.
+Bin-balancing maximises the predictor variance a correlation test needs. Range
+**271.1-504.1 g/min**. All 45 verified on `d463a22e`.
+
+```
+n=45 | total CPU 79.59 +/- 0.29 s | gcAssistAlloc present in 45 of 45 (100%)
+
+gcAssistAlloc vs g/min:  Spearman rho = +0.517   p = 2.78e-04   DOES NOT PASS
+mallocgc      vs g/min:  Spearman rho = +0.499   p = 4.89e-04   DOES NOT PASS
+
+binned mean assist%:   250: 7.88%   425: 9.29%   450: 9.13%   475: 9.51%   500: 10.11%
+```
+
+**The prediction failed, and it failed with a significant effect in the opposite
+direction.** I predicted rho <= -0.4; the data gives **+0.517**, monotone increasing —
+**assist share rises as throughput rises.**
+
+**That is worse for the hypothesis than a null would have been.** A null says "no
+relationship detected". A significant reverse relationship says the thing I called a
+brake behaves like a **consequence of doing more work**: more games completed per minute
+means more allocation, which means more assist. **This is the same "marker, not
+mechanism" trap as `StateBasedActions` at r223**, and I walked into it one tick after
+recording that rule.
+
+### What survives, what is damaged, and what this cannot settle
+
+**Survives (observation):** the cross-era presence difference is still a fact —
+`gcAssistAlloc` in 3/24 healthy profiles and now **45/45** post-recovery.
+
+**Damaged (interpretation):** the causal reading — "assist is the throttle producing the
+wall" — has evidence against it, not merely absent evidence. **I am withdrawing the
+mechanism claim from r230.** What I published one tick ago as "the first hypothesis whose
+prediction matches the wall" did not survive its own first test.
+
+**Cannot settle:** a throttle could still cap the *maximum* while workload drives
+variation *below* the cap — in which case within-regime correlation would be positive
+exactly as observed, and this test would be blind to it. **I am not using that as a
+rescue.** It is a real limitation of the design and the only thing that distinguishes
+the two readings is the invasive test: **if assist caps the wall, raising `GOGC` moves
+it.** That is a production change and remains an **OWNER CALL**.
+
+### Standing measurements
+
+```
+window            n     max    >550     p10    med     p90    <400
+20 HELD FIXED   120   553.2   0.8%    351.7  465.5   524.2   23.3%   REPRODUCES
+21 NEW          120   560.3   0.8%    308.5  468.0   522.8   40.0%
+ALL POST 15:20  832   560.3   0.2%    304.6  468.1   514.0   28.0%
+```
+
+**A SECOND crossing of 550.** Post-recovery is now **2 of 832 (0.24%), max 560.3** —
+against r230's 1 of 702. The wall is intact in substance (560 vs healthy's 978 and 95.8%
+above 550) but it is being nudged, and I am tracking the count rather than restating
+"essentially zero".
+
+**(6) REPLICATES WITH GROWING COUNTS — fourth tracked increment.**
+```
+deadlines = token_create:31 + stack_drain:7 + turn_phase_boundary:4 + trigger_drain:3 = 45
+guards=game_deadline:45      SLOW GAME >=590s: 10/19: 33 + 10/20: 12 = 45
+38 -> 41 -> 42 -> 45, counter and independent line-count agreeing at every step
+```
+
+```
+RESIDUAL hour 21: SLOW n=18, 1,194 worker-seconds -> occupancy 0.0829
+predicted = 905*(1-0.0829) = 830   actual median 468.0   RESIDUAL = -362
+```
+**-362 is the SHALLOWEST reading since the plateau era** (16: -393, 17: -410, 18: -409,
+19: -426, 20: -427). **That is an occupancy artifact, not an improvement** — hour 21
+carried a heavy slow-game load (8.3% vs 1.4-2.0% in most hours), which lowers the
+prediction. The actual median barely moved (465.5 -> 468.0).
+
+```
+FLOOR 15:20-21:00 HELD FIXED  drop-last +11.5 +/- 5.4   REPRODUCES
+PEAK  15:20-21:00 HELD FIXED  drop-last +17.5 +/- 3.8   REPRODUCES
+FLOOR 15:20-22:00 extended    drop-last  +9.1 +/- 4.6 (n=41)  2.0 SE
+PEAK  15:20-22:00 extended    drop-last +16.3 +/- 3.0 (n=41)  5.4 SE
+CEILING ABORTS 1,540,966 UNCHANGED, 5th hour | CAPPED 19: 511  20: 609  21: 513
+heap 1762MB | turns/game 55.5 | goroutines 18 | health 200 | log lag ~5s | CPU 100% of four
+VmSwap 377,984 UNCHANGED | pswpout UNCHANGED | proxy 2.61 -> 2.69 GB (+80 MB)
+depth_cap 931,823 | total_cap still 15,792 | sba_max_passes 5,599
+```
+
+Peak still rising faster than floor; both windows reproduce. **Peak 1,988 MB against a
+6,442 ceiling — watch item, not a forecast, no time-to-anything.** The proxy rose 80 MB,
+the first notable move in several ticks; noted, not interpreted.
+
+**(0c) condition re-checked and still met.** **(0w)** watcher budget-exhausted again
+(241 files, no procs) — rotated to make **28 archives**, relaunched, verified separately.
+
+**Hour 22 note:** only 3 SLOW GAME lines but totalling **2,011 seconds** — a single very
+long game. Flagged for item (16), not analysed here.
