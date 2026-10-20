@@ -3773,3 +3773,103 @@ experiment. **But (B) changes the cost of waiting**: useful output is
 continuing at ~80-85%, so this is a degraded system bleeding wasted CPU, not
 a stopped one. Users remain unaffected. **I still recommend the restart; I no
 longer describe the delay as urgent.**
+
+---
+
+## Thirty-second amendment — r213 (THE INCIDENT ENDED BY ITSELF, AND IT RAN THE EXPERIMENT FOR ME)
+
+### A. THE ABORT LOOP STOPPED AT 02:48Z. NO RESTART. NOBODY TOUCHED IT.
+
+```
+aborts/min  02:44 1781 | 02:45 1546 | 02:46 1216 | 02:47 1042 | 02:48 292 | then ZERO
+aborts since 02:49:  0        final total: 196,938
+pid 322631 UNCHANGED | EXITED 2 still 7 | health 200
+```
+
+**The heap released ~5 GB on its own:**
+
+```
+  5-min window     heap min   heap max
+  02:30              6377       7207
+  02:40              1409       7131     <- the release
+  02:50              1412       1609
+box: 9.0 GB used -> 3.9 GB used | 6.8 GB available -> 12.0 GB
+```
+
+**No single long game ended at that moment** — the slow games either side are
+12.3 s and 18.7 s. **The `ALLOC SPIKE` rolling median is back to 14.8 MB/game**,
+its healthy baseline, from 51-68 during the event.
+
+**So the memory was RECLAIMABLE GARBAGE, not a leak.** GC eventually caught
+up and returned it. **That is exactly what r209's phase-matched measurement
+implied** — the live set was flat (+6 MB in 23 min) while the heap climbed,
+so the bytes were never live. The r209 result has now been confirmed twice by
+production: once by the guard's failure to help (r211) and once by the heap
+simply going away.
+
+### B. THE RECOVERY RAN THE LEVEL EXPERIMENT — AND IT GOES AGAINST MY HYPOTHESIS
+
+Since r205 I have carried: *if throughput is depressed because a large
+retained heap costs something steady, then resetting the heap restores
+throughput.* The heap just reset itself.
+
+```
+  hour 23        g/min 434.4   floor 5144
+  hour 21        g/min 414.2   floor 3832
+  post-recovery  g/min ~400    heap  1409-1609    <- ~3.5 GB LOWER
+      (02:49-02:57, readings 409.7 / 400.1 / 392.1 / 388.0)
+```
+
+**The heap fell by ~3.5 GB and throughput did not move.** That is preliminary
+evidence **against** the level-coupling hypothesis.
+
+**THREE CAVEATS, AND THEY ARE REAL:**
+1. **Eight minutes of data.** No full clean hour yet; no residual computable
+   until hour 03 closes.
+2. **This is NOT the r205 experiment.** That prediction is about a RESTART.
+   The process is still 22 hours old and retains every other piece of state.
+   What has been tested is the narrower claim "drop the heap -> throughput
+   returns", and only that.
+3. The system may still be settling out of the abort regime.
+**The r205 prediction is NOT resolved. The hypothesis it tests is now in
+trouble.** Say it that way and no stronger.
+
+### C. I RECOMMENDED AN ACTION THAT WOULD HAVE DESTROYED THIS EVIDENCE
+
+At r211 and r212 I recommended a restart. **Had Josh acted on it, the heap
+would have dropped because I restarted it, throughput would have been
+measured afterwards, and I would have had no way to separate "the restart
+fixed it" from "it was going to clear anyway".** The self-recovery is a far
+cleaner natural experiment than the one I was proposing to run, and it
+exists only because the owner gate held.
+
+**This is not a point in favour of my judgment — it is a point against it.**
+I twice urged an intervention on a system that was not user-affecting and
+that resolved itself in under three hours. **The gate on destructive ops
+earned its keep here by preserving evidence, not just by preventing harm.**
+**The restart recommendation is WITHDRAWN.**
+
+### D. THE WATCHER'S BLINDNESS MECHANISM IS CONFIRMED TO THE SECOND
+
+r212: the watcher went silent because its trigger (`g/min now` < 760) could
+never fire against the abort-inflated ~2,000 g/min. **Its first capture file
+after the silence is timestamped `win-20261020T024937Z` — 02:49:37, within a
+minute of real throughput returning below the threshold.** The monitor was
+never broken; it was reading a metric that had stopped meaning what it meant.
+
+### E. STANDING RE-MEASURE
+
+- **600s wall: deadlines 34 vs 34 — AGAIN NEAR-VACUOUS. Zero new games
+  reached 590s this tick either.** Not banked; see the r212 note.
+- **`CAPPED GAME` lines per hour — the trustworthy output measure:**
+  `528 | 465 | 537 | 452 | 427 | 393(partial, ~414/h rate)`. The dip through
+  the incident is real and modest, confirming (r212) that output never stopped.
+- **Populations, TWENTY-FIFTH stable read**, n=22,205 parsed:
+  r1 82.3% | r2 5.0% | r3 2.1%. Overlap r2xr3 = 6.
+- `exceeds budget` frozen at 22. EXITED 2 = 7. No new grinder gaps.
+- **Watcher rotated** (34 files in ~8 min projects past 200); relaunched,
+  verified 2 procs; archive 19 dirs.
+- **Residual and the GC-floor battery resume NEXT tick**, once hour 03 closes
+  as the first fully clean hour since 23:00. **Heap profiling is SAFE AGAIN** —
+  headroom is now ~4.8 GB against a ~1 GB instrument, so (0a3) lifts.
+
