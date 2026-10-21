@@ -6978,3 +6978,136 @@ in 1,535.** Proxy RssAnon 2,445,724 + VmSwap 377,984 = **2.69 GB**. pswpout **1,
 exactly unchanged**; VmHWM unchanged. CPU **99.2% of four cores** at 480 g/min — the
 invariance holds at a fifth resolution. (0c) condition holds. Watcher **alive at 92 files,
 etime 23:12 — checked and correctly NOT rotated.**
+
+## r238 — all of the allocation anomaly is one code path, and it is absent in the healthy era
+
+### (13a) Which subsystem carries the 2.07x rate
+
+194 alloc profiles were already on disk in `/tmp/hexdek-allocprof/`, spanning 10/16 to
+10/21 — covering both eras. The healthy window cannot be re-profiled, so an archived pair
+was the only way to ask this, and it was already paid for.
+
+Premise checked first: pid 322631 started **Mon Oct 19 00:10:10**, so the healthy window
+(10/19 15:00-18:00) is inside this same process and `alloc_space`, which is cumulative
+since process start, is differenceable within each pair. Both profiles in both pairs carry
+Build ID **d463a22e** — the binary is identical across the comparison.
+
+The healthy window contains exactly two profiles. For the post arm I chose the pair at
+near-identical time of day rather than identical interval length, since the quantity is a
+rate:
+
+```
+HEALTHY  10/19 16:21:56 -> 16:43:56  (1320 s)
+POST     10/20 16:17:26 -> 16:44:26  (1620 s)
+```
+
+Pre-registered: the total differenced rate must reproduce the log counter's 2.07x within
++/-25% (ratio in [1.55, 2.59]) **before** any per-subsystem reading; a subsystem "carries"
+the rise if its rate rose >=1.5x AND accounts for >=15% of the total increase; if none
+qualifies the rise is DIFFUSE and that is the finding.
+
+**The agreement guard passed, and on absolute values as well as the ratio:**
+
+```
+            pprof alloc_space      log alloc= field
+healthy       11,272 MB/min          11,507 MB/min
+post          22,175 MB/min          23,798 MB/min
+ratio              1.97x                  2.07x
+```
+
+These two instruments share no arithmetic. r237's 2.07x was a consistency check against
+ALLOC SPIKE, which reads the same field; **this is the first genuinely independent
+confirmation of the allocation-rate finding.**
+
+### The split, and it is total
+
+```
+                        healthy       post
+TOTAL GB/min              11.27      22.18    ratio 1.97x
+  replacement path         0.00      15.37    absent -> 69.3% of ALL allocation
+  everything else         11.27       6.81    -40%
+
+games/min                 754.1      466.1    -38%
+
+MB/game, non-replacement  14.95      14.60    -2.3%   <- UNCHANGED
+MB/game, replacement       0.00      32.98
+MB/game, total            14.95      47.58    (log counter said 15.2 / 50.4)
+```
+
+The post era's top two allocators are `(*ReplEvent).SetCount` at **232.90 GB (38.90%)** and
+`NewReplEvent` at **156.08 GB (26.07%)**, with `pickReplacement` adding 26.01 GB (4.34%) —
+**69.3% of all allocation in the interval.** In the healthy era these three appear in
+**zero of 169 nodes** covering 87.91% of its total. Not small: unmeasurable.
+
+**Everything else fell 40% per minute, against a 38% fall in games per minute.** The rest
+of the engine is doing the same work per game; non-replacement allocation per game is
+**14.95 -> 14.60 MB, a 2.3% change.** Within measurement error, **all** of the allocation
+anomaly is the replacement-effect path.
+
+This supersedes "the degraded era allocates 2.07x more bytes per minute" as the useful
+statement. The 2.07x is real but it is a blend: one path went from nothing to 33 MB/game
+while every other path held its per-game cost exactly.
+
+### What the path costs, from the code
+
+`NewReplEvent` (`internal/gameengine/replacement.go:113`) allocates **two maps per event**
+— `Payload map[string]any{}` and `AppliedIDs map[string]bool{}`. `SetCount` (`:134`) writes
+an `int` into `map[string]any`, which **boxes it**: another allocation per call. A
+`ReplEvent` is the CR 614 would-be-event object, constructed for every `would_draw`,
+`would_gain_life`, `would_lose_life`, `would_be_dealt_damage`, `would_put_counter` and
+`would_create_token`.
+
+That is a **fixed per-event cost**. The binary is identical across both arms, so the cost
+per event cannot have changed. **The only variable left is the number of would-X events
+per game**, and it must have risen enormously.
+
+### What this does NOT establish, stated plainly
+
+- **It is not a cause.** r237 showed allocation rate rises WITH throughput inside the
+  degraded era (+0.976 bin-balanced), i.e. it behaves as a marker. This tick sharpens
+  WHAT differs between eras; it does not show the difference produces the wall.
+- **It sits in tension with r232**, which found deck/content mix unchanged. r232's scope
+  was the CAPPED subset (~2% of games), so it could not see a mix or behaviour change in
+  the other 98%. **Stating the tension, not resolving it** — either r232's scope is the
+  explanation, or something non-content is generating the events.
+- **The profiles are spike-selected at their endpoints.** Both arms are selected the same
+  way, and the differenced interval is 22-27 minutes of ordinary operation between two
+  selected instants, so the effect is minor — but it is not a random sample.
+- Times of day are close but not identical (16:21-16:43 vs 16:17-16:44).
+
+**Hypothesis for next tick, flagged as a hypothesis and nothing more:** item (16) already
+names a mutual pair, **Bloodthirsty Conqueror + Marauding Blight-Priest**, whose
+interaction is a life-loss/life-gain cycle. Every life change fires `would_gain_life` /
+`would_lose_life`, which is exactly this allocation shape. That is a shape match, recorded
+as a shape match. The pre-registerable question is whether would-X event COUNT per game
+rose, and whether it concentrates in the decks item (16) already identified.
+
+### Standing measurements
+
+Hour 04 complete and fully recovered — best since hour 23.
+
+```
+hour   n    max     >550    p10    med    p90   <400    completed   CAPPED
+ 00   120  556.1  1(0.83%) 340.0  472.8  514.0  15.0%     27,092       601
+ 01   120  535.6  0(0.00%) 276.1  355.0  481.5  68.3%     21,872       465  <- outlier
+ 02   120  532.0  0(0.00%) 316.4  428.6  498.5  35.0%     25,191       556
+ 03   120  543.6  0(0.00%) 319.1  462.0  512.0  28.3%     25,878       595
+ 04                                                       27,372       600
+ 05                                                      PARTIAL
+```
+
+**(6) GREEN AT 50/50/50, UNCHANGED — a CONSISTENCY CHECK, not a replication.**
+`deadlines=` 36+7+4+3 = 50; `guards=game_deadline:50`; SLOW >=590s 33+12+5 = 50.
+
+Aborts **1,540,966 — FROZEN, 12th hour**. EXITED 2 = 7, heap-delta 22. Health 200,
+pprof 200, goroutines 18, **log lag 3 s**. turns/game 55.8. Proxy RssAnon 2,463,164 +
+VmSwap 377,984 = **2.71 GB** (band 2.69-2.71, flat). pswpout **1,098,466 exactly
+unchanged**; VmHWM unchanged. **CPU 99.1% of four cores** measured from two of my own
+snapshots 4,203 s apart at 450 g/min — the invariance holds at a sixth resolution. (0c)
+condition holds. Watcher found absent at 241 files, rotated to **32 archives**, relaunched
+and verified at 2 procs by a separate ssh.
+
+**Process note:** I bundled the watcher relaunch into the same command as the pprof run,
+which is the one thing (0h) says not to do — a backgrounded step hides a precondition
+failure. Caught it immediately and verified the watcher on its own ssh, but the rule
+exists because that does not always happen.
