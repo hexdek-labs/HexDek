@@ -7224,3 +7224,139 @@ unchanged**; VmHWM unchanged. **CPU 99.2% of four cores** from two of my own sna
 holds. Watcher found absent at 241 files, rotated to **33 archives**, relaunched **as its
 own command** and verified at 2 procs by a separate ssh — the r238 bundling error not
 repeated.
+
+## r240 — deep or broad: BROAD. The replacement load is in essentially every game.
+
+### (13a) The question r239 could not answer
+
+r239 left the central ambiguity open: is ~72,300 would-X events per game spread across
+all games, or piled into a few? A sampling profile structurally cannot say. **The
+per-interval `alloc=` series can**, because each grinder interval covers ~235 games and a
+concentrated load would leave some intervals untouched.
+
+Pre-registered: count post-era intervals whose total MB/game sits at the non-replacement
+baseline (r238: 14.60), using <=20 MB/game as "no detectable replacement load". Invert via
+f = 1 - p^(1/n) from the ACTUAL dGames per interval. Prediction: BROAD, <1% of intervals
+at baseline, stated with low confidence. Guards: >=500 intervals, and **dGames >= 100 per
+interval** so that a clean reading means "no hot game" rather than "a quiet moment".
+Stated limit: the inversion assumes hot games arrive independently; temporal clustering
+would make it understate f.
+
+**Guard: 2,013 post intervals, 1,975 after the dGames>=100 filter. Median interval 235
+games, range 101-280.**
+
+**Zero of 1,975 intervals fall anywhere near baseline:**
+
+```
+POST MB/game per interval (n=1,975)
+  min 43.5 | p1 45.0 | p5 46.4 | p10 47.0 | p25 48.4 | median 50.2 | p75 54.2 | p95 72.0 | max 123.3
+  intervals <= 20 / 25 / 30 / 40 MB/game:  0 / 0 / 0 / 0   (0.000%)
+healthy reference median 15.2 MB/game (n=360)
+```
+
+**The prediction was correct** — <1% predicted, 0.000% observed.
+
+### The pre-registered test was weaker than the distribution it produced
+
+My binary clean/not-clean statistic can only return a bound once the count is zero. The
+distribution itself is far more informative, so I used it, and say plainly that this is a
+better instrument than the one I registered rather than pretending the registered one
+carried the result.
+
+Treating interval-to-interval variation as Poisson arrival of hot games,
+CV = sqrt((1-f)/(n*f)), so f = 1/(n*CV^2 + 1):
+
+```
+replacement MB/game per interval: mean 38.86  sd 8.77  CV 0.2258   (n=1,975, 235 games/interval)
+   =>  f >= 7.7%
+```
+
+**7.7% is a LOWER bound**, and the reason matters: it is the value at which Poisson
+arrival alone would account for **all** the observed variance. Any genuine spread in event
+counts among affected games inflates the CV and therefore deflates the derived f, so the
+true fraction is higher — if half the variance is non-Poisson, f is nearer 30%.
+
+The raw numbers say the same thing without any model:
+
+```
+quietest interval of 235 games:  28.9 MB/game replacement = 63,329 events/game
+mean interval:                   38.9 MB/game             = 85,214 events/game
+p95/p5 = 1.56x        max/min = 2.84x
+```
+
+**Even the single quietest stretch of 235 consecutive games averages 63,000 would-X events
+per game.** And it is stable hour over hour:
+
+```
+  10/20 23  median 35.6 MB/game  min 31.1       10/21 04  median 34.8  min 30.8
+  10/21 00  median 36.1          min 29.8       10/21 05  median 36.0  min 30.1
+  10/21 01  median 46.7          min 28.9  <-   10/21 06  median 35.5  min 29.8
+  10/21 02  median 35.0          min 30.4       10/21 07  median 34.6  min 29.8
+  10/21 03  median 36.1          min 29.2       10/21 08  median 35.2  min 31.6  PARTIAL n=13
+```
+
+**VERDICT: BROAD.** The replacement-event load is present at near-full strength in every
+interval and every hour. It is not a loop in a handful of games.
+
+### Consequence: the item (16) shape match is substantially disfavoured
+
+I floated **Bloodthirsty Conqueror + Marauding Blight-Priest** as a shape match at r238 and
+again at r239, each time labelling it as a shape match and nothing more. **This result
+argues against it.** A two-card interaction in a minority of decks cannot produce 63,000+
+events per game in *every* 235-game interval across ten consecutive hours. It is not
+strictly killed — a sufficiently prevalent pair could in principle appear that widely — but
+the burden has moved a long way, and I am recording it as disfavoured rather than quietly
+dropping it. **The load looks systemic: something about how the engine handles ordinary
+events, not a pathological card pair.**
+
+### One observation, recorded as a shape match and nothing more
+
+**Hour 01 — the single worst throughput hour of the era (median 355.0 g/min, 21,872 games)
+— is also the single highest replacement-per-game hour (46.7 MB/game against 34.6-36.1 for
+every other hour, +33%).** That is one hour, n=1, and it is the same hour already known to
+be anomalous for other reasons. It is the first time a throughput excursion and the
+replacement load have moved together. **Not a prediction, not a cause claim** — written
+down so that the next excursion can test it.
+
+### Figures reconciled against r239
+
+The era-wide replacement load is **38.86 MB/game = 85,214 events/game**, against r239's
+**32.98 MB/game = 72,315 events/game** measured on a single 27-minute window. Different
+spans, not a contradiction: r239's single-window figure was if anything **conservative**.
+Both are quoted with their window from here on.
+
+### Standing measurements
+
+Hour 07 is the **highest completed-games hour of the entire post-recovery era**, edging
+hour 23.
+
+```
+hour   completed   CAPPED
+ 23      28,173
+ 00      27,092      601
+ 01      21,872      465   <- the outlier
+ 02      25,191      556
+ 03      25,878      595
+ 04      27,372      600
+ 05      26,222      622
+ 06      27,669      639
+ 07      28,289      633   <- post-era record
+ 08     PARTIAL        54
+```
+
+**(6) GREEN AT 51/51/51, UNCHANGED — a CONSISTENCY CHECK, not a replication.**
+`deadlines=` 36+7+4+4 = 51; `guards=game_deadline:51`; SLOW >=590s 33+12+6 = 51.
+
+Aborts **1,540,966 — FROZEN, 15th hour**. EXITED 2 = 7, heap-delta 22. Health 200,
+pprof 200, goroutines 18, **log lag 1 s**. turns/game 53.5. **CPU 99.1% of four cores**
+from two of my own snapshots 6,700 s apart at 496 g/min — invariance at an eighth
+resolution. (0c) condition holds. Watcher found absent at 241 files, rotated to **34
+archives**, relaunched as its own command and verified at 2 procs by a separate ssh.
+
+**Two things moved, flagged and not alarmed from.** The proxy reads
+RssAnon 2,484,064 + VmSwap 377,984 = **2.73 GB**, just above the 2.69-2.71 band it has held
+for many ticks. And swap shows its first movement in a long while: **pswpout is still
+exactly 1,098,466** — nothing new written out — but pswpin rose by 2,045 pages and system
+swap used fell 480 -> 460 MB, while the server's own `VmSwap` is **pinned at 377,984**.
+Pages came back from swap and **they were not the server's**. Both are single readings;
+re-read next tick before drawing anything.
