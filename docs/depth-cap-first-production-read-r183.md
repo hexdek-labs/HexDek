@@ -6502,3 +6502,108 @@ Peak still rising faster than floor. **Peak 1,988 MB against a 6,442 ceiling —
 item, no time-to-anything.** **(0c) re-checked, still met.** **(0w)** watcher
 budget-exhausted as expected (241 files, no procs) — rotated to **29 archives**,
 relaunched, verified separately.
+
+## 53rd amendment (r234) — a long game slows the workers it ISN'T using; and a plain-English mislabel I repeated for three ticks
+
+### Item (13a): the super-proportional residual generalises, and my prediction failed informatively
+
+r233 found two occupied workers cost 64% of throughput where worker arithmetic predicts
+50% — on **one** window. Pre-registered this tick, before pulling:
+
+> Unit = one 30s `g/min` sample, post-recovery only. k = big games running at that
+> instant, from the r233 completion-timestamp reconstruction. **Pure worker-loss predicts
+> median(k)/median(0) = (4-k)/4.** **Bar: k=1 ratio <= 0.70 AND k=2 ratio <= 0.45, each
+> n >= 30.** Sweep the 300s cut (120/300/600) since I chose it.
+> **Prediction: k=1 near 0.75** — the penalty appears only once more than one worker is
+> lost. **"If k=1 is ALSO depressed, the mechanism is not worker arithmetic at all but
+> something shared."**
+
+```
+threshold  k    n     median   ratio   pure-loss
+ >=120s    0  1003    480.1    1.000     1.000
+           1   124    321.0    0.669     0.750
+           2    30    178.0    0.371     0.500
+ >=300s    0  1039    478.1    1.000     1.000
+           1    88    317.9    0.665     0.750
+           2    30    178.0    0.372     0.500
+ >=600s    0  1061    477.9    1.000     1.000
+           1    96    296.9    0.621     0.750
+```
+
+**Both bars pass, and my prediction was WRONG at k=1 — which is the informative outcome,
+because I wrote down in advance what that would mean.** One long game costs ~34% of
+throughput where removing its worker accounts for 25%. Two cost ~63% where arithmetic
+says 50%. Observed/predicted is **0.887 at k=1 and 0.744 at k=2**.
+
+**A long game does not merely occupy its own worker — it slows the others.** That is a
+shared-resource signature, and it is the alternative I pre-registered rather than one
+invented after seeing the numbers. **Stable across the full threshold sweep**, so it is
+not an artifact of the 300s cut I picked. I am **not** naming the shared resource;
+allocation, GC and cache are all consistent and nothing here separates them.
+
+**THE BOUND, AGAIN: this is not the wall.** The k=0 median is **478-480** against
+healthy's 754. **The wall is present when nothing long is running at all.** Note also
+that the k=0 median barely moves as the threshold drops 600s -> 120s (477.9 -> 480.1),
+which is a *hint* that pushing the cut lower will not recover the wall — a hint, not a
+test. **The pre-registerable next question:** sweep the threshold down to 30s/60s and ask
+whether k=0 rises toward 754. If it does, the wall is occupancy by moderately-long games;
+if it stays ~480, occupancy is bounded for good.
+
+### Two corrections
+
+**1. A PLAIN-ENGLISH MISLABEL REPEATED FOR THREE TICKS.** In r231/r232/r233 I wrote
+"513 / 514 / 548 **games completed** in the 9/10/11pm hour". **Those are CAPPED counts —
+games that hit an internal dispatch cap — not games completed.** The real figures, from
+the cumulative `grinder: N games` counter:
+```
+hour 21  25,682 completed   (CAPPED 513 = 2.0%)
+hour 22  25,373 completed   (CAPPED 586 = 2.3%)
+hour 23  28,173 completed   (CAPPED 581 = 2.1%)
+hour 00  26,766 completed to 00:58 (PARTIAL)
+```
+I understated real throughput by a factor of ~50 in plain English for three ticks, while
+the technical sections were correct. **Corrected in plain English as well as here.**
+
+**2. I QUOTED A PARTIAL HOUR AGAIN — ONE TICK AFTER WRITING RULE (0t) AGAINST IT.**
+Hour 23's CAPPED count was published as **548** from a 23:56 read; complete is **581**.
+The rule did not help because **READ 0 itself prints the current hour's count unmarked**,
+so discipline was never going to catch it. **The fix is to the instrument, not the
+resolve:** the standing command now labels the in-progress hour. (Hour 23's g/min row was
+also partial at n=115; complete n=120 gives p10 364.5 / med 487.4 vs the published
+361.2 / 487.8 — that one moved negligibly.)
+
+### Standing measurements
+
+```
+window            n     max    >550         p10    med     p90    <400
+20 HELD FIXED   120   553.2   1 (0.83%)   351.7  465.5   524.2   23.3%   REPRODUCES
+21 HELD FIXED   120   560.3   1 (0.83%)   308.5  468.0   522.8   40.0%   REPRODUCES
+22 HELD FIXED   120   532.1   0 (0.00%)   178.6  475.4   520.2   29.2%   REPRODUCES
+23 COMPLETE     120   543.9   0 (0.00%)   364.5  487.4   527.5   11.7%
+00 PARTIAL      117   556.1   1 (0.85%)   363.6  476.4   514.0   12.8%   <- PARTIAL, n=117
+ALL POST 15:20 1157   560.3   3 (0.26%)   327.6  473.4   515.8   23.2%
+```
+**A THIRD CROSSING OF 550** — 556.1, in the partial hour 00. Post-recovery is now
+**3 of 1,157 (0.26%)**, max 560.3.
+
+**(6) UNCHANGED — CONSISTENCY CHECK, third tick running.**
+```
+deadlines = 31+7+4+3 = 45  guards=game_deadline:45  SLOW >=590s: 33 + 12 + 0 = 45
+HISTORY: 38 -> 41 -> 42 -> 45 -> 45 -> 45 -> 45
+```
+
+```
+FLOOR 15:20-21:00 HELD FIXED  drop-last +11.5 +/- 5.4 (n=35)  REPRODUCES EXACTLY
+PEAK  15:20-21:00 HELD FIXED  drop-last +17.5 +/- 3.8 (n=35)  REPRODUCES EXACTLY
+FLOOR 15:20-01:00 extended    drop-last  +8.3 +/- 2.9 (n=58)  2.9 SE
+PEAK  15:20-01:00 extended    drop-last +14.7 +/- 2.2 (n=58)  6.7 SE
+CEILING ABORTS 1,540,966 UNCHANGED, 8th hour | CAPPED 21:513 22:586 23:581 00:590(PARTIAL)
+heap 1856MB | turns/game 54.8 | goroutines 18 | health 200 | log lag ~3s | CPU 100% of four
+VmSwap 377,984 UNCHANGED | pswpout 1,098,466 UNCHANGED | proxy 2.63 -> 2.70 GB (ROSE, first
+  rise in four ticks — NOTED, NOT INTERPRETED)
+depth_cap 1,005,761 (crossed 1M) | total_cap still 15,792 | sba_max_passes 5,761
+```
+The **extended** fit is a different window every tick and is NOT tick-comparable; the
+held-fixed pair is, and it reproduces to the digit. **(0c) re-checked, still met.**
+**(0w)** watcher ALIVE at 58 min / 232 files — near its budget but running, so **nothing
+to rotate** per the r232/r233 rule.
