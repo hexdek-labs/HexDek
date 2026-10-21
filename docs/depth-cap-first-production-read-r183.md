@@ -7111,3 +7111,116 @@ and verified at 2 procs by a separate ssh.
 which is the one thing (0h) says not to do — a backgrounded step hides a precondition
 failure. Caught it immediately and verified the watcher on its own ssh, but the rule
 exists because that does not always happen.
+
+## r239 — the would-X event count: ~72,300 per game, ~1,300 per turn
+
+### (13a) Counting the events
+
+r238 proved the per-event cost is fixed and the binary identical across eras, leaving
+event VOLUME as the only variable. pprof carries `alloc_objects` beside `alloc_space`, so
+the same four profiles already on disk could count allocations instead of bytes — no new
+measurement needed.
+
+Pre-registered: `NewReplEvent` allocates exactly 3 objects per call (struct + two empty
+map headers, read from the code at r238), so calls = objects/3. **Cross-check registered
+in advance: `SetCount` and `pickReplacement` are each called about once per event, so
+their derived call counts must agree with `NewReplEvent`'s within 3x or I trust none of
+them.** Prediction: post >= 100,000 events/game. Bars: >=100,000 runaway; 1,000-100,000
+elevated but conceivable; <1,000 means my cost model is wrong. Guard: healthy must be
+< 5,000 events/game.
+
+Interval boundaries matched to the profiles exactly, and both intervals are
+representative of their era:
+
+```
+HEALTHY  754,008 - 737,600   = 16,408 games / 1320 s = 745.8 g/min
+POST   2,683,091 - 2,671,020 = 12,071 games / 1620 s = 447.1 g/min
+```
+
+**The three derived call counts agree to 0.53%:**
+
+```
+  NewReplEvent      216,945 objects/game / 3 per call  =  72,315 events/game
+  SetCount           71,933 objects/game / 1 per call  =  71,933 events/game
+  pickReplacement    72,305 objects/game / 1 per call  =  72,305 events/game
+```
+
+A fourth check, against r238's `alloc_space` — a different sample index entirely:
+
+```
+  replacement bytes/game 32.98 MB / 72,315 events  =  456 bytes per event
+  NewReplEvent 179 B/call over 3 objects           =   60 B/object  (struct + 2 hmap headers)
+  SetCount     267 B/call over 1 object            =  a map[string]any first bucket, ~264 B
+```
+
+`SetCount`'s single allocation is not the boxed int as I assumed when reading the code at
+r238 — it is the map's **first bucket**, and the 267 B measured matches the ~264 B that
+bucket costs. The code reading and the profile agree quantitatively.
+
+**Result: ~72,300 CR 614 would-X replacement events per game, which at 55 turns/game is
+~1,315 per turn.** Healthy: all three functions are absent from all 169 nodes, so below
+the sampling floor; the guard (<5,000/game) is satisfied with room to spare.
+
+### The prediction missed, and so did my own bar
+
+**I predicted >= 100,000 and observed 72,315 — low by 28%.** By my own pre-registration
+that lands in the "1,000-100,000, elevated but conceivable" band, so by the letter of the
+bar I must call it that.
+
+I think the bar was badly drawn, and I want to be explicit that **re-drawing a band after
+seeing the number is exactly the move to distrust**, so I will not lean on it. Instead the
+derived figure carries the argument without reference to any band: **~1,315 replacement
+events per turn, every turn.** A Commander turn involves a handful of draws, life changes,
+damage events, counters and tokens — order 10, not order 1,000. Two orders of magnitude is
+not a judgement call. The lesson for next time is to set the upper edge of a "conceivable"
+band by computing what normal play actually implies, not by picking a round number.
+
+### The caveat that matters most, and the next test
+
+**72,300 per game is an AVERAGE over 12,071 games. This instrument cannot distinguish
+"every game generates 72,000" from "1% of games generate 7,200,000 each and the rest
+generate none."** Those are completely different problems: the first is a systemic change
+in how the engine handles ordinary events, the second is a loop in a small set of games.
+A profile aggregates over everything in the interval and cannot be asked this question.
+
+This is the same trap as the `guards=percard_dispatch_depth_cap:5532` reading, where a big
+total meant 2.3% of games hitting a cap 23 times each rather than a broad problem.
+**Measure the SET before describing anything as systemic.**
+
+**Also not identified: WHICH event type.** `NewReplEvent(typ string)` takes the
+discriminator as an argument, so all of `would_draw` / `would_gain_life` /
+`would_lose_life` / `would_be_dealt_damage` / `would_put_counter` / `would_create_token`
+collapse into one profile node. Item (16)'s **Bloodthirsty Conqueror + Marauding
+Blight-Priest** life-loss/life-gain pair remains a shape match and nothing more — this
+tick did not test it and cannot.
+
+Pre-registerable for next tick: a per-game or per-deck attribution. Nothing in the current
+grinder line carries a would-X counter, so this likely needs either a correlation against
+the `decks=[...]` field on SLOW GAME lines, or an owner-gated one-line counter.
+
+### Standing measurements
+
+**(6) REPLICATES 50 -> 51 ON ALL THREE INSTRUMENTS.** `deadlines=token_create:36,
+stack_drain:7, trigger_drain:4, turn_phase_boundary:4` = 51; `guards=game_deadline:51`;
+SLOW GAME >=590s 33+12+**6** = 51. `trigger_drain` moved 3 -> 4. Counts grew on data the
+claim has never seen, so this is a **replication**, not a consistency check.
+History: 38->41->42->45->45->45->48->50->50->50->**51**.
+
+```
+hour   n    max     >550    p10    med    p90   <400    completed   CAPPED
+ 01   120  535.6  0(0.00%) 276.1  355.0  481.5  68.3%     21,872       465  <- outlier
+ 02   120  532.0  0(0.00%) 316.4  428.6  498.5  35.0%     25,191       556
+ 03   120  543.6  0(0.00%) 319.1  462.0  512.0  28.3%     25,878       595
+ 04                                                       27,372       600
+ 05                                                       26,222       622
+ 06                                                      PARTIAL
+```
+
+Aborts **1,540,966 — FROZEN, 13th hour**. EXITED 2 = 7, heap-delta 22. Health 200,
+pprof 200, goroutines 18, **log lag 1 s**. turns/game 56.1. Proxy RssAnon 2,437,876 +
+VmSwap 377,984 = **2.69 GB** (band 2.69-2.71, flat). pswpout **1,098,466 exactly
+unchanged**; VmHWM unchanged. **CPU 99.2% of four cores** from two of my own snapshots
+4,247 s apart at 492 g/min — the invariance holds at a seventh resolution. (0c) condition
+holds. Watcher found absent at 241 files, rotated to **33 archives**, relaunched **as its
+own command** and verified at 2 procs by a separate ssh — the r238 bundling error not
+repeated.
