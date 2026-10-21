@@ -6851,3 +6851,130 @@ unchanged**; VmHWM 9,762,364 unchanged. Highest heap peaks 1,988 / 1,986 / 1,974
 the 6,442 ceiling — two new entries in the top three, maximum unmoved. The (0c) condition
 for heap profiles holds. Watcher found absent at 241 files, rotated to **31 archives**,
 relaunched and verified at 2 procs by a separate ssh.
+
+## r237 — the ~4x allocation figure is two numbers multiplied, and one of them is the wall
+
+### First, a correction to r236's (6) reporting
+
+At r236 I reported the 600s deadline check as green on **two** instruments and said the
+third — the per-site split — was unavailable because it reads off `guardtop=`, a top-5
+view whose five slots are all held by `percard_dispatch_depth_cap` entries. I presented
+that as item (6b) biting.
+
+**That was wrong, and the way it was wrong is worse than a simple miss.** The per-site
+split is its own top-level field on every grinder line:
+
+```
+deadlines=token_create:36,stack_drain:7,turn_phase_boundary:4,trigger_drain:3
+```
+
+36 + 7 + 4 + 3 = **50** == `guards=game_deadline:50` == SLOW GAME >=590s (33+12+5) = 50.
+Three instruments, all at 50. At r236 I grepped for `game_deadline`, `CheckGameDeadline`,
+`site=` and `guard=`, found nothing, and **attributed my own failed search to a known
+structural limitation.** A miss dressed as an understood constraint is harder to catch
+later than a miss, because it comes with a reason attached. The rule already on the list —
+**grep for every variant of a message** — would have caught it; `deadlines=` was never
+tried.
+
+Counts did not grow since r236 (50 -> 50), so this tick is a **CONSISTENCY CHECK**, not a
+replication.
+
+### (13a) Allocation per game, decomposed
+
+`alloc=` sits on every grinder line and has been there all along. Validated before use:
+it is **MB allocated in the interval since the previous grinder line**, not a cumulative
+counter (it is non-monotonic: 12,097 -> 11,381 -> 10,992 -> 12,031). Confirmed against
+the engine's own arithmetic — its ALLOC SPIKE line printed `77.2 MB/game` from
+`alloc 12357MB` and `games 160`, and 12357/160 = 77.2 exactly.
+
+Pre-registered: (i) cross-era MB/game ratio in [3.0, 4.5], explicitly labelled a
+**consistency check** because ALLOC SPIKE's 3.7x is computed from this same field;
+(ii) within-era Spearman of MB/game against g/min, predicted |rho| < 0.3, with rho <= -0.4
+meaning "allocation per game rises as throughput falls — a live mechanism candidate".
+Guards: n >= 200 per era; discard intervals with games delta <= 0 or > 2000; >5% discarded
+means the series is too dirty to read. **0.7% discarded, guard passed.**
+
+**(i) passed the bar: healthy 15.2 MB/game (n=360), post 50.4 (n=1535), ratio 3.33x.**
+
+**(ii) returned rho = -0.807, which would have fired my "live mechanism candidate" bar.
+It is an artifact, and my pre-registration was defective.** MB/game = alloc / dGames, and
+g/min = dGames / dTime. **dGames is in the denominator of one and the numerator of the
+other**, so the two are anti-correlated by construction. I pre-registered a bar on a ratio
+whose denominator moves — something my own standing rules warn about twice.
+
+What caught it was not anything in the pre-registration. It was the **healthy-era control**,
+which returned rho = **-0.787** — statistically indistinguishable from the degraded era's
+-0.807. There is no wall in the healthy era, so an identical correlation there cannot be
+the wall's mechanism. That control only existed because r236's lesson was to filter both
+arms of every comparison.
+
+Re-run against the only genuinely fixed denominator, **time**:
+
+```
+window     n     MB/game   MB/MINUTE   g/min   rho(MB/min vs g/min)
+HEALTHY   360      15.2      11,507    754.1          +0.731
+POST     1535      50.4      23,798    466.1          +0.706
+
+ratios   MB/game 3.33x | allocation RATE 2.07x | throughput 1.62x slower
+         2.07 * 1.62 = 3.35   vs  3.33 observed
+```
+
+**The 3.33x decomposes exactly into a 2.07x rise in allocation RATE and a 1.62x fall in
+throughput — and the 1.62x is the wall itself.** The figure carried for weeks as "the
+single biggest unexplained number" is a product of two quantities, one of which is the
+thing being explained. In log terms the rate carries **60%** of it; the remaining 40% is
+the wall restated. **The ~4x cannot be cited at its full size as evidence for an
+allocation mechanism. The non-circular part is 2.07x.**
+
+The sign also flips once the denominator is fixed. Bin-balanced on the predictor (the
+r231 lesson), MB/minute against g/min in the post era:
+
+```
+  g/min med   MB/min med   MB/game med     n
+      279.7      20,814          73.1    191
+      355.9      22,554          63.7    191
+      415.0      22,150          52.2    191
+      455.9      23,624          51.9    191
+      473.9      23,960          50.6    191
+      488.0      24,150          49.5    191
+      503.3      24,370          48.6    191
+      519.9      24,738          47.3    191
+  rho across bin medians = +0.976
+```
+
+**Allocation rate rises WITH throughput, monotonically.** Within the degraded era it is a
+marker of how much work got done, not a throttle — the same shape as r231's GC-assist
+reverse result. That is the second candidate mechanism to show the marker sign.
+
+**What survives, stated precisely:** at the same total CPU (99.2% of four cores, measured
+this tick from two of my own snapshots 2,009 s apart), the degraded era allocates
+**2.07x more bytes per minute** while completing **1.62x fewer games**. That is a real
+and unexplained cross-era difference. It is a LEVEL difference; nothing here shows it
+causes the wall, and the within-era slope argues it does not.
+
+**Supersedes:** "~4x allocation per unit work" as a single quantity. Carry **2.07x
+allocation rate** and **1.62x throughput deficit** separately from here, and never
+multiply them back together into a headline.
+
+### Standing measurements
+
+Hour 03 completed during the tick and is back in band; hour 01 remains the lone outlier.
+
+```
+hour   n    max     >550    p10    med    p90   <400    completed    CAPPED
+ 20   120  553.2  1(0.83%) 364.4  465.5  522.0  23.3%     27,055
+ 21   120  560.3  1(0.83%) 312.4  468.0  521.1  40.0%     25,682
+ 22   120  532.1  0(0.00%) 183.3  475.4  519.8  29.2%     25,373
+ 23   120  543.9  0(0.00%) 384.6  487.4  524.4  11.7%     28,173
+ 00   120  556.1  1(0.83%) 340.0  472.8  514.0  15.0%     27,092       601
+ 01   120  535.6  0(0.00%) 276.1  355.0  481.5  68.3%     21,872       465  <- outlier
+ 02   120  532.0  0(0.00%) 316.4  428.6  498.5  35.0%     25,191       556
+ 03   120  543.6  0(0.00%) 319.1  462.0  512.0  28.3%     25,878       595
+```
+
+Aborts **1,540,966 — FROZEN, 11th hour**. EXITED 2 = 7, heap-delta 22. Health 200,
+pprof 200, goroutines 18, **log lag 1 s**. turns/game 54.0. **Crossings of 550 hold at 3
+in 1,535.** Proxy RssAnon 2,445,724 + VmSwap 377,984 = **2.69 GB**. pswpout **1,098,466
+exactly unchanged**; VmHWM unchanged. CPU **99.2% of four cores** at 480 g/min — the
+invariance holds at a fifth resolution. (0c) condition holds. Watcher **alive at 92 files,
+etime 23:12 — checked and correctly NOT rotated.**
