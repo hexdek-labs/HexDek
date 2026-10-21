@@ -6400,3 +6400,105 @@ Peak still rising faster than floor, both now tighter on n=47. **Peak 1,988 MB a
 6,442 ceiling — watch item, no time-to-anything.** **(0c) re-checked and still met**
 (floor 1,393-1,605, proxy fell). **(0w)** watcher alive at 33 min, 132 files — relaunched
 last tick and not yet budget-exhausted, so **nothing to rotate this tick.**
+
+## 52nd amendment (r233) — the deep tail IS occupancy (confirmed on both bars); the WALL is not
+
+### Item (13c): testing the limit I published last tick
+
+At r232 I reported hour 22's p10 of 178.0 as the lowest post-recovery p10 and named the
+1,400.0s game as "the obvious candidate", explicitly labelled **association, not
+demonstration**. **A finding published with a stated limit gets tested against that limit
+next, not defended.** Pre-registered before pulling:
+
+> Every `SLOW GAME` line logs at COMPLETION, so a game of duration D logged at T occupied
+> one of 4 workers over [T-D, T]. Reconstruct those windows for hour-22 games >=300s,
+> mark each sample OCCUPIED or FREE. **Bars: (1) excluding OCCUPIED raises p10 by >=100;
+> (2) FREE median sits >=50 above OCCUPIED median.**
+> **Quantitative prediction, written down first:** 1,400s = 23.3 min; ONE worker of FOUR
+> is a 25% hit, predicting ~350 g/min, **not 178. A single game cannot arithmetically
+> produce that p10**, so expect a real but PARTIAL effect. **If the deepest samples lie
+> OUTSIDE the occupied windows, the association is refuted outright.**
+
+The reconstruction found **two** qualifying games, and they **overlap**: 1,400.0s ran
+21:50:40-22:14:00 and 599.9s ran 22:00:40-22:10:40 — **two of four workers simultaneously
+for ten minutes.**
+
+```
+  22 OCCUPIED  n= 30  max 511.8  p10 166.0  med 185.9  p90 368.5  <400 93.3%
+  22 FREE      n= 90  max 532.1  p10 422.0  med 491.8  p90 522.1  <400  7.8%
+  22 TWO-OVERLAP n=20  median 178.0  min 146.1
+
+BAR (1)  p10 all 178.6 -> p10 FREE 422.0   delta +243.4   (needed >= +100)  PASS
+BAR (2)  median FREE 491.8 - OCCUPIED 185.9 = +305.8  (needed >= +50)       PASS
+8 DEEPEST hour-22 samples: 146,164,166,166,174,174,174,174 — ALL EIGHT occ=2
+```
+
+**Both bars pass decisively and every one of the eight deepest samples sits inside the
+two-game overlap. The deep tail is occupancy.** The association from r232 is now
+demonstrated.
+
+**The arithmetic prediction was half right, and the residual is a clean new lead.**
+Two of four workers lost predicts 50% of the FREE median, i.e. ~246 g/min. **Observed
+two-overlap median is 178.0 — 36% of FREE.** Losing half the workers cost **64%** of
+throughput, not 50%. That super-proportional loss is real and **I am not attaching a
+mechanism to it this tick**; it is a well-posed question with a fixed denominator, which
+is more than most leads have.
+
+### THE SAME TEST SHOWS OCCUPANCY DOES **NOT** EXPLAIN THE WALL
+
+Hour 23 is the **cleanest hour since the recovery** — 518.3s of slow games against hour
+22's 2,256.1s, and no game over 182.7s.
+
+```
+23 NEW   n=115  max 543.9  >550 0  p10 361.2  med 487.8  p90 527.9  <400 12.2%
+```
+**The cleanest available hour still sits at the wall:** median 487.8 and max 543.9
+against healthy's 754.1 and 879.3. **Occupancy explains the deep tail and nothing more.**
+Scope stated so it is not over-read later.
+
+### Corrections
+
+**1. I published hour 22's CAPPED count as 514. The complete hour is 586.** I read it at
+22:52 and quoted a partial hour as if it were the hour. The "never judge the current
+bucket" rule I apply to the last 10-minute bin **applies to the current hour too.**
+(The hour-22 g/min row was partial for the same reason, n=112; complete n=120 gives
+p10 **178.6** vs the 178.0 I published, so that particular number survived.)
+
+**2. Caught in flight, before publishing:** building this tick's floor/peak series I
+appended **five of hour 21's six bins** into the array still labelled
+`15:20-21:00 HELD FIXED` — a changed window AND a dropped bin, which would have shown a
+spurious flattening to +7.4. Rebuilt from the original 35. The true held-fixed series
+reproduces exactly.
+
+### Standing measurements
+
+```
+window            n     max    >550         p10    med     p90    <400
+20 HELD FIXED   120   553.2   1 (0.83%)   351.7  465.5   524.2   23.3%   REPRODUCES
+21 HELD FIXED   120   560.3   1 (0.83%)   308.5  468.0   522.8   40.0%   REPRODUCES
+22 COMPLETE     120   532.1   0 (0.00%)   178.6  475.4   520.2   29.2%
+23 NEW          115   543.9   0 (0.00%)   361.2  487.8  527.9   12.2%
+ALL POST 15:20 1035   560.3   2 (0.19%)   322.0  472.4   515.9   24.5%
+```
+**No new crossing — still 2, now in 1,035 samples.**
+
+**(6) UNCHANGED AGAIN — a CONSISTENCY CHECK for the second tick running.**
+```
+deadlines = 31+7+4+3 = 45   guards=game_deadline:45   SLOW GAME >=590s: 33+12 = 45
+HISTORY: 38 -> 41 -> 42 -> 45 -> 45 -> 45
+```
+
+```
+FLOOR 15:20-21:00 HELD FIXED  drop-last +11.5 +/- 5.4   REPRODUCES EXACTLY
+PEAK  15:20-21:00 HELD FIXED  drop-last +17.5 +/- 3.8   REPRODUCES EXACTLY
+FLOOR 15:20-24:00 extended    drop-last  +9.8 +/- 3.3 (n=52)  3.0 SE
+PEAK  15:20-24:00 extended    drop-last +17.3 +/- 2.6 (n=52)  6.7 SE
+CEILING ABORTS 1,540,966 UNCHANGED, 7th hour | CAPPED 20:609 21:513 22:586 23:548
+heap 1603MB | turns/game 56.3 | goroutines 18 | health 200 | log lag ~0s | CPU 100% of four
+VmSwap 377,984 UNCHANGED | pswpout 1,098,466 UNCHANGED | proxy 2.64 -> 2.63 GB (3rd fall)
+depth_cap 972,044 | total_cap still 15,792 | sba_max_passes 5,711
+```
+Peak still rising faster than floor. **Peak 1,988 MB against a 6,442 ceiling — watch
+item, no time-to-anything.** **(0c) re-checked, still met.** **(0w)** watcher
+budget-exhausted as expected (241 files, no procs) — rotated to **29 archives**,
+relaunched, verified separately.
