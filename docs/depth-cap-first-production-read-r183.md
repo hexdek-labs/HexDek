@@ -6607,3 +6607,113 @@ The **extended** fit is a different window every tick and is NOT tick-comparable
 held-fixed pair is, and it reproduces to the digit. **(0c) re-checked, still met.**
 **(0w)** watcher ALIVE at 58 min / 232 files — near its budget but running, so **nothing
 to rotate** per the r232/r233 rule.
+
+## 54th amendment (r235) — OCCUPANCY IS CLOSED as a wall explanation; (6) replicates with growing counts
+
+### Item (13a): the threshold sweep down — flat across a 60x range
+
+r234 bounded occupancy on a **hint**: the k=0 median barely moved as the cut dropped
+600s -> 120s. Pre-registered this tick before pulling:
+
+> Sweep the "big game" cut DOWN: 30/60/120/300/600s; report median and n for k=0.
+> **Floor on the sweep, stated up front:** `SLOW GAME` is only emitted above the engine's
+> own logging threshold, so I cannot sweep below ~10s. **Bar:** k=0 at 30s rising above
+> **600** means occupancy is a substantial part of the wall; staying below **520** means
+> it is bounded and I stop proposing occupancy variants. **Guard:** the k=0 bucket shrinks
+> as the cut drops — **if n(k=0) < 100 that threshold is INCONCLUSIVE.**
+> **Prediction: k=0 stays ~480-500. I expect to CLOSE this lead.**
+
+```
+cut     qualifying   n(k=0)   median(k=0)   verdict
+ 600s        4        1166       474.0     BOUNDED
+ 300s       11        1084       477.9     BOUNDED
+ 120s       16        1052       479.6     BOUNDED
+  60s       20        1040       480.0     BOUNDED
+  30s       34        1022       480.1     BOUNDED
+  15s       84         990       480.2     BOUNDED   [exploratory, past pre-registration]
+  10s      162         964       482.1     BOUNDED   [exploratory, past pre-registration]
+healthy reference 754.1
+```
+
+**The k=0 median moves 8.1 g/min across a 60-fold change in threshold, and the guard
+never trips (n >= 964 everywhere).** Removing every sample during which **any** logged
+long game was running — all 162 of them, the entire logged population — leaves the
+median at **482 against healthy's 754**.
+
+**OCCUPANCY IS CLOSED AS AN EXPLANATION FOR THE WALL.** It owns the deep tail (r233), it
+costs more than worker arithmetic predicts (r234), and it accounts for **none** of the
+~270 g/min gap. My prediction was 480-500; observed 474-482. **I said I expected to close
+this lead and it closed.**
+
+**Scope, stated so the negative is not over-read:** the minimum `SLOW GAME` duration ever
+logged is **10.0s** (verified this tick), so games under 10s cannot be excluded by this
+method. That is not a loophole worth chasing — **below ~10s an "occupying" game stops
+being distinguishable from ordinary throughput**, since the median game is around a
+second. The concept degenerates rather than the test failing.
+
+**Four explanations now tested and dead for the wall:** GC assist (r231), deck/content
+mix (r232), occupancy (r233-r235). **The cause remains unknown.**
+
+### (6) REPLICATES — COUNTS GREW, FIFTH TRACKED INCREMENT
+
+```
+deadlines = token_create:34 + stack_drain:7 + turn_phase_boundary:4 + trigger_drain:3 = 48
+guards=game_deadline:48
+SLOW GAME >=590s: 10/19: 33 + 10/20: 12 + 10/21: 3 = 48
+HISTORY: 38 -> 41 -> 42 -> 45 -> 45 -> 45 -> 48
+```
+**All three counters moved together from 45 to 48.** After three ticks of consistency
+checks this is a genuine replication on data the claim has never seen.
+
+### Hour 01 is deep, and occupancy explains only part of it — WATCH ITEM, PARTIAL
+
+Applying the r233 instrument before reading the tail, as the rule now requires:
+```
+10/21 games >=300s:  599.7s ran 00:54:42-01:04:42 | 599.4s 01:26:34-01:36:34
+                     599.9s 01:38:21-01:48:21
+hour 01 (PARTIAL n=102):  OCCUPIED n=50 med 321.8  |  FREE n=52 med 419.4
+                          k>=2 samples: 0 | FREE p10 349.8, FREE <400 34.6%
+```
+**Occupancy explains part but not all.** The FREE median of **419.4** sits ~55 below the
+typical post-recovery hour (~475), and a third of even the unoccupied samples are under
+400. **This is a PARTIAL hour (n=102) and I am not alarming from one** — that was the
+r224 error. Flagged, re-read complete next tick.
+
+**Also noted with its n:** hour 01's k=1 ratio is **321.8/419.4 = 0.767**, close to the
+pure-loss 0.75 and NOT the 0.665 that r234 measured across the whole era. n=50/52, so
+this is a single-hour disagreement worth watching, not a correction to r234.
+
+### Standing measurements
+
+```
+window            n     max    >550         p10    med     p90    <400
+20 HELD FIXED   120   553.2   1 (0.83%)   351.7  465.5   524.2   23.3%   REPRODUCES
+21 HELD FIXED   120   560.3   1 (0.83%)   308.5  468.0   522.8   40.0%   REPRODUCES
+22 HELD FIXED   120   532.1   0 (0.00%)   178.6  475.4   520.2   29.2%   REPRODUCES
+23 HELD FIXED   120   543.9   0 (0.00%)   364.5  487.4   527.5   11.7%   REPRODUCES
+00 COMPLETE     120   556.1   1 (0.83%)   339.9  472.8   514.0   15.0%
+01 PARTIAL      102   535.6   0 (0.00%)   274.5  362.4   486.6   65.7%   <- PARTIAL
+ALL POST 15:20 1262   560.3   3 (0.24%)   312.3  470.0   514.1   26.9%
+```
+Hour 00 complete (472.8 / 556.1 / 1 crossing) tracks its partial read (476.4 / 556.1 / 1)
+closely. **Crossings hold at 3, now in 1,262.**
+
+```
+COMPLETED GAMES: 20: 27,055 | 21: 25,682 | 22: 25,373 | 23: 28,173 | 00: 27,092
+FLOOR 15:20-21:00 HELD FIXED  drop-last +11.5 +/- 5.4 (n=35)  REPRODUCES EXACTLY
+PEAK  15:20-21:00 HELD FIXED  drop-last +17.5 +/- 3.8 (n=35)  REPRODUCES EXACTLY
+FLOOR 15:20-02:00 extended    drop-last  +7.9 +/- 2.6 (n=64)   [NOT tick-comparable]
+PEAK  15:20-02:00 extended    drop-last +15.0 +/- 1.9 (n=64)   [NOT tick-comparable]
+CEILING ABORTS 1,540,966 UNCHANGED, 9th hour | CAPPED 22:586 23:581 00:601 01:400(PARTIAL)
+heap 1713MB | turns/game 54.8 | goroutines 18 | health 200 | log lag ~1s | CPU 99% of four
+VmSwap 377,984 UNCHANGED | pswpout 1,098,466 UNCHANGED | proxy 2.70 -> 2.69 GB (flat)
+depth_cap 1,018,257 | total_cap still 15,792 | sba_max_passes 5,814
+```
+Hour 01 bins carry the two highest peaks since 22:0's 1,988 — **1,916 and 1,947**, still
+well under the 6,442 ceiling. **(0c) re-checked, still met.** **(0w)** watcher was
+budget-exhausted (241 files, no procs) — rotated to **30 archives**, relaunched, verified
+separately at 2 procs.
+
+**Instrument note:** the cumulative-games line I added to READ 0 last tick was **broken** —
+its awk dedupe keyed on the wrong fields and printed four rows from the same hour. The
+working form is `... | paste - - | awk '{k=$1" "$2; if(!(k in s)){s[k]=$4; o[++n]=k}} END{for(i=1;i<=n;i++) print o[i], s[o[i]]}'`. Fixed in the standing command.
