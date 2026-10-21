@@ -6717,3 +6717,137 @@ separately at 2 procs.
 **Instrument note:** the cumulative-games line I added to READ 0 last tick was **broken** —
 its awk dedupe keyed on the wrong fields and printed four rows from the same hour. The
 working form is `... | paste - - | awk '{k=$1" "$2; if(!(k in s)){s[k]=$4; o[++n]=k}} END{for(i=1;i<=n;i++) print o[i], s[o[i]]}'`. Fixed in the standing command.
+
+## r236 — the wall gap was understated: both eras need the occupancy filter, not one
+
+**CORRECTION TO r235.** r235 closed occupancy as a wall explanation by comparing the
+post-recovery era's **occupancy-filtered** median (k=0) against the healthy window's
+**unfiltered** median of 754.1. That comparison is asymmetric. Healthy carries long
+games too, so its own unfiltered median is dragged below its k=0 value, and the gap I
+published was too small.
+
+Pre-registered before running: healthy k=0 moves **< 5 g/min** from 754.1 (prediction),
+with Δ≥+5 meaning I understated the gap, Δ≤−5 a reverse result to explain rather than
+absorb, and a guard of n(k=0) ≥ 100. Floor 10.0s, the minimum `SLOW GAME` ever logged.
+Premise checked first: pid 322631 spans both eras, so the worker count — and therefore
+the meaning of k — is identical on both sides.
+
+**The prediction was wrong.** Healthy's own occupancy correction is nearly three times
+the post era's:
+
+```
+cut    healthy k=0   post k=0      GAP     gap as published at r235
+600s        767.5       471.8    295.7                       282.3
+300s        782.1       474.0    308.1                       280.1
+120s        783.5       476.0    307.5                       278.1
+ 60s        783.5       476.1    307.3                       278.0
+ 30s        783.7       476.7    307.0                       277.4
+ 10s        783.8       478.0    305.8                       276.1
+healthy unfiltered 754.1 (n=360)      post unfiltered 466.1 (n=1440)
+guard n(k=0) >= 100 holds throughout: healthy 228-320, post 1106-1324
+```
+
+Healthy's correction at the 60s cut is **+29.3 g/min** against the post era's **+10.2**
+— proportionally 3.9% versus 2.2%, so roughly 1.8x more costly in the fast era. Stated
+as an observation with its n (13 qualifying games healthy, 22 post) and not interpreted;
+it is consistent with r234's "a long game slows the workers it is not using", but this
+test was not designed to measure that and does not establish it.
+
+**The direction of the correction matters.** The occupancy closure is unaffected and in
+fact strengthened: fixing the asymmetry makes the unexplained residue **larger**, from
+~278 to ~307 g/min at the 60s cut, about 11% wider. No outcome of this test could have
+revived occupancy as the cause — the largest conceivable effect widens the gap — and
+that was written down before it ran.
+
+**Supersedes:** the wall gap figures quoted at r235. The k=0 medians themselves also
+moved slightly (474.0 → 471.8 at 600s) because the post window is an **extending**
+window that now includes the deep hours 01 and 02; it is not tick-comparable. The
+healthy window is closed and its numbers are fixed permanently.
+
+### Two held-fixed instruments are not reconstructible from their own labels
+
+Found while rebuilding this tick's tables, and worth more than either number:
+
+1. The healthy reference is labelled **"10/19 15-17"** in the standing table. The window
+   that actually reproduces every published figure (n=360, max 879.3, >550 345 = 95.83%,
+   p10 572.8, med 754.1, p90 817.6, <400 0.6%) is **15:00–18:00** — three hours, not two.
+   The numbers were always right; the label misstates its own span.
+2. The floor/peak held-fixed array is recorded as **n=35** over 15:20–21:00 with
+   drop-last slopes +11.5 ± 5.4 and +17.5 ± 3.8. No binning of that window reproduces
+   n=35: 10-minute bins give n=33, 9-minute bins n=37. The slopes land within one
+   standard error either way, so nothing is contradicted, but **"REPRODUCES EXACTLY"
+   cannot be claimed and is not claimed.**
+
+The rule that a tick-over-tick statistic must hold its window fixed is useless if the
+window is specified only by a label that cannot rebuild it. Fixing the instrument rather
+than resolving to be careful, the canonical definitions are now:
+
+```
+HEALTHY REFERENCE  10/19 15:00:00 - 18:00:00, all g/min samples, n=360, median 754.1
+FLOOR/PEAK HELD    10/20 15:20 - 21:00, 10-minute bins, per-bin min / per-bin max,
+                   drop the last bin, n=33
+```
+
+Re-based on that specification: **FLOOR +10.1 ± 5.7, PEAK +17.0 ± 4.1 (n=33)**. The old
++11.5/+17.5 (n=35) is retained as historical, not as a comparison target.
+
+### Hour 01 confirmed deep by a second instrument, hour 02 recovering
+
+Hour 01 was flagged at r235 from a partial read (n=102, median 362.4) and explicitly not
+alarmed from. Complete, it holds and deepens slightly:
+
+```
+hour   n    max     >550   p10     med     p90    <400     completed games
+ 20   120  553.2   1(0.83%) 364.4  465.5  522.0  23.3%            27,055
+ 21   120  560.3   1(0.83%) 312.4  468.0  521.1  40.0%            25,682
+ 22   120  532.1   0(0.00%) 183.3  475.4  519.8  29.2%            25,373
+ 23   120  543.9   0(0.00%) 384.6  487.4  524.4  11.7%            28,173
+ 00   120  556.1   1(0.83%) 340.0  472.8  514.0  15.0%            27,092
+ 01   120  535.6   0(0.00%) 276.1  355.0  481.5  68.3%            21,872   <- outlier
+ 02   120  532.0   0(0.00%) 316.4  428.6  498.5  35.0%            25,191
+ 03                                                      PARTIAL
+```
+
+The partial read (362.4) and the complete read (355.0) agree closely — marking it
+partial worked for the second tick running. The cumulative games counter, which shares
+**no arithmetic** with the g/min sampler, independently puts hour 01 lowest at 21,872
+against a 25,373–28,173 band: two instruments, same conclusion.
+
+Occupancy explains part of it and not all, at the 60s cut:
+
+```
+hour 01   OCCUPIED n=64 med 319.2 | FREE n=56 med 421.5
+hour 02                            FREE n=110 med 434.1
+hour 00                            FREE n=108 med 478.1
+```
+
+Hour 01's unoccupied samples sit ~57 g/min below hour 00's. **Verdict: a confirmed
+one-hour excursion, not a regime change** — hour 02's completed-games count is back
+inside the band at 25,191 and its FREE median has recovered most of the way. Watching
+hour 03, not alarming from it.
+
+### (6) replicates 48 -> 50, on two instruments rather than three
+
+`guards=game_deadline:50`; SLOW GAME ≥590s = 10/19: 33 + 10/20: 12 + 10/21: **5** = 50.
+Both grew on data the claim has never seen, so this is a replication, not a consistency
+check. History: 38→41→42→45→45→45→48→**50**.
+
+The third leg — the per-site split (`token_create` / `stack_drain` /
+`turn_phase_boundary` / `trigger_drain`) — is **unavailable this tick**, and the reason
+is item (6b) rather than a failure: that split reads off `guardtop=`, which is a **top-5
+view**, and all five slots are currently held by `percard_dispatch_depth_cap` entries
+(zone_change 302,728 / permanent_ltb 239,310 / creature_dies 231,102 / permanent_etb
+62,554 / graveyard_leave 60,422). A top-N instrument chooses what you see. Reported as
+two of three with the reason named, not quietly as two.
+
+### Standing measurements
+
+Aborts **1,540,966 — FROZEN, 10th hour**; any increase is a new event. EXITED 2 = 7,
+heap-delta aborts = 22, both unchanged. Health 200, pprof 200, goroutines 18, **log lag
+zero**. turns/game 55.3. CAPPED by hour: 00: 601, 01: 465, 02: 556, 03: 201 (PARTIAL).
+Crossings of 550 hold at **3 in 1,440** — 178 new samples, no new crossing. Proxy
+RssAnon 2,450,692 + VmSwap 377,984 = **2.70 GB**, flat. pswpout **1,098,466 exactly
+unchanged**; VmHWM 9,762,364 unchanged. Highest heap peaks 1,988 / 1,986 / 1,974 against
+the 6,442 ceiling — two new entries in the top three, maximum unmoved. The (0c) condition
+for heap profiles holds. Watcher found absent at 241 files, rotated to **31 archives**,
+relaunched and verified at 2 procs by a separate ssh.
