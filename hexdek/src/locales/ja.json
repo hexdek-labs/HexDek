@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  HEXDEKコア準備完了  + + +",
     "tagline": "オープンソース / / 寄付で運営 / / 広告なし",
-    "guest": "ゲスト"
+    "guest": "ゲスト",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "デッキ",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "進行中のゲームはありません",
     "in_progress": "進行中"
+  },
+  "search": {
+    "label": "検索",
+    "open": "検索を開く",
+    "placeholder": "デッキ・カード・プレイヤー・統率者を検索",
+    "aria": "全体検索",
+    "min_chars": "2文字以上入力して検索",
+    "scanning": "スキャン中…",
+    "no_results": "結果なし",
+    "section": {
+      "deck": "デッキ",
+      "commander": "統率者",
+      "owner": "プレイヤー",
+      "card": "カード"
+    }
+  },
+  "ws": {
+    "contacting": "サーバーに接続中...",
+    "initializing": "初期化中...",
+    "reconnecting": "再接続中 — バナーを確認 (試行 {attempt} / {max})",
+    "offline": "オフライン — {max} 回の試行後に中断"
+  },
+  "session": {
+    "confirm_prompt": "セッションを切断しますか？",
+    "confirm_yes": "はい、ログアウト",
+    "change_language": "言語を変更"
   }
 }

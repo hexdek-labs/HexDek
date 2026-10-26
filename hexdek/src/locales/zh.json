@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  HEXDEK 核心就绪  + + +",
     "tagline": "开源 / / 由捐款支持 / / 无广告",
-    "guest": "访客"
+    "guest": "访客",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "套牌",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "没有进行中的对局",
     "in_progress": "进行中"
+  },
+  "search": {
+    "label": "搜索",
+    "open": "打开搜索",
+    "placeholder": "搜索套牌 · 卡牌 · 玩家 · 指挥官",
+    "aria": "全局搜索",
+    "min_chars": "输入 2 个以上字符进行搜索",
+    "scanning": "扫描中…",
+    "no_results": "无结果",
+    "section": {
+      "deck": "套牌",
+      "commander": "指挥官",
+      "owner": "玩家",
+      "card": "卡牌"
+    }
+  },
+  "ws": {
+    "contacting": "正在连接服务器...",
+    "initializing": "正在初始化...",
+    "reconnecting": "正在重新连接 — 请查看横幅 (第 {attempt} / {max} 次尝试)",
+    "offline": "离线 — 在 {max} 次尝试后放弃"
+  },
+  "session": {
+    "confirm_prompt": "断开会话？",
+    "confirm_yes": "是，退出登录",
+    "change_language": "更改语言"
   }
 }

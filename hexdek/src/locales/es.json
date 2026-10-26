@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  NÚCLEO HEXDEK LISTO  + + +",
     "tagline": "CÓDIGO ABIERTO / / SOSTENIDO POR DONACIONES / / SIN ANUNCIOS",
-    "guest": "INVITADO"
+    "guest": "INVITADO",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "MAZOS",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "NO HAY PARTIDA EN CURSO",
     "in_progress": "EN CURSO"
+  },
+  "search": {
+    "label": "BUSCAR",
+    "open": "Abrir búsqueda",
+    "placeholder": "BUSCAR DECKS · CARTAS · JUGADORES · COMANDANTES",
+    "aria": "Búsqueda universal",
+    "min_chars": "ESCRIBE 2+ CARACTERES PARA BUSCAR",
+    "scanning": "ESCANEANDO…",
+    "no_results": "SIN RESULTADOS",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMANDANTES",
+      "owner": "JUGADORES",
+      "card": "CARTAS"
+    }
+  },
+  "ws": {
+    "contacting": "CONTACTANDO CON EL SERVIDOR...",
+    "initializing": "INICIALIZANDO...",
+    "reconnecting": "RECONECTANDO — VER AVISO (INTENTO {attempt} / {max})",
+    "offline": "SIN CONEXIÓN — SE ABANDONÓ TRAS {max} INTENTOS"
+  },
+  "session": {
+    "confirm_prompt": "¿DESCONECTAR SESIÓN?",
+    "confirm_yes": "SÍ, CERRAR SESIÓN",
+    "change_language": "Cambiar idioma"
   }
 }

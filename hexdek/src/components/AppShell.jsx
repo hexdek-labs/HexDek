@@ -91,7 +91,7 @@ export default function AppShell() {
               <select
                 value={locale}
                 onChange={e => setLocale(e.target.value)}
-                aria-label="Change language"
+                aria-label={t('session.change_language')}
                 style={{ outline: 'none' }}
               >
                 {availableLocales.map(l => (
@@ -103,9 +103,9 @@ export default function AppShell() {
             )}
             {!loading && (
               user ? (
-                <a onClick={() => setShowLogoutConfirm(true)}>LOGOUT</a>
+                <a onClick={() => setShowLogoutConfirm(true)}>{t('nav.logout')}</a>
               ) : (
-                <NavLink to="/login" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>SIGN IN ↗</NavLink>
+                <NavLink to="/login" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>{t('nav.login')}</NavLink>
               )
             )}
           </div>
@@ -122,20 +122,20 @@ export default function AppShell() {
             <span>
               <span style={{ color: wsStatus === 'live' ? 'var(--ok)' : (wsStatus === 'disconnected' || wsStatus === 'failed') ? 'var(--danger)' : 'var(--warn)' }}>●</span>
               {' '}
-              {wsStatus === 'live' && '+ + +  HEXDEK CORE READY  + + +'}
-              {wsStatus === 'contacting' && 'CONTACTING SERVER...'}
-              {wsStatus === 'initializing' && 'INITIALIZING...'}
-              {wsStatus === 'disconnected' && `RECONNECTING — SEE BANNER (ATTEMPT ${reconnectAttempt || 1} / ${maxAttempts})`}
-              {wsStatus === 'failed' && `OFFLINE — GAVE UP AFTER ${maxAttempts} ATTEMPTS`}
+              {wsStatus === 'live' && t('app.core_ready')}
+              {wsStatus === 'contacting' && t('ws.contacting')}
+              {wsStatus === 'initializing' && t('ws.initializing')}
+              {wsStatus === 'disconnected' && t('ws.reconnecting', { attempt: reconnectAttempt || 1, max: maxAttempts })}
+              {wsStatus === 'failed' && t('ws.offline', { max: maxAttempts })}
             </span>
-            <span>OPEN SOURCE / / DONATIONS-POWERED / / NO ADS</span>
-            <span>{user ? `USR.${user.email?.split('@')[0]?.toUpperCase()}` : 'GUEST'}</span>
+            <span>{t('app.tagline')}</span>
+            <span>{user ? t('app.user', { name: user.email?.split('@')[0]?.toUpperCase() }) : t('app.guest')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '4px 14px' }}>
-            <NavLink to="/about" style={{ color: 'var(--ink-2)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>ABOUT</NavLink>
-            <NavLink to="/feedback" style={{ color: 'var(--danger)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>BUG / SUGGESTION</NavLink>
-            <NavLink to="/donations" style={{ color: 'var(--ok)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>DONATE ♥</NavLink>
-            <a href="https://discord.gg/Mz2ueRFXds" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ink-2)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>DISCORD</a>
+            <NavLink to="/about" style={{ color: 'var(--ink-2)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>{t('nav.about')}</NavLink>
+            <NavLink to="/feedback" style={{ color: 'var(--danger)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>{t('nav.feedback')}</NavLink>
+            <NavLink to="/donations" style={{ color: 'var(--ok)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>{t('nav.donate')}</NavLink>
+            <a href="https://discord.gg/Mz2ueRFXds" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ink-2)', textDecoration: 'none', fontSize: 9, letterSpacing: '0.08em', fontWeight: 700 }}>{t('nav.discord')}</a>
           </div>
         </div>
       </div>
@@ -143,10 +143,10 @@ export default function AppShell() {
       {showLogoutConfirm && (
         <div className="logout-confirm-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="logout-confirm" onClick={e => e.stopPropagation()}>
-            <p>DISCONNECT SESSION?</p>
+            <p>{t('session.confirm_prompt')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleLogout}>YES, LOG OUT</button>
-              <button onClick={() => setShowLogoutConfirm(false)}>CANCEL</button>
+              <button onClick={handleLogout}>{t('session.confirm_yes')}</button>
+              <button onClick={() => setShowLogoutConfirm(false)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>

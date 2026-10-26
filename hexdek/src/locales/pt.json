@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  NÚCLEO HEXDEK PRONTO  + + +",
     "tagline": "CÓDIGO ABERTO / / MOVIDO POR DOAÇÕES / / SEM ANÚNCIOS",
-    "guest": "VISITANTE"
+    "guest": "VISITANTE",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "DECKS",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "NENHUMA PARTIDA EM ANDAMENTO",
     "in_progress": "EM ANDAMENTO"
+  },
+  "search": {
+    "label": "BUSCAR",
+    "open": "Abrir busca",
+    "placeholder": "BUSCAR DECKS · CARTAS · JOGADORES · COMANDANTES",
+    "aria": "Busca universal",
+    "min_chars": "DIGITE 2+ CARACTERES PARA BUSCAR",
+    "scanning": "ESCANEANDO…",
+    "no_results": "SEM RESULTADOS",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMANDANTES",
+      "owner": "JOGADORES",
+      "card": "CARTAS"
+    }
+  },
+  "ws": {
+    "contacting": "CONTATANDO O SERVIDOR...",
+    "initializing": "INICIALIZANDO...",
+    "reconnecting": "RECONECTANDO — VER AVISO (TENTATIVA {attempt} / {max})",
+    "offline": "OFFLINE — DESISTIU APÓS {max} TENTATIVAS"
+  },
+  "session": {
+    "confirm_prompt": "DESCONECTAR SESSÃO?",
+    "confirm_yes": "SIM, SAIR",
+    "change_language": "Alterar idioma"
   }
 }

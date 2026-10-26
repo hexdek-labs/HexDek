@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  CŒUR HEXDEK PRÊT  + + +",
     "tagline": "OPEN SOURCE / / FINANCÉ PAR LES DONS / / SANS PUB",
-    "guest": "INVITÉ"
+    "guest": "INVITÉ",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "DECKS",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "AUCUNE PARTIE EN COURS",
     "in_progress": "EN COURS"
+  },
+  "search": {
+    "label": "RECHERCHER",
+    "open": "Ouvrir la recherche",
+    "placeholder": "RECHERCHER DECKS · CARTES · JOUEURS · COMMANDANTS",
+    "aria": "Recherche universelle",
+    "min_chars": "TAPEZ 2+ CARACTÈRES POUR RECHERCHER",
+    "scanning": "ANALYSE…",
+    "no_results": "AUCUN RÉSULTAT",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMMANDANTS",
+      "owner": "JOUEURS",
+      "card": "CARTES"
+    }
+  },
+  "ws": {
+    "contacting": "CONNEXION AU SERVEUR...",
+    "initializing": "INITIALISATION...",
+    "reconnecting": "RECONNEXION — VOIR LA BANNIÈRE (TENTATIVE {attempt} / {max})",
+    "offline": "HORS LIGNE — ABANDON APRÈS {max} TENTATIVES"
+  },
+  "session": {
+    "confirm_prompt": "DÉCONNECTER LA SESSION ?",
+    "confirm_yes": "OUI, DÉCONNEXION",
+    "change_language": "Changer de langue"
   }
 }

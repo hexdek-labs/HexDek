@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  HEXDEK CORE READY  + + +",
     "tagline": "OPEN SOURCE / / DONATIONS-POWERED / / NO ADS",
-    "guest": "GUEST"
+    "guest": "GUEST",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "DECKS",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "NO GAME IN PROGRESS",
     "in_progress": "IN PROGRESS"
+  },
+  "search": {
+    "label": "SEARCH",
+    "open": "Open search",
+    "placeholder": "SEARCH DECKS · CARDS · PLAYERS · COMMANDERS",
+    "aria": "Universal search",
+    "min_chars": "TYPE 2+ CHARACTERS TO SEARCH",
+    "scanning": "SCANNING…",
+    "no_results": "NO RESULTS",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMMANDERS",
+      "owner": "PLAYERS",
+      "card": "CARDS"
+    }
+  },
+  "ws": {
+    "contacting": "CONTACTING SERVER...",
+    "initializing": "INITIALIZING...",
+    "reconnecting": "RECONNECTING — SEE BANNER (ATTEMPT {attempt} / {max})",
+    "offline": "OFFLINE — GAVE UP AFTER {max} ATTEMPTS"
+  },
+  "session": {
+    "confirm_prompt": "DISCONNECT SESSION?",
+    "confirm_yes": "YES, LOG OUT",
+    "change_language": "Change language"
   }
 }

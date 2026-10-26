@@ -4,7 +4,8 @@
     "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
     "core_ready": "+ + +  HEXDEK CORE BEREIT  + + +",
     "tagline": "OPEN SOURCE / / SPENDENFINANZIERT / / KEINE WERBUNG",
-    "guest": "GAST"
+    "guest": "GAST",
+    "user": "USR.{name}"
   },
   "nav": {
     "decks": "DECKS",
@@ -69,5 +70,31 @@
   "status": {
     "no_game": "KEINE PARTIE LÄUFT",
     "in_progress": "LÄUFT"
+  },
+  "search": {
+    "label": "SUCHE",
+    "open": "Suche öffnen",
+    "placeholder": "SUCHE DECKS · KARTEN · SPIELER · COMMANDER",
+    "aria": "Universelle Suche",
+    "min_chars": "2+ ZEICHEN EINGEBEN ZUM SUCHEN",
+    "scanning": "SCANNE…",
+    "no_results": "KEINE ERGEBNISSE",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMMANDER",
+      "owner": "SPIELER",
+      "card": "KARTEN"
+    }
+  },
+  "ws": {
+    "contacting": "VERBINDE MIT SERVER...",
+    "initializing": "INITIALISIERUNG...",
+    "reconnecting": "VERBINDUNGSAUFBAU — SIEHE BANNER (VERSUCH {attempt} / {max})",
+    "offline": "OFFLINE — ABBRUCH NACH {max} VERSUCHEN"
+  },
+  "session": {
+    "confirm_prompt": "SITZUNG TRENNEN?",
+    "confirm_yes": "JA, ABMELDEN",
+    "change_language": "Sprache ändern"
   }
 }

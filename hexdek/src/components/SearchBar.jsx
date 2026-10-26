@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
 
 const KIND_GLYPH = {
   deck: '▣',
@@ -10,11 +11,11 @@ const KIND_GLYPH = {
 }
 
 const SECTION_ORDER = ['deck', 'commander', 'owner', 'card']
-const SECTION_LABEL = {
-  deck: 'DECKS',
-  commander: 'COMMANDERS',
-  owner: 'PLAYERS',
-  card: 'CARDS',
+const SECTION_LABEL_KEY = {
+  deck: 'search.section.deck',
+  commander: 'search.section.commander',
+  owner: 'search.section.owner',
+  card: 'search.section.card',
 }
 
 function flattenResults(payload) {
@@ -53,6 +54,7 @@ export default function SearchBar() {
   const [active, setActive] = useState(0)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const t = useT()
   const inputRef = useRef(null)
   const reqIdRef = useRef(0)
 
@@ -116,7 +118,7 @@ export default function SearchBar() {
     }
     return SECTION_ORDER
       .filter(k => grouped[k] && grouped[k].length)
-      .map(k => ({ kind: k, label: SECTION_LABEL[k], items: grouped[k] }))
+      .map(k => ({ kind: k, labelKey: SECTION_LABEL_KEY[k], items: grouped[k] }))
   }, [items])
 
   const flatForKeyboard = useMemo(
@@ -154,11 +156,11 @@ export default function SearchBar() {
       <button
         type="button"
         className="searchbar-trigger"
-        aria-label="Open search"
+        aria-label={t('search.open')}
         onClick={() => setOpen(true)}
       >
         <span aria-hidden>⌖</span>
-        <span className="searchbar-trigger__label">SEARCH</span>
+        <span className="searchbar-trigger__label">{t('search.label')}</span>
         <span className="searchbar-trigger__hint">⌘K</span>
       </button>
 
@@ -173,8 +175,8 @@ export default function SearchBar() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="SEARCH DECKS · CARDS · PLAYERS · COMMANDERS"
-                aria-label="Universal search"
+                placeholder={t('search.placeholder')}
+                aria-label={t('search.aria')}
                 spellCheck={false}
                 autoComplete="off"
                 className="searchbar-overlay__input"
@@ -183,16 +185,16 @@ export default function SearchBar() {
             </div>
             <div className="searchbar-overlay__results">
               {query.trim().length < 2 ? (
-                <div className="searchbar-overlay__note">TYPE 2+ CHARACTERS TO SEARCH</div>
+                <div className="searchbar-overlay__note">{t('search.min_chars')}</div>
               ) : loading && items.length === 0 ? (
-                <div className="searchbar-overlay__note">SCANNING…</div>
+                <div className="searchbar-overlay__note">{t('search.scanning')}</div>
               ) : sections.length === 0 ? (
-                <div className="searchbar-overlay__note">NO RESULTS</div>
+                <div className="searchbar-overlay__note">{t('search.no_results')}</div>
               ) : (
                 sections.map(section => (
                   <div key={section.kind} className="searchbar-overlay__section">
                     <div className="searchbar-overlay__section-hd">
-                      {section.label} <span className="searchbar-overlay__count">{section.items.length}</span>
+                      {t(section.labelKey)} <span className="searchbar-overlay__count">{section.items.length}</span>
                     </div>
                     {section.items.map((item) => {
                       runningIndex += 1
