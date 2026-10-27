@@ -2759,21 +2759,25 @@ export default function DeckArchive() {
           <div className="archive-main freya-grid" data-testid="staging-freya">
             {/* Row: engine analysis + deck budget */}
             <div className="freya-pair">
-              <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
+              <Panel code="04.C" title={t('dka.freya_title')} right={<Tag solid>{wbs
+                ? (bracketDiverges
+                  ? t('dka.bracket_tag_div', { n: wbs, est: measuredBracket })
+                  : t('dka.bracket_tag', { n: wbs }))
+                : t('dka.bracket_tag_pending')}</Tag>}>
                 {!analysis ? (
                   <div style={{ padding: '20px 0', textAlign: 'center' }}>
                     <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {analyzing ? <>&gt; FREYA ENGINE ANALYZING DECK<span className="blink">_</span></> : <>&gt; NO FREYA ANALYSIS ON FILE</>}
+                      {analyzing ? <>{t('dka.freya_analyzing')}<span className="blink">_</span></> : <>{t('dka.no_freya')}</>}
                     </div>
                   </div>
                 ) : (
                   <div className="analysis-grid">
                     <div>
-                      <div className="t-xs muted">ARCHETYPE</div>
+                      <div className="t-xs muted">{t('deck.archetype')}</div>
                       <div className="t-2xl" style={{ fontWeight: 700, marginTop: 2 }}>{archetype}</div>
                     </div>
                     <div className="analysis-weights">
-                      <div className="t-xs muted">STRATEGY FOCUS</div>
+                      <div className="t-xs muted">{t('dka.strategy_focus')}</div>
                       {Object.entries(evalWeights).slice(0, 6).map(([k, v], i) => (
                         <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
                           <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.replace(/_/g, ' ').toUpperCase()}</span>
@@ -2796,7 +2800,7 @@ export default function DeckArchive() {
                   const visible = winLinesExpanded ? winLines : winLines.slice(0, WINLINE_CAP)
                   const hidden = winLines.length - WINLINE_CAP
                   return (
-                    <Panel code="04.D" title={`WIN LINES / / ${winLines.length} DETECTED`}>
+                    <Panel code="04.D" title={t('dka.win_lines', { count: winLines.length })}>
                       {visible.map((wl, i) => {
                         const kindMap = { finisher: 'bad', combat: 'warn', commander_damage: 'ok', combo: 'bad', synergy: null }
                         const symbols = ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
@@ -2806,22 +2810,23 @@ export default function DeckArchive() {
                             <Tag kind={kindMap[wl.type]} solid>{wl.type?.toUpperCase()}</Tag>
                             <div>
                               <div className="t-md" style={{ fontWeight: 700 }}>{wl.pieces?.join(' + ')}</div>
-                              {wl.tutor_paths && <div className="t-xs muted" style={{ marginTop: 2 }}>TUTORS: {wl.tutor_paths.map(t => t.tutor).join(', ')}</div>}
+                              {/* `tp` not `t` — the translator is in scope here. */}
+                              {wl.tutor_paths && <div className="t-xs muted" style={{ marginTop: 2 }}>{t('dka.tutors', { list: wl.tutor_paths.map(tp => tp.tutor).join(', ') })}</div>}
                             </div>
                           </div>
                         )
                       })}
                       {!winLinesExpanded && hidden > 0 && (
-                        <button type="button" onClick={() => setWinLinesExpanded(true)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>SHOW {hidden} MORE WIN LINE{hidden === 1 ? '' : 'S'} ↓</button>
+                        <button type="button" onClick={() => setWinLinesExpanded(true)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>{hidden === 1 ? t('dka.show_more_winlines_one', { count: hidden }) : t('dka.show_more_winlines', { count: hidden })}</button>
                       )}
                       {winLinesExpanded && winLines.length > WINLINE_CAP && (
-                        <button type="button" onClick={() => setWinLinesExpanded(false)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>COLLAPSE ↑</button>
+                        <button type="button" onClick={() => setWinLinesExpanded(false)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>{t('dka.collapse')}</button>
                       )}
                     </Panel>
                   )
                 })() : <div />}
                 {finisherCards.length > 0 ? (
-                  <Panel code="04.K" title={`WIN CONDITIONS / / ${finisherCards.length}`}>
+                  <Panel code="04.K" title={t('dka.win_conditions_n', { count: finisherCards.length })}>
                     <div className="grid col-5 gap-2">{finisherCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
                   </Panel>
                 ) : <div />}
@@ -2834,8 +2839,8 @@ export default function DeckArchive() {
             {/* STAR CARDS — own row, full card images, click-to-expand */}
             {starCards.length > 0 && (
               <div className="freya-full freya-starcards">
-                <Panel code="04.S" title={`STAR CARDS / / ${starCards.length}`} right={<Tag solid kind="ok">★ TOP {Math.min(10, starCards.length)}</Tag>}>
-                  <div className="t-xs muted" style={{ marginBottom: 10 }}>Freya's highest-impact cards in this list — click any card to expand it.</div>
+                <Panel code="04.S" title={t('dka.star_cards', { count: starCards.length })} right={<Tag solid kind="ok">{t('dka.star_top', { count: Math.min(10, starCards.length) })}</Tag>}>
+                  <div className="t-xs muted" style={{ marginBottom: 10 }}>{t('dka.star_blurb')}</div>
                   <div className="star-cards-grid">
                     {starCards.slice(0, 10).map((name, i) => (
                       <CardLink key={i} name={name} underline={false} style={{ display: 'block' }}>
@@ -2857,7 +2862,7 @@ export default function DeckArchive() {
             <div className="freya-pair">
               <div>
                 {valueKeys.length > 0 && (
-                  <CollapsiblePanel code="04.E" title={`VALUE ENGINE / / ${valueKeys.length} KEY CARDS`} defaultOpen>
+                  <CollapsiblePanel code="04.E" title={t('dka.value_engine', { count: valueKeys.length })} defaultOpen>
                     <div className="grid col-5 gap-2">{valueKeys.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
                   </CollapsiblePanel>
                 )}
@@ -2868,28 +2873,30 @@ export default function DeckArchive() {
 
             {/* Dense tail — fills the remaining 2-to-3 columns */}
             {legality && !legality.valid && (
-              <Panel code="04.L" title="LEGALITY VIOLATIONS" right={<Tag kind="bad" solid>ILLEGAL</Tag>}>
+              <Panel code="04.L" title={t('dka.legality_violations')} right={<Tag kind="bad" solid>{t('decks.illegal')}</Tag>}>
                 {legality.errors?.map((e, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '2px 0' }}>&gt; {e}</div>)}
                 {legality.warnings?.map((w, i) => <div key={i} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; {w}</div>)}
               </Panel>
             )}
 
             {(curveWarnings.length > 0 || colorMismatch.length > 0 || comboNotes.length > 0) && (
-              <Panel code="04.W" title="WARNINGS" right={<Tag kind="warn" solid>{curveWarnings.length + colorMismatch.length + comboNotes.length}</Tag>}>
-                {curveWarnings.map((w, i) => <div key={`c${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; CURVE: {w}</div>)}
-                {colorMismatch.map((w, i) => <div key={`m${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; COLOR: {w}</div>)}
-                {comboNotes.map((w, i) => <div key={`n${i}`} className="t-xs" style={{ color: 'var(--ink-2)', padding: '2px 0' }}>&gt; COMBO: {w}</div>)}
+              <Panel code="04.W" title={t('dka.warnings')} right={<Tag kind="warn" solid>{curveWarnings.length + colorMismatch.length + comboNotes.length}</Tag>}>
+                {/* Only the CATEGORY is ours; the warning text itself comes
+                    from Freya already worded, so it is echoed. */}
+                {curveWarnings.map((w, i) => <div key={`c${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>{t('dka.w_curve', { msg: w })}</div>)}
+                {colorMismatch.map((w, i) => <div key={`m${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>{t('dka.w_color', { msg: w })}</div>)}
+                {comboNotes.map((w, i) => <div key={`n${i}`} className="t-xs" style={{ color: 'var(--ink-2)', padding: '2px 0' }}>{t('dka.w_combo', { msg: w })}</div>)}
               </Panel>
             )}
 
             {gameChangerCards.length > 0 && (
-              <CollapsiblePanel code="04.GC" title={`GAME CHANGERS / / ${gameChangerCards.length}`} right={<Tag kind="bad" solid>B4+</Tag>}>
+              <CollapsiblePanel code="04.GC" title={t('dka.game_changers_n', { count: gameChangerCards.length })} right={<Tag kind="bad" solid>B4+</Tag>}>
                 <div className="grid col-5 gap-2">{gameChangerCards.map((name, i) => <CardThumb key={i} name={name} />)}</div>
               </CollapsiblePanel>
             )}
 
             {emergentSynergies.length > 0 && (
-              <CollapsiblePanel code="04.H" title={`CARD PACKAGES / / ${emergentSynergies.length} DISCOVERED`}>
+              <CollapsiblePanel code="04.H" title={t('dka.card_packages', { count: emergentSynergies.length })}>
                 {emergentSynergies.slice(0, 12).map((syn, i) => (
                   <div key={i} style={{ padding: '6px 0', borderBottom: i < emergentSynergies.length - 1 ? '1px dashed var(--rule-2)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -2898,7 +2905,7 @@ export default function DeckArchive() {
                     </div>
                     <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <Tag solid kind={syn.tier >= 3 ? 'ok' : null}>T{syn.tier}</Tag>
-                      {syn.observation_count > 0 && <span className="t-xs muted" style={{ marginLeft: 6 }}>{syn.observation_count}× seen</span>}
+                      {syn.observation_count > 0 && <span className="t-xs muted" style={{ marginLeft: 6 }}>{t('dka.times_seen', { count: syn.observation_count })}</span>}
                     </div>
                   </div>
                 ))}
@@ -2906,7 +2913,7 @@ export default function DeckArchive() {
             )}
 
             {analysis?.tutor_targets && (
-              <CollapsiblePanel code="04.F" title="TUTOR TARGETS">
+              <CollapsiblePanel code="04.F" title={t('dka.tutor_targets')}>
                 <KV rows={analysis.tutor_targets.map((t, i) => [`TARGET.${i + 1}`, t])} />
               </CollapsiblePanel>
             )}
@@ -2935,13 +2942,13 @@ export default function DeckArchive() {
               }
               if (ranked.length === 0) return null
               return (
-                <Panel code="04.HC" title={`HOT CARDS / / TOP ${ranked.length} BY WR CONTRIBUTION`}>
+                <Panel code="04.HC" title={t('dka.hot_cards', { count: ranked.length })}>
                   <div className="hot-cards-grid hot-cards-grid--sm">
                     {ranked.map((r, i) => (
                       <div key={i} className="hot-cards-tile">
                         <CardThumb name={r.name} compact />
                         <span className="hot-cards-chip hot-cards-chip--wr">{r.wr.toFixed(0)}%</span>
-                        <span className="hot-cards-chip hot-cards-chip--games">{r.games}g · +{(r.wr - baseline).toFixed(0)}</span>
+                        <span className="hot-cards-chip hot-cards-chip--games">{t('dka.hot_games', { games: r.games, delta: (r.wr - baseline).toFixed(0) })}</span>
                       </div>
                     ))}
                   </div>
@@ -2962,47 +2969,47 @@ export default function DeckArchive() {
                     if (gauntlet?.status === 'running') return
                     trackEvent('start_gauntlet', { deck: `${owner}/${id}`, games: 500 })
                     api.startGauntlet(`${owner}/${id}`, 500).then((res) => {
-                      if (res?.credits_charged) { toast.info(`PAID RUN — ${res.credits_charged} CR DEDUCTED`); setCreditsRefreshKey(k => k + 1) }
+                      if (res?.credits_charged) { toast.info(t('dka.t_paid_run', { credits: res.credits_charged })); setCreditsRefreshKey(k => k + 1) }
                       const poll = () => { api.getGauntlet(`${owner}/${id}`).then(r => { setGauntlet(r); if (r.status === 'running') setTimeout(poll, 3000) }) }
                       setTimeout(poll, 2000)
                       setGauntlet({ status: 'running', games: 0, target: 500, win_rate: 0 })
                     }).catch(err => {
-                      if (err?.status === 402) { toast.error('OUT OF FREE GAUNTLETS / INSUFFICIENT CREDITS'); setCreditsRefreshKey(k => k + 1) }
-                      else if (err?.status === 401) toast.error('SIGN IN TO RUN A GAUNTLET')
-                      else toast.error('GAUNTLET FAILED TO START')
+                      if (err?.status === 402) { toast.error(t('dka.t_no_credits')); setCreditsRefreshKey(k => k + 1) }
+                      else if (err?.status === 401) toast.error(t('dka.t_sign_in_gauntlet'))
+                      else toast.error(t('dka.t_gauntlet_failed'))
                     })
-                  }}>{gauntlet?.status === 'running' ? 'GAUNTLET RUNNING...' : 'RUN GAUNTLET (500)'}</Btn>
+                  }}>{gauntlet?.status === 'running' ? t('dka.gauntlet_running') : t('dka.run_gauntlet', { count: 500 })}</Btn>
                   <Btn solid arrow="▶" onClick={() => {
                     if (spawningRoom) return
                     setSpawningRoom(true)
                     trackEvent('spawn_spectate_room', { deck: `${owner}/${id}` })
                     api.spawnSpectateRoom(`${owner}/${id}`).then(r => { setSpawningRoom(false); if (r.room_id) navigate(`/spectate/${r.room_id}`) }).catch(() => setSpawningRoom(false))
-                  }}>{spawningRoom ? 'SPAWNING...' : 'SPECTATE LIVE'}</Btn>
-                  <Btn ghost arrow="▶">TEST VERSION</Btn>
+                  }}>{spawningRoom ? t('dka.spawning') : t('dka.spectate_live')}</Btn>
+                  <Btn ghost arrow="▶">{t('dka.test_version')}</Btn>
                 </div>
               </div>
             )}
 
             {gauntlet && gauntlet.status !== 'none' && (
-              <Panel code="04.G" title="GAUNTLET REPORT" right={gauntlet.status === 'running' ? <Tag kind="warn">{`${gauntlet.games}/${gauntlet.target}`}</Tag> : <Tag solid kind={gauntlet.status === 'complete' ? 'ok' : 'bad'}>{gauntlet.status?.toUpperCase()}</Tag>}>
+              <Panel code="04.G" title={t('dka.gauntlet_report')} right={gauntlet.status === 'running' ? <Tag kind="warn">{`${gauntlet.games}/${gauntlet.target}`}</Tag> : <Tag solid kind={gauntlet.status === 'complete' ? 'ok' : 'bad'}>{gauntlet.status?.toUpperCase()}</Tag>}>
                 {gauntlet.status === 'running' ? (
                   <div style={{ padding: '16px 0', textAlign: 'center' }}>
-                    <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>&gt; GAUNTLET IN PROGRESS<span className="blink">_</span><br />&gt; {gauntlet.games?.toLocaleString()} / {gauntlet.target?.toLocaleString()} GAMES ({gauntlet.win_rate || 0}% WIN RATE)</div>
+                    <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('dka.gauntlet_in_progress')}<span className="blink">_</span><br />{t('dka.gauntlet_progress', { games: gauntlet.games?.toLocaleString(), target: gauntlet.target?.toLocaleString(), pct: gauntlet.win_rate || 0 })}</div>
                     <Bar value={gauntlet.games / gauntlet.target * 100} />
                   </div>
                 ) : gauntlet.status === 'complete' ? (
                   <div>
                     <div className="gauntlet-stat-grid">
-                      <div><div className="t-xs muted">WIN RATE</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.win_rate >= 25 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.win_rate}%</div></div>
-                      <div><div className="t-xs muted">RECORD</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700 }}><span style={{ color: 'var(--ok)' }}>{gauntlet.wins}W</span> — <span style={{ color: 'var(--danger)' }}>{gauntlet.losses}L</span></div></div>
-                      <div><div className="t-xs muted">ELO DELTA</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.elo_delta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.elo_delta >= 0 ? '+' : ''}{Math.round(gauntlet.elo_delta)}</div></div>
+                      <div><div className="t-xs muted">{t('deck.win_rate')}</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.win_rate >= 25 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.win_rate}%</div></div>
+                      <div><div className="t-xs muted">{t('dka.record')}</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700 }}><span style={{ color: 'var(--ok)' }}>{gauntlet.wins}W</span> — <span style={{ color: 'var(--danger)' }}>{gauntlet.losses}L</span></div></div>
+                      <div><div className="t-xs muted">{t('dka.elo_delta')}</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.elo_delta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.elo_delta >= 0 ? '+' : ''}{Math.round(gauntlet.elo_delta)}</div></div>
                     </div>
-                    <KV rows={[['GAMES', `${gauntlet.games?.toLocaleString()}`], ['AVG TURNS', `${gauntlet.avg_turns}`]]} />
-                    {gauntlet.top_beaten?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>MOST BEATEN</div>{gauntlet.top_beaten.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--ok)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
-                    {gauntlet.top_lost_to?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>MOST LOST TO</div>{gauntlet.top_lost_to.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
+                    <KV rows={[[t('deck.games'), `${gauntlet.games?.toLocaleString()}`], [t('dka.avg_turns'), `${gauntlet.avg_turns}`]]} />
+                    {gauntlet.top_beaten?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>{t('dka.most_beaten')}</div>{gauntlet.top_beaten.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--ok)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
+                    {gauntlet.top_lost_to?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>{t('dka.most_lost_to')}</div>{gauntlet.top_lost_to.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
                   </div>
                 ) : gauntlet.status === 'error' ? (
-                  <div className="t-xs" style={{ color: 'var(--danger)', padding: '10px 0' }}>&gt; GAUNTLET ERROR — deck may not be loaded in the engine pool.</div>
+                  <div className="t-xs" style={{ color: 'var(--danger)', padding: '10px 0' }}>{t('dka.gauntlet_error')}</div>
                 ) : null}
               </Panel>
             )}
@@ -3013,13 +3020,13 @@ export default function DeckArchive() {
             {/* META POSITIONING + VULNERABLE TO — moved here from Tab 2
                 (matchup data, not Freya strategy-derivation). */}
             {metaMatchups.length > 0 && (
-              <CollapsiblePanel code="04.MM" title={`META POSITIONING / / ${archetype}`} defaultOpen>
+              <CollapsiblePanel code="04.MM" title={t('dka.meta_positioning', { archetype })} defaultOpen>
                 {metaMatchups.map((m, i) => {
                   const ratingSymbol = m.rating === 'favored' ? '▲' : m.rating === 'unfavored' ? '▼' : '—'
                   return (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < metaMatchups.length - 1 ? '1px dotted var(--rule)' : 'none' }}>
                       <div>
-                        <span className="t-xs" style={{ fontWeight: 700 }}>vs {m.archetype?.toUpperCase()}</span>
+                        <span className="t-xs" style={{ fontWeight: 700 }}>{t('dka.vs_name', { name: m.archetype?.toUpperCase() })}</span>
                         {m.reason && <div className="t-xs muted" style={{ marginTop: 1 }}>{m.reason}</div>}
                       </div>
                       <Tag solid kind={m.rating === 'favored' ? 'ok' : m.rating === 'unfavored' ? 'bad' : null}>{ratingSymbol} {m.rating?.toUpperCase()}</Tag>
@@ -3030,13 +3037,13 @@ export default function DeckArchive() {
             )}
 
             {vulnerableTo.length > 0 && (
-              <CollapsiblePanel code="04.V" title="VULNERABLE TO">
+              <CollapsiblePanel code="04.V" title={t('dka.vulnerable_to')}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{vulnerableTo.map((v, i) => <Tag key={i} kind="warn" solid>{v.toUpperCase()}</Tag>)}</div>
               </CollapsiblePanel>
             )}
 
             {matchupMatrix && matchupMatrix.length > 0 && (
-              <Panel code="04.MX" title={`MATCHUP MATRIX / / ${matchupMatrix.length} OPPONENTS`}>
+              <Panel code="04.MX" title={t('dka.matchup_matrix', { count: matchupMatrix.length })}>
                 <div className="matchup-matrix">
                   {matchupMatrix.slice(0, 30).map((m, i) => {
                     const games = (m.wins || 0) + (m.losses || 0)
@@ -3059,18 +3066,18 @@ export default function DeckArchive() {
             )}
 
             {commanderCardStats && commanderCardStats.length > 0 && (
-              <Panel code="04.CS" title={`CARD STATS / / ${deck?.commander_card || 'COMMANDER'} ECOSYSTEM`}>
+              <Panel code="04.CS" title={t('dka.card_stats', { name: deck?.commander_card || t('common.commander') })}>
                 {(() => {
                   const deckCardNames = new Set(cards.map(c => c.name))
                   const rows = commanderCardStats.filter(s => deckCardNames.has(s.card_name || s.name || s.CardName)).filter(s => (s.games_included || s.games || s.Games || 0) >= 20).map(s => {
                     const games = s.games_included || s.games || s.Games || 0, wins = s.wins_when_included || s.wins || s.Wins || 0
                     return { name: s.card_name || s.name || s.CardName, games, wins, wr: games > 0 ? wins / games * 100 : 0 }
                   }).sort((a, b) => b.wr - a.wr)
-                  if (rows.length === 0) return <div className="t-xs muted" style={{ padding: '10px 0' }}>&gt; Not enough card-level data yet for this commander.</div>
+                  if (rows.length === 0) return <div className="t-xs muted" style={{ padding: '10px 0' }}>{t('dka.not_enough_card_data')}</div>
                   const top = rows.slice(0, 8)
                   return (
                     <>
-                      <div className="t-xs muted" style={{ marginBottom: 4, marginTop: 4 }}>TOP PERFORMERS</div>
+                      <div className="t-xs muted" style={{ marginBottom: 4, marginTop: 4 }}>{t('dka.top_performers')}</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', gap: '2px 8px', fontSize: 10 }}>
                         {top.map((r, i) => (
                           <div key={i} style={{ display: 'contents' }}>
@@ -3090,20 +3097,20 @@ export default function DeckArchive() {
               const myKey = `${owner}/${id}`
               const summary = summarizeRecentGames(recentGames, myKey)
               return (
-                <Panel code="04.RG" title={`RECENT GAMES / / ${recentGames.length}`} right={summary.total > 0 ? <span className="t-xs muted"><span style={{ color: 'var(--ok)' }}>{summary.wins}W</span>{' · '}<span style={{ color: 'var(--danger)' }}>{summary.losses}L</span></span> : null}>
+                <Panel code="04.RG" title={t('dka.recent_games', { count: recentGames.length })} right={summary.total > 0 ? <span className="t-xs muted"><span style={{ color: 'var(--ok)' }}>{summary.wins}W</span>{' · '}<span style={{ color: 'var(--danger)' }}>{summary.losses}L</span></span> : null}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} data-testid="recent-games-table">
-                    <thead><tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}><th style={{ padding: '4px 6px', width: 50 }}>RESULT</th><th style={{ padding: '4px 6px' }}>GAME</th><th style={{ padding: '4px 6px' }}>OPPONENTS</th><th style={{ padding: '4px 6px', width: 38 }}>T</th><th style={{ padding: '4px 6px', width: 80 }}>WHEN</th></tr></thead>
+                    <thead><tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}><th style={{ padding: '4px 6px', width: 50 }}>{t('dka.col_result')}</th><th style={{ padding: '4px 6px' }}>{t('dka.col_game')}</th><th style={{ padding: '4px 6px' }}>{t('dka.col_opponents')}</th><th style={{ padding: '4px 6px', width: 38 }}>T</th><th style={{ padding: '4px 6px', width: 80 }}>{t('dka.col_when')}</th></tr></thead>
                     <tbody>
                       {recentGames.map((r) => {
                         const outcome = outcomeForDeck(r, myKey)
                         const opps = opponentCommanders(r, myKey)
                         const resultColor = outcome === 'win' ? 'var(--ok)' : outcome === 'loss' ? 'var(--danger)' : outcome === 'draw' ? 'var(--ink-2)' : 'var(--ink-3)'
-                        const resultLabel = outcome === 'win' ? 'WIN' : outcome === 'loss' ? 'LOSS' : outcome === 'draw' ? 'DRAW' : '—'
+                        const resultLabel = outcome === 'win' ? t('dka.res_win') : outcome === 'loss' ? t('dka.res_loss') : outcome === 'draw' ? t('dka.res_draw') : '—'
                         return (
-                          <tr key={r.game_id} onClick={() => navigate(`/games/${r.game_id}/summary`)} style={{ borderBottom: '1px solid var(--rule-3)', cursor: 'pointer' }} title="Open game summary">
+                          <tr key={r.game_id} onClick={() => navigate(`/games/${r.game_id}/summary`)} style={{ borderBottom: '1px solid var(--rule-3)', cursor: 'pointer' }} title={t('dka.open_game_summary')}>
                             <td style={{ padding: '4px 6px', fontWeight: 700, color: resultColor, letterSpacing: '0.06em' }}>{resultLabel}</td>
                             <td style={{ padding: '4px 6px' }}><strong>#{r.game_id}</strong></td>
-                            <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}><span className="muted">vs </span>{opps.join(' · ') || '—'}</td>
+                            <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}><span className="muted">{t('dka.vs_label')} </span>{opps.join(' · ') || '—'}</td>
                             <td style={{ padding: '4px 6px' }}>{r.turns || '—'}</td>
                             {/* The one shared relative-time path (lib/relativeAge +
                                 formatAge), the same one Dashboard and Landing use, so
