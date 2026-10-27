@@ -56,6 +56,7 @@ import {
   formatRelativeFinished,
   summarizeRecentGames,
 } from '../lib/recentGames'
+import { relativeAge, formatAge } from '../lib/relativeAge'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -1524,6 +1525,7 @@ function CollapsiblePanel({ code, title, right, defaultOpen = false, children })
 }
 
 export default function DeckArchive() {
+  const t = useT()
   const { owner, id } = useParams()
   const navigate = useNavigate()
   const [deck, setDeck] = useState(null)
@@ -1728,7 +1730,7 @@ export default function DeckArchive() {
         setDeck(d => ({ ...(d || {}), tags: updated.tags || [] }))
         trackEvent('tag_deck', { deck: `${owner}/${id}`, count: next.length })
       } catch {
-        toast.error('TAG SAVE FAILED')
+        toast.error(t('dka.t_tag_save_failed'))
       } finally {
         setSavingTags(false)
       }
@@ -1749,9 +1751,9 @@ export default function DeckArchive() {
       setDeck(d => ({ ...(d || {}), custom_name: updated.custom_name || '' }))
       trackEvent('rename_deck', { deck: `${owner}/${id}`, len: trimmed.length })
       setEditingName(false)
-      toast.success('DECK RENAMED')
+      toast.success(t('dka.t_renamed'))
     } catch (err) {
-      toast.error('RENAME FAILED')
+      toast.error(t('dka.t_rename_failed'))
     } finally {
       setSavingName(false)
     }
@@ -1810,10 +1812,12 @@ export default function DeckArchive() {
       else           await api.addFriend(target, userOwnerSlug)
       trackEvent(wasFriend ? 'remove_friend' : 'add_friend', { target })
       window.dispatchEvent(new CustomEvent('hexdek-friends-changed'))
-      toast.success(wasFriend ? `UNFRIENDED ${target.toUpperCase()}` : `FRIEND ADDED · ${target.toUpperCase()}`)
+      toast.success(wasFriend
+        ? t('dka.t_unfriended', { name: target.toUpperCase() })
+        : t('dka.t_friend_added', { name: target.toUpperCase() }))
     } catch {
       setIsFriend(wasFriend) // rollback
-      toast.error(wasFriend ? 'UNFRIEND FAILED' : 'ADD FRIEND FAILED')
+      toast.error(wasFriend ? t('dka.t_unfriend_failed') : t('dka.t_add_friend_failed'))
     } finally {
       setFriendBusy(false)
     }
@@ -1839,8 +1843,8 @@ export default function DeckArchive() {
       }
     } catch {}
     trackEvent('share_deck', { deck: `${owner}/${id}`, copied })
-    if (copied) toast.success('SHARE LINK COPIED')
-    else toast.error('COPY FAILED — ' + url, 5000)
+    if (copied) toast.success(t('dka.t_share_copied'))
+    else toast.error(t('dka.t_copy_failed', { url }), 5000)
   }
 
   // Pin the user's chosen commander, then let Freya analyze. PATCH accepts
@@ -1880,9 +1884,9 @@ export default function DeckArchive() {
       const fresh = await api.getDeck(`${owner}/${id}`)
       setDeck(fresh)
       setCommanderPickerOpen(false)
-      toast.success(`COMMANDER SET · ${norm(chosenName).toUpperCase()}`)
+      toast.success(t('dka.t_commander_set', { name: norm(chosenName).toUpperCase() }))
     } catch {
-      toast.error('COULD NOT SET COMMANDER — TRY AGAIN')
+      toast.error(t('dka.t_commander_failed'))
     } finally {
       setPinningCommander(false)
     }
@@ -2122,7 +2126,9 @@ export default function DeckArchive() {
   const measuredBracketLabel = analysis?.measured_bracket_label || ''
   const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
   const gameChangers = analysis?.game_changer_count ?? null
-  const archetype = analysis?.archetype?.toUpperCase() || 'UNKNOWN'
+  // archetype itself arrives from Freya already worded — only our own
+  // "nothing on file" fallback is translated.
+  const archetype = analysis?.archetype?.toUpperCase() || t('dash.unknown')
   const summary = analysis?.gameplan_summary || ''
   const winLines = analysis?.win_lines || []
   const valueKeys = analysis?.value_engine_keys || []
@@ -2217,6 +2223,9 @@ export default function DeckArchive() {
     return Array.from(ci).sort((a, b) => 'WUBRG'.indexOf(a) - 'WUBRG'.indexOf(b))
   })()
 
+  // Resolves either shape — a keyed descriptive label, or a proper noun.
+  const themeLabel = (th) => (th.labelKey ? t(th.labelKey) : th.label)
+
   const pageTheme = (() => {
     // Per-color palette: rgba base for the wash, hex accent for highlights.
     const COLORS = {
@@ -2228,7 +2237,7 @@ export default function DeckArchive() {
     }
     const ids = colorIdentity.length ? colorIdentity : []
     if (ids.length === 0) {
-      return { wash: 'linear-gradient(135deg, rgba(28,29,22,0.9), rgba(20,21,15,0.9))', accent: '#8a9682', label: 'COLORLESS' }
+      return { wash: 'linear-gradient(135deg, rgba(28,29,22,0.9), rgba(20,21,15,0.9))', accent: '#8a9682', labelKey: 'dka.ci_colorless' }
     }
     // Build a 135deg gradient across the colors. Single colors get a soft
     // top-left → bottom-right fade between two intensities of the same hue.
@@ -2247,17 +2256,29 @@ export default function DeckArchive() {
     const accentColor = ids.find(c => accentPriority.includes(c))
       ? COLORS[accentPriority.find(c => ids.includes(c))].accent
       : '#8a9682'
+    // Guild / shard / wedge names are proper nouns printed untranslated on
+    // real cards, so they stay English literals. The DESCRIPTIVE ones are
+    // catalog keys, worded at the render site rather than here — this map
+    // is read during render and an English word held in it would otherwise
+    // need the locale as a dependency.
+    const COMBO_KEYS = {
+      W: 'dka.ci_mono_w', U: 'dka.ci_mono_u', B: 'dka.ci_mono_b',
+      R: 'dka.ci_mono_r', G: 'dka.ci_mono_g', WUBRG: 'dka.ci_five',
+    }
     const COMBO_NAMES = {
-      W: 'MONO WHITE', U: 'MONO BLUE', B: 'MONO BLACK', R: 'MONO RED', G: 'MONO GREEN',
       WU: 'AZORIUS', UB: 'DIMIR', BR: 'RAKDOS', RG: 'GRUUL', GW: 'SELESNYA',
       WB: 'ORZHOV', UR: 'IZZET', BG: 'GOLGARI', RW: 'BOROS', UG: 'SIMIC',
       WUB: 'ESPER', UBR: 'GRIXIS', BRG: 'JUND', RGW: 'NAYA', GWU: 'BANT',
       WBG: 'ABZAN', URW: 'JESKAI', BGU: 'SULTAI', RWB: 'MARDU', GUR: 'TEMUR',
       WUBR: 'YORE-TILLER', WUBG: 'WITCH-MAW', WURG: 'INK-TREADER', WBRG: 'DUNE-BROOD', UBRG: 'GLINT-EYE',
-      WUBRG: 'FIVE-COLOR',
     }
-    const label = COMBO_NAMES[ids.join('')] || ids.join('')
-    return { wash: `linear-gradient(135deg, ${stops})`, accent: accentColor, label }
+    const joined = ids.join('')
+    return {
+      wash: `linear-gradient(135deg, ${stops})`,
+      accent: accentColor,
+      labelKey: COMBO_KEYS[joined] || null,
+      label: COMBO_KEYS[joined] ? null : (COMBO_NAMES[joined] || joined),
+    }
   })()
 
   const clientCurve = (() => {
@@ -2322,9 +2343,9 @@ export default function DeckArchive() {
   if (loading) {
     return (
       <>
-        <Tape left="DECK ARCHIVE / / LOADING" mid="" right="" />
+        <Tape left={t('dka.tape_loading')} mid="" right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; LOADING DECK DATA<span className="blink">_</span></div>
+          <div className="t-md muted">{t('dka.loading_deck')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -2386,30 +2407,34 @@ export default function DeckArchive() {
         setSavingDeck(false); setAnalyzing(true); setDeckEdits(null)
         api.getDeck(`${owner}/${id}`).then(setDeck)
         api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
-        toast.success('DECK SAVED — RUNNING FREYA')
-      }).catch(() => { setSavingDeck(false); toast.error('SAVE FAILED') })
+        toast.success(t('dka.t_deck_saved'))
+      }).catch(() => { setSavingDeck(false); toast.error(t('dka.t_save_failed')) })
     }
     const canEditDeck = !!(isOwner && owner && id)
 
     const specsRows = [
-      ['OWNER', <Link to={`/profile/${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],
-      ...(ownerFriendCount != null ? [['FRIENDS', String(ownerFriendCount)]] : []),
-      ['CARDS', `${cardCount}`],
-      ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—', 'game_changers'],
-      ['ARCHETYPE', archetype, 'archetype'],
-      ...(legality ? [['LEGALITY', <span style={{ color: legality.valid ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>{legality.valid ? 'LEGAL' : 'ILLEGAL'}</span>, 'legality']] : []),
-      ...(manaBaseGrade ? [['MANA BASE', manaBaseGrade, 'mana_base_grade']] : []),
-      ...(powerPercentile != null ? [['POWER', `TOP ${powerPercentile}%`, 'power_percentile']] : []),
-      ...(commanderSynergy != null ? [['COMMANDER SYNERGY', `${Math.round(commanderSynergy * 100)}%`, 'cmdr_synergy']] : []),
-      ...(keepableHandPct != null ? [['KEEPABLE HANDS', `${Math.round(keepableHandPct)}%`, 'keepable_hands']] : []),
-      ...(interactionAvgCmc != null ? [['INTERACTION CMC', `AVG ${Math.round(interactionAvgCmc * 10) / 10}`, 'interaction_avg_cmc']] : []),
-      ...(cheapInteraction != null ? [['CHEAP REMOVAL', `${cheapInteraction} AT ≤2 CMC`, 'cheap_interaction']] : []),
+      [t('dka.sp_owner'), <Link to={`/profile/${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],
+      ...(ownerFriendCount != null ? [[t('dka.sp_friends'), String(ownerFriendCount)]] : []),
+      [t('dka.m_cards'), `${cardCount}`],
+      // GAME CHANGERS is the Commander bracket system's own term — a
+      // proper noun in the format, left as printed.
+      [t('dka.sp_game_changers'), gameChangers != null ? `${gameChangers}` : '—', 'game_changers'],
+      [t('deck.archetype'), archetype, 'archetype'],
+      ...(legality ? [[t('dka.sp_legality'), <span style={{ color: legality.valid ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>{legality.valid ? t('decks.legal') : t('decks.illegal')}</span>, 'legality']] : []),
+      // manaBaseGrade is a letter grade (A–F), not a word.
+      ...(manaBaseGrade ? [[t('dka.sp_mana_base'), manaBaseGrade, 'mana_base_grade']] : []),
+      ...(powerPercentile != null ? [[t('dka.sp_power'), t('dka.power_top', { pct: powerPercentile }), 'power_percentile']] : []),
+      ...(commanderSynergy != null ? [[t('dka.sp_cmdr_synergy'), `${Math.round(commanderSynergy * 100)}%`, 'cmdr_synergy']] : []),
+      ...(keepableHandPct != null ? [[t('dka.sp_keepable'), `${Math.round(keepableHandPct)}%`, 'keepable_hands']] : []),
+      ...(interactionAvgCmc != null ? [[t('dka.sp_interaction_cmc'), t('dka.interaction_avg', { n: Math.round(interactionAvgCmc * 10) / 10 }), 'interaction_avg_cmc']] : []),
+      ...(cheapInteraction != null ? [[t('dka.sp_cheap_removal'), t('dka.cheap_at', { count: cheapInteraction }), 'cheap_interaction']] : []),
     ]
     const bracketRows = [
-      ['BRACKET', wbs ? `B${wbs}${wbsLabel ? ` · ${wbsLabel.toUpperCase()}` : ''}` : 'PENDING'],
-      ...(bracketDiverges ? [['ESTIMATED', `B${measuredBracket}`]] : []),
-      ['ARCHETYPE', archetype],
-      ['RECENT WIN RATE', glance.recent ? `${glance.recent.pct}%` : (glance.allTime ? `${glance.allTime.pct}%` : '—')],
+      // wbsLabel is Freya's own wording for the bracket — echoed.
+      [t('deck.bracket'), wbs ? `B${wbs}${wbsLabel ? ` · ${wbsLabel.toUpperCase()}` : ''}` : t('dka.pending')],
+      ...(bracketDiverges ? [[t('dka.estimated'), `B${measuredBracket}`]] : []),
+      [t('deck.archetype'), archetype],
+      [t('dka.recent_win_rate'), glance.recent ? `${glance.recent.pct}%` : (glance.allTime ? `${glance.allTime.pct}%` : '—')],
     ]
     // Action buttons (Workshop / Export / Forge / Clone / Sign-in / Delete)
     // moved onto the banner per owner direction.
@@ -2426,40 +2451,40 @@ export default function DeckArchive() {
             setEditText(lines.join('\n'))
             setEditing(true)
             api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
-          }}>WORKSHOP</Btn>
+          }}>{t('dka.workshop')}</Btn>
         )}
         {owner && id && isOwner && !editing && (
-          <Btn ghost arrow="↗" onClick={() => setCommanderPickerOpen(true)}>SET COMMANDER</Btn>
+          <Btn ghost arrow="↗" onClick={() => setCommanderPickerOpen(true)}>{t('dka.set_commander')}</Btn>
         )}
-        <Btn ghost arrow="↗" onClick={() => { if (cards.length) setExportOpen(true) }}>EXPORT</Btn>
-        {owner && id && <Btn ghost arrow="↗" onClick={() => navigate(`/forge?deck=${owner}/${id}`)}>OPEN IN FORGE</Btn>}
+        <Btn ghost arrow="↗" onClick={() => { if (cards.length) setExportOpen(true) }}>{t('common.export')}</Btn>
+        {owner && id && <Btn ghost arrow="↗" onClick={() => navigate(`/forge?deck=${owner}/${id}`)}>{t('dka.open_in_forge')}</Btn>}
         {owner && id && !isOwner && user && (
           <Btn solid arrow="⎘" disabled={cloning} onClick={() => {
             if (cloning) return
             setCloning(true)
             trackEvent('clone_deck', { deck: `${owner}/${id}` })
             api.cloneDeck(`${owner}/${id}`).then(res => {
-              toast.success('DECK CLONED — RUNNING FREYA')
+              toast.success(t('dka.t_cloned'))
               navigate(`/decks/${res.owner}/${res.id}`)
             }).catch(err => {
-              if (err?.status === 401) toast.error('SIGN IN TO CLONE')
-              else toast.error('CLONE FAILED')
+              if (err?.status === 401) toast.error(t('dka.t_sign_in_clone'))
+              else toast.error(t('dka.t_clone_failed'))
               setCloning(false)
             })
-          }}>{cloning ? 'CLONING…' : 'CLONE DECK'}</Btn>
+          }}>{cloning ? t('dka.cloning') : t('dka.clone_deck')}</Btn>
         )}
-        {owner && id && !isOwner && !user && <Btn ghost arrow="↗" onClick={() => navigate('/login')}>SIGN IN TO CLONE</Btn>}
+        {owner && id && !isOwner && !user && <Btn ghost arrow="↗" onClick={() => navigate('/login')}>{t('dka.sign_in_to_clone')}</Btn>}
         {owner && id && (
           !confirmDelete ? (
-            <Btn ghost onClick={() => setConfirmDelete(true)} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>DELETE</Btn>
+            <Btn ghost onClick={() => setConfirmDelete(true)} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>{t('common.delete')}</Btn>
           ) : (
             <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-              <Btn solid onClick={() => { api.deleteDeck(`${owner}/${id}`).then(() => navigate('/decks')).catch(() => setConfirmDelete(false)) }} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>CONFIRM DELETE</Btn>
-              <Btn ghost onClick={() => setConfirmDelete(false)}>CANCEL</Btn>
+              <Btn solid onClick={() => { api.deleteDeck(`${owner}/${id}`).then(() => navigate('/decks')).catch(() => setConfirmDelete(false)) }} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>{t('dka.confirm_delete')}</Btn>
+              <Btn ghost onClick={() => setConfirmDelete(false)}>{t('common.cancel')}</Btn>
             </span>
           )
         )}
-        {analyzing && <Tag solid kind="info">ANALYZING...</Tag>}
+        {analyzing && <Tag solid kind="info">{t('dka.analyzing')}</Tag>}
       </div>
     )
 
@@ -2468,9 +2493,9 @@ export default function DeckArchive() {
         {cmdrImageUrl && <img className="art-ambience" src={cmdrImageUrl} alt="" aria-hidden="true" />}
 
         <Tape
-          left={`DECK ARCHIVE / / ${owner?.toUpperCase()} / / ${deckName}`}
-          mid={`${pageTheme.label} · STAGING PREVIEW`}
-          right="LANDING ↗ FREYA ↗ EMPIRICAL ↗"
+          left={t('dka.tape_left', { owner: owner?.toUpperCase(), name: deckName })}
+          mid={t('dka.tape_mid', { colors: themeLabel(pageTheme) })}
+          right={t('dka.tape_right')}
         />
 
         {/* Decluttered banner — art, name, commander, tags + the action row */}
@@ -2480,12 +2505,12 @@ export default function DeckArchive() {
           style={cmdrImageUrl ? { backgroundImage: `url(${cmdrImageUrl})`, ...(cmdrContrast ? { '--art-contrast': cmdrContrast } : null) } : undefined}
         >
           <div className="deck-hero__scrim" />
-          <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {pageTheme.label}</div>
+          <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {themeLabel(pageTheme)}</div>
           <div className="deck-hero__corner deck-hero__corner--tr">{owner?.toUpperCase()} / / {id}</div>
           <div className="deck-hero__actions">
-            {owner && id && <button type="button" className="deck-hero__share" onClick={handleShare} title="Copy shareable link"><span>SHARE</span><span className="arr">↗</span></button>}
-            {owner && id && <button type="button" className="deck-hero__share" onClick={() => setComparePickerOpen(true)} title="Compare against another deck"><span>COMPARE</span><span className="arr">⇄</span></button>}
-            {canFriend && <button type="button" className={`deck-hero__friend ${isFriend ? 'is-on' : ''}`} onClick={toggleFriend} disabled={friendBusy} title={isFriend ? `Unfriend ${owner.toUpperCase()}` : `Add ${owner.toUpperCase()} as a friend`}><span>{isFriend ? '✓ FRIEND' : '+ ADD FRIEND'}</span></button>}
+            {owner && id && <button type="button" className="deck-hero__share" onClick={handleShare} title={t('dka.copy_link')}><span>{t('common.share')}</span><span className="arr">↗</span></button>}
+            {owner && id && <button type="button" className="deck-hero__share" onClick={() => setComparePickerOpen(true)} title={t('dka.compare_title')}><span>{t('dka.compare')}</span><span className="arr">⇄</span></button>}
+            {canFriend && <button type="button" className={`deck-hero__friend ${isFriend ? 'is-on' : ''}`} onClick={toggleFriend} disabled={friendBusy} title={isFriend ? t('dka.unfriend_title', { name: owner.toUpperCase() }) : t('dka.add_friend_title', { name: owner.toUpperCase() })}><span>{isFriend ? t('dka.friend_on') : t('dka.add_friend')}</span></button>}
           </div>
           <div className="deck-hero__body">
             {cmdrFullUrl && (
@@ -2495,8 +2520,8 @@ export default function DeckArchive() {
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="deck-hero__meta">
-                <Tag solid>{wbs ? `B${wbs}` : 'BRACKET PENDING'}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
-                {bracketDiverges && <Tag solid kind="warn">EST. B{measuredBracket}</Tag>}
+                <Tag solid>{wbs ? `B${wbs}` : t('dka.bracket_pending')}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
+                {bracketDiverges && <Tag solid kind="warn">{t('dka.est_bracket', { n: measuredBracket })}</Tag>}
                 <Tag>{archetype}</Tag>
                 {colorIdentity.length > 0 && <Tag>{colorIdentity.join('')}</Tag>}
               </div>
@@ -2518,14 +2543,14 @@ export default function DeckArchive() {
                 ) : (
                   <>
                     <h1 className="deck-hero__title">{deckName}</h1>
-                    {isOwner && <button type="button" className="deck-hero__rename" onClick={startNameEdit} title="Rename deck" aria-label="Rename deck">✎</button>}
+                    {isOwner && <button type="button" className="deck-hero__rename" onClick={startNameEdit} title={t('dka.rename_deck')} aria-label={t('dka.rename_deck')}>✎</button>}
                   </>
                 )}
               </div>
               {cmdrCardName && cmdrCardName.toUpperCase() !== deckName && <div className="deck-hero__sub">{cmdrCardName}</div>}
               {deck?.forked_from && (
                 <div className="deck-hero__sub" style={{ fontSize: 11, opacity: 0.8, marginTop: 4, letterSpacing: '0.04em' }}>
-                  FORKED FROM{' '}
+                  {t('dka.forked_from')}{' '}
                   <Link to={`/decks/${deck.forked_from}`} style={{ color: 'inherit', borderBottom: '1px dotted currentColor', textDecoration: 'none' }}>{deck.forked_from}</Link>
                 </div>
               )}
@@ -2534,7 +2559,7 @@ export default function DeckArchive() {
               )}
               {isOwner ? (
                 <div style={{ marginTop: 8, maxWidth: 520 }}>
-                  <TagInput value={Array.isArray(deck?.tags) ? deck.tags : []} onChange={handleTagsChange} owner={owner} placeholder={savingTags ? 'SAVING…' : 'ADD TAG — e.g. cedh, budget, brew'} />
+                  <TagInput value={Array.isArray(deck?.tags) ? deck.tags : []} onChange={handleTagsChange} owner={owner} placeholder={savingTags ? t('dka.saving_ell') : t('dka.tag_placeholder')} />
                 </div>
               ) : (Array.isArray(deck?.tags) && deck.tags.length > 0 && (
                 <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>{deck.tags.map(t => <Tag key={t}>{t.toUpperCase()}</Tag>)}</div>
@@ -2546,15 +2571,15 @@ export default function DeckArchive() {
 
         {/* 3-tab bar */}
         <div className="deck-tabs deck-tabs--staging">
-          <button type="button" className={`deck-tab ${landingTab === 'landing' ? 'active' : ''}`} onClick={() => setLandingTab('landing')} data-testid="tab-landing">LANDING</button>
-          <button type="button" className={`deck-tab ${landingTab === 'freya' ? 'active' : ''}`} onClick={() => setLandingTab('freya')} data-testid="tab-freya">FREYA ANALYSIS</button>
-          <button type="button" className={`deck-tab ${landingTab === 'empirical' ? 'active' : ''}`} onClick={() => setLandingTab('empirical')} data-testid="tab-empirical">EMPIRICAL</button>
+          <button type="button" className={`deck-tab ${landingTab === 'landing' ? 'active' : ''}`} onClick={() => setLandingTab('landing')} data-testid="tab-landing">{t('dka.tab_landing')}</button>
+          <button type="button" className={`deck-tab ${landingTab === 'freya' ? 'active' : ''}`} onClick={() => setLandingTab('freya')} data-testid="tab-freya">{t('dka.tab_freya')}</button>
+          <button type="button" className={`deck-tab ${landingTab === 'empirical' ? 'active' : ''}`} onClick={() => setLandingTab('empirical')} data-testid="tab-empirical">{t('dka.tab_empirical')}</button>
         </div>
 
         {/* Workshop editor — visible on any tab while editing */}
         {editing && (
           <div ref={editPanelRef} style={{ padding: '0 12px' }}>
-            <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={<span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>}>
+            <Panel code="04.X" title={t('dka.ws_title')} right={<span className="t-xs" style={{ color: 'var(--warn)' }}>{t('dka.in_workshop')}</span>}>
               <WorkshopCommanderPicker editText={editText} onChange={setEditText} />
               <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
                 const lines = editText.split('\n')
@@ -2577,9 +2602,9 @@ export default function DeckArchive() {
                     api.getDeck(`${owner}/${id}`).then(setDeck)
                     api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
                   }).catch(() => setSaving(false))
-                }}>{saving ? 'SAVING...' : 'SAVE UPDATE'}</Btn>
-                {editText !== originalEditText && <Btn ghost onClick={() => setEditText(originalEditText)}>REVERT</Btn>}
-                <Btn ghost onClick={() => { setEditing(false); setSaving(false) }}>CANCEL</Btn>
+                }}>{saving ? t('dka.saving_dots') : t('dka.save_update')}</Btn>
+                {editText !== originalEditText && <Btn ghost onClick={() => setEditText(originalEditText)}>{t('dka.revert')}</Btn>}
+                <Btn ghost onClick={() => { setEditing(false); setSaving(false) }}>{t('common.cancel')}</Btn>
               </div>
             </Panel>
           </div>
@@ -2589,17 +2614,17 @@ export default function DeckArchive() {
         {landingTab === 'landing' && (
           <div className={`deck-landing ${canEditDeck ? 'deck-landing--edit' : ''}`} data-testid="staging-landing">
             <div className="deck-landing__sidebar">
-              <Panel code="04.A" title="DECK SPECS" solid>
+              <Panel code="04.A" title={t('dka.specs_title')} solid>
                 <KV rows={specsRows} />
                 {commanderThemes.length > 0 && (
                   <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>{commanderThemes.map((t, i) => <Tag key={i}>{t.toUpperCase()}</Tag>)}</div>
                 )}
                 <div className="hr" style={{ margin: '10px 0' }} />
-                <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>BRACKET</div>
+                <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>{t('deck.bracket')}</div>
                 <KV rows={bracketRows} />
                 {glance.winConditions.length > 0 && (
                   <>
-                    <div className="t-xs muted" style={{ margin: '8px 0 4px', letterSpacing: '0.08em' }}>WIN CONDITIONS</div>
+                    <div className="t-xs muted" style={{ margin: '8px 0 4px', letterSpacing: '0.08em' }}>{t('dka.win_conditions')}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {glance.winConditions.map((name, i) => <CardLink key={i} name={name}><Tag>{name.toUpperCase()}</Tag></CardLink>)}
                     </div>
@@ -2609,7 +2634,7 @@ export default function DeckArchive() {
                   <>
                     <div className="hr" style={{ margin: '10px 0' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <GlossaryTerm term="confidence" compact><span className="t-xs muted">CONFIDENCE</span></GlossaryTerm>
+                      <GlossaryTerm term="confidence" compact><span className="t-xs muted">{t('dka.confidence')}</span></GlossaryTerm>
                       <ConfidenceDots games={deckElo.games} showLabel size="lg" />
                     </div>
                   </>
@@ -2625,7 +2650,7 @@ export default function DeckArchive() {
               {/* Condensed mana curve + color pie, folded into the left
                   column alongside the deck specs (v2 review). */}
               {(curveData || colorData) && (
-                <Panel code="04.M" title="CURVE / COLORS">
+                <Panel code="04.M" title={t('dka.curve_colors')}>
                   {curveData && (
                     <ManaCurveChart
                       distribution={curveData.distribution}
@@ -2640,7 +2665,7 @@ export default function DeckArchive() {
                   {colorData && (
                     <>
                       <div className="hr" style={{ margin: '10px 0' }} />
-                      <div className="t-xs muted" style={{ marginBottom: 8, letterSpacing: '0.08em' }}>COLOR BREAKDOWN</div>
+                      <div className="t-xs muted" style={{ marginBottom: 8, letterSpacing: '0.08em' }}>{t('dka.color_breakdown')}</div>
                       <ColorPie demand={colorData} />
                     </>
                   )}
@@ -2648,29 +2673,30 @@ export default function DeckArchive() {
               )}
 
               {/* The single, deduped Similar Decks panel */}
-              <Panel code="04.SIM" title={`SIMILAR DECKS / / ${similarDecks == null ? '…' : similarDecks.length}`} right={similarDecks && similarDecks.length > 0 ? <Tag solid>{similarDecks.length}</Tag> : null}>
+              <Panel code="04.SIM" title={t('dka.similar_decks', { count: similarDecks == null ? '…' : similarDecks.length })} right={similarDecks && similarDecks.length > 0 ? <Tag solid>{similarDecks.length}</Tag> : null}>
                 {similarDecks == null ? (
-                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>&gt; SCANNING DECK INDEX<span className="blink">_</span></div>
+                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>{t('dka.scanning_index')}<span className="blink">_</span></div>
                 ) : similarDecks.length === 0 ? (
-                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>&gt; NO SIMILAR DECKS FOUND.</div>
+                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>{t('dka.no_similar')}</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {similarDecks.map((d, i) => {
                       const cmdrArt = d.commander_card ? cardArtUrl(d.commander_card) : null
                       const showName = (d.commander || d.name || d.id || '').toUpperCase()
                       const tags = []
-                      if (d.same_commander) tags.push('CMDR')
-                      if (d.same_archetype) tags.push('ARCHE')
+                      if (d.same_commander) tags.push(t('dka.cmdr_short'))
+                      if (d.same_archetype) tags.push(t('dka.tag_arche'))
+                      // Bracket plate (B3) is a code, not a word.
                       if (d.same_bracket) tags.push(`B${d.bracket}`)
                       return (
-                        <Link key={`${d.owner}/${d.id}`} to={`/decks/${d.owner}/${d.id}`} title={`${showName} · ${d.shared_cards} shared`}
+                        <Link key={`${d.owner}/${d.id}`} to={`/decks/${d.owner}/${d.id}`} title={t('dka.sim_title', { name: showName, count: d.shared_cards })}
                           style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: 8, padding: 4, border: '1px solid var(--rule-2)', textDecoration: 'none', color: 'var(--ink)', background: i === 0 ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}>
                           <div className={cmdrArt ? '' : 'hatch'} style={{ width: 52, height: 40, overflow: 'hidden', backgroundImage: cmdrArt ? `url(${cmdrArt})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center 30%', filter: 'saturate(0.6) contrast(1.05)' }} />
                           <div style={{ minWidth: 0 }}>
                             <div className="t-xs" style={{ fontWeight: 700, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{showName}</div>
                             <div className="t-xs muted-2" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(d.owner || '').toUpperCase()}</div>
                             <div className="t-xs" style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <span style={{ color: 'var(--ok)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{d.shared_cards} SHARED</span>
+                              <span style={{ color: 'var(--ok)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t('dka.shared_cards', { count: d.shared_cards })}</span>
                               {tags.map(t => <span key={t} style={{ fontSize: 8, letterSpacing: '0.08em', padding: '0 4px', border: '1px solid color-mix(in srgb, var(--accent) 50%, var(--rule-2))', color: 'var(--ink-2)' }}>{t}</span>)}
                             </div>
                           </div>
@@ -2686,7 +2712,7 @@ export default function DeckArchive() {
             <div className="deck-landing__main">
               <Panel
                 code="04.B"
-                title={`DECK LIST / / ${workingCards.length} ENTRIES`}
+                title={t('dka.decklist_entries', { count: workingCards.length })}
                 right={editSummary?.dirty ? <Tag solid kind="warn">+{editSummary.added} / −{editSummary.removed}</Tag> : null}
               >
                 {editSummary?.dirty && (
@@ -2695,11 +2721,11 @@ export default function DeckArchive() {
                       <span style={{ color: 'var(--ok)' }}>+{editSummary.added}</span>
                       {' / '}
                       <span style={{ color: 'var(--danger)' }}>−{editSummary.removed}</span>
-                      {' '}UNSAVED
+                      {' '}{t('dka.unsaved')}
                     </span>
                     <span style={{ display: 'flex', gap: 6 }}>
-                      <Btn solid onClick={saveDeckEdits} disabled={savingDeck}>{savingDeck ? 'SAVING…' : 'SAVE DECK'}</Btn>
-                      <Btn ghost onClick={() => setDeckEdits(null)} disabled={savingDeck}>DISCARD</Btn>
+                      <Btn solid onClick={saveDeckEdits} disabled={savingDeck}>{savingDeck ? t('dka.saving_ell') : t('dka.save_deck')}</Btn>
+                      <Btn ghost onClick={() => setDeckEdits(null)} disabled={savingDeck}>{t('dka.discard')}</Btn>
                     </span>
                   </div>
                 )}
@@ -2714,9 +2740,12 @@ export default function DeckArchive() {
             {/* RIGHT — Workshop-style card search to add cards inline */}
             {canEditDeck && (
               <div className="deck-landing__edit" data-testid="landing-edit-rail">
-                <Panel code="04.+" title="ADD CARDS" right={<span className="t-xs muted">CLICK TO ADD</span>}>
+                <Panel code="04.+" title={t('dka.add_cards')} right={<span className="t-xs muted">{t('dka.click_to_add')}</span>}>
                   <ContextBox id="deck.landing.edit" compact>
-                    Search by name and click a result to add it to the deck. Hover any decklist row and click <strong>×</strong> to remove. Edits are staged — <strong>SAVE DECK</strong> commits and re-runs Freya analysis.
+                    {fill(t('dka.edit_ctx'), {
+                      x: <strong>×</strong>,
+                      save: <strong>{t('dka.save_deck')}</strong>,
+                    })}
                   </ContextBox>
                   <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(name, row) => addCardToDeck(row || { name })} />
                 </Panel>
@@ -3076,7 +3105,13 @@ export default function DeckArchive() {
                             <td style={{ padding: '4px 6px' }}><strong>#{r.game_id}</strong></td>
                             <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}><span className="muted">vs </span>{opps.join(' · ') || '—'}</td>
                             <td style={{ padding: '4px 6px' }}>{r.turns || '—'}</td>
-                            <td style={{ padding: '4px 6px' }}><span className="muted">{formatRelativeFinished(r.finished_at)}</span></td>
+                            {/* The one shared relative-time path (lib/relativeAge +
+                                formatAge), the same one Dashboard and Landing use, so
+                                "when did this game finish" reads identically across the
+                                app. Past 30 days it falls back to an ISO date by design.
+                                recentGames.formatRelativeFinished stays for the legacy
+                                render below and goes with it. */}
+                            <td style={{ padding: '4px 6px' }}><span className="muted">{formatAge(t, relativeAge(r.finished_at ? r.finished_at * 1000 : null))}</span></td>
                           </tr>
                         )
                       })}
