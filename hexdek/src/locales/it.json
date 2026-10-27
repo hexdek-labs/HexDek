@@ -1365,5 +1365,26 @@
     "no_catalog": "> NESSUN CATALOGO OBIETTIVI DISPONIBILE.",
     "badge_tip_earned": "{name} — {desc}\nOttenuto il {date}",
     "badge_tip_locked": "{name} — {desc} (bloccato)"
+  },
+  "cr": {
+    "title": "CREDITI",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> CARICAMENTO",
+    "err_signin": "ACCEDI PER VEDERE I CREDITI",
+    "err_load": "CARICAMENTO DEI CREDITI FALLITO",
+    "kv_balance": "SALDO",
+    "kv_free_today": "GAUNTLET GRATUITI OGGI",
+    "kv_cost_per_run": "COSTO PER ESECUZIONE A PAGAMENTO",
+    "kv_status": "STATO",
+    "status_free": "LIVELLO GRATUITO ATTIVO",
+    "status_paid": "CREDITI RICHIESTI",
+    "status_exhausted": "ESAURITI — GUADAGNA O ASPETTA",
+    "recent_tx": "TRANSAZIONI RECENTI",
+    "no_tx": "> ANCORA NESSUNA TRANSAZIONE. CONTRIBUISCI CON CALCOLO PER GUADAGNARE.",
+    "rs_compute": "GUADAGNATI CON IL CALCOLO",
+    "rs_gauntlet": "ESECUZIONE GAUNTLET",
+    "rs_extended": "ANALISI ESTESA",
+    "rs_admin": "RETTIFICA AMMINISTRATORE",
+    "rs_other": "ALTRO"
   }
 }

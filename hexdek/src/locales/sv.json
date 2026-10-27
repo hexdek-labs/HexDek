@@ -1365,5 +1365,26 @@
     "no_catalog": "> INGEN PRESTATIONSKATALOG TILLGÄNGLIG.",
     "badge_tip_earned": "{name} — {desc}\nUppnådd {date}",
     "badge_tip_locked": "{name} — {desc} (låst)"
+  },
+  "cr": {
+    "title": "KREDITER",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> LADDAR",
+    "err_signin": "LOGGA IN FÖR ATT SE KREDITER",
+    "err_load": "KUNDE INTE LADDA KREDITER",
+    "kv_balance": "SALDO",
+    "kv_free_today": "GRATIS GAUNTLETS IDAG",
+    "kv_cost_per_run": "KOSTNAD PER BETALD KÖRNING",
+    "kv_status": "STATUS",
+    "status_free": "GRATISNIVÅ AKTIV",
+    "status_paid": "KREDITER KRÄVS",
+    "status_exhausted": "SLUT — TJÄNA ELLER VÄNTA",
+    "recent_tx": "SENASTE TRANSAKTIONER",
+    "no_tx": "> INGA TRANSAKTIONER ÄNNU. BIDRA MED BERÄKNING FÖR ATT TJÄNA.",
+    "rs_compute": "INTJÄNADE VIA BERÄKNING",
+    "rs_gauntlet": "GAUNTLET-KÖRNING",
+    "rs_extended": "UTÖKAD ANALYS",
+    "rs_admin": "ADMINJUSTERING",
+    "rs_other": "ÖVRIGT"
   }
 }

@@ -1365,5 +1365,26 @@
     "no_catalog": "> NO ACHIEVEMENT CATALOG AVAILABLE.",
     "badge_tip_earned": "{name} — {desc}\nEarned {date}",
     "badge_tip_locked": "{name} — {desc} (locked)"
+  },
+  "cr": {
+    "title": "CREDITS",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> LOADING",
+    "err_signin": "SIGN IN TO VIEW CREDITS",
+    "err_load": "FAILED TO LOAD CREDITS",
+    "kv_balance": "BALANCE",
+    "kv_free_today": "FREE GAUNTLETS TODAY",
+    "kv_cost_per_run": "COST PER PAID RUN",
+    "kv_status": "STATUS",
+    "status_free": "FREE TIER ACTIVE",
+    "status_paid": "CREDITS REQUIRED",
+    "status_exhausted": "EXHAUSTED — EARN OR WAIT",
+    "recent_tx": "RECENT TRANSACTIONS",
+    "no_tx": "> NO TRANSACTIONS YET. CONTRIBUTE COMPUTE TO EARN.",
+    "rs_compute": "COMPUTE EARNED",
+    "rs_gauntlet": "GAUNTLET RUN",
+    "rs_extended": "EXTENDED ANALYSIS",
+    "rs_admin": "ADMIN ADJUSTMENT",
+    "rs_other": "OTHER"
   }
 }

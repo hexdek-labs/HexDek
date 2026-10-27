@@ -1365,5 +1365,26 @@
     "no_catalog": "> NU EXISTĂ CATALOG DE REALIZĂRI DISPONIBIL.",
     "badge_tip_earned": "{name} — {desc}\nObținut {date}",
     "badge_tip_locked": "{name} — {desc} (blocat)"
+  },
+  "cr": {
+    "title": "CREDITE",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> SE ÎNCARCĂ",
+    "err_signin": "AUTENTIFICĂ-TE PENTRU A VEDEA CREDITELE",
+    "err_load": "ÎNCĂRCAREA CREDITELOR A EȘUAT",
+    "kv_balance": "SOLD",
+    "kv_free_today": "GAUNTLET-URI GRATUITE AZI",
+    "kv_cost_per_run": "COST PE RULARE PLĂTITĂ",
+    "kv_status": "STARE",
+    "status_free": "NIVEL GRATUIT ACTIV",
+    "status_paid": "SUNT NECESARE CREDITE",
+    "status_exhausted": "EPUIZATE — CÂȘTIGĂ SAU AȘTEAPTĂ",
+    "recent_tx": "TRANZACȚII RECENTE",
+    "no_tx": "> ÎNCĂ NICIO TRANZACȚIE. CONTRIBUIE CU CALCUL PENTRU A CÂȘTIGA.",
+    "rs_compute": "CÂȘTIGATE PRIN CALCUL",
+    "rs_gauntlet": "RULARE GAUNTLET",
+    "rs_extended": "ANALIZĂ EXTINSĂ",
+    "rs_admin": "AJUSTARE ADMIN",
+    "rs_other": "ALTELE"
   }
 }

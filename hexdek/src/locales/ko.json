@@ -1365,5 +1365,26 @@
     "no_catalog": "> 사용 가능한 업적 카탈로그가 없습니다.",
     "badge_tip_earned": "{name} — {desc}\n{date} 획득",
     "badge_tip_locked": "{name} — {desc} (잠김)"
+  },
+  "cr": {
+    "title": "크레딧",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> 불러오는 중",
+    "err_signin": "크레딧을 보려면 로그인하세요",
+    "err_load": "크레딧을 불러오지 못했습니다",
+    "kv_balance": "잔액",
+    "kv_free_today": "오늘의 무료 건틀릿",
+    "kv_cost_per_run": "유료 실행당 비용",
+    "kv_status": "상태",
+    "status_free": "무료 등급 활성",
+    "status_paid": "크레딧 필요",
+    "status_exhausted": "소진 — 획득하거나 대기",
+    "recent_tx": "최근 거래",
+    "no_tx": "> 아직 거래가 없습니다. 연산을 기여해 획득하세요.",
+    "rs_compute": "연산으로 획득",
+    "rs_gauntlet": "건틀릿 실행",
+    "rs_extended": "확장 분석",
+    "rs_admin": "관리자 조정",
+    "rs_other": "기타"
   }
 }

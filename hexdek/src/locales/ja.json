@@ -1365,5 +1365,26 @@
     "no_catalog": "> 利用可能な実績カタログがありません。",
     "badge_tip_earned": "{name} — {desc}\n獲得日 {date}",
     "badge_tip_locked": "{name} — {desc}（ロック中）"
+  },
+  "cr": {
+    "title": "クレジット",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> 読み込み中",
+    "err_signin": "クレジットを表示するにはサインインしてください",
+    "err_load": "クレジットの読み込みに失敗しました",
+    "kv_balance": "残高",
+    "kv_free_today": "本日の無料ガントレット",
+    "kv_cost_per_run": "有料実行あたりの費用",
+    "kv_status": "ステータス",
+    "status_free": "無料ティア有効",
+    "status_paid": "クレジットが必要",
+    "status_exhausted": "枯渇 — 獲得するか待機",
+    "recent_tx": "最近の取引",
+    "no_tx": "> まだ取引がありません。計算リソースを提供して獲得してください。",
+    "rs_compute": "計算で獲得",
+    "rs_gauntlet": "ガントレット実行",
+    "rs_extended": "拡張分析",
+    "rs_admin": "管理者による調整",
+    "rs_other": "その他"
   }
 }

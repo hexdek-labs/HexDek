@@ -1365,5 +1365,26 @@
     "no_catalog": "> KULLANILABİLİR BAŞARIM KATALOĞU YOK.",
     "badge_tip_earned": "{name} — {desc}\nKazanıldı {date}",
     "badge_tip_locked": "{name} — {desc} (kilitli)"
+  },
+  "cr": {
+    "title": "KREDİ",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> YÜKLENİYOR",
+    "err_signin": "KREDİLERİ GÖRMEK İÇİN OTURUM AÇ",
+    "err_load": "KREDİLER YÜKLENEMEDİ",
+    "kv_balance": "BAKİYE",
+    "kv_free_today": "BUGÜNKÜ ÜCRETSİZ GAUNTLETLER",
+    "kv_cost_per_run": "ÜCRETLİ ÇALIŞTIRMA BAŞINA MALİYET",
+    "kv_status": "DURUM",
+    "status_free": "ÜCRETSİZ KADEME ETKİN",
+    "status_paid": "KREDİ GEREKLİ",
+    "status_exhausted": "TÜKENDİ — KAZAN YA DA BEKLE",
+    "recent_tx": "SON İŞLEMLER",
+    "no_tx": "> HENÜZ İŞLEM YOK. KAZANMAK İÇİN HESAPLAMA GÜCÜ BAĞIŞLA.",
+    "rs_compute": "HESAPLAMAYLA KAZANILDI",
+    "rs_gauntlet": "GAUNTLET ÇALIŞTIRMA",
+    "rs_extended": "GENİŞLETİLMİŞ ANALİZ",
+    "rs_admin": "YÖNETİCİ DÜZELTMESİ",
+    "rs_other": "DİĞER"
   }
 }

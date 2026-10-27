@@ -1365,5 +1365,26 @@
     "no_catalog": "> KEIN ERFOLGSKATALOG VERFÜGBAR.",
     "badge_tip_earned": "{name} — {desc}\nErhalten {date}",
     "badge_tip_locked": "{name} — {desc} (gesperrt)"
+  },
+  "cr": {
+    "title": "CREDITS",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> LÄDT",
+    "err_signin": "MELDE DICH AN, UM CREDITS ZU SEHEN",
+    "err_load": "CREDITS KONNTEN NICHT GELADEN WERDEN",
+    "kv_balance": "GUTHABEN",
+    "kv_free_today": "HEUTE GRATIS-GAUNTLETS",
+    "kv_cost_per_run": "KOSTEN PRO BEZAHLTEM LAUF",
+    "kv_status": "STATUS",
+    "status_free": "GRATIS-STUFE AKTIV",
+    "status_paid": "CREDITS ERFORDERLICH",
+    "status_exhausted": "AUFGEBRAUCHT — VERDIENEN ODER WARTEN",
+    "recent_tx": "LETZTE TRANSAKTIONEN",
+    "no_tx": "> NOCH KEINE TRANSAKTIONEN. STEUERE RECHENLEISTUNG BEI, UM ZU VERDIENEN.",
+    "rs_compute": "DURCH RECHNEN VERDIENT",
+    "rs_gauntlet": "GAUNTLET-LAUF",
+    "rs_extended": "ERWEITERTE ANALYSE",
+    "rs_admin": "ADMIN-ANPASSUNG",
+    "rs_other": "SONSTIGES"
   }
 }

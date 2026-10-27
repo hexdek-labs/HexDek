@@ -1365,5 +1365,26 @@
     "no_catalog": "> INTET PRÆSTATIONSKATALOG TILGÆNGELIGT.",
     "badge_tip_earned": "{name} — {desc}\nOpnået {date}",
     "badge_tip_locked": "{name} — {desc} (låst)"
+  },
+  "cr": {
+    "title": "KREDITTER",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> INDLÆSER",
+    "err_signin": "LOG IND FOR AT SE KREDITTER",
+    "err_load": "KUNNE IKKE INDLÆSE KREDITTER",
+    "kv_balance": "SALDO",
+    "kv_free_today": "GRATIS GAUNTLETS I DAG",
+    "kv_cost_per_run": "PRIS PR. BETALT KØRSEL",
+    "kv_status": "STATUS",
+    "status_free": "GRATISNIVEAU AKTIVT",
+    "status_paid": "KREDITTER PÅKRÆVET",
+    "status_exhausted": "OPBRUGT — TJEN ELLER VENT",
+    "recent_tx": "SENESTE TRANSAKTIONER",
+    "no_tx": "> INGEN TRANSAKTIONER ENDNU. BIDRAG MED BEREGNING FOR AT TJENE.",
+    "rs_compute": "TJENT VED BEREGNING",
+    "rs_gauntlet": "GAUNTLET-KØRSEL",
+    "rs_extended": "UDVIDET ANALYSE",
+    "rs_admin": "ADMIN-JUSTERING",
+    "rs_other": "ANDET"
   }
 }

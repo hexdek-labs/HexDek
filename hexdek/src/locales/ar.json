@@ -1365,5 +1365,26 @@
     "no_catalog": "> لا يوجد فهرس إنجازات متاح.",
     "badge_tip_earned": "{name} — {desc}\nمكتسب {date}",
     "badge_tip_locked": "{name} — {desc} (مقفل)"
+  },
+  "cr": {
+    "title": "الأرصدة",
+    "cr_suffix": "{count} رصيد",
+    "loading_line": "> جارٍ التحميل",
+    "err_signin": "سجّل الدخول لعرض الأرصدة",
+    "err_load": "فشل تحميل الأرصدة",
+    "kv_balance": "الرصيد",
+    "kv_free_today": "جولات مجانية اليوم",
+    "kv_cost_per_run": "تكلفة الجولة المدفوعة",
+    "kv_status": "الحالة",
+    "status_free": "الطبقة المجانية مفعّلة",
+    "status_paid": "مطلوب أرصدة",
+    "status_exhausted": "نُفِدت — اكسب أو انتظر",
+    "recent_tx": "المعاملات الأخيرة",
+    "no_tx": "> لا توجد معاملات بعد. ساهم بالحوسبة لتكسب.",
+    "rs_compute": "حوسبة مكتسبة",
+    "rs_gauntlet": "تشغيل جولة",
+    "rs_extended": "تحليل موسّع",
+    "rs_admin": "تعديل إداري",
+    "rs_other": "أخرى"
   }
 }

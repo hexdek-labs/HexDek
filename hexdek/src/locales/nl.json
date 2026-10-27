@@ -1365,5 +1365,26 @@
     "no_catalog": "> GEEN PRESTATIECATALOGUS BESCHIKBAAR.",
     "badge_tip_earned": "{name} — {desc}\nBehaald {date}",
     "badge_tip_locked": "{name} — {desc} (vergrendeld)"
+  },
+  "cr": {
+    "title": "CREDITS",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> LADEN",
+    "err_signin": "MELD JE AAN OM CREDITS TE BEKIJKEN",
+    "err_load": "CREDITS KONDEN NIET WORDEN GELADEN",
+    "kv_balance": "SALDO",
+    "kv_free_today": "GRATIS GAUNTLETS VANDAAG",
+    "kv_cost_per_run": "KOSTEN PER BETAALDE RUN",
+    "kv_status": "STATUS",
+    "status_free": "GRATIS NIVEAU ACTIEF",
+    "status_paid": "CREDITS VEREIST",
+    "status_exhausted": "OP — VERDIEN OF WACHT",
+    "recent_tx": "RECENTE TRANSACTIES",
+    "no_tx": "> NOG GEEN TRANSACTIES. DRAAG REKENKRACHT BIJ OM TE VERDIENEN.",
+    "rs_compute": "VERDIEND MET REKENEN",
+    "rs_gauntlet": "GAUNTLET-RUN",
+    "rs_extended": "UITGEBREIDE ANALYSE",
+    "rs_admin": "ADMIN-AANPASSING",
+    "rs_other": "OVERIG"
   }
 }

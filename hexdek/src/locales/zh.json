@@ -1365,5 +1365,26 @@
     "no_catalog": "> 没有可用的成就目录。",
     "badge_tip_earned": "{name} — {desc}\n获得于 {date}",
     "badge_tip_locked": "{name} — {desc}（未解锁）"
+  },
+  "cr": {
+    "title": "积分",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> 加载中",
+    "err_signin": "登录后查看积分",
+    "err_load": "积分加载失败",
+    "kv_balance": "余额",
+    "kv_free_today": "今日免费 gauntlet 次数",
+    "kv_cost_per_run": "每次付费运行费用",
+    "kv_status": "状态",
+    "status_free": "免费层级有效",
+    "status_paid": "需要积分",
+    "status_exhausted": "已用尽 — 去赚取或等待",
+    "recent_tx": "最近交易",
+    "no_tx": "> 还没有交易。贡献算力即可赚取。",
+    "rs_compute": "算力赚取",
+    "rs_gauntlet": "gauntlet 运行",
+    "rs_extended": "扩展分析",
+    "rs_admin": "管理员调整",
+    "rs_other": "其他"
   }
 }

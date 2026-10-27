@@ -1365,5 +1365,26 @@
     "no_catalog": "> NINCS ELÉRHETŐ EREDMÉNYKATALÓGUS.",
     "badge_tip_earned": "{name} — {desc}\nMegszerezve: {date}",
     "badge_tip_locked": "{name} — {desc} (zárolt)"
+  },
+  "cr": {
+    "title": "KREDITEK",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> BETÖLTÉS",
+    "err_signin": "JELENTKEZZ BE A KREDITEK MEGTEKINTÉSÉHEZ",
+    "err_load": "A KREDITEK BETÖLTÉSE NEM SIKERÜLT",
+    "kv_balance": "EGYENLEG",
+    "kv_free_today": "MAI INGYENES GAUNTLETEK",
+    "kv_cost_per_run": "FIZETETT FUTÁS KÖLTSÉGE",
+    "kv_status": "ÁLLAPOT",
+    "status_free": "INGYENES SZINT AKTÍV",
+    "status_paid": "KREDIT SZÜKSÉGES",
+    "status_exhausted": "ELFOGYOTT — SZEREZZ VAGY VÁRJ",
+    "recent_tx": "LEGUTÓBBI TRANZAKCIÓK",
+    "no_tx": "> MÉG NINCS TRANZAKCIÓ. JÁRULJ HOZZÁ SZÁMÍTÁSSAL A SZERZÉSHEZ.",
+    "rs_compute": "SZÁMÍTÁSSAL SZEREZVE",
+    "rs_gauntlet": "GAUNTLET-FUTÁS",
+    "rs_extended": "KIBŐVÍTETT ELEMZÉS",
+    "rs_admin": "ADMIN KORREKCIÓ",
+    "rs_other": "EGYÉB"
   }
 }

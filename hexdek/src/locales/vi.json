@@ -1365,5 +1365,26 @@
     "no_catalog": "> KHÔNG CÓ DANH MỤC THÀNH TỰU.",
     "badge_tip_earned": "{name} — {desc}\nĐạt được {date}",
     "badge_tip_locked": "{name} — {desc} (đã khóa)"
+  },
+  "cr": {
+    "title": "TÍN DỤNG",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> ĐANG TẢI",
+    "err_signin": "ĐĂNG NHẬP ĐỂ XEM TÍN DỤNG",
+    "err_load": "KHÔNG TẢI ĐƯỢC TÍN DỤNG",
+    "kv_balance": "SỐ DƯ",
+    "kv_free_today": "GAUNTLET MIỄN PHÍ HÔM NAY",
+    "kv_cost_per_run": "CHI PHÍ MỖI LẦN CHẠY TRẢ PHÍ",
+    "kv_status": "TRẠNG THÁI",
+    "status_free": "BẬC MIỄN PHÍ ĐANG HOẠT ĐỘNG",
+    "status_paid": "CẦN TÍN DỤNG",
+    "status_exhausted": "ĐÃ HẾT — KIẾM THÊM HOẶC CHỜ",
+    "recent_tx": "GIAO DỊCH GẦN ĐÂY",
+    "no_tx": "> CHƯA CÓ GIAO DỊCH. ĐÓNG GÓP NĂNG LỰC TÍNH TOÁN ĐỂ KIẾM.",
+    "rs_compute": "KIẾM ĐƯỢC TỪ TÍNH TOÁN",
+    "rs_gauntlet": "LẦN CHẠY GAUNTLET",
+    "rs_extended": "PHÂN TÍCH MỞ RỘNG",
+    "rs_admin": "ĐIỀU CHỈNH CỦA ADMIN",
+    "rs_other": "KHÁC"
   }
 }

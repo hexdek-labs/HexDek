@@ -1365,5 +1365,26 @@
     "no_catalog": "> BRAK DOSTĘPNEGO KATALOGU OSIĄGNIĘĆ.",
     "badge_tip_earned": "{name} — {desc}\nZdobyto {date}",
     "badge_tip_locked": "{name} — {desc} (zablokowane)"
+  },
+  "cr": {
+    "title": "KREDYTY",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> ŁADOWANIE",
+    "err_signin": "ZALOGUJ SIĘ, ABY ZOBACZYĆ KREDYTY",
+    "err_load": "NIE UDAŁO SIĘ WCZYTAĆ KREDYTÓW",
+    "kv_balance": "SALDO",
+    "kv_free_today": "DARMOWE GAUNTLETY DZIŚ",
+    "kv_cost_per_run": "KOSZT PŁATNEGO PRZEBIEGU",
+    "kv_status": "STATUS",
+    "status_free": "DARMOWY POZIOM AKTYWNY",
+    "status_paid": "WYMAGANE KREDYTY",
+    "status_exhausted": "WYCZERPANE — ZARÓB LUB CZEKAJ",
+    "recent_tx": "OSTATNIE TRANSAKCJE",
+    "no_tx": "> NA RAZIE BRAK TRANSAKCJI. WSPOMÓŻ OBLICZENIAMI, ABY ZAROBIĆ.",
+    "rs_compute": "ZAROBIONE OBLICZENIAMI",
+    "rs_gauntlet": "PRZEBIEG GAUNTLETU",
+    "rs_extended": "ANALIZA ROZSZERZONA",
+    "rs_admin": "KOREKTA ADMINISTRATORA",
+    "rs_other": "INNE"
   }
 }

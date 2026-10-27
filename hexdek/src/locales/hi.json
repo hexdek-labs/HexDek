@@ -1365,5 +1365,26 @@
     "no_catalog": "> कोई उपलब्धि सूची उपलब्ध नहीं है।",
     "badge_tip_earned": "{name} — {desc}\n{date} को अर्जित",
     "badge_tip_locked": "{name} — {desc} (लॉक)"
+  },
+  "cr": {
+    "title": "क्रेडिट",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> लोड हो रहा है",
+    "err_signin": "क्रेडिट देखने के लिए साइन इन करें",
+    "err_load": "क्रेडिट लोड नहीं हो सके",
+    "kv_balance": "शेष",
+    "kv_free_today": "आज के मुफ़्त गॉन्टलेट",
+    "kv_cost_per_run": "प्रति सशुल्क रन लागत",
+    "kv_status": "स्थिति",
+    "status_free": "मुफ़्त स्तर सक्रिय",
+    "status_paid": "क्रेडिट आवश्यक",
+    "status_exhausted": "समाप्त — कमाएँ या प्रतीक्षा करें",
+    "recent_tx": "हाल के लेनदेन",
+    "no_tx": "> अभी कोई लेनदेन नहीं। कमाने के लिए संगणना का योगदान दें।",
+    "rs_compute": "संगणना से अर्जित",
+    "rs_gauntlet": "गॉन्टलेट रन",
+    "rs_extended": "विस्तारित विश्लेषण",
+    "rs_admin": "एडमिन समायोजन",
+    "rs_other": "अन्य"
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Panel, KV, Tag } from './chrome'
 import { api } from '../services/api'
+import { useT } from '../i18n'
 
 // CreditsPanel — displays the operator's current balance, free-tier
 // quota state, and recent transaction history. Hosts the
@@ -21,15 +22,26 @@ import { api } from '../services/api'
 // alongside the gauntlet button in DeckArchive. This panel is read-
 // mostly so the user can audit their balance and recent activity.
 
-const REASON_LABELS = {
-  compute_contribution: 'COMPUTE EARNED',
-  gauntlet_run:         'GAUNTLET RUN',
-  extended_analysis:    'EXTENDED ANALYSIS',
-  admin_adjustment:     'ADMIN ADJUSTMENT',
+// The four transaction reasons as they arrive on the wire, mapped to
+// catalog PATHS rather than words: this table is read at render from
+// module scope, so a word here would be fixed at load and stay in the
+// language the page started in.
+const REASON_KEYS = {
+  compute_contribution: 'cr.rs_compute',
+  gauntlet_run:         'cr.rs_gauntlet',
+  extended_analysis:    'cr.rs_extended',
+  admin_adjustment:     'cr.rs_admin',
 }
 
-function formatReason(reason) {
-  return REASON_LABELS[reason] || (reason || 'OTHER').toUpperCase().replace(/_/g, ' ')
+// Takes the translator as a PARAMETER for the same reason: a module-level
+// formatter that reached for a translator of its own would word the label
+// once, at import. An unrecognised reason is a server string we do not
+// know — prettify and show it rather than hide it.
+function formatReason(reason, t) {
+  const key = REASON_KEYS[reason]
+  if (key) return t(key)
+  if (!reason) return t('cr.rs_other')
+  return reason.toUpperCase().replace(/_/g, ' ')
 }
 
 function formatTimestamp(ts) {
@@ -40,6 +52,7 @@ function formatTimestamp(ts) {
 }
 
 export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
+  const t = useT()
   const [balance, setBalance] = useState(null)
   const [quota, setQuota] = useState(null)
   const [history, setHistory] = useState([])
@@ -61,10 +74,15 @@ export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
         setHistory(h?.transactions || [])
       }
     } catch (err) {
+      // State holds a catalog PATH, or the server's own message to be
+      // echoed — never a worded sentence. load() is async, so a string
+      // worded here would keep the language it was fetched in.
       if (err?.status === 401) {
-        setError('Sign in to view credits')
+        setError({ key: 'cr.err_signin' })
+      } else if (err?.message) {
+        setError({ text: err.message })
       } else {
-        setError(err?.message || 'Failed to load credits')
+        setError({ key: 'cr.err_load' })
       }
     } finally {
       setLoading(false)
@@ -76,38 +94,41 @@ export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
   return (
     <Panel
       code="CR.0"
-      title="CREDITS"
+      title={t('cr.title')}
       right={
         balance != null && quota
           ? <Tag solid kind={quota.can_run_paid || quota.can_run_free ? 'ok' : 'warn'}>
-              {balance} CR
+              {t('cr.cr_suffix', { count: balance })}
             </Tag>
           : null
       }
     >
       {loading && balance == null ? (
         <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-          &gt; LOADING<span className="blink">_</span>
+          {t('cr.loading_line')}<span className="blink">_</span>
         </div>
       ) : error ? (
         <div className="t-md muted" style={{ textAlign: 'center', padding: 14 }}>
-          &gt; {error.toUpperCase()}
+          {/* Worded here, at the render site, from whatever load() parked
+              in state. The catalog values are already upper case, so the
+              uppercasing is only for an echoed server message. */}
+          &gt; {(error.key ? t(error.key) : error.text).toUpperCase()}
         </div>
       ) : (
         <>
           <KV rows={[
-            ['BALANCE', `${balance} CR`, 'credit_balance'],
-            ['FREE GAUNTLETS TODAY', quota
+            [t('cr.kv_balance'), t('cr.cr_suffix', { count: balance }), 'credit_balance'],
+            [t('cr.kv_free_today'), quota
               ? `${Math.max(0, quota.free_limit - quota.free_remaining)} / ${quota.free_limit}`
               : '—',
               'free_tier'],
-            ['COST PER PAID RUN', quota ? `${quota.cost_per_run} CR` : '—'],
-            ['STATUS',
+            [t('cr.kv_cost_per_run'), quota ? t('cr.cr_suffix', { count: quota.cost_per_run }) : '—'],
+            [t('cr.kv_status'),
               quota?.can_run_free
-                ? <span style={{ color: 'var(--ok)' }}>FREE TIER ACTIVE</span>
+                ? <span style={{ color: 'var(--ok)' }}>{t('cr.status_free')}</span>
                 : quota?.can_run_paid
-                  ? <span style={{ color: 'var(--accent)' }}>CREDITS REQUIRED</span>
-                  : <span style={{ color: 'var(--danger)' }}>EXHAUSTED — EARN OR WAIT</span>
+                  ? <span style={{ color: 'var(--accent)' }}>{t('cr.status_paid')}</span>
+                  : <span style={{ color: 'var(--danger)' }}>{t('cr.status_exhausted')}</span>
             ],
           ]} />
 
@@ -115,19 +136,21 @@ export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
             <>
               <div className="hr" style={{ margin: '12px 0' }} />
               <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>
-                RECENT TRANSACTIONS
+                {t('cr.recent_tx')}
               </div>
               {history.length === 0 ? (
                 <div className="t-md muted" style={{ textAlign: 'center', padding: 12 }}>
-                  &gt; NO TRANSACTIONS YET. CONTRIBUTE COMPUTE TO EARN.
+                  {t('cr.no_tx')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {history.map((t) => {
-                    const positive = t.amount > 0
+                  {/* The row parameter is `tx`, not `t` — it used to be `t`,
+                      which would now shadow the translator. */}
+                  {history.map((tx) => {
+                    const positive = tx.amount > 0
                     return (
                       <div
-                        key={t.id}
+                        key={tx.id}
                         style={{
                           display: 'grid',
                           gridTemplateColumns: '1fr auto auto',
@@ -140,11 +163,11 @@ export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
                       >
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           <span style={{ color: 'var(--ink)', fontWeight: 600 }}>
-                            {formatReason(t.reason)}
+                            {formatReason(tx.reason, t)}
                           </span>
-                          {t.reference && (
+                          {tx.reference && (
                             <span className="muted" style={{ marginLeft: 6 }}>
-                              {t.reference}
+                              {tx.reference}
                             </span>
                           )}
                         </span>
@@ -154,10 +177,10 @@ export default function CreditsPanel({ compact = false, refreshKey = 0 }) {
                           minWidth: 50,
                           textAlign: 'right',
                         }}>
-                          {positive ? '+' : ''}{t.amount}
+                          {positive ? '+' : ''}{tx.amount}
                         </span>
                         <span className="muted-2" style={{ minWidth: 110, textAlign: 'right' }}>
-                          {formatTimestamp(t.created_at)}
+                          {formatTimestamp(tx.created_at)}
                         </span>
                       </div>
                     )

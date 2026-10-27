@@ -1365,5 +1365,26 @@
     "no_catalog": "> NENHUM CATÁLOGO DE CONQUISTAS DISPONÍVEL.",
     "badge_tip_earned": "{name} — {desc}\nObtida {date}",
     "badge_tip_locked": "{name} — {desc} (bloqueada)"
+  },
+  "cr": {
+    "title": "CRÉDITOS",
+    "cr_suffix": "{count} CR",
+    "loading_line": "> A CARREGAR",
+    "err_signin": "INICIA SESSÃO PARA VER OS CRÉDITOS",
+    "err_load": "FALHA AO CARREGAR OS CRÉDITOS",
+    "kv_balance": "SALDO",
+    "kv_free_today": "GAUNTLETS GRÁTIS HOJE",
+    "kv_cost_per_run": "CUSTO POR EXECUÇÃO PAGA",
+    "kv_status": "ESTADO",
+    "status_free": "NÍVEL GRÁTIS ATIVO",
+    "status_paid": "CRÉDITOS NECESSÁRIOS",
+    "status_exhausted": "ESGOTADO — GANHA OU AGUARDA",
+    "recent_tx": "TRANSAÇÕES RECENTES",
+    "no_tx": "> AINDA SEM TRANSAÇÕES. CONTRIBUI COM COMPUTAÇÃO PARA GANHAR.",
+    "rs_compute": "GANHOS POR COMPUTAÇÃO",
+    "rs_gauntlet": "EXECUÇÃO DE GAUNTLET",
+    "rs_extended": "ANÁLISE ESTENDIDA",
+    "rs_admin": "AJUSTE DE ADMINISTRADOR",
+    "rs_other": "OUTRO"
   }
 }
