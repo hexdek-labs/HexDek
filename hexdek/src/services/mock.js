@@ -75,11 +75,11 @@ export const MOCK_DECKS = [
 ]
 
 export const MOCK_GAMES = [
-  { id: 'G.247', deck: "K'RRIK", opponent: 'VS 3× B4 BOTS', result: 'WIN', detail: 'T6 / COMBO KILL', time: '2H AGO', kind: 'ok' },
-  { id: 'G.246', deck: 'TINYBONES', opponent: 'VS 3× B3 BOTS', result: 'LOSS', detail: 'T9 / OVERRUN', time: '5H AGO', kind: 'bad' },
-  { id: 'G.245', deck: 'SEN TRIPS', opponent: 'VS HUMANS LOBBY', result: 'WIN', detail: 'T11 / THEFT LOCK', time: '1D AGO', kind: 'ok' },
-  { id: 'G.244', deck: "K'RRIK", opponent: 'VS 1× B5 + 2× B3', result: 'LOSS', detail: 'T5 / STAX LOCK', time: '2D AGO', kind: 'bad' },
-  { id: 'G.243', deck: 'TINYBONES', opponent: 'VS 3× B2 PRECON', result: 'WIN', detail: 'T8 / DRAIN LOOP', time: '2D AGO', kind: 'ok' },
+  { id: 'G.247', deck: "K'RRIK", opponentCount: 3, won: true, turns: 6, endReason: 'COMBO KILL', finishedAt: Date.now() - 2 * 3600e3, kind: 'ok' },
+  { id: 'G.246', deck: 'TINYBONES', opponentCount: 3, won: false, turns: 9, endReason: 'OVERRUN', finishedAt: Date.now() - 5 * 3600e3, kind: 'bad' },
+  { id: 'G.245', deck: 'SEN TRIPS', opponentCount: 3, won: true, turns: 11, endReason: 'THEFT LOCK', finishedAt: Date.now() - 86400e3, kind: 'ok' },
+  { id: 'G.244', deck: "K'RRIK", opponentCount: 3, won: false, turns: 5, endReason: 'STAX LOCK', finishedAt: Date.now() - 2 * 86400e3, kind: 'bad' },
+  { id: 'G.243', deck: 'TINYBONES', opponentCount: 3, won: true, turns: 8, endReason: 'DRAIN LOOP', finishedAt: Date.now() - 2 * 86400e3, kind: 'ok' },
 ]
 
 export const MOCK_LIVE_STATS = {

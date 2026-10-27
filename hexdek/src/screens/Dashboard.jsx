@@ -6,11 +6,15 @@ import { useProfile, useDecks, useGames } from '../hooks/useData'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useAuth } from '../context/AuthContext'
 import { api, cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
+import { relativeAge, formatAge } from '../lib/relativeAge'
 
 /* ─── Context Deck Selector (sidebar) ──────────────────────────── */
-const ContextDeckSelector = ({ decks, activeDeck, onSelect }) => (
-  <Panel code="III.H" title="CONTEXT DECK" solid>
-    <div className="t-xs muted" style={{ marginBottom: 8 }}>SELECT PRIMARY DECK FOR REPORTS + STATS</div>
+const ContextDeckSelector = ({ decks, activeDeck, onSelect }) => {
+  const t = useT()
+  return (
+  <Panel code="III.H" title={t('dash.ctxdeck')} solid>
+    <div className="t-xs muted" style={{ marginBottom: 8 }}>{t('dash.ctxdeck_hint')}</div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div
         style={{
@@ -20,8 +24,8 @@ const ContextDeckSelector = ({ decks, activeDeck, onSelect }) => (
         }}
         onClick={() => onSelect(null)}
       >
-        <div className="t-xs" style={{ fontWeight: !activeDeck ? 700 : 400 }}>ALL DECKS</div>
-        <div className="t-xs muted-2">AGGREGATE VIEW</div>
+        <div className="t-xs" style={{ fontWeight: !activeDeck ? 700 : 400 }}>{t('dash.all_decks')}</div>
+        <div className="t-xs muted-2">{t('dash.aggregate')}</div>
       </div>
       {decks.map(d => {
         const isActive = activeDeck === `${d.owner}/${d.id}`
@@ -42,13 +46,16 @@ const ContextDeckSelector = ({ decks, activeDeck, onSelect }) => (
       })}
     </div>
   </Panel>
-)
+  )
+}
 
 /* ─── Deck Card (with ELO stats) ─────────────────────────────── */
-const DeckCard = ({ slot, name, color, power, bracket, winRate, archetype, gold, commanderCard, owner, id, onClick, eloStats, friendCount }) => (
+const DeckCard = ({ slot, name, color, power, bracket, winRate, archetype, gold, commanderCard, owner, id, onClick, eloStats, friendCount }) => {
+  const t = useT()
+  return (
   <div className="panel" style={{ padding: 0, borderColor: gold ? 'var(--warn)' : 'var(--rule-2)', cursor: 'pointer' }} onClick={onClick}>
     <div className="panel-hd" style={{ borderColor: gold ? 'var(--warn)' : 'var(--rule-2)' }}>
-      <span>SLOT.{slot}</span>
+      <span>{t('dash.slot', { n: slot })}</span>
       <span>B{bracket}{power !== '?' ? ` / / P${power}` : ''}</span>
     </div>
     <div style={{ aspectRatio: '1.4/1', borderBottom: '1px solid var(--rule-2)', position: 'relative', overflow: 'hidden' }} className={commanderCard ? '' : 'hatch'}>
@@ -62,7 +69,7 @@ const DeckCard = ({ slot, name, color, power, bracket, winRate, archetype, gold,
         />
       ) : (
         <>
-          <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>CMDR.IMG</span>
+          <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>{t('dash.cmdr_img')}</span>
           <span style={{ position: 'absolute', bottom: 4, right: 6, fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>{color}</span>
         </>
       )}
@@ -77,18 +84,18 @@ const DeckCard = ({ slot, name, color, power, bracket, winRate, archetype, gold,
           {owner?.toUpperCase() || ''}{archetype && archetype !== '—' ? ` / / ${archetype}` : ''}
         </span>
         {friendCount != null && (
-          <span className="muted-2" title={`${owner?.toUpperCase()} has ${friendCount} friend${friendCount === 1 ? '' : 's'}`}>● {friendCount}</span>
+          <span className="muted-2" title={t(friendCount === 1 ? 'dash.friend_count_tip_one' : 'dash.friend_count_tip', { owner: owner?.toUpperCase(), count: friendCount })}>● {friendCount}</span>
         )}
       </div>
       <div className="hr" style={{ margin: '8px 0' }} />
       {eloStats ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 6 }}>
           <div>
-            <div className="t-xs muted">ELO</div>
+            <div className="t-xs muted">{t('decks.col_elo')}</div>
             <div className="t-md" style={{ fontWeight: 700 }}>{Math.round(eloStats.rating)}</div>
           </div>
           <div>
-            <div className="t-xs muted">RECORD</div>
+            <div className="t-xs muted">{t('deck.record')}</div>
             <div className="t-md" style={{ fontWeight: 700 }}>
               <span style={{ color: 'var(--ok)' }}>{eloStats.wins}</span>
               <span className="muted-2">-</span>
@@ -96,56 +103,51 @@ const DeckCard = ({ slot, name, color, power, bracket, winRate, archetype, gold,
             </div>
           </div>
           <div>
-            <div className="t-xs muted">WR</div>
+            <div className="t-xs muted">{t('dash.wr')}</div>
             <div className="t-md" style={{ fontWeight: 700 }}>{eloStats.win_rate}%</div>
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div className="t-xs muted">WR</div>
+            <div className="t-xs muted">{t('dash.wr')}</div>
             <div className="t-lg" style={{ fontWeight: 700 }}>{winRate}%</div>
           </div>
         </div>
       )}
-      <Btn sm arrow="↗">OPEN</Btn>
+      <Btn sm arrow="↗">{t('dash.open')}</Btn>
     </div>
   </div>
-)
+  )
+}
 
-const NewSlot = ({ slot, onImport }) => (
+const NewSlot = ({ slot, onImport }) => {
+  const t = useT()
+  return (
   <div className="panel" style={{ padding: 0, borderStyle: 'dashed', display: 'flex', flexDirection: 'column' }}>
     <div className="panel-hd" style={{ borderStyle: 'dashed' }}>
-      <span>SLOT.{slot}</span>
-      <span>EMPTY</span>
+      <span>{t('dash.slot', { n: slot })}</span>
+      <span>{t('dash.empty')}</span>
     </div>
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, padding: 18 }}>
       <div style={{ fontSize: 42, lineHeight: 1, fontWeight: 300 }}>+</div>
-      <div className="t-xs muted">NEW DECK</div>
-      <Btn sm arrow="↗">FORGE</Btn>
-      <Btn sm ghost arrow="↗" onClick={onImport}>IMPORT</Btn>
+      <div className="t-xs muted">{t('dash.new_deck')}</div>
+      <Btn sm arrow="↗">{t('dash.forge')}</Btn>
+      <Btn sm ghost arrow="↗" onClick={onImport}>{t('dash.import')}</Btn>
     </div>
   </div>
-)
-
-/* ─── Recent Imports panel ───────────────────────────────────── */
-function relativeTime(unixSec) {
-  if (!unixSec) return ''
-  const diff = Math.max(0, Math.floor(Date.now() / 1000 - unixSec))
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
-  return new Date(unixSec * 1000).toISOString().slice(0, 10)
+  )
 }
 
+/* ─── Recent Imports panel ───────────────────────────────────── */
 function RecentImports({ imports, onOpen }) {
+  const t = useT()
   return (
-    <Panel code="III.A.1" title={`RECENT IMPORTS / / ${imports.length} EVENTS`}>
+    <Panel code="III.A.1" title={t(imports.length === 1 ? 'dash.recent_imports_one' : 'dash.recent_imports', { count: imports.length })}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {imports.map((entry, i) => {
           const last = i === imports.length - 1
-          const sourceLabel = entry.source === 'moxfield' ? 'MOXFIELD' : 'PASTE'
+          const sourceLabel = t(entry.source === 'moxfield' ? 'dash.src_moxfield' : 'dash.src_paste')
           return (
             <div
               key={entry.id}
@@ -172,8 +174,8 @@ function RecentImports({ imports, onOpen }) {
                   <div className="t-xs muted-2" style={{ marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.source_url}</div>
                 )}
               </div>
-              <span className="t-xs muted text-right">{entry.card_count} CARDS</span>
-              <span className="t-xs muted text-right">{relativeTime(entry.imported_at)}</span>
+              <span className="t-xs muted text-right">{t(entry.card_count === 1 ? 'shelf.cards_one' : 'shelf.cards', { count: entry.card_count })}</span>
+              <span className="t-xs muted text-right">{formatAge(t, relativeAge(entry.imported_at ? entry.imported_at * 1000 : null))}</span>
               <span className="t-xs muted-2 text-right">{entry.deck_key}</span>
             </div>
           )
@@ -185,6 +187,7 @@ function RecentImports({ imports, onOpen }) {
 
 /* ─── Main Dashboard ─────────────────────────────────────────── */
 export default function Dashboard() {
+  const t = useT()
   const { user, loading: authLoading } = useAuth()
   const { data: profile } = useProfile()
   const { data: decks, refetch: refetchDecks } = useDecks()
@@ -317,14 +320,14 @@ export default function Dashboard() {
   const kpiEloChange = activeDeckELO ? Math.round(activeDeckELO.delta) : displayEloChange
   const kpiGames = activeDeckELO ? activeDeckELO.games : profile.gamesPlayed
   const kpiWinRate = activeDeckELO ? activeDeckELO.win_rate : profile.winRate
-  const kpiLabel = activeDeckData ? activeDeckData.name : 'ALL DECKS'
+  const kpiLabel = activeDeckData ? activeDeckData.name : t('dash.all_decks')
 
   if (authLoading) {
     return (
       <>
-        <Tape left="DASHBOARD / / DOC HX-301" mid="AUTHENTICATING" right="STANDBY" />
+        <Tape left={t('dash.tape_left')} mid={t('dash.authenticating')} right={t('dash.standby')} />
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
-          <div className="t-xs muted">VERIFYING CREDENTIALS . . .</div>
+          <div className="t-xs muted">{t('dash.verifying')}</div>
         </div>
       </>
     )
@@ -332,7 +335,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Tape left="DASHBOARD / / DOC HX-301" mid={activeDeckData ? `CTX: ${kpiLabel}` : 'REV C.25'} right={ownerFilter ? `VIEW: ${ownerFilter.toUpperCase()}` : 'VIEW: ALL'} />
+      <Tape left={t('dash.tape_left')} mid={activeDeckData ? t('dash.tape_ctx', { name: kpiLabel }) : t('dash.tape_rev')} right={ownerFilter ? t('dash.tape_view', { name: ownerFilter.toUpperCase() }) : t('dash.tape_view_all')} />
 
       {showImport && (
         <ImportModal
@@ -346,10 +349,10 @@ export default function Dashboard() {
           {/* KPI strip */}
           <div className="kpi-strip">
             {[
-              ['ELO RATING', String(kpiElo), `${kpiEloChange > 0 ? '+' : ''}${kpiEloChange} / SESSION`],
-              ['GAMES PLAYED', String(kpiGames), activeDeckELO ? `${activeDeckELO.wins}W ${activeDeckELO.losses}L` : 'OF ∞'],
-              ['WIN RATE', `${kpiWinRate}%`, activeDeckELO ? `${activeDeckELO.games} SAMPLE` : 'TARGET 40%'],
-              ['AVG WIN TURN', String(profile.avgWinTurn), 'B5 BENCH 6.0'],
+              [t('dash.kpi_elo'), String(kpiElo), t('dash.kpi_elo_sub', { delta: `${kpiEloChange > 0 ? '+' : ''}${kpiEloChange}` })],
+              [t('dash.kpi_games'), String(kpiGames), activeDeckELO ? t('dash.kpi_games_sub', { wins: activeDeckELO.wins, losses: activeDeckELO.losses }) : t('dash.kpi_games_inf')],
+              [t('dash.kpi_wr'), `${kpiWinRate}%`, activeDeckELO ? t('dash.kpi_wr_sub', { count: activeDeckELO.games }) : t('dash.kpi_wr_target')],
+              [t('dash.kpi_turn'), String(profile.avgWinTurn), t('dash.kpi_turn_sub')],
             ].map(([k, v, sub], i) => (
               <div key={i}>
                 <div className="t-xs muted">{k}</div>
@@ -360,10 +363,10 @@ export default function Dashboard() {
           </div>
 
           {/* Owner filter + Deck grid */}
-          <Panel code="III.A" title={`DECK ARCHIVE / / ${filtered.length} DECKS`} right={
+          <Panel code="III.A" title={t(filtered.length === 1 ? 'dash.archive_title_one' : 'dash.archive_title', { count: filtered.length })} right={
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <Btn sm ghost onClick={() => setShowImport(true)} arrow="↑">IMPORT</Btn>
-              <Tag solid={!effectiveFilter} onClick={() => setOwnerFilter('__all__')} style={{ cursor: 'pointer' }}>ALL</Tag>
+              <Btn sm ghost onClick={() => setShowImport(true)} arrow="↑">{t('dash.import')}</Btn>
+              <Tag solid={!effectiveFilter} onClick={() => setOwnerFilter('__all__')} style={{ cursor: 'pointer' }}>{t('common.all')}</Tag>
               {owners.map(o => (
                 <Tag key={o} solid={effectiveFilter === o} onClick={() => setOwnerFilter(effectiveFilter === o ? '__all__' : o)} style={{ cursor: 'pointer' }}>{o.toUpperCase()}</Tag>
               ))}
@@ -403,42 +406,42 @@ export default function Dashboard() {
 
           {/* Recent games + Dossier */}
           <div className="grid col-2 gap-3">
-            <Panel code="III.B" title={`RECENT GAMES / / LOG.${profile.gamesPlayed}`}>
+            <Panel code="III.B" title={t('dash.recent_games', { count: profile.gamesPlayed })}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {games.length === 0 ? (
                   <div className="t-xs muted" style={{ padding: '12px 0', textAlign: 'center' }}>
-                    &gt; NO GAMES YET — START THE SHOWMATCH ENGINE<span className="blink">_</span>
+                    &gt; {t('dash.no_games')}<span className="blink">_</span>
                   </div>
                 ) : games.map((g, i) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 80px 60px', gap: 8, padding: '8px 0', borderBottom: i < games.length - 1 ? '1px dashed var(--rule-2)' : 'none', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate(`/report/${g.id.replace('G.', '')}`)}>
                     <span className="t-xs muted-2">{g.id}</span>
                     <div>
-                      <div className="t-md" style={{ fontWeight: 600 }}>{g.deck} <span className="muted-2">·</span> <span className="muted">{g.opponent}</span></div>
-                      <div className="t-xs muted">{g.detail}</div>
+                      <div className="t-md" style={{ fontWeight: 600 }}>{g.deck || t('dash.unknown')} <span className="muted-2">·</span> <span className="muted">{t('dash.vs_ai', { count: g.opponentCount })}</span></div>
+                      <div className="t-xs muted">{t('dash.game_detail', { turn: g.turns, reason: g.endReason })}</div>
                     </div>
-                    <Tag kind={g.kind} solid>{g.result}</Tag>
-                    <span className="t-xs muted text-right">{g.time}</span>
+                    <Tag kind={g.kind} solid>{t(g.won ? 'dash.result_win' : 'dash.result_draw')}</Tag>
+                    <span className="t-xs muted text-right">{formatAge(t, relativeAge(g.finishedAt))}</span>
                   </div>
                 ))}
               </div>
             </Panel>
 
-            <Panel code="III.C" title="OPERATOR DOSSIER">
+            <Panel code="III.C" title={t('dash.dossier')}>
               <div className="grid col-2 gap-3" style={{ marginBottom: 10 }}>
                 <div>
-                  <div className="t-xs muted">ARCHETYPE</div>
-                  <div className="t-xl" style={{ fontWeight: 700, marginTop: 2 }}>{profile.archetype}</div>
+                  <div className="t-xs muted">{t('deck.archetype')}</div>
+                  <div className="t-xl" style={{ fontWeight: 700, marginTop: 2 }}>{profile.archetype || t('dash.observer')}</div>
                 </div>
                 <div>
-                  <div className="t-xs muted">PERCENTILE</div>
+                  <div className="t-xs muted">{t('dash.percentile')}</div>
                   <div className="t-xl" style={{ fontWeight: 700, marginTop: 2 }}>{profile.percentile}</div>
                 </div>
               </div>
               <div className="hr" style={{ margin: '8px 0 12px' }} />
-              <div className="t-xs muted" style={{ marginBottom: 6 }}>SKILL DELTA / / B5 BENCHMARK</div>
+              <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('dash.skill_delta')}</div>
               {profile.skills.map((s, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 36px', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span className="t-xs">{s.name}</span>
+                  <span className="t-xs">{s.name || t('dash.data_pending')}</span>
                   <Bar value={s.value} />
                   <span className="t-xs text-right muted">{s.value}%</span>
                 </div>
@@ -447,24 +450,24 @@ export default function Dashboard() {
           </div>
 
           {/* Live forge */}
-          <Panel code="III.D" title="LIVE FORGE / / SESSION TELEMETRY" right={<span className={`led led--on ${live.totalGames > 0 ? 'blink' : ''}`} />}>
+          <Panel code="III.D" title={t('dash.live_forge')} right={<span className={`led led--on ${live.totalGames > 0 ? 'blink' : ''}`} />}>
             <div className="grid col-4 gap-4">
               <div>
-                <div className="t-xs muted">ACTIVE FORGES</div>
+                <div className="t-xs muted">{t('dash.active_forges')}</div>
                 <div className="punch" style={{ fontSize: 42 }}>{live.activeForges.toLocaleString()}</div>
               </div>
               <div>
-                <div className="t-xs muted">GAMES SIM (SESSION)</div>
+                <div className="t-xs muted">{t('dash.games_sim')}</div>
                 <div className="t-xl" style={{ fontWeight: 700, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>{live.totalGames.toLocaleString()}</div>
-                <div className="t-xs muted-2" style={{ marginTop: 2 }}>+ {live.gamesPerMin.toLocaleString()} / MIN</div>
+                <div className="t-xs muted-2" style={{ marginTop: 2 }}>{t('dash.per_min', { count: live.gamesPerMin.toLocaleString() })}</div>
               </div>
               <div>
-                <div className="t-xs muted">YOUR CONTRIB.</div>
+                <div className="t-xs muted">{t('dash.your_contrib')}</div>
                 <div className="t-xl" style={{ fontWeight: 700, marginTop: 8 }}>{live.userContrib.toLocaleString()}</div>
-                <div className="t-xs muted-2">RANK {live.userRank}</div>
+                <div className="t-xs muted-2">{t('dash.rank', { name: live.userRank === 'LOCAL' ? t('dash.rank_local') : live.userRank })}</div>
               </div>
               <div>
-                <div className="t-xs muted">TPS / 60S</div>
+                <div className="t-xs muted">{t('dash.tps')}</div>
                 <MiniBars data={live.throughput} />
               </div>
             </div>
@@ -472,31 +475,31 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-sidebar">
-          <Panel code="III.E" title="OPERATOR // ID CARD" solid>
+          <Panel code="III.E" title={t('dash.id_card')} solid>
             <div className="hatch" style={{ aspectRatio: '1/1', marginBottom: 10, position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 6, left: 6 }} className="t-xs muted-2">PORTRAIT.HEX</div>
+              <div style={{ position: 'absolute', top: 6, left: 6 }} className="t-xs muted-2">{t('dash.portrait')}</div>
               <div style={{ position: 'absolute', bottom: 6, right: 6 }} className="t-xs muted-2">128x128</div>
             </div>
-            <div className="t-2xl" style={{ fontWeight: 700 }}>{profile.username}</div>
-            <div className="t-xs muted">{profile.userId} / / JOINED {profile.joined}</div>
+            <div className="t-2xl" style={{ fontWeight: 700 }}>{profile.username || t('dash.operator_default')}</div>
+            <div className="t-xs muted">{t('dash.joined', { id: profile.userId, date: profile.joined })}</div>
             <div className="hr" style={{ margin: '10px 0' }} />
             <KV rows={[
-              ['CLASS', (profile.archetype || '').replace(/"/g, '')],
-              ['ELO', String(displayElo)],
-              ['TIER', profile.tier],
-              ['STREAK', profile.streak],
-              ['PRIMARY', profile.primaryColor],
-              ['FRIENDS', String(friends.length)],
+              [t('dash.kv_class'), (profile.archetype || t('dash.observer')).replace(/"/g, '')],
+              [t('decks.col_elo'), String(displayElo)],
+              [t('dash.kv_tier'), profile.tier || t('dash.unranked')],
+              [t('dash.kv_streak'), profile.streak],
+              [t('dash.kv_primary'), profile.primaryColor],
+              [t('dash.kv_friends'), String(friends.length)],
             ]} />
           </Panel>
 
           {/* Friends — only meaningful when the visitor has a known owner slug. */}
           {userOwner && (
-            <Panel code="III.FR" title={`FRIENDS / / ${friends.length}`}>
+            <Panel code="III.FR" title={t('dash.friends_title', { count: friends.length })}>
               {friends.length === 0 ? (
                 <div className="t-xs muted" style={{ padding: '8px 0', lineHeight: 1.6 }}>
-                  &gt; NO FRIENDS YET<br />
-                  &gt; ADD ONE FROM ANY DECK PAGE<span className="blink">_</span>
+                  &gt; {t('dash.no_friends_1')}<br />
+                  &gt; {t('dash.no_friends_2')}<span className="blink">_</span>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -510,7 +513,7 @@ export default function Dashboard() {
                         borderBottom: i < friends.length - 1 ? '1px dashed var(--rule-2)' : 'none',
                         cursor: 'pointer',
                       }}
-                      title={`View ${f}'s decks`}
+                      title={t('dash.view_decks_tip', { name: f })}
                     >
                       <span className="t-md" style={{ fontWeight: 700, letterSpacing: '0.04em' }}>
                         <span style={{ color: 'var(--ok)', marginRight: 6 }}>●</span>{f.toUpperCase()}
@@ -531,11 +534,11 @@ export default function Dashboard() {
           />
 
           {/* Live ELO leaderboard — full scrollable */}
-          <Panel code="III.F" title={`ELO LEADERBOARD / / ${aggregatedElo.length} COMMANDERS`} right={
+          <Panel code="III.F" title={t(aggregatedElo.length === 1 ? 'dash.leaderboard_one' : 'dash.leaderboard', { count: aggregatedElo.length })} right={
             <span className={`led led--on ${aggregatedElo.length > 0 ? 'blink' : ''}`} />
           }>
             {aggregatedElo.length === 0 ? (
-              <div className="t-xs muted" style={{ padding: '8px 0' }}>NO ELO DATA — START SHOWMATCH ENGINE</div>
+              <div className="t-xs muted" style={{ padding: '8px 0' }}>{t('dash.no_elo')}</div>
             ) : (
               <>
                 {/* Header row */}
@@ -544,10 +547,10 @@ export default function Dashboard() {
                   gap: 4, padding: '4px 0', borderBottom: '1px solid var(--rule-2)', marginBottom: 4,
                 }}>
                   <span className="t-xs muted">#</span>
-                  <span className="t-xs muted">COMMANDER</span>
-                  <span className="t-xs muted text-right">ELO</span>
-                  <span className="t-xs muted text-right">RECORD</span>
-                  <span className="t-xs muted text-right">WR%</span>
+                  <span className="t-xs muted">{t('decks.col_commander')}</span>
+                  <span className="t-xs muted text-right">{t('decks.col_elo')}</span>
+                  <span className="t-xs muted text-right">{t('deck.record')}</span>
+                  <span className="t-xs muted text-right">{t('dash.wr_pct')}</span>
                 </div>
                 {/* Scrollable list */}
                 <div>
@@ -577,7 +580,7 @@ export default function Dashboard() {
                 {aggregatedElo.length > 10 && (
                   <div style={{ marginTop: 8, textAlign: 'center' }}>
                     <Btn sm ghost onClick={() => setShowFullLeaderboard(!showFullLeaderboard)} arrow={showFullLeaderboard ? '↑' : '↓'}>
-                      {showFullLeaderboard ? `COLLAPSE` : `SHOW ALL ${aggregatedElo.length}`}
+                      {showFullLeaderboard ? t('dash.collapse') : t('dash.show_all', { count: aggregatedElo.length })}
                     </Btn>
                   </div>
                 )}
@@ -585,11 +588,11 @@ export default function Dashboard() {
             )}
           </Panel>
 
-          <Panel code="III.G" title={`ACHIEVEMENTS // ${profile.achievements.filter(a => a.unlocked).length}/${profile.achievements.length}`}>
+          <Panel code="III.G" title={t('dash.achievements', { unlocked: profile.achievements.filter(a => a.unlocked).length, total: profile.achievements.length })}>
             {profile.achievements.map((a, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: i < profile.achievements.length - 1 ? '1px dashed var(--rule-2)' : 'none', opacity: a.unlocked ? 1 : 0.4 }}>
-                <span><span style={{ marginRight: 6 }}>{a.icon}</span><span className="t-md">{a.name}</span></span>
-                {a.unlocked && <span className="t-xs" style={{ color: 'var(--ok)' }}>UNLOCKED</span>}
+                <span><span style={{ marginRight: 6 }}>{a.icon}</span><span className="t-md">{a.nameKey ? t(a.nameKey) : a.name}</span></span>
+                {a.unlocked && <span className="t-xs" style={{ color: 'var(--ok)' }}>{t('dash.unlocked')}</span>}
               </div>
             ))}
           </Panel>

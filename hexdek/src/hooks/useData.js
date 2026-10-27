@@ -34,37 +34,27 @@ function useAsync(fetcher, fallback) {
   return { data, loading, error, refetch }
 }
 
-function timeAgo(dateStr) {
-  const d = new Date(dateStr)
-  const now = Date.now()
-  const sec = Math.floor((now - d.getTime()) / 1000)
-  if (sec < 60) return 'JUST NOW'
-  if (sec < 3600) return `${Math.floor(sec / 60)}M AGO`
-  if (sec < 86400) return `${Math.floor(sec / 3600)}H AGO`
-  return `${Math.floor(sec / 86400)}D AGO`
-}
-
 function transformProfile(raw) {
   return {
-    username: raw.username || 'OPERATOR',
+    username: raw.username || null,
     userId: raw.userId || '—',
     joined: raw.joined || '—',
     elo: raw.elo || 0,
     eloChange: raw.eloChange || 0,
-    tier: raw.tier || 'UNRANKED',
+    tier: raw.tier || null,
     streak: raw.streak || '—',
     primaryColor: raw.primaryColor || '—',
-    archetype: raw.archetype || 'OBSERVER',
+    archetype: raw.archetype || null,
     percentile: raw.percentile || '—',
     gamesPlayed: raw.gamesPlayed || 0,
     winRate: typeof raw.winRate === 'number' ? Math.round(raw.winRate * 10) / 10 : 0,
     avgWinTurn: raw.avgWinTurn || 0,
     skills: raw.skills || [
-      { name: 'DATA PENDING', value: 0 },
+      { name: null, value: 0 },
     ],
     achievements: raw.achievements || [
-      { icon: '◇', name: 'FIRST BLOOD', unlocked: false },
-      { icon: '◇', name: 'OBSERVER · WATCH 10 GAMES', unlocked: false },
+      { icon: '◇', nameKey: 'dash.ach_first_blood', unlocked: false },
+      { icon: '◇', nameKey: 'dash.ach_observer', unlocked: false },
     ],
   }
 }
@@ -78,11 +68,12 @@ function transformGames(raw) {
     const losers = (g.commanders || []).filter((_, i) => i !== g.winner)
     return {
       id: `G.${g.game_id}`,
-      deck: winner?.split(',')[0]?.toUpperCase() || 'UNKNOWN',
-      opponent: `VS ${losers.length}× AI`,
-      result: g.winner >= 0 ? 'WIN' : 'DRAW',
-      detail: `T${g.turns} / ${(g.end_reason || '').replace(/_/g, ' ').toUpperCase()}`,
-      time: timeAgo(g.finished_at),
+      deck: winner?.split(',')[0]?.toUpperCase() || null,
+      opponentCount: losers.length,
+      won: g.winner >= 0,
+      turns: g.turns,
+      endReason: (g.end_reason || '').replace(/_/g, ' ').toUpperCase(),
+      finishedAt: Date.parse(g.finished_at),
       kind: g.winner >= 0 ? 'ok' : 'warn',
     }
   })
@@ -93,7 +84,7 @@ function transformDecks(raw) {
   return raw.map((d, i) => ({
     id: d.id || d.file_path,
     slot: String(i + 1).padStart(2, '0'),
-    name: (d.commander || d.name || 'UNKNOWN').toUpperCase(),
+    name: (d.commander || d.name || '').toUpperCase() || null,
     color: d.color || '?',
     power: '?',
     bracket: d.bracket || '?',

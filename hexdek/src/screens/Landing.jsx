@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Panel, Tag, Btn, Tape } from '../components/chrome'
 import { useGames } from '../hooks/useData'
+import { useT } from '../i18n'
+import { relativeAge, formatAge } from '../lib/relativeAge'
 
 // Landing — / route. Visitor-facing entry point: hero, three feature
 // pillars, recent-activity feed, import CTA.
@@ -36,6 +38,7 @@ const FEATURES = [
 ]
 
 export default function Landing() {
+  const t = useT()
   const navigate = useNavigate()
   const { data: games, loading: gamesLoading } = useGames(5)
   // Subtle hero shimmer — pure CSS would be cleaner but the brutalist
@@ -201,12 +204,12 @@ export default function Landing() {
                       fontWeight: 700, lineHeight: 1.2,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {g.deck} <span className="muted-2">·</span> <span className="muted">{g.opponent}</span>
+                      {g.deck || t('dash.unknown')} <span className="muted-2">·</span> <span className="muted">{t('dash.vs_ai', { count: g.opponentCount })}</span>
                     </div>
-                    <div className="t-xs muted" style={{ marginTop: 2 }}>{g.detail}</div>
+                    <div className="t-xs muted" style={{ marginTop: 2 }}>{t('dash.game_detail', { turn: g.turns, reason: g.endReason })}</div>
                   </div>
-                  <Tag kind={g.kind} solid>{g.result}</Tag>
-                  <span className="t-xs muted text-right">{g.time}</span>
+                  <Tag kind={g.kind} solid>{t(g.won ? 'dash.result_win' : 'dash.result_draw')}</Tag>
+                  <span className="t-xs muted text-right">{formatAge(t, relativeAge(g.finishedAt))}</span>
                 </div>
               ))}
             </div>

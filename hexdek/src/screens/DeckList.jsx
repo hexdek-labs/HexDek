@@ -10,6 +10,7 @@ import { MOCK_DECKS } from '../services/mock'
 import ContextBox from '../components/ContextBox'
 import { toast } from '../components/Toast'
 import { useT } from '../i18n'
+import { fill } from '../components/fill'
 import {
   ARCHETYPE_CHIPS,
   BRACKET_CHIPS,
@@ -47,13 +48,6 @@ const COL_KEY = {
 // (bold text, a link) rather than a plain value. Splitting at render time
 // means the token can sit anywhere in the sentence, so word order stays
 // the translator's choice instead of being frozen by JSX concatenation.
-function fill(str, nodes) {
-  return str.split(/(\{\w+\})/g).map((part, i) => {
-    const m = /^\{(\w+)\}$/.exec(part)
-    return m && nodes[m[1]] !== undefined ? <span key={i}>{nodes[m[1]]}</span> : part
-  })
-}
-
 // Bracket strings look like "B4", "B3.5", "B?". Pull out the numeric piece for sort;
 // unknowns sink to the bottom regardless of direction.
 function bracketSortValue(d) {
