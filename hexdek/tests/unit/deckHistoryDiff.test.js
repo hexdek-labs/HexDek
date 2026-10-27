@@ -159,24 +159,37 @@ test('diffDeckText — empty baseline → everything is "added"', () => {
 
 // ── diffSummary ───────────────────────────────────────────────────────────
 
-test('diffSummary — clean diff returns "NO CHANGES"', () => {
-  assert.equal(diffSummary(diffDeckText('1 Sol Ring', '1 Sol Ring')), 'NO CHANGES')
-  assert.equal(diffSummary({ isClean: true }), 'NO CHANGES')
+// Stub translator. Echoing the KEY (and any {delta}) is what pins which
+// catalog path the call site chose — asserting on English words here
+// would only re-test the English catalog.
+const stubT = (key, vars) => (vars && 'delta' in vars ? `${key}:${vars.delta}` : key)
+
+test('diffSummary — clean diff returns the no-changes key', () => {
+  assert.equal(diffSummary(stubT, diffDeckText('1 Sol Ring', '1 Sol Ring')), 'dka.diff_no_changes')
+  assert.equal(diffSummary(stubT, { isClean: true }), 'dka.diff_no_changes')
 })
 
 test('diffSummary — shows +/-/Δ counts plus net delta', () => {
   const d = diffDeckText('1 A\n4 B\n1 C', '1 D\n2 B\n1 C')
   // added: [D], removed: [A], changed: [B 4→2 = -2]
-  const s = diffSummary(d)
+  const s = diffSummary(stubT, d)
   assert.match(s, /\+1/)
   assert.match(s, /-1/)
   assert.match(s, /Δ1/)
-  assert.match(s, /net -2/)
+  // the net delta arrives pre-signed as the {delta} variable, so the
+  // catalog never has to reconstruct the sign
+  assert.match(s, /dka\.diff_net:-2/)
+})
+
+test('diffSummary — a zero net omits the net part entirely', () => {
+  // one card in, one card out: +1 / -1, net 0
+  const d = diffDeckText('1 A', '1 B')
+  assert.equal(diffSummary(stubT, d), '+1 -1')
 })
 
 test('diffSummary — null / undefined are tolerated', () => {
-  assert.equal(diffSummary(null), 'NO CHANGES')
-  assert.equal(diffSummary(undefined), 'NO CHANGES')
+  assert.equal(diffSummary(stubT, null), 'dka.diff_no_changes')
+  assert.equal(diffSummary(stubT, undefined), 'dka.diff_no_changes')
 })
 
 // ── end-to-end realistic workshop iteration ───────────────────────────────

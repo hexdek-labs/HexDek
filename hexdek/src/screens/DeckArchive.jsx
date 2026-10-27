@@ -22,6 +22,8 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import CommanderPickerModal, { commanderNeedsResolution } from '../components/CommanderPickerModal'
 import { parseDeckLines } from '../lib/deckParser'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import ArchetypeChipRow from '../components/ArchetypeChipRow'
@@ -66,13 +68,16 @@ const TYPE_BUCKETS = [
   // lands count as lands), Creature beats Artifact/Enchantment (so
   // enchantment-creatures and artifact-creatures count as creatures —
   // matches EDHREC convention).
-  { key: 'land',         label: 'LANDS',        match: /\bland\b/i,         color: '#8a9682' },
-  { key: 'planeswalker', label: 'PLANESWALKERS', match: /\bplaneswalker\b/i, color: '#cda73c' },
-  { key: 'creature',     label: 'CREATURES',    match: /\bcreature\b/i,     color: '#82C472' },
-  { key: 'enchantment',  label: 'ENCHANTMENTS', match: /\benchantment\b/i,  color: '#b48ad6' },
-  { key: 'artifact',     label: 'ARTIFACTS',    match: /\bartifact\b/i,     color: '#9aa6b8' },
-  { key: 'sorcery',      label: 'SORCERIES',    match: /\bsorcery\b/i,      color: '#cc5c4a' },
-  { key: 'instant',      label: 'INSTANTS',     match: /\binstant\b/i,      color: '#6e8fa0' },
+  // `labelKey` is a catalog path, not a label. An English word held here
+  // would be read once at module load and ignore a later language switch,
+  // so the render sites call t(b.labelKey) instead.
+  { key: 'land',         labelKey: 'common.ty_lands',         match: /\bland\b/i,         color: '#8a9682' },
+  { key: 'planeswalker', labelKey: 'common.ty_planeswalkers', match: /\bplaneswalker\b/i, color: '#cda73c' },
+  { key: 'creature',     labelKey: 'common.ty_creatures',     match: /\bcreature\b/i,     color: '#82C472' },
+  { key: 'enchantment',  labelKey: 'common.ty_enchantments',  match: /\benchantment\b/i,  color: '#b48ad6' },
+  { key: 'artifact',     labelKey: 'common.ty_artifacts',     match: /\bartifact\b/i,     color: '#9aa6b8' },
+  { key: 'sorcery',      labelKey: 'common.ty_sorceries',     match: /\bsorcery\b/i,      color: '#cc5c4a' },
+  { key: 'instant',      labelKey: 'common.ty_instants',      match: /\binstant\b/i,      color: '#6e8fa0' },
 ]
 const PIP_COLORS = { W: '#E0EBD3', U: '#6E8FA0', B: '#3a3628', R: '#CC5C4A', G: '#82C472' }
 
@@ -121,6 +126,7 @@ function computeDeckStats(cards) {
 }
 
 function DeckStatsSummary({ cards }) {
+  const t = useT()
   const { curve, types, typesTotal, pips, pipsTotal } = computeDeckStats(cards)
   const curveMax = Math.max(1, ...curve)
   const curveLabels = ['0', '1', '2', '3', '4', '5', '6', '7+']
@@ -141,13 +147,14 @@ function DeckStatsSummary({ cards }) {
   })
 
   const pipMax = Math.max(1, ...Object.values(pips))
+  const cardTotal = (cards || []).reduce((n, c) => n + (c.quantity || 1), 0)
 
   return (
-    <Panel code="04.S" title="DECK STATS" right={<span className="t-xs muted">{(cards || []).reduce((n, c) => n + (c.quantity || 1), 0)} CARDS</span>}>
+    <Panel code="04.S" title={t('dka.stats_title')} right={<span className="t-xs muted">{cardTotal === 1 ? t('dka.cards_one', { count: cardTotal }) : t('dka.cards', { count: cardTotal })}</span>}>
       <div className="deck-stats-summary">
         {/* Mana curve histogram */}
         <div className="deck-stats-summary__col">
-          <div className="t-xs muted" style={{ marginBottom: 6 }}>MANA CURVE / / NONLAND CMC</div>
+          <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('dka.mana_curve')}</div>
           <svg viewBox="0 0 200 90" preserveAspectRatio="none" style={{ width: '100%', height: 90, display: 'block', border: '1px solid var(--rule-2)' }}>
             {curve.map((n, i) => {
               const w = 200 / curve.length
@@ -169,7 +176,7 @@ function DeckStatsSummary({ cards }) {
 
         {/* Card type breakdown — pie + legend */}
         <div className="deck-stats-summary__col">
-          <div className="t-xs muted" style={{ marginBottom: 6 }}>CARD TYPES / / {typesTotal}</div>
+          <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('dka.card_types', { count: typesTotal })}</div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <svg viewBox="0 0 42 42" style={{ width: 90, height: 90, flexShrink: 0 }}>
               <circle cx="21" cy="21" r="15.9155" fill="var(--bg-2, #181915)" stroke="var(--rule-2)" strokeWidth="0.4" />
@@ -184,7 +191,7 @@ function DeckStatsSummary({ cards }) {
                   strokeDashoffset={(100 - s.offset).toFixed(2)}
                   transform="rotate(-90 21 21)"
                 >
-                  <title>{`${s.bucket.label}: ${s.count} (${s.pct.toFixed(1)}%)`}</title>
+                  <title>{`${t(s.bucket.labelKey)}: ${s.count} (${s.pct.toFixed(1)}%)`}</title>
                 </circle>
               ))}
             </svg>
@@ -196,7 +203,7 @@ function DeckStatsSummary({ cards }) {
                 return (
                   <div key={b.key} style={{ display: 'contents' }}>
                     <span style={{ width: 8, height: 8, background: b.color, border: '1px solid var(--rule-2)', alignSelf: 'center' }} />
-                    <span style={{ letterSpacing: '0.05em' }}>{b.label}</span>
+                    <span style={{ letterSpacing: '0.05em' }}>{t(b.labelKey)}</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{n} · {pct.toFixed(0)}%</span>
                   </div>
                 )
@@ -207,9 +214,9 @@ function DeckStatsSummary({ cards }) {
 
         {/* Color pip distribution */}
         <div className="deck-stats-summary__col">
-          <div className="t-xs muted" style={{ marginBottom: 6 }}>COLOR PIPS / / {pipsTotal}</div>
+          <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('dka.color_pips', { count: pipsTotal })}</div>
           {pipsTotal === 0 ? (
-            <div className="t-xs muted-2" style={{ padding: '14px 0', textAlign: 'center' }}>— COLORLESS —</div>
+            <div className="t-xs muted-2" style={{ padding: '14px 0', textAlign: 'center' }}>{t('dka.colorless')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {Object.entries(pips).filter(([, n]) => n > 0).map(([color, n]) => {
@@ -276,6 +283,7 @@ const CardThumb = ({ name, cmc, score, compact }) => {
 // a reader can read any card without leaving the page. Click still
 // routes through CardLink's popup / card page.
 function LandingCardList({ cards, commanderName, onRemove }) {
+  const t = useT()
   const [hover, setHover] = useState(null) // { name, x, y }
   // Grid gains a 4th column for the hover-reveal remove control only
   // when an onRemove handler is supplied (owner, editing).
@@ -283,10 +291,15 @@ function LandingCardList({ cards, commanderName, onRemove }) {
 
   const groups = useMemo(() => {
     const order = ['commander', 'creature', 'planeswalker', 'instant', 'sorcery', 'artifact', 'enchantment', 'land', 'other']
-    const labels = {
-      commander: 'COMMANDER', creature: 'CREATURES', planeswalker: 'PLANESWALKERS',
-      instant: 'INSTANTS', sorcery: 'SORCERIES', artifact: 'ARTIFACTS',
-      enchantment: 'ENCHANTMENTS', land: 'LANDS', other: 'OTHER',
+    // Catalog paths, not words: this map is built inside a useMemo keyed on
+    // the card list, so English held here would survive a language switch
+    // until the cards happened to change. The row renders t(g.labelKey).
+    const labelKeys = {
+      commander: 'common.commander', creature: 'common.ty_creatures',
+      planeswalker: 'common.ty_planeswalkers', instant: 'common.ty_instants',
+      sorcery: 'common.ty_sorceries', artifact: 'common.ty_artifacts',
+      enchantment: 'common.ty_enchantments', land: 'common.ty_lands',
+      other: 'common.ty_other',
     }
     const byKey = {}
     for (const c of cards || []) {
@@ -296,14 +309,16 @@ function LandingCardList({ cards, commanderName, onRemove }) {
     }
     return order.filter(k => byKey[k]?.length).map(k => ({
       key: k,
-      label: labels[k] || k.toUpperCase(),
+      labelKey: labelKeys[k] || null,
+      // Unrecognised bucket: echo the bucket name rather than invent a key.
+      label: labelKeys[k] ? null : k.toUpperCase(),
       rows: byKey[k].slice().sort((a, b) => (cardCMCForSort(a) - cardCMCForSort(b)) || String(a.name).localeCompare(String(b.name))),
       count: byKey[k].reduce((n, c) => n + (c.quantity || 1), 0),
     }))
   }, [cards, commanderName])
 
   if (!groups.length) {
-    return <div className="t-xs muted" style={{ padding: '20px 0', textAlign: 'center' }}>&gt; NO CARDS TO LIST</div>
+    return <div className="t-xs muted" style={{ padding: '20px 0', textAlign: 'center' }}>{t('dka.no_cards')}</div>
   }
 
   // Preview geometry — flip to the left of the cursor near the right
@@ -319,7 +334,7 @@ function LandingCardList({ cards, commanderName, onRemove }) {
       {groups.map(g => (
         <div key={g.key} style={{ marginBottom: 12 }}>
           <div className="t-xs muted" style={{ letterSpacing: '0.08em', padding: '4px 2px', borderBottom: '1px solid var(--rule-2)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>{g.label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.count}</span>
+            <span>{g.labelKey ? t(g.labelKey) : g.label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.count}</span>
           </div>
           {g.rows.map((c, i) => {
             const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
@@ -343,7 +358,7 @@ function LandingCardList({ cards, commanderName, onRemove }) {
                     <button
                       type="button"
                       className="landing-card-remove"
-                      title={`Remove ${linkName}`}
+                      title={t('dka.remove_card', { name: linkName })}
                       data-testid="landing-card-remove"
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(c) }}
@@ -377,15 +392,17 @@ function LandingCardList({ cards, commanderName, onRemove }) {
 // Sort state is owned by the parent so a tab switch + return doesn't
 // jolt the user back to a default column they didn't pick. Stable
 // sort: identical-key cards always fall back to name ascending.
-const DENSE_TYPE_LABEL = {
-  creature: 'CRE',
-  planeswalker: 'PW',
-  instant: 'INS',
-  sorcery: 'SOR',
-  artifact: 'ART',
-  enchantment: 'ENC',
-  land: 'LND',
-  other: '—',
+// Catalog paths, not abbreviations — a module-level map of words freezes
+// at load. `other` stays a literal dash: it is punctuation, not a word.
+const DENSE_TYPE_KEY = {
+  creature: 'common.tya_creature',
+  planeswalker: 'common.tya_planeswalker',
+  instant: 'common.tya_instant',
+  sorcery: 'common.tya_sorcery',
+  artifact: 'common.tya_artifact',
+  enchantment: 'common.tya_enchantment',
+  land: 'common.tya_land',
+  other: null,
 }
 
 function DenseSortHeader({ label, sortKey, sort, onSort, align = 'left' }) {
@@ -418,6 +435,7 @@ function DenseSortHeader({ label, sortKey, sort, onSort, align = 'left' }) {
 }
 
 function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut }) {
+  const t = useT()
   const rows = useMemo(
     () => sortCards(cards, sort.key, sort.dir, cardRoles),
     [cards, sort.key, sort.dir, cardRoles],
@@ -426,7 +444,7 @@ function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut })
   if (!rows.length) {
     return (
       <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-        &gt; NO CARDS TO LIST
+        {t('dka.no_cards')}
       </div>
     )
   }
@@ -448,13 +466,13 @@ function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut })
           alignItems: 'baseline',
         }}
       >
-        <DenseSortHeader label="QTY"   sortKey="qty"   sort={sort} onSort={onSort} align="right" />
-        <DenseSortHeader label="NAME"  sortKey="name"  sort={sort} onSort={onSort} />
-        <DenseSortHeader label="MANA"  sortKey="cmc"   sort={sort} onSort={onSort} />
-        <DenseSortHeader label="CMC"   sortKey="cmc"   sort={sort} onSort={onSort} align="right" />
-        <DenseSortHeader label="TYPE"  sortKey="type"  sort={sort} onSort={onSort} />
-        <DenseSortHeader label="ROLE"  sortKey="role"  sort={sort} onSort={onSort} />
-        <DenseSortHeader label="COLOR" sortKey="color" sort={sort} onSort={onSort} />
+        <DenseSortHeader label={t('dka.col_qty')}   sortKey="qty"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label={t('dka.col_name')}  sortKey="name"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label={t('dka.col_mana')}  sortKey="cmc"   sort={sort} onSort={onSort} />
+        <DenseSortHeader label={t('dka.col_cmc')}   sortKey="cmc"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label={t('dka.col_type')}  sortKey="type"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label={t('dka.col_role')}  sortKey="role"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label={t('dka.col_color')} sortKey="color" sort={sort} onSort={onSort} />
       </div>
       {rows.map((c, i) => {
         const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
@@ -519,9 +537,11 @@ function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut })
               <span style={{ display: 'none' }} data-cmc-sort={cmcSort}></span>
             </span>
             <span className="t-xs" style={{ letterSpacing: '0.06em', color: 'var(--ink-3)' }}>
-              {DENSE_TYPE_LABEL[bucket]}
+              {DENSE_TYPE_KEY[bucket] ? t(DENSE_TYPE_KEY[bucket]) : '—'}
             </span>
             <span className="t-xs" style={{ letterSpacing: '0.06em', color: role ? 'var(--ink-2)' : 'var(--ink-3)' }}>
+              {/* role arrives from Freya already worded (ramp / removal /
+                  …) — echo the server value rather than guess a key for it */}
               {role ? role.toUpperCase() : '—'}
             </span>
             <span
@@ -590,6 +610,7 @@ function smartSetCommanderInEditText(text, name) {
 // into editText via smartSetCommanderInEditText; SAVE UPDATE persists + re-runs
 // Freya.
 function WorkshopCommanderPicker({ editText, onChange }) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const current = commanderFromEditText(editText)
   const cardNames = useMemo(() => {
@@ -610,16 +631,16 @@ function WorkshopCommanderPicker({ editText, onChange }) {
   const pick = (name) => { onChange(smartSetCommanderInEditText(editText, name)); setQuery('') }
   return (
     <div style={{ marginBottom: 10 }}>
-      <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>COMMANDER</label>
+      <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>{t('common.commander')}</label>
       <div className="t-xs" style={{ marginBottom: 6 }}>
-        {current ? <>CURRENT: <strong>{current}</strong></> : <span className="muted">— NONE SET —</span>}
+        {current ? <>{t('dka.ws_cmdr_current')} <strong>{current}</strong></> : <span className="muted">{t('dka.ws_cmdr_none')}</span>}
       </div>
       <input
         type="text"
         data-testid="workshop-commander"
         value={query}
         onChange={e => setQuery(e.target.value)}
-        placeholder="Type a card in this deck to set as commander"
+        placeholder={t('dka.ws_cmdr_ph')}
         spellCheck={false}
         style={{ width: '100%', padding: '6px 10px', background: 'transparent', border: '1px solid var(--rule-2)', color: 'var(--ink)', font: 'inherit', fontSize: 11, letterSpacing: '0.04em' }}
       />
@@ -635,9 +656,9 @@ function WorkshopCommanderPicker({ editText, onChange }) {
         </div>
       )}
       {q && matches.length === 0 && (
-        <div className="t-xs muted" style={{ padding: '6px 2px' }}>NO CARD IN THIS DECK MATCHES "{query.trim().toUpperCase()}"</div>
+        <div className="t-xs muted" style={{ padding: '6px 2px' }}>{t('dka.ws_cmdr_nomatch', { query: query.trim().toUpperCase() })}</div>
       )}
-      <div className="t-xs muted" style={{ marginTop: 4, opacity: 0.65 }}>&gt; PICK FROM THE CARDS IN THIS DECK — THE COMMANDER MUST BE ONE OF THEM. SAVE UPDATE TO APPLY.</div>
+      <div className="t-xs muted" style={{ marginTop: 4, opacity: 0.65 }}>{t('dka.ws_cmdr_hint')}</div>
     </div>
   )
 }
@@ -651,6 +672,7 @@ function WorkshopCommanderPicker({ editText, onChange }) {
 // "create a Treasure" works. Each row shows name / mana cost / type
 // line with a click-to-add affordance.
 function WorkshopSearchPanel({ colorIdentity, onAdd }) {
+  const t = useT()
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -675,7 +697,7 @@ function WorkshopSearchPanel({ colorIdentity, onAdd }) {
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder={`SEARCH CARDS — name, type, or rules text${colors ? ` · identity ≤ ${colors}` : ''}...`}
+        placeholder={colors ? t('dka.ws_search_ph_id', { colors }) : t('dka.ws_search_ph')}
         style={{
           width: '100%', padding: '8px 10px',
           background: 'var(--bg-2, rgba(0,0,0,0.3))',
@@ -692,19 +714,23 @@ function WorkshopSearchPanel({ colorIdentity, onAdd }) {
           maxHeight: 280, overflowY: 'auto', background: 'var(--panel)',
         }}>
           <div className="t-xs muted" style={{ padding: '4px 10px', borderBottom: '1px solid var(--rule)', letterSpacing: '0.08em' }}>
-            {searching ? 'SEARCHING...' : `${results.length} MATCH${results.length === 1 ? '' : 'ES'}`}
-            {colors ? ` · FILTERED TO ${colors} IDENTITY` : ''}
+            {searching
+              ? t('dka.searching')
+              : (results.length === 1
+                ? t('dka.match_one', { count: results.length })
+                : t('dka.match', { count: results.length }))}
+            {colors ? t('dka.filtered_identity', { colors }) : ''}
           </div>
           {!searching && results.length === 0 && (
             <div className="t-xs muted" style={{ padding: '8px 10px' }}>
-              NO CARDS IN IDENTITY MATCH "{q.trim().toUpperCase()}"
+              {t('dka.no_cards_identity', { query: q.trim().toUpperCase() })}
             </div>
           )}
           {results.map((r, i) => (
             <div
               key={`${r.name}-${i}`}
               onClick={() => onAdd(r.name, r)}
-              title={`Add ${r.name}`}
+              title={t('dka.add_card', { name: r.name })}
               style={{
                 display: 'flex', alignItems: 'baseline', gap: 8,
                 padding: '6px 10px', cursor: 'pointer', fontSize: 11,
@@ -735,6 +761,7 @@ function WorkshopSearchPanel({ colorIdentity, onAdd }) {
 // machinery all already key off it). Commander lines are pinned at the
 // top and not removable here (swap commanders via the textarea).
 function WorkshopCardList({ editText, onChange }) {
+  const t = useT()
   const rows = useMemo(() => {
     const out = []
     const lines = (editText || '').split('\n')
@@ -771,7 +798,7 @@ function WorkshopCardList({ editText, onChange }) {
         padding: '4px 10px', borderBottom: '1px solid var(--rule)',
         letterSpacing: '0.08em', position: 'sticky', top: 0, background: 'var(--panel)',
       }}>
-        DECK LIST · {total} CARD{total === 1 ? '' : 'S'}
+        {total === 1 ? t('dka.decklist_one', { count: total }) : t('dka.decklist', { count: total })}
       </div>
       {rows.map((r) => (
         <div key={`${r.idx}-${r.name}`} style={{
@@ -779,19 +806,19 @@ function WorkshopCardList({ editText, onChange }) {
           padding: '4px 10px', fontSize: 11, borderBottom: '1px solid var(--rule)',
         }}>
           {r.commander ? (
-            <span className="t-xs" style={{ color: 'var(--warn)', letterSpacing: '0.06em', fontWeight: 700 }}>CMDR</span>
+            <span className="t-xs" style={{ color: 'var(--warn)', letterSpacing: '0.06em', fontWeight: 700 }}>{t('dka.cmdr_short')}</span>
           ) : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <button type="button" onClick={() => setQty(r, r.qty - 1)} title="Decrease"
+              <button type="button" onClick={() => setQty(r, r.qty - 1)} title={t('dka.decrease')}
                 style={{ background: 'transparent', border: '1px solid var(--rule-2)', color: 'inherit', cursor: 'pointer', width: 18, height: 18, lineHeight: '14px', padding: 0, fontSize: 11 }}>−</button>
               <span style={{ minWidth: 16, textAlign: 'center', fontWeight: 600 }}>{r.qty}</span>
-              <button type="button" onClick={() => setQty(r, r.qty + 1)} title="Increase"
+              <button type="button" onClick={() => setQty(r, r.qty + 1)} title={t('dka.increase')}
                 style={{ background: 'transparent', border: '1px solid var(--rule-2)', color: 'inherit', cursor: 'pointer', width: 18, height: 18, lineHeight: '14px', padding: 0, fontSize: 11 }}>+</button>
             </span>
           )}
           <span style={{ flex: 1 }}>{r.name}</span>
           {!r.commander && (
-            <button type="button" onClick={() => setQty(r, 0)} title={`Remove ${r.name}`}
+            <button type="button" onClick={() => setQty(r, 0)} title={t('dka.remove_card', { name: r.name })}
               style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 12, padding: '0 4px', fontWeight: 700 }}
               data-testid="editor-remove">×</button>
           )}
@@ -809,6 +836,7 @@ function WorkshopCardList({ editText, onChange }) {
 // + ADD CARD widget above. Arrow keys + Tab/Enter navigate and accept,
 // Escape dismisses without applying.
 function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
+  const t = useT()
   const internalRef = useRef(null)
   const taRef = externalRef || internalRef
   const [caret, setCaret] = useState(0)
@@ -942,7 +970,9 @@ function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
           }}
         >
           <div className="t-xs muted" style={{ padding: '4px 10px', borderBottom: '1px solid var(--rule)', letterSpacing: '0.08em' }}>
-            ORACLE / / {suggestions.length} MATCH{suggestions.length === 1 ? '' : 'ES'} FOR "{fragment.toUpperCase()}"
+            {suggestions.length === 1
+              ? t('dka.oracle_match_one', { count: suggestions.length, query: fragment.toUpperCase() })
+              : t('dka.oracle_match', { count: suggestions.length, query: fragment.toUpperCase() })}
           </div>
           {suggestions.map((s, i) => {
             const name = s?.name || s
@@ -971,7 +1001,7 @@ function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
             )
           })}
           <div className="t-xs muted" style={{ padding: '4px 10px', letterSpacing: '0.08em', borderTop: '1px solid var(--rule)' }}>
-            ↑↓ NAV · TAB/↵ ACCEPT · ESC DISMISS
+            {t('dka.ac_hint')}
           </div>
         </div>
       )}
@@ -986,6 +1016,7 @@ function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
 // the per-card list and surface in a "N CARDS UNPRICED" subtitle so
 // the user understands why the headline number might be low.
 function DeckBudgetPanel({ deckId }) {
+  const t = useT()
   const [payload, setPayload] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -1003,7 +1034,10 @@ function DeckBudgetPanel({ deckId }) {
       })
       .catch(err => {
         if (cancelled) return
-        setError(err?.message || 'BUDGET FETCH FAILED')
+        // Hold the SERVER's message, or null — never our own worded
+        // string. Wording it here would freeze the language at fetch
+        // time and ignore a later switch; the render site words it.
+        setError({ serverMessage: err?.message || null })
         setLoading(false)
       })
     return () => { cancelled = true }
@@ -1011,18 +1045,18 @@ function DeckBudgetPanel({ deckId }) {
 
   if (loading && !payload) {
     return (
-      <Panel code="04.$" title="DECK BUDGET">
+      <Panel code="04.$" title={t('dka.budget_title')}>
         <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-          &gt; PRICING DECK<span className="blink">_</span>
+          {t('dka.pricing_deck')}<span className="blink">_</span>
         </div>
       </Panel>
     )
   }
   if (error) {
     return (
-      <Panel code="04.$" title="DECK BUDGET">
+      <Panel code="04.$" title={t('dka.budget_title')}>
         <div className="t-xs" style={{ padding: '12px 0', color: 'var(--danger)' }}>
-          ✗ {error}
+          ✗ {error.serverMessage || t('dka.budget_failed')}
         </div>
       </Panel>
     )
@@ -1035,29 +1069,29 @@ function DeckBudgetPanel({ deckId }) {
   return (
     <Panel
       code="04.$"
-      title="DECK BUDGET"
-      right={<Tag solid>{summary.tier}</Tag>}
+      title={t('dka.budget_title')}
+      right={<Tag solid>{t(summary.tierKey)}</Tag>}
     >
       <div data-testid="deck-budget-summary" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>YOUR DECK COSTS</div>
+          <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>{t('dka.your_deck_costs')}</div>
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.02em' }} data-testid="deck-budget-total">
             {formatUSD(summary.total)}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-          <BudgetMetric label="AVG / CARD" value={formatUSD(summary.avgPerCard)} />
-          <BudgetMetric label="CARDS" value={`${summary.cardCount}`} />
+          <BudgetMetric label={t('dka.avg_per_card')} value={formatUSD(summary.avgPerCard)} />
+          <BudgetMetric label={t('dka.m_cards')} value={`${summary.cardCount}`} />
           <BudgetMetric
-            label="PRICED"
+            label={t('dka.priced')}
             value={`${summary.pricedCount} / ${summary.uniqueCount}`}
-            sub={summary.uniqueCount > 0 ? `${coveragePct}% COVERAGE` : null}
+            sub={summary.uniqueCount > 0 ? t('dka.coverage', { pct: coveragePct }) : null}
           />
           {summary.missingCount > 0 && (
             <BudgetMetric
-              label="UNPRICED"
+              label={t('dka.unpriced')}
               value={`${summary.missingCount}`}
-              sub="SCRYFALL HAS NO $"
+              sub={t('dka.no_price')}
               warn
             />
           )}
@@ -1068,7 +1102,7 @@ function DeckBudgetPanel({ deckId }) {
         <>
           <div className="hr" style={{ margin: '10px 0' }} />
           <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>
-            TOP CONTRIBUTORS
+            {t('dka.top_contributors')}
           </div>
           <div data-testid="deck-budget-top">
             {summary.topExpensive.map((c, i) => (
@@ -1100,7 +1134,7 @@ function DeckBudgetPanel({ deckId }) {
         </>
       )}
       <div className="t-xs muted" style={{ marginTop: 8, letterSpacing: '0.04em' }}>
-        Prices from Scryfall · {summary.currency} · basics not counted
+        {t('dka.prices_from', { currency: summary.currency })}
       </div>
     </Panel>
   )
@@ -1129,6 +1163,7 @@ function BudgetMetric({ label, value, sub, warn }) {
 // opens hit the network, so a 50-version deck doesn't burst-fetch on
 // mount.
 function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) {
+  const t = useT()
   // Synthetic CURRENT row. Its diff is computed against the latest
   // archived version using already-known data (currentDeckText +
   // a lazy fetch of versions[0]'s body).
@@ -1140,7 +1175,7 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
       out.push({
         kind: 'current',
         version: 'current',
-        label: 'CURRENT',
+        labelKey: 'dka.hist_current',
         saved_at: null,
         prevVersion: v[0]?.version ?? null,
       })
@@ -1149,6 +1184,7 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
       out.push({
         kind: 'archived',
         version: v[i].version,
+        // A version plate (V3) is a code, not a word — no key.
         label: `V${v[i].version}`,
         saved_at: v[i].saved_at || null,
         prevVersion: v[i + 1]?.version ?? null,
@@ -1172,7 +1208,7 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
       setBodies(prev => ({ ...prev, [version]: text }))
       return text
     } catch (err) {
-      setErrors(prev => ({ ...prev, [version]: err?.message || 'FETCH FAILED' }))
+      setErrors(prev => ({ ...prev, [version]: err?.message || t('dka.fetch_failed') }))
       return null
     } finally {
       setLoadingKey(null)
@@ -1193,19 +1229,20 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
 
   if (rows.length === 0) {
     return (
-      <Panel code="04.H" title="DECK HISTORY">
+      <Panel code="04.H" title={t('dka.hist_title')}>
         <div className="t-xs muted" style={{ padding: '12px 0' }}>
-          &gt; NO HISTORY YET — VERSIONS ARE ARCHIVED ON EVERY SAVE UPDATE
+          {t('dka.hist_none')}
         </div>
       </Panel>
     )
   }
 
   return (
-    <Panel code="04.H" title="DECK HISTORY" right={<Tag>{rows.length} ENTRIES</Tag>}>
+    <Panel code="04.H" title={t('dka.hist_title')} right={<Tag>{rows.length === 1 ? t('dka.entries_one', { count: rows.length }) : t('dka.entries', { count: rows.length })}</Tag>}>
       <ContextBox id="deck.history" compact style={{ marginBottom: 8 }}>
-        Every <strong>SAVE UPDATE</strong> archives the prior deck as a new version.
-        Click a row to see what changed since the previous version — added cards, cut cards, and quantity tweaks.
+        {fill(t('dka.hist_ctx1'), { save: <strong>{t('dka.save_update')}</strong> })}
+        {' '}
+        {t('dka.hist_ctx2')}
       </ContextBox>
       <div data-testid="deck-history-list">
         {rows.map(row => {
@@ -1251,13 +1288,13 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
                   display: 'inline-block',
                 }}>▶</span>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                  {row.label}{row.kind === 'current' && <span className="t-xs muted" style={{ marginLeft: 6 }}>(LIVE)</span>}
+                  {row.labelKey ? t(row.labelKey) : row.label}{row.kind === 'current' && <span className="t-xs muted" style={{ marginLeft: 6 }}>{t('dka.live')}</span>}
                 </span>
                 <span className="t-xs muted">
-                  {row.saved_at ? new Date(row.saved_at).toLocaleString() : (row.kind === 'current' ? '— UNSAVED IF EDITED' : '')}
+                  {row.saved_at ? new Date(row.saved_at).toLocaleString() : (row.kind === 'current' ? t('dka.unsaved_if_edited') : '')}
                 </span>
                 <span className="t-xs" style={{ letterSpacing: '0.06em', color: diff && !diff.isClean ? 'var(--ink)' : 'var(--ink-3)' }}>
-                  {isOpen && isLoading ? 'LOADING…' : (diff ? diffSummary(diff) : (row.prevVersion == null ? 'INITIAL IMPORT' : ''))}
+                  {isOpen && isLoading ? t('dka.loading_ell') : (diff ? diffSummary(t, diff) : (row.prevVersion == null ? t('dka.initial_import') : ''))}
                 </span>
               </button>
               {isOpen && (
@@ -1266,13 +1303,13 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
                     <div className="t-xs" style={{ color: 'var(--danger)' }}>✗ {err}</div>
                   )}
                   {!ready && !err && (
-                    <div className="t-xs muted">&gt; FETCHING VERSION{row.prevVersion != null ? ' + BASELINE' : ''}…</div>
+                    <div className="t-xs muted">{row.prevVersion != null ? t('dka.fetching_version_baseline') : t('dka.fetching_version')}</div>
                   )}
                   {ready && row.prevVersion == null && (
-                    <div className="t-xs muted">&gt; INITIAL IMPORT — NO PRIOR VERSION TO DIFF AGAINST</div>
+                    <div className="t-xs muted">{t('dka.initial_no_diff')}</div>
                   )}
                   {ready && diff && row.prevVersion != null && (
-                    <DeckHistoryDiffBlock diff={diff} baselineLabel={`V${row.prevVersion}`} currentLabel={row.label} />
+                    <DeckHistoryDiffBlock diff={diff} baselineLabel={`V${row.prevVersion}`} currentLabel={row.labelKey ? t(row.labelKey) : row.label} />
                   )}
                 </div>
               )}
@@ -1282,7 +1319,7 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
       </div>
       {commanderName && (
         <div className="t-xs muted" style={{ marginTop: 6, letterSpacing: '0.06em' }}>
-          COMMANDER: {commanderName.toUpperCase()}
+          {t('dka.commander_colon', { name: commanderName.toUpperCase() })}
         </div>
       )}
     </Panel>
@@ -1290,17 +1327,24 @@ function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) 
 }
 
 function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
+  const t = useT()
   if (!diff || diff.isClean) {
-    return <div className="t-xs muted">&gt; NO CHANGES BETWEEN {baselineLabel} AND {currentLabel}</div>
+    return <div className="t-xs muted">{t('dka.no_changes_between', { a: baselineLabel, b: currentLabel })}</div>
   }
   return (
     <div data-testid="deck-history-diff" style={{ fontSize: 11 }}>
       <div className="t-xs muted" style={{ marginBottom: 4, letterSpacing: '0.06em' }}>
-        {baselineLabel} → {currentLabel} · +{diff.addedCards} cards / -{diff.removedCards} cards / net {diff.netCards >= 0 ? '+' : ''}{diff.netCards}
+        {t('dka.diff_head', {
+          a: baselineLabel,
+          b: currentLabel,
+          added: diff.addedCards,
+          removed: diff.removedCards,
+          net: `${diff.netCards >= 0 ? '+' : ''}${diff.netCards}`,
+        })}
       </div>
       {diff.added.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>ADDED</div>
+          <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>{t('dka.added')}</div>
           {diff.added.map((a, i) => (
             <div key={`a-${i}`} style={{ fontSize: 11 }}>
               <span style={{ color: 'var(--ok)' }}>+{a.delta}</span> {a.name}
@@ -1310,7 +1354,7 @@ function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
       )}
       {diff.removed.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>REMOVED</div>
+          <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>{t('dka.removed')}</div>
           {diff.removed.map((r, i) => (
             <div key={`r-${i}`} style={{ fontSize: 11 }}>
               <span style={{ color: 'var(--danger)' }}>-{r.delta}</span> {r.name}
@@ -1320,7 +1364,7 @@ function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
       )}
       {diff.changed.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em', fontWeight: 700 }}>QTY CHANGED</div>
+          <div style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em', fontWeight: 700 }}>{t('dka.qty_changed')}</div>
           {diff.changed.map((c, i) => (
             <div key={`c-${i}`} style={{ fontSize: 11 }}>
               <span style={{ color: c.delta > 0 ? 'var(--ok)' : 'var(--danger)' }}>
@@ -1342,12 +1386,13 @@ function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
 // collapsible per-card list. Lets the user verify their changes before
 // committing a new deck version.
 function WorkshopDiff({ baseline, current }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const diff = useMemo(() => computeDeckDiff(baseline, current), [baseline, current])
   if (diff.added.length === 0 && diff.removed.length === 0) {
     return (
       <div className="t-xs muted" style={{ margin: '6px 0', opacity: 0.6 }}>
-        NO CHANGES YET
+        {t('dka.no_changes_yet')}
       </div>
     )
   }
@@ -1363,7 +1408,7 @@ function WorkshopDiff({ baseline, current }) {
         }}
       >
         <span style={{ marginRight: 8 }}>{open ? '▼' : '▶'}</span>
-        DIFF{' '}
+        {t('dka.diff')}{' '}
         <span style={{ color: 'var(--ok)', fontWeight: 700 }}>+{diff.added.length}</span>
         {' / '}
         <span style={{ color: 'var(--danger)', fontWeight: 700 }}>-{diff.removed.length}</span>
@@ -1377,7 +1422,7 @@ function WorkshopDiff({ baseline, current }) {
         }}>
           {diff.added.length > 0 && (
             <div style={{ marginBottom: 6 }}>
-              <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>ADDED</div>
+              <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>{t('dka.added')}</div>
               {diff.added.map((a, i) => (
                 <div key={`a-${i}`} style={{ fontSize: 11 }}>
                   <span style={{ color: 'var(--ok)' }}>+{a.delta}</span> {a.name}
@@ -1387,7 +1432,7 @@ function WorkshopDiff({ baseline, current }) {
           )}
           {diff.removed.length > 0 && (
             <div>
-              <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>REMOVED</div>
+              <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>{t('dka.removed')}</div>
               {diff.removed.map((r, i) => (
                 <div key={`r-${i}`} style={{ fontSize: 11 }}>
                   <span style={{ color: 'var(--danger)' }}>-{r.delta}</span> {r.name}
@@ -4871,6 +4916,7 @@ export default function DeckArchive() {
 }
 
 function CardSearchModal({ value, onChange, totalCards, matchCount, inputRef, onClose }) {
+  const t = useT()
   const panelRef = useModalKeyboard({ onClose })
   const chromeBtn = {
     background: 'transparent', border: 'none', color: 'inherit',
@@ -4895,7 +4941,7 @@ function CardSearchModal({ value, onChange, totalCards, matchCount, inputRef, on
         onMouseDown={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Find card in deck"
+        aria-label={t('dka.find_card_aria')}
         className="panel"
         style={{
           width: 'min(460px, 92vw)',
@@ -4911,8 +4957,8 @@ function CardSearchModal({ value, onChange, totalCards, matchCount, inputRef, on
           padding: '6px 10px', borderBottom: '1px solid var(--rule-2)',
           fontSize: 9, letterSpacing: '0.12em', color: 'var(--ink-3)', fontWeight: 700,
         }}>
-          <span>FIND CARD IN DECK</span>
-          <button type="button" onClick={onClose} aria-label="Close search" style={chromeBtn}>ESC</button>
+          <span>{t('dka.find_card')}</span>
+          <button type="button" onClick={onClose} aria-label={t('dka.close_search')} style={chromeBtn}>{t('dka.esc')}</button>
         </div>
         <input
           ref={inputRef}
@@ -4920,8 +4966,8 @@ function CardSearchModal({ value, onChange, totalCards, matchCount, inputRef, on
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onClose() }}
-          placeholder="Type a card name..."
-          aria-label="Card name filter"
+          placeholder={t('dka.card_name_ph')}
+          aria-label={t('dka.card_name_aria')}
           style={{
             width: '100%',
             padding: '12px 14px',
@@ -4940,13 +4986,15 @@ function CardSearchModal({ value, onChange, totalCards, matchCount, inputRef, on
           fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)',
         }}>
           <span>
-            {value.trim() ? `${matchCount} / ${totalCards} MATCH` : `${totalCards} CARDS TOTAL`}
+            {value.trim()
+              ? t('dka.n_of_m_match', { n: matchCount, total: totalCards })
+              : t('dka.n_cards_total', { count: totalCards })}
           </span>
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             {value && (
-              <button type="button" onClick={() => onChange('')} style={chromeBtn}>CLEAR</button>
+              <button type="button" onClick={() => onChange('')} style={chromeBtn}>{t('dka.clear')}</button>
             )}
-            <span className="muted">ENTER OR ESC TO CLOSE</span>
+            <span className="muted">{t('dka.enter_or_esc')}</span>
           </span>
         </div>
       </div>

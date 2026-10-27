@@ -11,7 +11,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  budgetTier,
+  budgetTierKey,
   formatUSD,
   formatUSDShort,
   summarize,
@@ -73,25 +73,27 @@ test('formatUSDShort — null / NaN tolerated', () => {
   assert.equal(formatUSDShort(NaN),  '—')
 })
 
-// ── budgetTier ────────────────────────────────────────────────────────────
+// ── budgetTierKey ─────────────────────────────────────────────────────────
+// Asserts the catalog KEY, not a word: the lib returns a key so it stays
+// importable here without the JSON catalogs.
 
-test('budgetTier — bracket boundaries', () => {
-  assert.equal(budgetTier(0),    'UNPRICED')
-  assert.equal(budgetTier(49),   'ULTRA BUDGET')
-  assert.equal(budgetTier(50),   'BUDGET')
-  assert.equal(budgetTier(149),  'BUDGET')
-  assert.equal(budgetTier(150),  'MODERATE')
-  assert.equal(budgetTier(399),  'MODERATE')
-  assert.equal(budgetTier(400),  'PREMIUM')
-  assert.equal(budgetTier(999),  'PREMIUM')
-  assert.equal(budgetTier(1000), 'CHASE')
-  assert.equal(budgetTier(9999), 'CHASE')
+test('budgetTierKey — bracket boundaries', () => {
+  assert.equal(budgetTierKey(0),    'dka.bt_unpriced')
+  assert.equal(budgetTierKey(49),   'dka.bt_ultra')
+  assert.equal(budgetTierKey(50),   'dka.bt_budget')
+  assert.equal(budgetTierKey(149),  'dka.bt_budget')
+  assert.equal(budgetTierKey(150),  'dka.bt_moderate')
+  assert.equal(budgetTierKey(399),  'dka.bt_moderate')
+  assert.equal(budgetTierKey(400),  'dka.bt_premium')
+  assert.equal(budgetTierKey(999),  'dka.bt_premium')
+  assert.equal(budgetTierKey(1000), 'dka.bt_chase')
+  assert.equal(budgetTierKey(9999), 'dka.bt_chase')
 })
 
-test('budgetTier — non-numeric / null fall back to UNPRICED', () => {
-  assert.equal(budgetTier(null),      'UNPRICED')
-  assert.equal(budgetTier(undefined), 'UNPRICED')
-  assert.equal(budgetTier('nope'),    'UNPRICED')
+test('budgetTierKey — non-numeric / null fall back to the unpriced key', () => {
+  assert.equal(budgetTierKey(null),      'dka.bt_unpriced')
+  assert.equal(budgetTierKey(undefined), 'dka.bt_unpriced')
+  assert.equal(budgetTierKey('nope'),    'dka.bt_unpriced')
 })
 
 // ── summarize ─────────────────────────────────────────────────────────────
@@ -135,9 +137,9 @@ test('summarize — avgPerCard = total / card_count', () => {
   assert.ok(Math.abs(s.avgPerCard - (148.32 / 99)) < 1e-9)
 })
 
-test('summarize — tier set from total', () => {
-  assert.equal(summarize({ total: 148 }).tier, 'BUDGET')
-  assert.equal(summarize({ total: 500 }).tier, 'PREMIUM')
+test('summarize — tier key set from total', () => {
+  assert.equal(summarize({ total: 148 }).tierKey, 'dka.bt_budget')
+  assert.equal(summarize({ total: 500 }).tierKey, 'dka.bt_premium')
 })
 
 test('summarize — uses backend top_expensive when present and large enough', () => {
@@ -174,7 +176,7 @@ test('summarize — empty / null payload returns zero shape (panel still renders
   assert.equal(s.uniqueCount, 0)
   assert.equal(s.coverage, 0)
   assert.equal(s.avgPerCard, 0)
-  assert.equal(s.tier, 'UNPRICED')
+  assert.equal(s.tierKey, 'dka.bt_unpriced')
   assert.deepEqual(s.topExpensive, [])
   assert.equal(s.currency, 'USD')
 })

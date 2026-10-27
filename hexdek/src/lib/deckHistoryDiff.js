@@ -92,13 +92,17 @@ export function diffDeckText(baselineText, currentText) {
 // Compact one-line summary, e.g. "+3 / -2 / Δ1 changed (net +1)".
 // Used by the history timeline's row chrome where the full per-card
 // list is collapsed by default.
-export function diffSummary(diff) {
-  if (!diff || diff.isClean) return 'NO CHANGES'
+//
+// Takes the translator as its first PARAMETER rather than importing
+// i18n: this module stays pure so the node suite can load it without
+// the JSON catalogs. Same contract as formatAge(t, age).
+export function diffSummary(t, diff) {
+  if (!diff || diff.isClean) return t('dka.diff_no_changes')
   const parts = []
   if (diff.added.length) parts.push(`+${diff.added.length}`)
   if (diff.removed.length) parts.push(`-${diff.removed.length}`)
   if (diff.changed.length) parts.push(`Δ${diff.changed.length}`)
   const net = diff.netCards
-  if (net !== 0) parts.push(`(net ${net > 0 ? '+' : ''}${net})`)
+  if (net !== 0) parts.push(t('dka.diff_net', { delta: `${net > 0 ? '+' : ''}${net}` }))
   return parts.join(' ')
 }

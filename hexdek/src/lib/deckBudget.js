@@ -33,19 +33,21 @@ export function formatUSDShort(amount) {
   return formatUSD(n, { withCents: n < 10 })
 }
 
-// budgetTier — human-readable bracket label for the headline number.
+// budgetTierKey — catalog KEY for the headline number's bracket label.
+// Returns a key, not a word: this module is imported by the node test
+// suite, which cannot load the JSON catalogs, and a word returned here
+// would freeze at call time anyway. The render site does t(summary.tierKey).
 // The cutoffs roughly mirror community budget tiers (e.g. /r/EDH's
-// "budget" / "moderate" / "high-power" rule of thumb). Used in the
-// BUDGET panel header strip; tests pin the boundaries so a future
-// retune is intentional.
-export function budgetTier(total) {
+// "budget" / "moderate" / "high-power" rule of thumb); tests pin the
+// boundaries so a future retune is intentional.
+export function budgetTierKey(total) {
   const n = Number(total) || 0
-  if (n <= 0)    return 'UNPRICED'
-  if (n <  50)   return 'ULTRA BUDGET'
-  if (n <  150)  return 'BUDGET'
-  if (n <  400)  return 'MODERATE'
-  if (n <  1000) return 'PREMIUM'
-  return 'CHASE'
+  if (n <= 0)    return 'dka.bt_unpriced'
+  if (n <  50)   return 'dka.bt_ultra'
+  if (n <  150)  return 'dka.bt_budget'
+  if (n <  400)  return 'dka.bt_moderate'
+  if (n < 1000)  return 'dka.bt_premium'
+  return 'dka.bt_chase'
 }
 
 // summarize folds the backend response into the panel's display
@@ -81,7 +83,7 @@ export function summarize(payload, { topN = 5 } = {}) {
     coverage: uniqueCount > 0 ? pricedCount / uniqueCount : 0,
     avgPerCard: cardCount > 0 ? total / cardCount : 0,
     topExpensive: top,
-    tier: budgetTier(total),
+    tierKey: budgetTierKey(total),
     currency: safe.currency || 'USD',
   }
 }
