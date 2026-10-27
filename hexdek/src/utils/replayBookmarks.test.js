@@ -62,7 +62,7 @@ test('isValidKind rejects unknowns', () => {
 })
 
 test('kindMeta returns the entry for a known kind, falls back to note', () => {
-  assert.equal(kindMeta('combat').label, 'Combat')
+  assert.equal(kindMeta('combat').labelKey, 'rpl.bk_combat')
   assert.equal(kindMeta('unknown').id, DEFAULT_BOOKMARK_KIND)
 })
 

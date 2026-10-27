@@ -17,11 +17,14 @@
 // taps "+" twice — they get the most recent annotation instead of
 // two stacked entries.
 
+// `labelKey` is a catalog path, not a label. Holding the English word
+// here would freeze it at module load and ignore a language switch, so
+// the render site reads t(meta.labelKey) instead.
 export const BOOKMARK_KINDS = [
-  { id: 'combat',   label: 'Combat',     icon: '⚔', color: 'var(--danger)' },
-  { id: 'combo',    label: 'Combo turn', icon: '∞', color: 'var(--warn)' },
-  { id: 'wipe',     label: 'Board wipe', icon: '☄', color: 'var(--danger)' },
-  { id: 'note',     label: 'Note',       icon: '★', color: 'var(--ok)' },
+  { id: 'combat',   labelKey: 'rpl.bk_combat', icon: '⚔', color: 'var(--danger)' },
+  { id: 'combo',    labelKey: 'rpl.bk_combo',  icon: '∞', color: 'var(--warn)' },
+  { id: 'wipe',     labelKey: 'rpl.bk_wipe',   icon: '☄', color: 'var(--danger)' },
+  { id: 'note',     labelKey: 'rpl.bk_note',   icon: '★', color: 'var(--ok)' },
 ]
 export const DEFAULT_BOOKMARK_KIND = 'note'
 

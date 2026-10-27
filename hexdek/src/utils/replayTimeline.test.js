@@ -190,11 +190,15 @@ test('extractKeyMoments tolerates an empty timeline or bad input', () => {
 // -----------------------------------------------------------------------------
 
 test('momentMeta returns the matching kind entry', () => {
-  assert.equal(momentMeta('combat').label, 'Combat')
+  assert.equal(momentMeta('combat').labelKey, 'rpl.km_combat')
   assert.equal(momentMeta('wipe').color,   'var(--danger)')
   assert.equal(momentMeta('unknown'),      null)
   assert.equal(momentMeta(null),           null)
 })
+
+// Stub translator: echoes the key plus its count so the assertions pin
+// WHICH key the call site chose, which is the behaviour that matters.
+const stubT = (key, vars) => (vars && 'count' in vars ? `${key}:${vars.count}` : key)
 
 test('countsTooltip builds a readable comma-separated summary', () => {
   const counts = new Map([
@@ -202,14 +206,19 @@ test('countsTooltip builds a readable comma-separated summary', () => {
     ['counter', 1],
     ['combat',  2],
   ])
-  const text = countsTooltip(counts)
+  const text = countsTooltip(stubT, counts)
   // Order follows KEY_MOMENT_KINDS priority, not insertion order.
-  assert.equal(text, '2 combats, 1 counter, 3 removals')
+  assert.equal(text, 'rpl.kc_combat:2, rpl.kc_counter_one:1, rpl.kc_removal:3')
+})
+
+test('countsTooltip picks the _one key only at exactly one', () => {
+  assert.equal(countsTooltip(stubT, new Map([['wipe', 1]])), 'rpl.kc_wipe_one:1')
+  assert.equal(countsTooltip(stubT, new Map([['wipe', 2]])), 'rpl.kc_wipe:2')
 })
 
 test('countsTooltip returns empty string when nothing happened', () => {
-  assert.equal(countsTooltip(new Map()), '')
-  assert.equal(countsTooltip(null), '')
+  assert.equal(countsTooltip(stubT, new Map()), '')
+  assert.equal(countsTooltip(stubT, null), '')
 })
 
 test('KEY_MOMENT_KINDS ordering is stable (elimination first)', () => {

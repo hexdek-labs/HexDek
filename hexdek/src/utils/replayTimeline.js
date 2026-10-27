@@ -13,15 +13,19 @@
 // Moment kinds in PRIORITY ORDER (most significant first). The
 // strip picks each turn's "primary" badge by walking events through
 // classifyEvent and keeping the lowest-index match.
+// `labelKey` / `countKey` are catalog paths, not words. An English
+// label held here would freeze at module load; `countKey` + `_one`
+// gives the call site a real plural instead of bolting an "s" onto a
+// count, which is wrong in most of the 25 locales.
 export const KEY_MOMENT_KINDS = [
-  { id: 'elimination', label: 'Elimination', icon: '✗', color: 'var(--danger)' },
-  { id: 'wipe',        label: 'Board wipe',  icon: '☄', color: 'var(--danger)' },
-  { id: 'extra_turn',  label: 'Extra turn',  icon: '⟳', color: 'var(--warn)' },
-  { id: 'combat',      label: 'Combat',      icon: '⚔', color: 'var(--danger)' },
-  { id: 'counter',     label: 'Counter',     icon: '⊘', color: 'var(--warn)' },
-  { id: 'removal',     label: 'Removal',     icon: '⌫', color: 'var(--warn)' },
-  { id: 'reanimate',   label: 'Reanimate',   icon: '↺', color: 'var(--warn)' },
-  { id: 'big_cast',    label: 'Big cast',    icon: '✦', color: 'var(--ok)' },
+  { id: 'elimination', labelKey: 'rpl.km_elimination', countKey: 'rpl.kc_elimination', icon: '✗', color: 'var(--danger)' },
+  { id: 'wipe',        labelKey: 'rpl.km_wipe',        countKey: 'rpl.kc_wipe',        icon: '☄', color: 'var(--danger)' },
+  { id: 'extra_turn',  labelKey: 'rpl.km_extra_turn',  countKey: 'rpl.kc_extra_turn',  icon: '⟳', color: 'var(--warn)' },
+  { id: 'combat',      labelKey: 'rpl.km_combat',      countKey: 'rpl.kc_combat',      icon: '⚔', color: 'var(--danger)' },
+  { id: 'counter',     labelKey: 'rpl.km_counter',     countKey: 'rpl.kc_counter',     icon: '⊘', color: 'var(--warn)' },
+  { id: 'removal',     labelKey: 'rpl.km_removal',     countKey: 'rpl.kc_removal',     icon: '⌫', color: 'var(--warn)' },
+  { id: 'reanimate',   labelKey: 'rpl.km_reanimate',   countKey: 'rpl.kc_reanimate',   icon: '↺', color: 'var(--warn)' },
+  { id: 'big_cast',    labelKey: 'rpl.km_big_cast',    countKey: 'rpl.kc_big_cast',    icon: '✦', color: 'var(--ok)' },
 ]
 const KIND_ORDER = new Map(KEY_MOMENT_KINDS.map((m, i) => [m.id, i]))
 
@@ -133,12 +137,16 @@ export function momentMeta(kindId) {
 // combats" summary from a counts map. Used in the strip's hover
 // title so the user can see EVERYTHING that happened on a turn
 // without expanding the event log.
-export function countsTooltip(counts) {
+//
+// `t` is the translator from the call site. Passing it in keeps this
+// module free of the i18n import (and therefore importable by the unit
+// suite, which cannot resolve the JSON catalogs).
+export function countsTooltip(t, counts) {
   if (!counts || counts.size === 0) return ''
   const ordered = KEY_MOMENT_KINDS
     .map(m => [m, counts.get(m.id) || 0])
     .filter(([, n]) => n > 0)
   return ordered
-    .map(([m, n]) => `${n} ${m.label.toLowerCase()}${n > 1 ? 's' : ''}`)
+    .map(([m, n]) => t(n === 1 ? `${m.countKey}_one` : m.countKey, { count: n }))
     .join(', ')
 }

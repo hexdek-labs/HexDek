@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
 import SummaryActions from '../components/SummaryActions'
 import { api, cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
 import {
   REPLAY_SPEEDS,
   REPLAY_DEFAULT_SPEED_IDX,
@@ -268,6 +269,7 @@ const deriveTimeline = (game, commanders) => {
    scrubber instead of fabricating interpolated frames.
 */
 const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommanders = [], onClearCompare }) => {
+  const t = useT()
   const timeline = game?.timeline || []
   const totalTurns = timeline.length
   const [turnIdx, setTurnIdx] = useState(0) // 0-based into timeline
@@ -466,11 +468,9 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
 
   if (totalTurns === 0) {
     return (
-      <Panel code="RPT.X" title="REPLAY VIEWER" style={{ gridColumn: '1 / -1' }}>
+      <Panel code="RPT.X" title={t('rpl.title')} style={{ gridColumn: '1 / -1' }}>
         <div className="t-xs muted-2" style={{ lineHeight: 1.5 }}>
-          &gt; NO PER-TURN TIMELINE FOR THIS GAME. LIVE GAMES CAPTURED AFTER
-          THE REPLAY VIEWER LANDED CARRY A TIMELINE; OLDER GAMES REHYDRATED
-          FROM SQLITE DO NOT (THE SCHEMA ONLY STORES END-OF-GAME SEATS).
+          &gt; {t('rpl.no_timeline')}
         </div>
       </Panel>
     )
@@ -484,24 +484,24 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
   return (
     <Panel
       code="RPT.X"
-      title={`REPLAY VIEWER / / TURN ${turnNo} OF ${timeline[totalTurns - 1].turn}`}
+      title={t('rpl.title_turn', { turn: turnNo, total: timeline[totalTurns - 1].turn })}
       style={{ gridColumn: '1 / -1' }}
       right={
         <span className="t-xs muted">
-          {turnIdx + 1}/{totalTurns} SNAPSHOTS
+          {t(totalTurns === 1 ? 'rpl.snapshots_one' : 'rpl.snapshots', { count: totalTurns })}
         </span>
       }
     >
       {/* Transport: prev / play / next / jump-to-end + speed presets */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'first')) }} disabled={turnIdx === 0} title="Jump to start (Home)">⏮</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev')) }} disabled={turnIdx === 0} title="Previous turn (← / J)">◀</Btn>
-        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)} title="Play / pause (Space / K)">{playing ? '⏸ PAUSE' : '▶ PLAY'}</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'next')) }} disabled={turnIdx >= totalTurns - 1} title="Next turn (→ / L)">▶</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'last')) }} disabled={turnIdx >= totalTurns - 1} title="Jump to end (End)">⏭</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'first')) }} disabled={turnIdx === 0} title={t('rpl.tip_first')}>⏮</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev')) }} disabled={turnIdx === 0} title={t('rpl.tip_prev')}>◀</Btn>
+        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)} title={t('rpl.tip_play')}>{playing ? t('rpl.pause') : t('rpl.play')}</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'next')) }} disabled={turnIdx >= totalTurns - 1} title={t('rpl.tip_next')}>▶</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'last')) }} disabled={turnIdx >= totalTurns - 1} title={t('rpl.tip_last')}>⏭</Btn>
         {/* Speed: discrete presets. Active mark = ok-color. Hotkeys
             ↑/↓ + [/] step through the same list. */}
-        <div role="group" aria-label="Playback speed" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)' }}>
+        <div role="group" aria-label={t('rpl.aria_speed')} style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)' }}>
           {REPLAY_SPEEDS.map((s, i) => {
             const active = i === speedIdx
             return (
@@ -510,8 +510,8 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                 key={s}
                 onClick={() => setSpeedIdx(i)}
                 aria-pressed={active}
-                aria-label={`Set replay speed to ${s}×`}
-                title={`Replay at ${s}×`}
+                aria-label={t('rpl.aria_set_speed', { speed: s })}
+                title={t('rpl.tip_speed', { speed: s })}
                 className="t-xs"
                 style={{
                   background: 'transparent',
@@ -532,11 +532,11 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
             Existing-mark detection swaps "+" for a "remove" affordance
             when the current turn already carries a bookmark of the
             selected kind. */}
-        <div role="group" aria-label="Bookmark current turn" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+        <div role="group" aria-label={t('rpl.aria_bookmark_group')} style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
           <select
             value={bookmarkKind}
             onChange={(e) => setBookmarkKind(e.target.value)}
-            aria-label="Bookmark kind"
+            aria-label={t('rpl.aria_bookmark_kind')}
             className="t-xs"
             style={{
               background: 'transparent',
@@ -547,7 +547,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
             }}
           >
             {BOOKMARK_KINDS.map(k => (
-              <option key={k.id} value={k.id}>{k.icon} {k.label}</option>
+              <option key={k.id} value={k.id}>{k.icon} {t(k.labelKey)}</option>
             ))}
           </select>
           {(() => {
@@ -559,7 +559,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                 sm
                 arrow={null}
                 solid={isMarked}
-                title={isMarked ? `Remove ${kindMeta(bookmarkKind).label} bookmark (T${currentTurn})` : `Bookmark T${currentTurn} as ${kindMeta(bookmarkKind).label} (B)`}
+                title={t(isMarked ? 'rpl.tip_unmark' : 'rpl.tip_mark', { kind: t(kindMeta(bookmarkKind).labelKey), turn: currentTurn })}
                 onClick={() => {
                   if (isMarked) {
                     setBookmarks(list => removeBookmark(list, existingId))
@@ -582,7 +582,9 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
           <Btn
             sm
             arrow={null}
-            title={`Copy link to T${turnAtIdx(turnIdx)}${focusedSeat != null ? ` · SEAT.${String(focusedSeat + 1).padStart(2, '0')}` : ''}`}
+            title={focusedSeat != null
+              ? t('rpl.tip_copy_link_seat', { turn: turnAtIdx(turnIdx), seat: String(focusedSeat + 1).padStart(2, '0') })
+              : t('rpl.tip_copy_link', { turn: turnAtIdx(turnIdx) })}
             onClick={() => {
               const turn = turnAtIdx(turnIdx)
               const next = new URLSearchParams(searchParams)
@@ -598,22 +600,25 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                   seat: focusedSeat,
                 })
                 if (navigator?.clipboard?.writeText) {
+                  // The toast holds a catalog KEY, not a worded string:
+                  // wording it inside .then() would freeze the language at
+                  // click time and ignore a later switch.
                   navigator.clipboard.writeText(url).then(
-                    () => { setShareToast('LINK COPIED') },
-                    () => { setShareToast('COPY FAILED') },
+                    () => { setShareToast('rpl.toast_copied') },
+                    () => { setShareToast('rpl.toast_copy_failed') },
                   )
                 } else {
-                  setShareToast('LINK READY')
+                  setShareToast('rpl.toast_ready')
                 }
                 setTimeout(() => setShareToast(null), 2000)
               }
             }}
           >
-            ⇪ SHARE
+            {t('rpl.share')}
           </Btn>
           {shareToast && (
             <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>
-              {shareToast}
+              {t(shareToast)}
             </span>
           )}
         </div>
@@ -631,11 +636,11 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
               arrow={null}
               solid={exportStatus === 'recording'}
               title={(() => {
-                if (exportStatus === 'recording') return 'Cancel recording'
+                if (exportStatus === 'recording') return t('rpl.tip_cancel_rec')
                 const plan = buildFramePlan(timeline)
                 const mime = pickMimeType(window) || ''
                 const ext = mime.includes('mp4') ? 'mp4' : 'webm'
-                return `Export this replay as a ${ext} (≈ ${formatVideoDuration(plan.totalMs)})`
+                return t('rpl.tip_export', { ext, duration: formatVideoDuration(plan.totalMs) })
               })()}
               onClick={async () => {
                 if (exportStatus === 'recording') {
@@ -679,14 +684,16 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
               }}
             >
               {exportStatus === 'recording'
-                ? `⏺ REC ${exportProgress.total ? `${exportProgress.idx + 1}/${exportProgress.total}` : ''}`
-                : '⬇ EXPORT'}
+                ? (exportProgress.total
+                    ? t('rpl.rec_progress', { idx: exportProgress.idx + 1, total: exportProgress.total })
+                    : t('rpl.rec'))
+                : t('rpl.export')}
             </Btn>
             {exportStatus === 'saved' && (
-              <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>SAVED</span>
+              <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>{t('rpl.saved')}</span>
             )}
             {exportStatus === 'error' && (
-              <span className="t-xs" style={{ color: 'var(--danger)', fontWeight: 700 }}>FAILED</span>
+              <span className="t-xs" style={{ color: 'var(--danger)', fontWeight: 700 }}>{t('rpl.failed')}</span>
             )}
             {/* The offscreen render target. position:absolute +
                 opacity:0 keeps it laid out (so captureStream() works)
@@ -705,10 +712,10 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
           </div>
         )}
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
-          ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
+          {t('rpl.active_label')}: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || t('dash.unknown')).split(',')[0].toUpperCase()}` : '—'}
           {focusedSeat != null && (
             <span style={{ marginLeft: 6, color: 'var(--accent)' }}>
-              · FOCUS: SEAT.{String(focusedSeat + 1).padStart(2, '0')}
+              · {t('rpl.focus_label')}: SEAT.{String(focusedSeat + 1).padStart(2, '0')}
             </span>
           )}
         </span>
@@ -727,7 +734,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
         return (
           <div
             role="group"
-            aria-label="Key moments timeline"
+            aria-label={t('rpl.aria_moments')}
             style={{
               display: 'grid',
               gridTemplateColumns: `repeat(${moments.length}, 1fr)`,
@@ -745,8 +752,8 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                     key={i}
                     type="button"
                     onClick={() => { setPlaying(false); setTurnIdx(i) }}
-                    title={`T${m.turn ?? i + 1} — quiet turn`}
-                    aria-label={`Jump to turn ${m.turn ?? i + 1}`}
+                    title={t('rpl.tip_quiet', { turn: m.turn ?? i + 1 })}
+                    aria-label={t('rpl.aria_jump_turn', { turn: m.turn ?? i + 1 })}
                     style={{
                       height: 16,
                       background: isCurrent ? 'var(--rule)' : 'var(--rule-2)',
@@ -758,7 +765,11 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                   />
                 )
               }
-              const tip = `T${m.turn ?? i + 1} · ${meta.label}${m.totalKeyEvents > 1 ? ` — ${countsTooltip(m.counts)}` : ''}`
+              const momentTurn = m.turn ?? i + 1
+              const momentLabel = t(meta.labelKey)
+              const tip = m.totalKeyEvents > 1
+                ? t('rpl.tip_moment_multi', { turn: momentTurn, label: momentLabel, counts: countsTooltip(t, m.counts) })
+                : t('rpl.tip_moment', { turn: momentTurn, label: momentLabel })
               return (
                 <button
                   key={i}
@@ -800,7 +811,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
           value={turnIdx}
           onChange={e => { setPlaying(false); setTurnIdx(parseInt(e.target.value, 10)) }}
           style={{ width: '100%', accentColor: 'var(--accent)', display: 'block' }}
-          aria-label="Turn slider"
+          aria-label={t('rpl.aria_slider')}
         />
         {bookmarks.length > 0 && (
           <div
@@ -816,8 +827,8 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                   key={b.id}
                   type="button"
                   onClick={() => { setPlaying(false); setTurnIdx(idx) }}
-                  title={`${meta.label} — T${b.turn}${b.note ? ` · ${b.note}` : ''}`}
-                  aria-label={`Jump to ${meta.label} bookmark at turn ${b.turn}`}
+                  title={t(b.note ? 'rpl.tip_bookmark_at_note' : 'rpl.tip_bookmark_at', { kind: t(meta.labelKey), turn: b.turn, note: b.note })}
+                  aria-label={t('rpl.aria_jump_bookmark', { kind: t(meta.labelKey), turn: b.turn })}
                   style={{
                     position: 'absolute',
                     left: `calc(${pct}% - 6px)`,
@@ -847,7 +858,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
           state doesn't add chrome. */}
       {bookmarks.length > 0 && (
         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <span className="t-xs muted" style={{ alignSelf: 'center' }}>BOOKMARKS:</span>
+          <span className="t-xs muted" style={{ alignSelf: 'center' }}>{t('rpl.bookmarks')}</span>
           {bookmarks.map(b => {
             const meta = kindMeta(b.kind)
             const idx = idxAtTurn(b.turn)
@@ -872,7 +883,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                   type="button"
                   onClick={() => { setPlaying(false); setTurnIdx(idx) }}
                   className="t-xs"
-                  title={b.note || meta.label}
+                  title={b.note || t(meta.labelKey)}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -886,8 +897,8 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                 <button
                   type="button"
                   onClick={() => setBookmarks(list => removeBookmark(list, b.id))}
-                  aria-label={`Remove ${meta.label} bookmark at turn ${b.turn}`}
-                  title="Remove bookmark"
+                  aria-label={t('rpl.aria_remove_bookmark', { kind: t(meta.labelKey), turn: b.turn })}
+                  title={t('rpl.tip_remove_bookmark')}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -910,7 +921,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
       {/* Per-seat board state at this turn */}
       <div className="grid col-4 gap-4">
         {(snap?.seats || []).map((s, i) => {
-          const cmdr = commanders[i] || 'UNKNOWN'
+          const cmdr = commanders[i] || t('dash.unknown')
           const perms = s.battlefield || []
           const isActive = i === activeSeat
           const isFocused = i === focusedSeat
@@ -943,19 +954,19 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                     }
                   }}
                   aria-pressed={isFocused}
-                  aria-label={`${isFocused ? 'Unfocus' : 'Focus'} seat ${i + 1} for share link`}
-                  title={isFocused ? 'Click to unfocus (omit from share URL)' : 'Click to focus this seat in the share URL'}
+                  aria-label={t(isFocused ? 'rpl.aria_unfocus_seat' : 'rpl.aria_focus_seat', { seat: i + 1 })}
+                  title={t(isFocused ? 'rpl.tip_unfocus' : 'rpl.tip_focus')}
                 >
                   <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
-                  {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
-                  {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
-                  {isFocused && <Tag kind="ok">FOCUS</Tag>}
+                  {s.lost && <Tag kind="bad">{t('common.eliminated')}</Tag>}
+                  {!s.lost && isActive && <Tag kind="ok" solid>{t('common.active')}</Tag>}
+                  {isFocused && <Tag kind="ok">{t('rpl.focus_tag')}</Tag>}
                 </div>
                 <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
                   {cmdr.split(',')[0].toUpperCase()}
                 </div>
                 <div className="hr" style={{ margin: '8px 0' }} />
-                <div className="t-xs muted" style={{ marginBottom: 2 }}>LIFE</div>
+                <div className="t-xs muted" style={{ marginBottom: 2 }}>{t('common.life')}</div>
                 <Bar value={lifePct} />
                 <div className="t-xs" style={{ marginTop: 3, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                   {s.life} / 40
@@ -967,15 +978,15 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                 </div>
                 <div className="hr" style={{ margin: '8px 0' }} />
                 <KV rows={[
-                  ['HAND', String(s.hand_size)],
-                  ['LIBRARY', String(s.library_size)],
-                  ['GRAVEYARD', String(s.gy_size)],
-                  ['BATTLEFIELD', String(perms.length)],
+                  [t('common.hand'), String(s.hand_size)],
+                  [t('common.library'), String(s.library_size)],
+                  [t('common.graveyard'), String(s.gy_size)],
+                  [t('common.battlefield'), String(perms.length)],
                 ]} />
                 {perms.length > 0 && (
                   <>
                     <div className="hr" style={{ margin: '8px 0' }} />
-                    <div className="t-xs muted" style={{ marginBottom: 4 }}>BATTLEFIELD</div>
+                    <div className="t-xs muted" style={{ marginBottom: 4 }}>{t('common.battlefield')}</div>
                     <div style={{ maxHeight: 140, overflowY: 'auto', borderTop: '1px dashed var(--rule-2)' }}>
                       {perms.map((p, j) => (
                         <div key={j} style={{
@@ -1022,15 +1033,19 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
             <div className="hr" style={{ margin: '14px 0 10px' }} />
             <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
               <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
-                VS · GAME #{compareGame.game_id} {bMap.ended ? '· GAME ENDED' : bMap.beforeStart ? '· NOT STARTED' : `· TURN ${bMap.snapshot?.turn ?? '?'} OF ${lastB}`}
+                {t('rpl.vs_game', { id: compareGame.game_id })} · {bMap.ended
+                  ? t('rpl.vs_ended')
+                  : bMap.beforeStart
+                    ? t('rpl.vs_not_started')
+                    : t('rpl.vs_turn', { turn: bMap.snapshot?.turn ?? '?', total: lastB })}
               </span>
               {onClearCompare && (
-                <Btn sm arrow={null} onClick={onClearCompare} title="Close compare panel">✕ CLOSE</Btn>
+                <Btn sm arrow={null} onClick={onClearCompare} title={t('rpl.tip_close_compare')}>{t('rpl.close_compare')}</Btn>
               )}
             </div>
             <div className="grid col-4 gap-4">
               {compareSeats.map((s, i) => {
-                const cmdr = compareCommanders[i] || 'UNKNOWN'
+                const cmdr = compareCommanders[i] || t('dash.unknown')
                 const perms = s.battlefield || []
                 const isActive = i === compareActiveSeat
                 const lifePct = Math.max(0, Math.min(100, (s.life / 40) * 100))
@@ -1043,29 +1058,29 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
                     <div style={{ padding: '8px 10px' }}>
                       <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
                         <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
-                        {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
-                        {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
+                        {s.lost && <Tag kind="bad">{t('common.eliminated')}</Tag>}
+                        {!s.lost && isActive && <Tag kind="ok" solid>{t('common.active')}</Tag>}
                       </div>
                       <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
                         {cmdr.split(',')[0].toUpperCase()}
                       </div>
                       <div className="hr" style={{ margin: '8px 0' }} />
-                      <div className="t-xs muted" style={{ marginBottom: 2 }}>LIFE</div>
+                      <div className="t-xs muted" style={{ marginBottom: 2 }}>{t('common.life')}</div>
                       <Bar value={lifePct} />
                       <div className="t-xs" style={{ marginTop: 3, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                         {s.life} / 40
                         {d && (
                           <span style={{ marginLeft: 6, color: deltaColor(d.lifeDelta), fontWeight: 400 }}>
-                            ({fmtDelta(-d.lifeDelta)} vs A)
+                            ({fmtDelta(-d.lifeDelta)} {t('rpl.vs_a')})
                           </span>
                         )}
                       </div>
                       <div className="hr" style={{ margin: '8px 0' }} />
                       <KV rows={[
-                        ['HAND',        `${s.hand_size}`    + (d ? `  (${fmtDelta(-d.handDelta)})` : '')],
-                        ['LIBRARY',     `${s.library_size}` + (d ? `  (${fmtDelta(-d.librarayDelta)})` : '')],
-                        ['GRAVEYARD',   `${s.gy_size}`      + (d ? `  (${fmtDelta(-d.graveyardDelta)})` : '')],
-                        ['BATTLEFIELD', `${perms.length}`   + (d ? `  (${fmtDelta(-d.battlefieldDelta)})` : '')],
+                        [t('common.hand'),        `${s.hand_size}`    + (d ? `  (${fmtDelta(-d.handDelta)})` : '')],
+                        [t('common.library'),     `${s.library_size}` + (d ? `  (${fmtDelta(-d.librarayDelta)})` : '')],
+                        [t('common.graveyard'),   `${s.gy_size}`      + (d ? `  (${fmtDelta(-d.graveyardDelta)})` : '')],
+                        [t('common.battlefield'), `${perms.length}`   + (d ? `  (${fmtDelta(-d.battlefieldDelta)})` : '')],
                       ]} />
                     </div>
                   </div>
@@ -1073,7 +1088,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
               })}
               {compareSeats.length === 0 && (
                 <div className="t-xs muted-2" style={{ gridColumn: '1 / -1', padding: '12px 4px' }}>
-                  &gt; {bMap.beforeStart ? 'NOT STARTED YET — SCRUB FORWARD' : 'GAME ENDED — SCRUB BACK TO COMPARE'}
+                  &gt; {t(bMap.beforeStart ? 'rpl.compare_not_started' : 'rpl.compare_ended')}
                 </div>
               )}
             </div>
@@ -1083,9 +1098,9 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
 
       {/* Event log for this turn */}
       <div className="hr" style={{ margin: '14px 0 8px' }} />
-      <div className="t-xs muted" style={{ marginBottom: 6 }}>EVENTS — TURN {turnNo}</div>
+      <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('rpl.events_turn', { turn: turnNo })}</div>
       {events.length === 0 ? (
-        <div className="t-xs muted-2">— NO RECORDED EVENTS THIS TURN —</div>
+        <div className="t-xs muted-2">{t('rpl.no_events')}</div>
       ) : (
         <div style={{ maxHeight: 220, overflowY: 'auto' }}>
           {events.map((ev, i) => (
