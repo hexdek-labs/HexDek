@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { AnimatedCounter } from '../hooks/useAnimatedCounter.jsx'
 import { useUploadDeck } from '../hooks/useUploadDeck'
+import { useT } from '../i18n'
 
 // FishtankEmbed is the heaviest piece on the splash — full WS-driven
 // re-render per snapshot. Code-split it so the hero paints first, and
@@ -13,35 +14,36 @@ import { useUploadDeck } from '../hooks/useUploadDeck'
 // the mount also defers the WS handshake.
 const FishtankEmbed = lazy(() => import('../components/FishtankEmbed'))
 
-const RUNTIME_LABELS = {
-  disconnected: 'DISCONNECTED',
-  contacting: 'CONTACTING FORGE...',
-  initializing: 'INITIALIZING LINK...',
+const RUNTIME_LABEL_KEYS = {
+  disconnected: 'splash.runtime_disconnected',
+  contacting: 'splash.runtime_contacting',
+  initializing: 'splash.runtime_initializing',
 }
 
 export default function Splash() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { stats, elo, status } = useLiveSocket()
+  const t = useT()
   const upload = useUploadDeck(() => navigate('/decks'))
 
   const gpm = stats?.games_per_min || 0
   const runtimeText = status === 'live'
-    ? `LIVE // ${gpm ? Math.round(gpm / 60).toLocaleString() : '?'} GAMES/SEC`
-    : RUNTIME_LABELS[status] || 'OFFLINE'
+    ? t('splash.runtime_live', { rate: gpm ? Math.round(gpm / 60).toLocaleString() : '?' })
+    : (RUNTIME_LABEL_KEYS[status] ? t(RUNTIME_LABEL_KEYS[status]) : t('splash.runtime_offline'))
 
   const ledClass = status === 'live' ? 'led--on blink' :
     (status === 'contacting' || status === 'initializing') ? 'led--on' : ''
 
   return (
     <>
-      <Tape left="LANDING / / DOC HX-001" mid="REV C.25" right="FORGE TERMINAL" />
+      <Tape left={t('splash.tape_left')} mid="REV C.25" right={t('splash.tape_right')} />
 
       <div className="splash-layout">
         {/* LEFT */}
         <div className="splash-left">
           <div>
-            <div className="t-xs muted">DOC. HX-001 / / FORGE TERMINAL / / REV. C.25</div>
+            <div className="t-xs muted">{t('splash.doc_line')}</div>
             <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-start', gap: 18 }}>
               <div className="splash-hero">HEX</div>
               <Stripes height={148} w={140} />
@@ -49,11 +51,11 @@ export default function Splash() {
             <div className="splash-hero" style={{ marginTop: -12 }}>DEK/</div>
 
             <div className="t-md muted" style={{ marginTop: 24, maxWidth: 540, lineHeight: 1.6, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13 }}>
-              &gt; THE FORGE WHERE DECKS BECOME WEAPONS.
+              &gt; {t('splash.tagline_1')}
               <br />
-              &gt; OPEN-SOURCE COMMANDER ANALYSIS ENGINE.
+              &gt; {t('splash.tagline_2')}
               <br />
-              &gt; WASM-NATIVE. RUNS ON YOUR MACHINE.
+              &gt; {t('splash.tagline_3')}
             </div>
           </div>
 
@@ -91,43 +93,43 @@ export default function Splash() {
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <span style={{ fontSize: 28, lineHeight: 1, fontWeight: 900 }}>+</span>
-              <span>UPLOAD YOUR DECK</span>
+              <span>{t('splash.cta_upload')}</span>
             </span>
             <span style={{ fontSize: 22, lineHeight: 1 }}>▶</span>
           </button>
 
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Btn solid arrow="▶" onClick={() => navigate(user ? '/dash' : '/login')}>ENTER THE FORGE</Btn>
-            <a href="https://github.com/hexdek-labs/HexDek#readme" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">DOCS / / README</Btn></a>
-            <a href="https://github.com/hexdek-labs/HexDek" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">GITHUB / / SRC</Btn></a>
-            <a href="https://discord.gg/Mz2ueRFXds" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">DISCORD</Btn></a>
+            <Btn solid arrow="▶" onClick={() => navigate(user ? '/dash' : '/login')}>{t('splash.btn_enter')}</Btn>
+            <a href="https://github.com/hexdek-labs/HexDek#readme" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">{t('splash.btn_docs')}</Btn></a>
+            <a href="https://github.com/hexdek-labs/HexDek" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">{t('splash.btn_github')}</Btn></a>
+            <a href="https://discord.gg/Mz2ueRFXds" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}><Btn ghost arrow="↗">{t('nav.discord')}</Btn></a>
           </div>
         </div>
 
         {/* RIGHT */}
         <div className="splash-right">
-          <Panel code="II.A" title="LIVE FORGE STATS" right={<span className={`led ${ledClass}`} />}>
+          <Panel code="II.A" title={t('splash.panel_stats')} right={<span className={`led ${ledClass}`} />}>
             <KV rows={[
-              ['GAMES SIM.', <AnimatedCounter target={stats?.games_played} rate={gpm} className="punch" style={{ fontSize: 24 }} />],
-              ['GAMES/MIN', gpm ? Math.round(gpm).toLocaleString() : '—'],
-              ['AVG TURNS', stats ? stats.avg_turns : '—'],
-              ['DOMINANT', stats?.dominant?.split(',')[0]?.toUpperCase() || '—'],
-              ['TOP WIN RATE', stats ? `${stats.dominant_win_rate}%` : '—'],
-              ['ELO POOL', `${elo.length} DECKS`],
+              [t('splash.kv_games'), <AnimatedCounter target={stats?.games_played} rate={gpm} className="punch" style={{ fontSize: 24 }} />],
+              [t('splash.kv_gpm'), gpm ? Math.round(gpm).toLocaleString() : '—'],
+              [t('splash.kv_turns'), stats ? stats.avg_turns : '—'],
+              [t('splash.kv_dominant'), stats?.dominant?.split(',')[0]?.toUpperCase() || '—'],
+              [t('splash.kv_top_wr'), stats ? `${stats.dominant_win_rate}%` : '—'],
+              [t('splash.kv_elo_pool'), t('splash.elo_pool_value', { count: elo.length })],
             ]} />
           </Panel>
 
           <div className="panel inv" style={{ padding: 0 }}>
             <div className="panel-hd" style={{ borderColor: 'rgba(0,0,0,0.2)' }}>
-              <span>CATALOGUED BUILDS C.25</span>
+              <span>{t('splash.builds_hd')}</span>
               <span>SLOT.01</span>
             </div>
             <div style={{ padding: '14px 16px', textAlign: 'center' }}>
               <div style={{ fontSize: 11, letterSpacing: '0.06em', lineHeight: 1.6 }}>
-                HEXDEK COMBAT CORE<br />
-                ENGINE: HEXDEK V0.10D<br />
-                FORMAT: COMMANDER / 1V1 / ARCHENEMY<br />
-                RUNTIME: {runtimeText}
+                {t('splash.core_line')}<br />
+                {t('splash.engine_line')}<br />
+                {t('splash.format_line')}<br />
+                {t('splash.runtime_label')} {runtimeText}
               </div>
               <div style={{ borderTop: '1px solid rgba(0,0,0,0.15)', marginTop: 12, paddingTop: 8, fontSize: 10, letterSpacing: '0.1em' }}>
                 HEXDEK__©2026
@@ -135,12 +137,12 @@ export default function Splash() {
             </div>
           </div>
 
-          <Panel code="II.B" title="SYS NOTICE">
+          <Panel code="II.B" title={t('splash.notice_hd')}>
             <div className="t-md muted" style={{ lineHeight: 1.6 }}>
-              &gt; OPEN SOURCE.<br />
-              &gt; DONATIONS-POWERED.<br />
-              &gt; NO ADS. NO PAYWALLS.<br />
-              &gt; LOGIN OPTIONAL — GUEST = FULL ANALYSIS.
+              &gt; {t('splash.notice_1')}<br />
+              &gt; {t('splash.notice_2')}<br />
+              &gt; {t('splash.notice_3')}<br />
+              &gt; {t('splash.notice_4')}
             </div>
           </Panel>
         </div>
@@ -153,22 +155,24 @@ export default function Splash() {
           WS powers both regions. */}
       <section className="splash-fishtank">
         <Tape
-          left="LIVE FORGE / / FISHTANK"
-          mid={status === 'live' ? `LIVE · ${gpm ? Math.round(gpm).toLocaleString() : '?'} GAMES/MIN` : (RUNTIME_LABELS[status] || 'OFFLINE')}
-          right="WATCH ↗"
+          left={t('splash.fishtank_tape_left')}
+          mid={status === 'live'
+            ? t('splash.fishtank_live', { rate: gpm ? Math.round(gpm).toLocaleString() : '?' })
+            : (RUNTIME_LABEL_KEYS[status] ? t(RUNTIME_LABEL_KEYS[status]) : t('splash.runtime_offline'))}
+          right={t('splash.fishtank_watch')}
         />
         <div className="splash-fishtank-body">
           <WhenVisible
             placeholder={
               <div className="fishtank-embed fishtank-embed--state" style={{ maxHeight: 240 }}>
                 <div className="fishtank-embed-hd">
-                  <span>FISHTANK / / LIVE FORGE</span>
+                  <span>{t('splash.fishtank_hd')}</span>
                   <span className="fishtank-embed-badge">
-                    <span className="led" /> STANDBY
+                    <span className="led" /> {t('splash.fishtank_standby')}
                   </span>
                 </div>
                 <div className="fishtank-embed-empty">
-                  &gt; SCROLL TO LOAD LIVE FEED<span className="blink">_</span>
+                  &gt; {t('splash.fishtank_scroll')}<span className="blink">_</span>
                 </div>
               </div>
             }
@@ -176,13 +180,13 @@ export default function Splash() {
             <Suspense fallback={
               <div className="fishtank-embed fishtank-embed--state" style={{ maxHeight: 240 }}>
                 <div className="fishtank-embed-hd">
-                  <span>FISHTANK / / LIVE FORGE</span>
+                  <span>{t('splash.fishtank_hd')}</span>
                   <span className="fishtank-embed-badge">
-                    <span className="led led--on blink" /> LOADING
+                    <span className="led led--on blink" /> {t('common.loading')}
                   </span>
                 </div>
                 <div className="fishtank-embed-empty">
-                  &gt; LOADING FISHTANK<span className="blink">_</span>
+                  &gt; {t('splash.fishtank_loading')}<span className="blink">_</span>
                 </div>
               </div>
             }>
