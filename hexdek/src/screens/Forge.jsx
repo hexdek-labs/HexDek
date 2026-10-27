@@ -6,8 +6,32 @@ import { useDecks } from '../hooks/useData'
 import { trackEvent } from '../hooks/useAnalytics'
 import ContextBox from '../components/ContextBox'
 import AnalysisFreshnessBanner from '../components/AnalysisFreshnessBanner'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
+
+// Freya's eight eval dimensions, keyed by the name it serialises
+// (cmd/hexdek-freya/deckprofile.go:738). Catalog PATHS, not words: this
+// table is read at render from module scope, so a word here would be fixed
+// at load. An unknown ninth dimension falls through to its raw wire name
+// rather than rendering blank.
+const EVAL_WEIGHT_KEYS = {
+  board_presence: 'frg.ew_board_presence',
+  card_advantage: 'frg.ew_card_advantage',
+  mana_advantage: 'frg.ew_mana_advantage',
+  life_resource: 'frg.ew_life_resource',
+  combo_proximity: 'frg.ew_combo_proximity',
+  threat_exposure: 'frg.ew_threat_exposure',
+  commander_progress: 'frg.ew_commander_progress',
+  graveyard_value: 'frg.ew_graveyard_value',
+}
+
+// Sentinel for a start-gauntlet failure that carried no message of its own.
+// A worded fallback parked in state would freeze in whatever language was
+// active when the call failed, so state holds the catalog path.
+const START_FAILED = 'frg.err_start'
 
 export default function Forge() {
+  const t = useT()
   const { data: decks, loading: decksLoading } = useDecks()
   const [searchParams] = useSearchParams()
   const [selectedDeck, setSelectedDeck] = useState(null)
@@ -94,11 +118,11 @@ export default function Forge() {
       await api.startGauntlet(deckId, gauntletGames)
       setGauntlet({ status: 'running', deck_key: deckId, games: 0, target: gauntletGames, wins: 0, losses: 0, win_rate: 0, commander: deck?.commander || selectedDeck?.name || '' })
     } catch (e) {
-      setGauntletError(e.message || 'Failed to start gauntlet')
+      setGauntletError(e.message || START_FAILED)
     }
   }
 
-  const deckName = deck?.commander || selectedDeck?.name || 'SELECT A DECK'
+  const deckName = deck?.commander || selectedDeck?.name || t('frg.no_deck_selected')
   const cardCount = deck?.card_count || deck?.cards?.length || 0
   const wbs = analysis?.bracket || deck?.bracket || '?'
   const wbsLabel = analysis?.bracket_label || ''
@@ -110,6 +134,7 @@ export default function Forge() {
   const measuredBracketLabel = analysis?.measured_bracket_label || ''
   const bracketDiverges = measuredBracket != null && wbs !== '?' && measuredBracket !== Number(wbs)
   const gameChangers = analysis?.game_changer_count ?? null
+  // Freya words the archetype server-side - echoed, never re-worded here.
   const archetype = analysis?.archetype?.toUpperCase() || '—'
   const summary = analysis?.gameplan_summary || ''
   const winLines = analysis?.win_lines || []
@@ -121,14 +146,18 @@ export default function Forge() {
   return (
     <>
       <Tape
-        left="VARIANT FORGE / / DOC HX-1101"
-        mid={selectedDeck ? (bracketDiverges ? `Estimated Bracket B${measuredBracket} (Bracket B${wbs})` : `Bracket B${wbs}`) : 'SELECT DECK'}
+        left={t('frg.tape_left')}
+        mid={selectedDeck
+          ? (bracketDiverges
+              ? t('frg.tape_est_bracket', { measured: measuredBracket, declared: wbs })
+              : t('frg.tape_bracket', { declared: wbs }))
+          : t('frg.select_deck')}
         right={selectedDeck ? `${selectedDeck.owner?.toUpperCase()} / / ${deckName}` : ''}
       />
 
       <div style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
         {/* Deck selector */}
-        <Panel code="11.SEL" title="SELECT DECK">
+        <Panel code="11.SEL" title={t('frg.select_deck')}>
           {/* Filter input — with 1300+ decks the pill wall was unscannable.
               Live filter against owner OR deck name. Empty filter shows all. */}
           {decks.length > 12 && (
@@ -136,7 +165,7 @@ export default function Forge() {
               type="text"
               value={deckFilter}
               onChange={(e) => setDeckFilter(e.target.value)}
-              placeholder={`FILTER ${decks.length} DECKS — owner or name...`}
+              placeholder={t('frg.filter_ph', { count: decks.length })}
               style={{
                 width: '100%', padding: '8px 10px', marginBottom: 10,
                 background: 'var(--bg-2, rgba(0,0,0,0.3))',
@@ -148,9 +177,9 @@ export default function Forge() {
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', maxHeight: 320, overflowY: 'auto' }}>
             {decksLoading ? (
-              <span className="t-xs muted">LOADING DECKS<span className="blink">_</span></span>
+              <span className="t-xs muted">{t('frg.loading_decks')}<span className="blink">_</span></span>
             ) : decks.length === 0 ? (
-              <span className="t-xs muted">NO DECKS FOUND</span>
+              <span className="t-xs muted">{t('frg.no_decks')}</span>
             ) : (() => {
               const q = deckFilter.trim().toLowerCase()
               const filtered = q
@@ -161,7 +190,7 @@ export default function Forge() {
                   )
                 : decks
               if (filtered.length === 0) {
-                return <span className="t-xs muted">NO MATCHES FOR "{deckFilter}"</span>
+                return <span className="t-xs muted">{t('frg.no_matches', { query: deckFilter })}</span>
               }
               return filtered.slice(0, 200).map((d) => (
                 <Tag
@@ -175,7 +204,7 @@ export default function Forge() {
               )).concat(
                 filtered.length > 200
                   ? [<span key="more" className="t-xs muted" style={{ alignSelf: 'center' }}>
-                      ...AND {filtered.length - 200} MORE — REFINE FILTER TO SEE
+                      {t('frg.more_decks', { count: filtered.length - 200 })}
                     </span>]
                   : []
               )
@@ -185,14 +214,14 @@ export default function Forge() {
 
         {loading && (
           <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>
-            &gt; LOADING DECK DATA<span className="blink">_</span>
+            &gt; {t('frg.loading_deck_data')}<span className="blink">_</span>
           </div>
         )}
 
         {!loading && selectedDeck && (
           <>
             {/* Deck overview */}
-            <Panel code="11.A" title={`${deckName} / / FORGE SUBJECT`}>
+            <Panel code="11.A" title={t('frg.p_subject', { name: deckName })}>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 18, alignItems: 'start' }}>
                 <div style={{ aspectRatio: '5/7', border: '1px solid var(--rule-2)', overflow: 'hidden', position: 'relative' }} className={cmdrCardName ? '' : 'hatch'}>
                   {cmdrCardName ? (
@@ -207,16 +236,19 @@ export default function Forge() {
                   )}
                 </div>
                 <div>
+                  {/* wbsLabel / measuredBracketLabel are Freya's own
+                      bracket wording - echoed as they arrive. GAME CHANGERS
+                      is the format's term and stays English. */}
                   <KV rows={[
-                    ['COMMANDER', deckName],
-                    ['OWNER', selectedDeck.owner?.toUpperCase()],
-                    ['CARDS', `${cardCount}`],
-                    ['BRACKET', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
-                    ['ESTIMATED BRACKET', measuredBracket != null
-                      ? `B${measuredBracket}${measuredBracketLabel ? ' ' + measuredBracketLabel : ''}${bracketDiverges ? ' ⚠ DIVERGES' : ''}`
+                    [t('frg.kv_commander'), deckName],
+                    [t('frg.kv_owner'), selectedDeck.owner?.toUpperCase()],
+                    [t('frg.kv_cards'), `${cardCount}`],
+                    [t('frg.kv_bracket'), `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
+                    [t('frg.kv_est_bracket'), measuredBracket != null
+                      ? `B${measuredBracket}${measuredBracketLabel ? ' ' + measuredBracketLabel : ''}${bracketDiverges ? ' ' + t('frg.diverges') : ''}`
                       : '—'],
                     ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—'],
-                    ['ARCHETYPE', archetype],
+                    [t('frg.kv_archetype'), archetype],
                   ]} />
                   {/* gameplan_summary hidden — Freya win-line detection needs accuracy pass */}
                 </div>
@@ -236,10 +268,10 @@ export default function Forge() {
               <>
                 {/* Eval weights */}
                 {Object.keys(evalWeights).length > 0 && (
-                  <Panel code="11.B" title="FREYA / / EVAL WEIGHTS" right={<Tag solid title={bracketDiverges ? 'We think it plays more like decks in this bracket.' : undefined}>Bracket B{wbs}{bracketDiverges ? ` → Estimated Bracket B${measuredBracket}` : ''}</Tag>}>
+                  <Panel code="11.B" title={t('frg.p_eval')} right={<Tag solid title={bracketDiverges ? t('frg.bracket_hint') : undefined}>{bracketDiverges ? t('frg.tag_bracket_est', { declared: wbs, measured: measuredBracket }) : t('frg.tape_bracket', { declared: wbs })}</Tag>}>
                     {Object.entries(evalWeights).slice(0, 8).map(([k, v], i) => (
                       <div key={i} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <span className="t-xs">{k.replace(/_/g, ' ').toUpperCase()}</span>
+                        <span className="t-xs">{EVAL_WEIGHT_KEYS[k] ? t(EVAL_WEIGHT_KEYS[k]) : k.replace(/_/g, ' ').toUpperCase()}</span>
                         <Bar value={v * 100} />
                         <span className="t-xs muted text-right">{v}</span>
                       </div>
@@ -249,7 +281,7 @@ export default function Forge() {
 
                 {/* Win lines */}
                 {winLines.length > 0 && (
-                  <Panel code="11.C" title={`WIN LINES / / ${winLines.length} DETECTED`}>
+                  <Panel code="11.C" title={t('frg.p_winlines', { count: winLines.length })}>
                     {winLines.map((wl, i) => {
                       const kindMap = { finisher: 'bad', combat: 'warn', commander_damage: 'ok', combo: 'bad', synergy: null }
                       const symbols = ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
@@ -263,7 +295,7 @@ export default function Forge() {
                             <div className="t-md" style={{ fontWeight: 700 }}>{wl.pieces?.join(' + ')}</div>
                             {wl.tutor_paths && (
                               <div className="t-xs muted" style={{ marginTop: 2 }}>
-                                TUTORS: {wl.tutor_paths.map(t => t.tutor).join(', ')}
+                                {t('frg.tutors', { list: wl.tutor_paths.map(p => p.tutor).join(', ') })}
                               </div>
                             )}
                           </div>
@@ -275,7 +307,7 @@ export default function Forge() {
 
                 {/* Value engine */}
                 {valueKeys.length > 0 && (
-                  <Panel code="11.D" title={`VALUE ENGINE / / ${valueKeys.length} KEY CARDS`}>
+                  <Panel code="11.D" title={t('frg.p_value', { count: valueKeys.length })}>
                     <div className="grid col-5 gap-2">
                       {valueKeys.slice(0, 10).map((name, i) => (
                         <div key={i} className="panel" style={{ padding: 0 }}>
@@ -292,12 +324,14 @@ export default function Forge() {
                 )}
               </>
             ) : (
-              <Panel code="11.B" title="FREYA / / ENGINE ANALYSIS">
+              <Panel code="11.B" title={t('frg.p_no_analysis')}>
                 <div style={{ padding: '20px 0', textAlign: 'center' }}>
                   <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    &gt; NO FREYA ANALYSIS ON FILE<br />
-                    &gt; RUN <span style={{ color: 'var(--ink)' }}>HEXDEK-FREYA</span> TO GENERATE STRATEGY REPORT<br />
-                    &gt; BRACKET, ARCHETYPE, WIN LINES, EVAL WEIGHTS<span className="blink">_</span>
+                    {/* fill() so the tool name can sit wherever the target
+                        language puts it, not where English does. */}
+                    &gt; {t('frg.na_1')}<br />
+                    &gt; {fill(t('frg.na_2'), { tool: <span style={{ color: 'var(--ink)' }}>HEXDEK-FREYA</span> })}<br />
+                    &gt; {t('frg.na_3')}<span className="blink">_</span>
                   </div>
                 </div>
               </Panel>
@@ -305,7 +339,7 @@ export default function Forge() {
 
             {/* Card list */}
             {cards.length > 0 && (
-              <Panel code="11.E" title={`CARD LIST / / ${cards.length} ENTRIES`}>
+              <Panel code="11.E" title={t('frg.p_cards', { count: cards.length })}>
                 <div>
                   {cards.map((c, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: i < cards.length - 1 ? '1px dotted var(--rule)' : 'none' }}>
@@ -318,21 +352,21 @@ export default function Forge() {
             )}
 
             {/* Gauntlet controls + results */}
-            <Panel code="11.F" title="FORGE ACTIONS">
+            <Panel code="11.F" title={t('frg.p_actions')}>
               {gauntletError && (
                 <div className="t-xs" style={{ color: 'var(--danger)', marginBottom: 8 }}>
-                  &gt; ERROR: {gauntletError}
+                  &gt; {t('frg.err_prefix', { error: gauntletError === START_FAILED ? t(START_FAILED) : gauntletError })}
                 </div>
               )}
 
               {(!gauntlet || gauntlet.status === 'none' || gauntlet.status === 'complete' || gauntlet.status === 'error') && (
                 <>
                   <div className="t-xs muted" style={{ marginBottom: 10, lineHeight: 1.6 }}>
-                    &gt; RUN THIS DECK THROUGH A GAUNTLET OF SIMULATED GAMES.<br />
-                    &gt; TRACKS WIN RATE, ELO DELTA, AND MATCHUP DATA.<span className="blink">_</span>
+                    &gt; {t('frg.help_1')}<br />
+                    &gt; {t('frg.help_2')}<span className="blink">_</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span className="t-xs">GAMES:</span>
+                    <span className="t-xs">{t('frg.games_label')}</span>
                     {[500, 1000, 5000, 10000].map(n => (
                       <Tag key={n} solid={gauntletGames === n} onClick={() => setGauntletGames(n)} style={{ cursor: 'pointer' }}>
                         {n >= 1000 ? `${n / 1000}K` : n}
@@ -343,15 +377,15 @@ export default function Forge() {
               )}
 
               <ContextBox id="forge.run-actions">
-                <strong>RUN GAUNTLET</strong> simulates the selected number of AI-vs-AI games on the server and reports win rate, ELO delta, and matchup breakdown.
-                {' '}<strong>EXPORT .TXT</strong> downloads the decklist as a plain-text file you can paste anywhere.
+                {fill(t('frg.ctx_run'), { button: <strong>{t('frg.btn_run')}</strong> })}
+                {' '}{fill(t('frg.ctx_export'), { button: <strong>{t('frg.btn_export')}</strong> })}
               </ContextBox>
               <div className="flex gap-2">
                 {(!gauntlet || gauntlet.status === 'none' || gauntlet.status === 'complete' || gauntlet.status === 'error') && (
-                  <Btn solid arrow="▶" onClick={handleStartGauntlet}>RUN GAUNTLET</Btn>
+                  <Btn solid arrow="▶" onClick={handleStartGauntlet}>{t('frg.btn_run')}</Btn>
                 )}
                 {gauntlet?.status === 'running' && (
-                  <Btn solid arrow="◼" disabled>RUNNING ({gauntlet.games || 0}/{gauntlet.target || gauntletGames})</Btn>
+                  <Btn solid arrow="◼" disabled>{t('frg.btn_running', { done: gauntlet.games || 0, total: gauntlet.target || gauntletGames })}</Btn>
                 )}
                 <Btn ghost arrow="↗" onClick={() => {
                   if (!cards.length) return
@@ -363,43 +397,43 @@ export default function Forge() {
                   a.download = `${selectedDeck.id || 'deck'}.txt`
                   a.click()
                   URL.revokeObjectURL(url)
-                }}>EXPORT .TXT</Btn>
+                }}>{t('frg.btn_export')}</Btn>
               </div>
             </Panel>
 
             {/* Gauntlet progress / results */}
             {gauntlet && gauntlet.status === 'running' && (
-              <Panel code="11.G" title={`GAUNTLET / / ${gauntlet.commander || deckName}`} right={<Tag>RUNNING</Tag>}>
+              <Panel code="11.G" title={t('frg.p_gauntlet', { name: gauntlet.commander || deckName })} right={<Tag>{t('frg.tag_running')}</Tag>}>
                 <div style={{ marginBottom: 10 }}>
                   <Bar value={gauntlet.games && gauntlet.target ? (gauntlet.games / gauntlet.target) * 100 : 0} />
                 </div>
                 <KV rows={[
-                  ['PROGRESS', `${gauntlet.games || 0} / ${gauntlet.target || gauntletGames} GAMES`],
-                  ['WINS', `${gauntlet.wins || 0}`],
-                  ['LOSSES', `${gauntlet.losses || 0}`],
-                  ['WIN RATE', `${gauntlet.win_rate || 0}%`],
+                  [t('frg.kv_progress'), t('frg.progress_val', { done: gauntlet.games || 0, total: gauntlet.target || gauntletGames })],
+                  [t('frg.kv_wins'), `${gauntlet.wins || 0}`],
+                  [t('frg.kv_losses'), `${gauntlet.losses || 0}`],
+                  [t('frg.kv_winrate'), `${gauntlet.win_rate || 0}%`],
                 ]} />
                 <div className="t-xs muted" style={{ marginTop: 10 }}>
-                  &gt; GAUNTLET IN PROGRESS. STREAMING LIVE VIA SSE<span className="blink">_</span>
+                  &gt; {t('frg.streaming')}<span className="blink">_</span>
                 </div>
               </Panel>
             )}
 
             {gauntlet && gauntlet.status === 'complete' && (
-              <Panel code="11.G" title={`GAUNTLET RESULTS / / ${gauntlet.commander || deckName}`} right={<Tag solid>COMPLETE</Tag>}>
+              <Panel code="11.G" title={t('frg.p_results', { name: gauntlet.commander || deckName })} right={<Tag solid>{t('frg.tag_complete')}</Tag>}>
                 <KV rows={[
-                  ['GAMES', `${gauntlet.games}`],
-                  ['WINS / LOSSES', `${gauntlet.wins} / ${gauntlet.losses}`],
-                  ['WIN RATE', `${gauntlet.win_rate}%`],
-                  ['ELO DELTA', `${gauntlet.elo_delta >= 0 ? '+' : ''}${gauntlet.elo_delta}`],
+                  [t('frg.kv_games'), `${gauntlet.games}`],
+                  [t('frg.kv_wins_losses'), `${gauntlet.wins} / ${gauntlet.losses}`],
+                  [t('frg.kv_winrate'), `${gauntlet.win_rate}%`],
+                  [t('frg.kv_elo_delta'), `${gauntlet.elo_delta >= 0 ? '+' : ''}${gauntlet.elo_delta}`],
                   ['ELO', `${gauntlet.elo_start} → ${gauntlet.elo_end}`],
-                  ['AVG TURNS', `${gauntlet.avg_turns}`],
+                  [t('frg.kv_avg_turns'), `${gauntlet.avg_turns}`],
                 ]} />
                 {(gauntlet.top_beaten?.length > 0 || gauntlet.top_lost_to?.length > 0) && (
                   <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {gauntlet.top_beaten?.length > 0 && (
                       <div>
-                        <div className="t-xs" style={{ fontWeight: 700, marginBottom: 4 }}>TOP BEATEN</div>
+                        <div className="t-xs" style={{ fontWeight: 700, marginBottom: 4 }}>{t('frg.top_beaten')}</div>
                         {gauntlet.top_beaten.map((b, i) => (
                           <div key={i} className="t-xs muted" style={{ lineHeight: 1.6 }}>{b}</div>
                         ))}
@@ -407,7 +441,7 @@ export default function Forge() {
                     )}
                     {gauntlet.top_lost_to?.length > 0 && (
                       <div>
-                        <div className="t-xs" style={{ fontWeight: 700, marginBottom: 4 }}>TOP LOST TO</div>
+                        <div className="t-xs" style={{ fontWeight: 700, marginBottom: 4 }}>{t('frg.top_lost_to')}</div>
                         {gauntlet.top_lost_to.map((l, i) => (
                           <div key={i} className="t-xs muted" style={{ lineHeight: 1.6 }}>{l}</div>
                         ))}
@@ -419,10 +453,10 @@ export default function Forge() {
             )}
 
             {gauntlet && gauntlet.status === 'error' && (
-              <Panel code="11.G" title="GAUNTLET / / ERROR">
+              <Panel code="11.G" title={t('frg.p_gauntlet_error')}>
                 <div className="t-xs" style={{ color: 'var(--danger)', lineHeight: 1.6 }}>
-                  &gt; DECK NOT FOUND IN ENGINE POOL.<br />
-                  &gt; ENSURE THIS DECK HAS A VALID COMMANDER AND 100+ CARDS.<span className="blink">_</span>
+                  &gt; {t('frg.ge_1')}<br />
+                  &gt; {t('frg.ge_2')}<span className="blink">_</span>
                 </div>
               </Panel>
             )}
@@ -432,8 +466,8 @@ export default function Forge() {
         {!loading && !selectedDeck && (
           <div style={{ padding: 36, textAlign: 'center' }}>
             <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              &gt; SELECT A DECK ABOVE TO BEGIN FORGE SESSION<br />
-              &gt; ANALYSIS + CARD LIST + VARIANT TESTING<span className="blink">_</span>
+              &gt; {t('frg.empty_1')}<br />
+              &gt; {t('frg.empty_2')}<span className="blink">_</span>
             </div>
           </div>
         )}
