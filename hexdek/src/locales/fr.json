@@ -1624,5 +1624,22 @@
     "no_public_decks": "> AUCUN DECK PUBLIC POUR CE PROPRIÉTAIRE.",
     "owner_decks": "DECKS DE {name}",
     "showing_n": "> AFFICHAGE DE {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> AUCUNE PARTIE DE COMMANDANT ENREGISTRÉE POUR L’INSTANT.",
+    "no_ci_data": "> PAS ENCORE DE DONNÉES D’IDENTITÉ COULEUR.",
+    "no_freya": "> PAS ENCORE DE FICHIERS DE STRATÉGIE FREYA — LANCE HEXDEK-FREYA POUR LES REMPLIR.",
+    "no_deck_elo": "> PAS ENCORE DE DONNÉES ELO POUR LES DECKS.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "DÉTENTE",
+    "tier_optimized": "OPTIMISÉ",
+    "feed_unavailable": "> FLUX META INDISPONIBLE — {error}",
+    "fetching": "> RÉCUPÉRATION DE L’INSTANTANÉ META",
+    "games_sampled": "{count} PARTIES DANS L’ÉCHANTILLON",
+    "title_commanders": "TOP 10 COMMANDANTS / / PARTIES + TAUX DE VICTOIRE",
+    "title_ci": "IDENTITÉ COULEUR / / RÉPARTITION WUBRG",
+    "title_archetypes": "RÉPARTITION DES ARCHÉTYPES / / {count}",
+    "footer": "+ + + INSTANTANÉ META EN CACHE 5 MIN · FORGE POUR LE TEMPS RÉEL · + + +",
+    "sourced_from": "> ISSU DE {path}. LANCE HEXDEK-FREYA POUR LES REMPLIR."
   }
 }

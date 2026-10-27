@@ -1624,5 +1624,22 @@
     "no_public_decks": "> TEN WŁAŚCICIEL NIE MA PUBLICZNYCH TALII.",
     "owner_decks": "TALIE GRACZA {name}",
     "showing_n": "> WYŚWIETLONO {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> JESZCZE NIE ZAPISANO ŻADNYCH GIER DOWÓDCÓW.",
+    "no_ci_data": "> JESZCZE BRAK DANYCH O TOŻSAMOŚCI KOLORÓW.",
+    "no_freya": "> JESZCZE BRAK PLIKÓW STRATEGII FREYA — URUCHOM HEXDEK-FREYA, ABY JE UZUPEŁNIĆ.",
+    "no_deck_elo": "> JESZCZE BRAK DANYCH ELO TALII.",
+    "legend_games": "{count} G ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "ZOPTYMALIZOWANA",
+    "feed_unavailable": "> KANAŁ META NIEDOSTĘPNY — {error}",
+    "fetching": "> POBIERANIE MIGAWKI META",
+    "games_sampled": "{count} GIER W PRÓBIE",
+    "title_commanders": "TOP 10 DOWÓDCÓW / / GRY + WSKAŹNIK ZWYCIĘSTW",
+    "title_ci": "TOŻSAMOŚĆ KOLORÓW / / ROZKŁAD WUBRG",
+    "title_archetypes": "ROZBICIE ARCHETYPÓW / / {count}",
+    "footer": "+ + + MIGAWKA META W CACHE 5 MIN · NA ŻYWO W FORGE · + + +",
+    "sourced_from": "> ŹRÓDŁO: {path}. URUCHOM HEXDEK-FREYA, ABY JE UZUPEŁNIĆ."
   }
 }

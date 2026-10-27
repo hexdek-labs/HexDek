@@ -1624,5 +1624,22 @@
     "no_public_decks": "> لا توجد ديكات عامة لهذا المالك.",
     "owner_decks": "ديكات {name}",
     "showing_n": "> يُعرض {shown} من {total}"
+  },
+  "meta": {
+    "no_commanders": "> لم تُسجَّل أي مباريات قادة بعد.",
+    "no_ci_data": "> لا توجد بيانات هوية لونية بعد.",
+    "no_freya": "> لا توجد ملفات استراتيجية Freya بعد — شغّل HEXDEK-FREYA لتعبئتها.",
+    "no_deck_elo": "> لا توجد بيانات ELO للديكات بعد.",
+    "legend_games": "{count} مباراة ({pct}%)",
+    "tier_casual": "ودّي",
+    "tier_optimized": "محسّن",
+    "feed_unavailable": "> تغذية META غير متاحة — {error}",
+    "fetching": "> جارٍ جلب لقطة META",
+    "games_sampled": "{count} مباراة في العيّنة",
+    "title_commanders": "أفضل 10 قادة / / المباريات + نسبة الفوز",
+    "title_ci": "الهوية اللونية / / توزيع WUBRG",
+    "title_archetypes": "تفصيل الأنماط / / {count}",
+    "footer": "+ + + لقطة META مُخزَّنة 5 دقائق · افتح FORGE للوقت الحقيقي · + + +",
+    "sourced_from": "> المصدر {path}. شغّل HEXDEK-FREYA لتعبئتها."
   }
 }

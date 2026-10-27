@@ -1624,5 +1624,22 @@
     "no_public_decks": "> ไม่มีเด็คสาธารณะของเจ้าของนี้",
     "owner_decks": "เด็คของ {name}",
     "showing_n": "> แสดง {shown} จาก {total}"
+  },
+  "meta": {
+    "no_commanders": "> ยังไม่มีบันทึกเกมคอมมานเดอร์",
+    "no_ci_data": "> ยังไม่มีข้อมูลอัตลักษณ์สี",
+    "no_freya": "> ยังไม่มีไฟล์กลยุทธ์ Freya — รัน HEXDEK-FREYA เพื่อเติมข้อมูล",
+    "no_deck_elo": "> ยังไม่มีข้อมูล ELO ของเด็ค",
+    "legend_games": "{count} เกม ({pct}%)",
+    "tier_casual": "สบาย ๆ",
+    "tier_optimized": "ปรับจูนแล้ว",
+    "feed_unavailable": "> ฟีด META ใช้งานไม่ได้ — {error}",
+    "fetching": "> กำลังดึงสแนปช็อต META",
+    "games_sampled": "ตัวอย่าง {count} เกม",
+    "title_commanders": "คอมมานเดอร์ 10 อันดับแรก / / เกม + อัตราชนะ",
+    "title_ci": "อัตลักษณ์สี / / การกระจาย WUBRG",
+    "title_archetypes": "การแบ่งอาร์คีไทป์ / / {count}",
+    "footer": "+ + + สแนปช็อต META แคช 5 นาที · ดู FORGE สำหรับเรียลไทม์ · + + +",
+    "sourced_from": "> ที่มา {path} รัน HEXDEK-FREYA เพื่อเติมข้อมูล"
   }
 }

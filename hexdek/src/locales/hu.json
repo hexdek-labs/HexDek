@@ -1624,5 +1624,22 @@
     "no_public_decks": "> EHHEZ A TULAJDONOSHOZ NINCS NYILVÁNOS PAKLI.",
     "owner_decks": "{name} PAKLIJAI",
     "showing_n": "> MEGJELENÍTVE {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> MÉG NINCS RÖGZÍTETT COMMANDER JÁTSZMA.",
+    "no_ci_data": "> MÉG NINCS SZÍNIDENTITÁS-ADAT.",
+    "no_freya": "> MÉG NINCSENEK FREYA STRATÉGIAFÁJLOK — FUTTASD A HEXDEK-FREYÁT A KITÖLTÉSHEZ.",
+    "no_deck_elo": "> MÉG NINCS PAKLI ELO-ADAT.",
+    "legend_games": "{count} J ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMALIZÁLT",
+    "feed_unavailable": "> A META CSATORNA NEM ÉRHETŐ EL — {error}",
+    "fetching": "> META PILLANATKÉP BETÖLTÉSE",
+    "games_sampled": "{count} JÁTSZMA A MINTÁBAN",
+    "title_commanders": "TOP 10 COMMANDER / / JÁTSZMÁK + GYŐZELMI ARÁNY",
+    "title_ci": "SZÍNIDENTITÁS / / WUBRG-ELOSZLÁS",
+    "title_archetypes": "ARCHETÍPUS-BONTÁS / / {count}",
+    "footer": "+ + + META PILLANATKÉP 5 PERCRE CACHE-ELVE · ÉLŐBEN A FORGE-BAN · + + +",
+    "sourced_from": "> FORRÁS: {path}. FUTTASD A HEXDEK-FREYÁT A KITÖLTÉSHEZ."
   }
 }

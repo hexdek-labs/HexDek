@@ -1624,5 +1624,22 @@
     "no_public_decks": "> TIDAK ADA DEK PUBLIK DARI PEMILIK INI.",
     "owner_decks": "DEK MILIK {name}",
     "showing_n": "> MENAMPILKAN {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> BELUM ADA PERMAINAN COMMANDER YANG TERCATAT.",
+    "no_ci_data": "> BELUM ADA DATA IDENTITAS WARNA.",
+    "no_freya": "> BELUM ADA BERKAS STRATEGI FREYA — JALANKAN HEXDEK-FREYA UNTUK MENGISINYA.",
+    "no_deck_elo": "> BELUM ADA DATA ELO DEK.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "SANTAI",
+    "tier_optimized": "DIOPTIMALKAN",
+    "feed_unavailable": "> UMPAN META TIDAK TERSEDIA — {error}",
+    "fetching": "> MENGAMBIL SNAPSHOT META",
+    "games_sampled": "{count} PERMAINAN DALAM SAMPEL",
+    "title_commanders": "TOP 10 COMMANDER / / PERMAINAN + RASIO KEMENANGAN",
+    "title_ci": "IDENTITAS WARNA / / DISTRIBUSI WUBRG",
+    "title_archetypes": "RINCIAN ARKETIPE / / {count}",
+    "footer": "+ + + SNAPSHOT META DI-CACHE 5 MNT · FORGE UNTUK REAL-TIME · + + +",
+    "sourced_from": "> BERSUMBER DARI {path}. JALANKAN HEXDEK-FREYA UNTUK MENGISINYA."
   }
 }

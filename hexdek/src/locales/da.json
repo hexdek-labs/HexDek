@@ -1624,5 +1624,22 @@
     "no_public_decks": "> INGEN OFFENTLIGE DÆK UNDER DENNE EJER.",
     "owner_decks": "{name}S DECKS",
     "showing_n": "> VISER {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> INGEN COMMANDER-PARTIER REGISTRERET ENDNU.",
+    "no_ci_data": "> INGEN FARVEIDENTITETSDATA ENDNU.",
+    "no_freya": "> INGEN FREYA-STRATEGIFILER ENDNU — KØR HEXDEK-FREYA FOR AT UDFYLDE.",
+    "no_deck_elo": "> INGEN ELO-DATA FOR DECKS ENDNU.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMERET",
+    "feed_unavailable": "> META-FEED UTILGÆNGELIGT — {error}",
+    "fetching": "> HENTER META-SNAPSHOT",
+    "games_sampled": "{count} PARTIER I STIKPRØVEN",
+    "title_commanders": "TOP 10 COMMANDERS / / PARTIER + SEJRRATE",
+    "title_ci": "FARVEIDENTITET / / WUBRG-FORDELING",
+    "title_archetypes": "ARKETYPEFORDELING / / {count}",
+    "footer": "+ + + META-SNAPSHOT CACHET 5 MIN · LIVE I FORGE · + + +",
+    "sourced_from": "> HENTET FRA {path}. KØR HEXDEK-FREYA FOR AT UDFYLDE."
   }
 }

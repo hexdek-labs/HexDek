@@ -1624,5 +1624,22 @@
     "no_public_decks": "> BU SAHİBE AİT GENEL DESTE YOK.",
     "owner_decks": "{name} DESTELERİ",
     "showing_n": "> {total} İÇİNDEN {shown} GÖSTERİLİYOR"
+  },
+  "meta": {
+    "no_commanders": "> HENÜZ KAYITLI KOMUTAN OYUNU YOK.",
+    "no_ci_data": "> HENÜZ RENK KİMLİĞİ VERİSİ YOK.",
+    "no_freya": "> HENÜZ FREYA STRATEJİ DOSYASI YOK — DOLDURMAK İÇİN HEXDEK-FREYA'YI ÇALIŞTIR.",
+    "no_deck_elo": "> HENÜZ DESTE ELO VERİSİ YOK.",
+    "legend_games": "{count} O ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTİMİZE",
+    "feed_unavailable": "> META AKIŞI KULLANILAMIYOR — {error}",
+    "fetching": "> META ANLIK GÖRÜNTÜSÜ ALINIYOR",
+    "games_sampled": "ÖRNEKLEMDE {count} OYUN",
+    "title_commanders": "EN İYİ 10 KOMUTAN / / OYUNLAR + KAZANMA ORANI",
+    "title_ci": "RENK KİMLİĞİ / / WUBRG DAĞILIMI",
+    "title_archetypes": "ARKETİP DAĞILIMI / / {count}",
+    "footer": "+ + + META ANLIK GÖRÜNTÜSÜ 5 DK ÖNBELLEKTE · GERÇEK ZAMAN İÇİN FORGE · + + +",
+    "sourced_from": "> KAYNAK: {path}. DOLDURMAK İÇİN HEXDEK-FREYA'YI ÇALIŞTIR."
   }
 }

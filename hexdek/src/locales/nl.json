@@ -1624,5 +1624,22 @@
     "no_public_decks": "> GEEN OPENBARE DECKS BIJ DEZE EIGENAAR.",
     "owner_decks": "DECKS VAN {name}",
     "showing_n": "> {shown} / {total} WEERGEGEVEN"
+  },
+  "meta": {
+    "no_commanders": "> NOG GEEN COMMANDER-PARTIJEN VASTGELEGD.",
+    "no_ci_data": "> NOG GEEN GEGEVENS OVER KLEURIDENTITEIT.",
+    "no_freya": "> NOG GEEN FREYA-STRATEGIEBESTANDEN — DRAAI HEXDEK-FREYA OM ZE TE VULLEN.",
+    "no_deck_elo": "> NOG GEEN ELO-GEGEVENS VOOR DECKS.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "GEOPTIMALISEERD",
+    "feed_unavailable": "> META-FEED NIET BESCHIKBAAR — {error}",
+    "fetching": "> META-SNAPSHOT OPHALEN",
+    "games_sampled": "{count} PARTIJEN IN DE STEEKPROEF",
+    "title_commanders": "TOP 10 COMMANDERS / / PARTIJEN + WINSTPERCENTAGE",
+    "title_ci": "KLEURIDENTITEIT / / WUBRG-VERDELING",
+    "title_archetypes": "ARCHETYPEVERDELING / / {count}",
+    "footer": "+ + + META-SNAPSHOT 5 MIN GECACHED · LIVE IN FORGE · + + +",
+    "sourced_from": "> UIT {path}. DRAAI HEXDEK-FREYA OM ZE TE VULLEN."
   }
 }

@@ -1624,5 +1624,22 @@
     "no_public_decks": "> INGA OFFENTLIGA LEKAR FÖR DENNA ÄGARE.",
     "owner_decks": "{name}S LEKAR",
     "showing_n": "> VISAR {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> INGA COMMANDER-PARTIER REGISTRERADE ÄNNU.",
+    "no_ci_data": "> INGA DATA OM FÄRGIDENTITET ÄNNU.",
+    "no_freya": "> INGA FREYA-STRATEGIFILER ÄNNU — KÖR HEXDEK-FREYA FÖR ATT FYLLA PÅ.",
+    "no_deck_elo": "> INGA ELO-DATA FÖR LEKAR ÄNNU.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMERAD",
+    "feed_unavailable": "> META-FLÖDET ÄR INTE TILLGÄNGLIGT — {error}",
+    "fetching": "> HÄMTAR META-SNAPSHOT",
+    "games_sampled": "{count} PARTIER I URVALET",
+    "title_commanders": "TOPP 10 COMMANDERS / / PARTIER + VINSTANDEL",
+    "title_ci": "FÄRGIDENTITET / / WUBRG-FÖRDELNING",
+    "title_archetypes": "ARKETYPFÖRDELNING / / {count}",
+    "footer": "+ + + META-SNAPSHOT CACHAD 5 MIN · LIVE I FORGE · + + +",
+    "sourced_from": "> FRÅN {path}. KÖR HEXDEK-FREYA FÖR ATT FYLLA PÅ."
   }
 }

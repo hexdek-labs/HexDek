@@ -1624,5 +1624,22 @@
     "no_public_decks": "> NO PUBLIC DECKS UNDER THIS OWNER.",
     "owner_decks": "{name}'S DECKS",
     "showing_n": "> SHOWING {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> NO COMMANDER GAMES RECORDED YET.",
+    "no_ci_data": "> NO COLOR-IDENTITY DATA YET.",
+    "no_freya": "> NO FREYA STRATEGY FILES YET — RUN HEXDEK-FREYA TO POPULATE.",
+    "no_deck_elo": "> NO DECK ELO DATA YET.",
+    "legend_games": "{count} G ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMIZED",
+    "feed_unavailable": "> META FEED UNAVAILABLE — {error}",
+    "fetching": "> FETCHING META SNAPSHOT",
+    "games_sampled": "{count} GAMES SAMPLED",
+    "title_commanders": "TOP 10 COMMANDERS / / GAMES + WIN RATE",
+    "title_ci": "COLOR IDENTITY / / WUBRG DISTRIBUTION",
+    "title_archetypes": "ARCHETYPE BREAKDOWN / / {count}",
+    "footer": "+ + + META SNAPSHOT CACHED 5 MIN · LIVE FORGE FOR REAL-TIME · + + +",
+    "sourced_from": "> SOURCED FROM {path}. RUN HEXDEK-FREYA TO POPULATE."
   }
 }

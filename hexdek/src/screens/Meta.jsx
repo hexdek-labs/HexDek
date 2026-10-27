@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Panel, Tag, Tape, Btn } from '../components/chrome'
 import { API_BASE } from '../services/api'
+import { useT } from '../i18n'
+
+// The one worded failure branch. Stored as a SENTINEL, not as English prose:
+// a string worded inside .catch() is fixed at fetch time and would not follow
+// a later locale switch, so the wording happens at the render site. Any other
+// value in `error` is a technical status (`meta 503`) and is echoed as-is.
+const FETCH_FAILED = 'fetch-failed'
 
 // Meta — /meta. Pulls a single /api/meta snapshot and renders four
 // pure-SVG visualizations of the current showmatch corpus:
@@ -42,10 +49,11 @@ function colorIdGradient(colors) {
 // games played. Win-rate appears at the right edge of each bar with
 // kind-coded color (green ≥40%, ink-2 below).
 function CommandersBarChart({ rows }) {
+  const t = useT()
   if (!rows || rows.length === 0) {
     return (
       <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-        &gt; NO COMMANDER GAMES RECORDED YET.
+        {t('meta.no_commanders')}
       </div>
     )
   }
@@ -102,11 +110,12 @@ function CommandersBarChart({ rows }) {
 // its component colors so a Grixis (UBR) wedge reads as blue → black
 // → red instead of a single token.
 function ColorIdentityPie({ rows }) {
+  const t = useT()
   const real = (rows || []).filter(r => r.games > 0)
   if (real.length === 0) {
     return (
       <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-        &gt; NO COLOR-IDENTITY DATA YET.
+        {t('meta.no_ci_data')}
       </div>
     )
   }
@@ -165,7 +174,7 @@ function ColorIdentityPie({ rows }) {
         })}
         <circle cx={cx} cy={cy} r={rInner - 1} fill="var(--bg-2)" />
         <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9" fill="var(--ink-2)"
-          style={{ letterSpacing: '0.10em', textTransform: 'uppercase' }}>TOTAL GAMES</text>
+          style={{ letterSpacing: '0.10em', textTransform: 'uppercase' }}>{t('op.kv_total_games')}</text>
         <text x={cx} y={cy + 14} textAnchor="middle" fontSize="20" fontWeight="800"
           fill="var(--ink)" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {total.toLocaleString()}
@@ -188,10 +197,10 @@ function ColorIdentityPie({ rows }) {
                 border: '1px solid var(--rule-2)',
               }} />
               <span className="t-xs" style={{ fontWeight: 700, letterSpacing: '0.04em' }}>
-                {r.colors === '?' ? 'UNKNOWN' : r.colors === 'C' ? 'COLORLESS' : r.colors}
+                {r.colors === '?' ? t('shr.unknown') : r.colors === 'C' ? t('dka.ci_colorless') : r.colors}
               </span>
               <span className="t-xs muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {r.games.toLocaleString()} G ({pct.toFixed(1)}%)
+                {t('meta.legend_games', { count: r.games.toLocaleString(), pct: pct.toFixed(1) })}
               </span>
               <span className="t-xs text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: wr >= 40 ? 'var(--ok)' : 'var(--ink-2)' }}>
                 {wr.toFixed(1)}%
@@ -210,10 +219,11 @@ function ColorIdentityPie({ rows }) {
 // ArchetypeBars — vertical bar chart, one bar per archetype. Bar
 // height is deck count, label below.
 function ArchetypeBars({ rows }) {
+  const t = useT()
   if (!rows || rows.length === 0) {
     return (
       <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-        &gt; NO FREYA STRATEGY FILES YET — RUN HEXDEK-FREYA TO POPULATE.
+        {t('meta.no_freya')}
       </div>
     )
   }
@@ -257,6 +267,7 @@ function ArchetypeBars({ rows }) {
 // kind colors so brackets read at-a-glance: B1-2 ok, B3 ink-2,
 // B4-5 warn (high power level).
 function BracketHistogram({ rows }) {
+  const t = useT()
   // Fill gaps so we always render B0..B5 even when some are empty.
   const counts = {}
   for (const r of (rows || [])) counts[r.bracket] = r.decks
@@ -266,7 +277,7 @@ function BracketHistogram({ rows }) {
   if (totalDecks === 0) {
     return (
       <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-        &gt; NO DECK ELO DATA YET.
+        {t('meta.no_deck_elo')}
       </div>
     )
   }
@@ -308,7 +319,7 @@ function BracketHistogram({ rows }) {
             <text x={x + bw / 2} y={chartH + 32} textAnchor="middle"
               fontSize="9" fill="var(--ink-3)"
               style={{ letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              {r.bracket === 0 ? 'UNRATED' : r.bracket <= 2 ? 'CASUAL' : r.bracket === 3 ? 'OPTIMIZED' : 'CEDH'}
+              {r.bracket === 0 ? t('shelf.unrated') : r.bracket <= 2 ? t('meta.tier_casual') : r.bracket === 3 ? t('meta.tier_optimized') : 'CEDH'}
             </text>
           </g>
         )
@@ -319,6 +330,7 @@ function BracketHistogram({ rows }) {
 }
 
 export default function Meta() {
+  const t = useT()
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
@@ -327,7 +339,7 @@ export default function Meta() {
     fetch(`${API_BASE}/api/meta`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`meta ${r.status}`)))
       .then(d => { if (!cancelled) setData(d) })
-      .catch(e => { if (!cancelled) setError(e.message || 'fetch failed') })
+      .catch(e => { if (!cancelled) setError(e.message || FETCH_FAILED) })
     return () => { cancelled = true }
   }, [])
 
@@ -337,7 +349,9 @@ export default function Meta() {
     <>
       <Tape
         left="META / / DOC HX-200"
-        mid={data ? `${totalGames.toLocaleString()} GAMES SAMPLED` : (error ? 'OFFLINE' : 'LOADING')}
+        mid={data
+          ? t('meta.games_sampled', { count: totalGames.toLocaleString() })
+          : (error ? t('spec.tape_offline') : t('common.loading'))}
         right="REV C.25"
       />
 
@@ -345,14 +359,16 @@ export default function Meta() {
         {error && (
           <div className="panel" style={{ borderColor: 'var(--danger)' }}>
             <div className="panel-bd t-xs" style={{ color: 'var(--danger)' }}>
-              &gt; META FEED UNAVAILABLE — {error.toUpperCase()}
+              {t('meta.feed_unavailable', {
+                error: error === FETCH_FAILED ? t('dka.fetch_failed') : error.toUpperCase(),
+              })}
             </div>
           </div>
         )}
 
         {!data && !error && (
           <div className="t-md muted" style={{ padding: '40px 0', textAlign: 'center' }}>
-            &gt; FETCHING META SNAPSHOT<span className="blink">_</span>
+            {t('meta.fetching')}<span className="blink">_</span>
           </div>
         )}
 
@@ -360,7 +376,7 @@ export default function Meta() {
           <>
             <Panel
               code="META.A"
-              title={`TOP 10 COMMANDERS / / GAMES + WIN RATE`}
+              title={t('meta.title_commanders')}
               right={<Tag solid>{data.top_commanders?.length || 0}</Tag>}
             >
               <CommandersBarChart rows={data.top_commanders} />
@@ -369,7 +385,7 @@ export default function Meta() {
             <div className="grid col-2 gap-3">
               <Panel
                 code="META.B"
-                title="COLOR IDENTITY / / WUBRG DISTRIBUTION"
+                title={t('meta.title_ci')}
                 right={<Tag solid>{data.color_identity_winrates?.length || 0}</Tag>}
               >
                 <ColorIdentityPie rows={data.color_identity_winrates} />
@@ -377,7 +393,7 @@ export default function Meta() {
 
               <Panel
                 code="META.D"
-                title="BRACKET DISTRIBUTION"
+                title={t('crd.bracket_dist')}
                 right={<Tag solid>B0–B5</Tag>}
               >
                 <BracketHistogram rows={data.bracket_distribution} />
@@ -386,18 +402,18 @@ export default function Meta() {
 
             <Panel
               code="META.C"
-              title={`ARCHETYPE BREAKDOWN / / ${(data.top_archetypes || []).length}`}
+              title={t('meta.title_archetypes', { count: (data.top_archetypes || []).length })}
               right={<Tag solid>FREYA</Tag>}
             >
               <ArchetypeBars rows={data.top_archetypes} />
               <div className="t-xs muted-2" style={{ marginTop: 6, lineHeight: 1.55 }}>
-                &gt; SOURCED FROM data/decks/&lt;OWNER&gt;/freya/&lt;ID&gt;.STRATEGY.JSON. RUN HEXDEK-FREYA TO POPULATE.
+                {t('meta.sourced_from', { path: 'data/decks/<OWNER>/freya/<ID>.STRATEGY.JSON' })}
               </div>
             </Panel>
 
             <div className="t-xs muted-2" style={{ textAlign: 'center', letterSpacing: '0.10em', marginTop: 8 }}>
-              + + + META SNAPSHOT CACHED 5 MIN · LIVE FORGE FOR REAL-TIME · + + +{' '}
-              <Link to="/spectate" style={{ color: 'var(--ink-2)' }}>WATCH ↗</Link>
+              {t('meta.footer')}{' '}
+              <Link to="/spectate" style={{ color: 'var(--ink-2)' }}>{t('splash.fishtank_watch')}</Link>
             </div>
           </>
         )}

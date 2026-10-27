@@ -1624,5 +1624,22 @@
     "no_public_decks": "> 이 소유자의 공개 덱이 없습니다.",
     "owner_decks": "{name}의 덱",
     "showing_n": "> {total}개 중 {shown}개 표시"
+  },
+  "meta": {
+    "no_commanders": "> 아직 기록된 커맨더 게임이 없습니다.",
+    "no_ci_data": "> 아직 색 정체성 데이터가 없습니다.",
+    "no_freya": "> 아직 Freya 전략 파일이 없습니다 — HEXDEK-FREYA를 실행해 채우세요.",
+    "no_deck_elo": "> 아직 덱 ELO 데이터가 없습니다.",
+    "legend_games": "{count}게임 ({pct}%)",
+    "tier_casual": "캐주얼",
+    "tier_optimized": "최적화",
+    "feed_unavailable": "> META 피드를 사용할 수 없습니다 — {error}",
+    "fetching": "> META 스냅샷 가져오는 중",
+    "games_sampled": "표본 {count}게임",
+    "title_commanders": "커맨더 TOP 10 / / 게임 + 승률",
+    "title_ci": "색 정체성 / / WUBRG 분포",
+    "title_archetypes": "아키타입 분류 / / {count}",
+    "footer": "+ + + META 스냅샷 5분 캐시 · 실시간은 FORGE에서 · + + +",
+    "sourced_from": "> 출처: {path}. HEXDEK-FREYA를 실행해 채우세요."
   }
 }

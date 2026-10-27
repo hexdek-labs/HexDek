@@ -1624,5 +1624,22 @@
     "no_public_decks": "> इस स्वामी के कोई सार्वजनिक डेक नहीं हैं।",
     "owner_decks": "{name} के डेक",
     "showing_n": "> {total} में से {shown} दिखाए जा रहे हैं"
+  },
+  "meta": {
+    "no_commanders": "> अभी तक कोई कमांडर गेम दर्ज नहीं हुआ।",
+    "no_ci_data": "> अभी तक कोई रंग-पहचान डेटा नहीं।",
+    "no_freya": "> अभी तक कोई फ्रेया रणनीति फ़ाइल नहीं — भरने के लिए HEXDEK-FREYA चलाएँ।",
+    "no_deck_elo": "> अभी तक कोई डेक ELO डेटा नहीं।",
+    "legend_games": "{count} गेम ({pct}%)",
+    "tier_casual": "कैज़ुअल",
+    "tier_optimized": "अनुकूलित",
+    "feed_unavailable": "> META फ़ीड अनुपलब्ध — {error}",
+    "fetching": "> META स्नैपशॉट लाया जा रहा है",
+    "games_sampled": "नमूने में {count} गेम",
+    "title_commanders": "शीर्ष 10 कमांडर / / गेम + जीत दर",
+    "title_ci": "रंग पहचान / / WUBRG वितरण",
+    "title_archetypes": "आर्कटाइप विभाजन / / {count}",
+    "footer": "+ + + META स्नैपशॉट 5 मिनट कैश · रीयल-टाइम के लिए FORGE · + + +",
+    "sourced_from": "> स्रोत {path}। भरने के लिए HEXDEK-FREYA चलाएँ।"
   }
 }

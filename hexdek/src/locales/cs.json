@@ -1624,5 +1624,22 @@
     "no_public_decks": "> TENTO VLASTNÍK NEMÁ ŽÁDNÉ VEŘEJNÉ BALÍČKY.",
     "owner_decks": "BALÍČKY HRÁČE {name}",
     "showing_n": "> ZOBRAZENO {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> ZATÍM NEBYLY ZAZNAMENÁNY ŽÁDNÉ HRY VELITELŮ.",
+    "no_ci_data": "> ZATÍM ŽÁDNÁ DATA O BAREVNÉ IDENTITĚ.",
+    "no_freya": "> ZATÍM ŽÁDNÉ STRATEGICKÉ SOUBORY FREYA — SPUSŤ HEXDEK-FREYA A DOPLŇ JE.",
+    "no_deck_elo": "> ZATÍM ŽÁDNÁ DATA ELO BALÍČKŮ.",
+    "legend_games": "{count} H ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMALIZOVANÝ",
+    "feed_unavailable": "> KANÁL META NEDOSTUPNÝ — {error}",
+    "fetching": "> NAČÍTÁM SNÍMEK META",
+    "games_sampled": "{count} HER VE VZORKU",
+    "title_commanders": "TOP 10 VELITELŮ / / HRY + ÚSPĚŠNOST",
+    "title_ci": "BAREVNÁ IDENTITA / / ROZLOŽENÍ WUBRG",
+    "title_archetypes": "ROZPAD ARCHETYPŮ / / {count}",
+    "footer": "+ + + SNÍMEK META V CACHE 5 MIN · ŽIVĚ VE FORGE · + + +",
+    "sourced_from": "> ZDROJ {path}. SPUSŤ HEXDEK-FREYA A DOPLŇ JE."
   }
 }

@@ -1624,5 +1624,22 @@
     "no_public_decks": "> CHỦ SỞ HỮU NÀY KHÔNG CÓ BỘ THẺ CÔNG KHAI.",
     "owner_decks": "BỘ THẺ CỦA {name}",
     "showing_n": "> HIỂN THỊ {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> CHƯA GHI NHẬN TRẬN CHỈ HUY NÀO.",
+    "no_ci_data": "> CHƯA CÓ DỮ LIỆU BẢN SẮC MÀU.",
+    "no_freya": "> CHƯA CÓ TỆP CHIẾN LƯỢC FREYA — CHẠY HEXDEK-FREYA ĐỂ ĐIỀN VÀO.",
+    "no_deck_elo": "> CHƯA CÓ DỮ LIỆU ELO CỦA BỘ BÀI.",
+    "legend_games": "{count} V ({pct}%)",
+    "tier_casual": "GIẢI TRÍ",
+    "tier_optimized": "TỐI ƯU",
+    "feed_unavailable": "> NGUỒN META KHÔNG KHẢ DỤNG — {error}",
+    "fetching": "> ĐANG LẤY ẢNH CHỤP META",
+    "games_sampled": "{count} TRẬN TRONG MẪU",
+    "title_commanders": "TOP 10 CHỈ HUY / / TRẬN + TỶ LỆ THẮNG",
+    "title_ci": "BẢN SẮC MÀU / / PHÂN BỐ WUBRG",
+    "title_archetypes": "PHÂN TÁCH NGUYÊN MẪU / / {count}",
+    "footer": "+ + + ẢNH CHỤP META CACHE 5 PHÚT · XEM FORGE ĐỂ THEO THỜI GIAN THỰC · + + +",
+    "sourced_from": "> NGUỒN: {path}. CHẠY HEXDEK-FREYA ĐỂ ĐIỀN VÀO."
   }
 }

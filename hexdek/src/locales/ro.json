@@ -1624,5 +1624,22 @@
     "no_public_decks": "> NICIUN PACHET PUBLIC PENTRU ACEST PROPRIETAR.",
     "owner_decks": "PACHETELE LUI {name}",
     "showing_n": "> SE AFIȘEAZĂ {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> ÎNCĂ NU EXISTĂ JOCURI DE COMANDANT ÎNREGISTRATE.",
+    "no_ci_data": "> ÎNCĂ NU EXISTĂ DATE DE IDENTITATE CROMATICĂ.",
+    "no_freya": "> ÎNCĂ NU EXISTĂ FIȘIERE DE STRATEGIE FREYA — RULEAZĂ HEXDEK-FREYA PENTRU A LE COMPLETA.",
+    "no_deck_elo": "> ÎNCĂ NU EXISTĂ DATE ELO PENTRU PACHETE.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMIZAT",
+    "feed_unavailable": "> FLUXUL META NU ESTE DISPONIBIL — {error}",
+    "fetching": "> SE PRELUAZĂ INSTANTANEUL META",
+    "games_sampled": "{count} JOCURI ÎN EȘANTION",
+    "title_commanders": "TOP 10 COMANDANȚI / / JOCURI + RATĂ DE VICTORIE",
+    "title_ci": "IDENTITATE CROMATICĂ / / DISTRIBUȚIE WUBRG",
+    "title_archetypes": "DEFALCAREA ARHETIPURILOR / / {count}",
+    "footer": "+ + + INSTANTANEU META ÎN CACHE 5 MIN · FORGE PENTRU TIMP REAL · + + +",
+    "sourced_from": "> SURSĂ: {path}. RULEAZĂ HEXDEK-FREYA PENTRU A LE COMPLETA."
   }
 }

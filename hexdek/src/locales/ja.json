@@ -1624,5 +1624,22 @@
     "no_public_decks": "> この所有者の公開デッキはありません。",
     "owner_decks": "{name} のデッキ",
     "showing_n": "> {total} 件中 {shown} 件を表示"
+  },
+  "meta": {
+    "no_commanders": "> 統率者戦の記録はまだありません。",
+    "no_ci_data": "> 色の固有色データはまだありません。",
+    "no_freya": "> Freya の戦略ファイルはまだありません — HEXDEK-FREYA を実行して生成してください。",
+    "no_deck_elo": "> デッキの ELO データはまだありません。",
+    "legend_games": "{count} 戦 ({pct}%)",
+    "tier_casual": "カジュアル",
+    "tier_optimized": "最適化",
+    "feed_unavailable": "> META フィードを利用できません — {error}",
+    "fetching": "> META スナップショットを取得中",
+    "games_sampled": "サンプル {count} ゲーム",
+    "title_commanders": "統率者 トップ10 / / ゲーム数 + 勝率",
+    "title_ci": "固有色 / / WUBRG 分布",
+    "title_archetypes": "アーキタイプ内訳 / / {count}",
+    "footer": "+ + + META スナップショットは5分キャッシュ · リアルタイムは FORGE へ · + + +",
+    "sourced_from": "> ソース: {path}。HEXDEK-FREYA を実行して生成してください。"
   }
 }

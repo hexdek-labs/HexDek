@@ -1624,5 +1624,22 @@
     "no_public_decks": "> NENHUM DECK PÚBLICO DESTE DONO.",
     "owner_decks": "DECKS DE {name}",
     "showing_n": "> MOSTRANDO {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> AINDA SEM PARTIDAS DE COMANDANTE REGISTRADAS.",
+    "no_ci_data": "> AINDA SEM DADOS DE IDENTIDADE DE COR.",
+    "no_freya": "> AINDA SEM ARQUIVOS DE ESTRATÉGIA DA FREYA — RODE O HEXDEK-FREYA PARA PREENCHER.",
+    "no_deck_elo": "> AINDA SEM DADOS DE ELO DOS DECKS.",
+    "legend_games": "{count} J ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OTIMIZADO",
+    "feed_unavailable": "> FEED META INDISPONÍVEL — {error}",
+    "fetching": "> BUSCANDO SNAPSHOT META",
+    "games_sampled": "{count} PARTIDAS NA AMOSTRA",
+    "title_commanders": "TOP 10 COMANDANTES / / PARTIDAS + TAXA DE VITÓRIA",
+    "title_ci": "IDENTIDADE DE COR / / DISTRIBUIÇÃO WUBRG",
+    "title_archetypes": "DETALHAMENTO DE ARQUÉTIPOS / / {count}",
+    "footer": "+ + + SNAPSHOT META EM CACHE 5 MIN · FORGE PARA TEMPO REAL · + + +",
+    "sourced_from": "> ORIGEM: {path}. RODE O HEXDEK-FREYA PARA PREENCHER."
   }
 }

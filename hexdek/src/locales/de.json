@@ -1624,5 +1624,22 @@
     "no_public_decks": "> KEINE ÖFFENTLICHEN DECKS BEI DIESEM BESITZER.",
     "owner_decks": "DECKS VON {name}",
     "showing_n": "> ZEIGE {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> NOCH KEINE COMMANDER-PARTIEN ERFASST.",
+    "no_ci_data": "> NOCH KEINE DATEN ZUR FARBIDENTITÄT.",
+    "no_freya": "> NOCH KEINE FREYA-STRATEGIEDATEIEN — HEXDEK-FREYA LAUFEN LASSEN.",
+    "no_deck_elo": "> NOCH KEINE ELO-DATEN ZU DECKS.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMIERT",
+    "feed_unavailable": "> META-FEED NICHT VERFÜGBAR — {error}",
+    "fetching": "> META-SNAPSHOT WIRD GEHOLT",
+    "games_sampled": "{count} PARTIEN IN DER STICHPROBE",
+    "title_commanders": "TOP 10 COMMANDER / / PARTIEN + SIEGQUOTE",
+    "title_ci": "FARBIDENTITÄT / / WUBRG-VERTEILUNG",
+    "title_archetypes": "ARCHETYP-AUFTEILUNG / / {count}",
+    "footer": "+ + + META-SNAPSHOT 5 MIN GECACHT · LIVE IM FORGE · + + +",
+    "sourced_from": "> QUELLE {path}. HEXDEK-FREYA LAUFEN LASSEN."
   }
 }

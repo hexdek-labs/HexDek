@@ -1624,5 +1624,22 @@
     "no_public_decks": "> NO HAY MAZOS PÚBLICOS DE ESTE PROPIETARIO.",
     "owner_decks": "MAZOS DE {name}",
     "showing_n": "> MOSTRANDO {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> AÚN NO HAY PARTIDAS DE COMANDANTE REGISTRADAS.",
+    "no_ci_data": "> AÚN NO HAY DATOS DE IDENTIDAD DE COLOR.",
+    "no_freya": "> AÚN NO HAY ARCHIVOS DE ESTRATEGIA DE FREYA — EJECUTA HEXDEK-FREYA PARA RELLENARLOS.",
+    "no_deck_elo": "> AÚN NO HAY DATOS DE ELO DE MAZOS.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OPTIMIZADO",
+    "feed_unavailable": "> FEED META NO DISPONIBLE — {error}",
+    "fetching": "> OBTENIENDO INSTANTÁNEA META",
+    "games_sampled": "{count} PARTIDAS EN LA MUESTRA",
+    "title_commanders": "TOP 10 COMANDANTES / / PARTIDAS + TASA DE VICTORIA",
+    "title_ci": "IDENTIDAD DE COLOR / / DISTRIBUCIÓN WUBRG",
+    "title_archetypes": "DESGLOSE DE ARQUETIPOS / / {count}",
+    "footer": "+ + + INSTANTÁNEA META EN CACHÉ 5 MIN · FORGE PARA TIEMPO REAL · + + +",
+    "sourced_from": "> OBTENIDO DE {path}. EJECUTA HEXDEK-FREYA PARA RELLENARLOS."
   }
 }

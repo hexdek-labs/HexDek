@@ -1624,5 +1624,22 @@
     "no_public_decks": "> NESSUN MAZZO PUBBLICO PER QUESTO PROPRIETARIO.",
     "owner_decks": "MAZZI DI {name}",
     "showing_n": "> VISUALIZZATI {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> NESSUNA PARTITA DI COMANDANTE REGISTRATA ANCORA.",
+    "no_ci_data": "> ANCORA NESSUN DATO SULL’IDENTITÀ DI COLORE.",
+    "no_freya": "> ANCORA NESSUN FILE DI STRATEGIA FREYA — LANCIA HEXDEK-FREYA PER POPOLARLI.",
+    "no_deck_elo": "> ANCORA NESSUN DATO ELO SUI MAZZI.",
+    "legend_games": "{count} P ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "OTTIMIZZATO",
+    "feed_unavailable": "> FEED META NON DISPONIBILE — {error}",
+    "fetching": "> RECUPERO DELLO SNAPSHOT META",
+    "games_sampled": "{count} PARTITE NEL CAMPIONE",
+    "title_commanders": "TOP 10 COMANDANTI / / PARTITE + TASSO DI VITTORIA",
+    "title_ci": "IDENTITÀ DI COLORE / / DISTRIBUZIONE WUBRG",
+    "title_archetypes": "RIPARTIZIONE DEGLI ARCHETIPI / / {count}",
+    "footer": "+ + + SNAPSHOT META IN CACHE 5 MIN · FORGE PER IL TEMPO REALE · + + +",
+    "sourced_from": "> DA {path}. LANCIA HEXDEK-FREYA PER POPOLARLI."
   }
 }

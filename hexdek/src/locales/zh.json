@@ -1624,5 +1624,22 @@
     "no_public_decks": "> 该拥有者没有公开套牌。",
     "owner_decks": "{name} 的套牌",
     "showing_n": "> 显示 {total} 中的 {shown}"
+  },
+  "meta": {
+    "no_commanders": "> 尚未记录指挥官对局。",
+    "no_ci_data": "> 暂无色彩标识数据。",
+    "no_freya": "> 暂无 Freya 策略文件 — 运行 HEXDEK-FREYA 来生成。",
+    "no_deck_elo": "> 暂无套牌 ELO 数据。",
+    "legend_games": "{count} 局 ({pct}%)",
+    "tier_casual": "休闲",
+    "tier_optimized": "已优化",
+    "feed_unavailable": "> META 数据源不可用 — {error}",
+    "fetching": "> 正在获取 META 快照",
+    "games_sampled": "样本 {count} 局",
+    "title_commanders": "指挥官前 10 / / 对局 + 胜率",
+    "title_ci": "色彩标识 / / WUBRG 分布",
+    "title_archetypes": "原型分布 / / {count}",
+    "footer": "+ + + META 快照缓存 5 分钟 · 实时请看 FORGE · + + +",
+    "sourced_from": "> 来源：{path}。运行 HEXDEK-FREYA 来生成。"
   }
 }

@@ -1624,5 +1624,22 @@
     "no_public_decks": "> У ЭТОГО ВЛАДЕЛЬЦА НЕТ ПУБЛИЧНЫХ КОЛОД.",
     "owner_decks": "КОЛОДЫ: {name}",
     "showing_n": "> ПОКАЗАНО {shown} ИЗ {total}"
+  },
+  "meta": {
+    "no_commanders": "> ИГР С КОМАНДИРАМИ ПОКА НЕ ЗАПИСАНО.",
+    "no_ci_data": "> ДАННЫХ О ЦВЕТОВОЙ ПРИНАДЛЕЖНОСТИ ПОКА НЕТ.",
+    "no_freya": "> ФАЙЛОВ СТРАТЕГИИ FREYA ПОКА НЕТ — ЗАПУСТИ HEXDEK-FREYA, ЧТОБЫ ИХ ЗАПОЛНИТЬ.",
+    "no_deck_elo": "> ДАННЫХ ELO ПО КОЛОДАМ ПОКА НЕТ.",
+    "legend_games": "{count} И ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "ОПТИМИЗИРОВАННАЯ",
+    "feed_unavailable": "> КАНАЛ META НЕДОСТУПЕН — {error}",
+    "fetching": "> ЗАГРУЗКА СНИМКА META",
+    "games_sampled": "{count} ИГР В ВЫБОРКЕ",
+    "title_commanders": "ТОП-10 КОМАНДИРОВ / / ИГРЫ + ДОЛЯ ПОБЕД",
+    "title_ci": "ЦВЕТОВАЯ ПРИНАДЛЕЖНОСТЬ / / РАСПРЕДЕЛЕНИЕ WUBRG",
+    "title_archetypes": "РАЗБИВКА ПО АРХЕТИПАМ / / {count}",
+    "footer": "+ + + СНИМОК META КЕШИРУЕТСЯ НА 5 МИН · FORGE ДЛЯ РЕАЛЬНОГО ВРЕМЕНИ · + + +",
+    "sourced_from": "> ИСТОЧНИК: {path}. ЗАПУСТИ HEXDEK-FREYA, ЧТОБЫ ИХ ЗАПОЛНИТЬ."
   }
 }

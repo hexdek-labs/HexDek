@@ -1624,5 +1624,22 @@
     "no_public_decks": "> ΔΕΝ ΥΠΑΡΧΟΥΝ ΔΗΜΟΣΙΕΣ ΤΡΑΠΟΥΛΕΣ ΓΙΑ ΑΥΤΟΝ ΤΟΝ ΚΑΤΟΧΟ.",
     "owner_decks": "ΤΡΑΠΟΥΛΕΣ ΤΟΥ {name}",
     "showing_n": "> ΕΜΦΑΝΙΖΟΝΤΑΙ {shown} / {total}"
+  },
+  "meta": {
+    "no_commanders": "> ΔΕΝ ΕΧΟΥΝ ΚΑΤΑΓΡΑΦΕΙ ΑΚΟΜΑ ΠΑΙΧΝΙΔΙΑ COMMANDER.",
+    "no_ci_data": "> ΔΕΝ ΥΠΑΡΧΟΥΝ ΑΚΟΜΑ ΔΕΔΟΜΕΝΑ ΧΡΩΜΑΤΙΚΗΣ ΤΑΥΤΟΤΗΤΑΣ.",
+    "no_freya": "> ΔΕΝ ΥΠΑΡΧΟΥΝ ΑΚΟΜΑ ΑΡΧΕΙΑ ΣΤΡΑΤΗΓΙΚΗΣ FREYA — ΤΡΕΞΕ HEXDEK-FREYA ΓΙΑ ΝΑ ΣΥΜΠΛΗΡΩΘΟΥΝ.",
+    "no_deck_elo": "> ΔΕΝ ΥΠΑΡΧΟΥΝ ΑΚΟΜΑ ΔΕΔΟΜΕΝΑ ELO ΓΙΑ DECKS.",
+    "legend_games": "{count} Π ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "ΒΕΛΤΙΣΤΟΠΟΙΗΜΕΝΗ",
+    "feed_unavailable": "> ΤΟ ΚΑΝΑΛΙ META ΔΕΝ ΕΙΝΑΙ ΔΙΑΘΕΣΙΜΟ — {error}",
+    "fetching": "> ΛΗΨΗ ΣΤΙΓΜΙΟΤΥΠΟΥ META",
+    "games_sampled": "{count} ΠΑΙΧΝΙΔΙΑ ΣΤΟ ΔΕΙΓΜΑ",
+    "title_commanders": "TOP 10 COMMANDERS / / ΠΑΙΧΝΙΔΙΑ + ΠΟΣΟΣΤΟ ΝΙΚΩΝ",
+    "title_ci": "ΧΡΩΜΑΤΙΚΗ ΤΑΥΤΟΤΗΤΑ / / ΚΑΤΑΝΟΜΗ WUBRG",
+    "title_archetypes": "ΑΝΑΛΥΣΗ ΑΡΧΕΤΥΠΩΝ / / {count}",
+    "footer": "+ + + ΣΤΙΓΜΙΟΤΥΠΟ META ΣΤΗΝ CACHE 5 ΛΕΠΤΑ · ΖΩΝΤΑΝΑ ΣΤΟ FORGE · + + +",
+    "sourced_from": "> ΑΠΟ {path}. ΤΡΕΞΕ HEXDEK-FREYA ΓΙΑ ΝΑ ΣΥΜΠΛΗΡΩΘΟΥΝ."
   }
 }

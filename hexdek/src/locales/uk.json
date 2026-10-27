@@ -1624,5 +1624,22 @@
     "no_public_decks": "> У ЦЬОГО ВЛАСНИКА НЕМА ПУБЛІЧНИХ КОЛОД.",
     "owner_decks": "КОЛОДИ: {name}",
     "showing_n": "> ПОКАЗАНО {shown} З {total}"
+  },
+  "meta": {
+    "no_commanders": "> ІГОР З КОМАНДИРАМИ ЩЕ НЕ ЗАПИСАНО.",
+    "no_ci_data": "> ДАНИХ ПРО КОЛЬОРОВУ ПРИНАЛЕЖНІСТЬ ЩЕ НЕМАЄ.",
+    "no_freya": "> ФАЙЛІВ СТРАТЕГІЇ FREYA ЩЕ НЕМАЄ — ЗАПУСТИ HEXDEK-FREYA, ЩОБ ЇХ ЗАПОВНИТИ.",
+    "no_deck_elo": "> ДАНИХ ELO ПО КОЛОДАХ ЩЕ НЕМАЄ.",
+    "legend_games": "{count} І ({pct}%)",
+    "tier_casual": "CASUAL",
+    "tier_optimized": "ОПТИМІЗОВАНА",
+    "feed_unavailable": "> КАНАЛ META НЕДОСТУПНИЙ — {error}",
+    "fetching": "> ЗАВАНТАЖЕННЯ ЗНІМКА META",
+    "games_sampled": "{count} ІГОР У ВИБІРЦІ",
+    "title_commanders": "ТОП-10 КОМАНДИРІВ / / ІГРИ + ЧАСТКА ПЕРЕМОГ",
+    "title_ci": "КОЛЬОРОВА ПРИНАЛЕЖНІСТЬ / / РОЗПОДІЛ WUBRG",
+    "title_archetypes": "РОЗБИВКА ЗА АРХЕТИПАМИ / / {count}",
+    "footer": "+ + + ЗНІМОК META КЕШУЄТЬСЯ НА 5 ХВ · FORGE ДЛЯ РЕАЛЬНОГО ЧАСУ · + + +",
+    "sourced_from": "> ДЖЕРЕЛО: {path}. ЗАПУСТИ HEXDEK-FREYA, ЩОБ ЇХ ЗАПОВНИТИ."
   }
 }
