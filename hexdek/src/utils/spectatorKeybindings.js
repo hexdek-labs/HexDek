@@ -16,13 +16,17 @@
 // (page scroll) and Space (page scroll) ARE caught — the keydown
 // listener calls preventDefault when it resolves an action.
 
+// `labelKey` is a catalog path, not a label. This module is pure so the
+// node test suite can import it without the JSON catalogs, and an English
+// word held here would be read once at module load and ignore a later
+// language switch; the help dialog calls t(b.labelKey) instead.
 export const SPECTATOR_KEYBINDINGS = [
-  { keys: ['Space'],      action: 'togglePause', label: 'Pause / resume playback' },
-  { keys: ['←'],          action: 'prevTurn',    label: 'Scroll log to previous turn' },
-  { keys: ['→'],          action: 'nextTurn',    label: 'Scroll log to next turn' },
-  { keys: ['↓', '['],     action: 'speedDown',   label: 'Decrease playback speed' },
-  { keys: ['↑', ']'],     action: 'speedUp',     label: 'Increase playback speed' },
-  { keys: ['?'],          action: 'toggleHelp',  label: 'Show keyboard shortcut help' },
+  { keys: ['Space'],      action: 'togglePause', labelKey: 'spec.kb_pause' },
+  { keys: ['←'],          action: 'prevTurn',    labelKey: 'spec.kb_prev' },
+  { keys: ['→'],          action: 'nextTurn',    labelKey: 'spec.kb_next' },
+  { keys: ['↓', '['],     action: 'speedDown',   labelKey: 'spec.kb_slower' },
+  { keys: ['↑', ']'],     action: 'speedUp',     labelKey: 'spec.kb_faster' },
+  { keys: ['?'],          action: 'toggleHelp',  labelKey: 'spec.kb_help' },
 ]
 
 export function isEditableTarget(el) {

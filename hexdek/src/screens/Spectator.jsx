@@ -26,6 +26,8 @@ import useTurnAnnouncer from '../hooks/useTurnAnnouncer'
 import CommandZoneStrip from '../components/CommandZoneStrip'
 import ReplaySlider from '../components/ReplaySlider'
 import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/replayHelpers.js'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
 // entry. Tap / hover / focus opens a tooltip showing what the hat's
@@ -43,6 +45,7 @@ import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/repl
 // overflow the bottom. Tap also toggles open/closed for touch
 // users (mouseenter is unreliable on touch).
 function ActionExplainBadge({ explanation }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [placement, setPlacement] = useState({ left: 0, top: 0 })
   const anchorRef = useRef(null)
@@ -94,7 +97,7 @@ function ActionExplainBadge({ explanation }) {
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        aria-label="Explain this action"
+        aria-label={t('spec.explain_aria')}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
@@ -116,7 +119,7 @@ function ActionExplainBadge({ explanation }) {
           lineHeight: 1.4,
         }}
       >
-        ⓘ WHY?
+        ⓘ {t('spec.why')}
       </span>
       {open && (
         <div
@@ -242,13 +245,20 @@ function drawEvalContour(canvas, ev, lost) {
   ctx.putImageData(img, 0, 0)
 }
 
-const typeTag = (p) => {
-  if (p.is_commander) return 'CMDR'
-  if (p.is_land) return 'LAND'
-  if (p.type === 'CREATURE') return 'CREA'
-  if (p.type === 'ARTIFACT') return 'ART'
-  if (p.type === 'ENCHANTMENT') return 'ENC'
-  if (p.type === 'PLANESWALKER') return 'PW'
+// Takes the translator as its first PARAMETER rather than importing i18n,
+// matching formatAge(t, age). The strings compared against p.type are
+// SERVER values, not words, so they stay as they are; only what the tile
+// prints is a catalog key. These read CREA/LAND where common.tya_* reads
+// CRE/LND - changing what the tiles print is a UI decision, not an i18n
+// one, so the two sets stay separate and the duplication is flagged.
+const typeTag = (t, p) => {
+  if (p.is_commander) return t('spec.tag_cmdr')
+  if (p.is_land) return t('spec.tag_land')
+  if (p.type === 'CREATURE') return t('spec.tag_crea')
+  if (p.type === 'ARTIFACT') return t('spec.tag_art')
+  if (p.type === 'ENCHANTMENT') return t('spec.tag_enc')
+  if (p.type === 'PLANESWALKER') return t('spec.tag_pw')
+  // An unrecognised type is echoed back from the server, not worded here.
   return p.type?.slice(0, 4)?.toUpperCase() || '???'
 }
 
@@ -264,15 +274,16 @@ const permStat = (p) => {
 // represent multiple distinct instances and aren't lineage-friendly).
 // Returns the base title when no InstanceID lineage is present
 // (legacy / pre-Phase-1 games).
-const lineageTitle = (p) => {
+const lineageTitle = (t, p) => {
   const base = `${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`
   if (!p.instance_id || p.count > 1) return base
+  // `id:` labels a raw identifier and stays as it is; the rest are words.
   const lines = [base, `id: ${p.instance_id}`]
-  if (p.provenance) lines.push(`provenance: ${p.provenance}`)
-  if (p.source_instance_id) lines.push(`source: ${p.source_instance_id}`)
-  if (p.enabler_instance_id) lines.push(`enabler: ${p.enabler_instance_id}`)
+  if (p.provenance) lines.push(`${t('spec.lin_provenance')} ${p.provenance}`)
+  if (p.source_instance_id) lines.push(`${t('spec.lin_source')} ${p.source_instance_id}`)
+  if (p.enabler_instance_id) lines.push(`${t('spec.lin_enabler')} ${p.enabler_instance_id}`)
   if (p.merged_card_ids && p.merged_card_ids.length > 0) {
-    lines.push(`merged: ${p.merged_card_ids.join(', ')}`)
+    lines.push(`${t('spec.lin_merged')} ${p.merged_card_ids.join(', ')}`)
   }
   return lines.join('\n')
 }
@@ -399,6 +410,7 @@ function linkifyNarrated(text, source, targets) {
 }
 
 export default function Spectator() {
+  const t = useT()
   const navigate = useNavigate()
   const { game: liveGame, elo, stats, speed, status, history } = useLiveSocket()
 
@@ -467,11 +479,13 @@ export default function Spectator() {
   // so the keydown listener can read the latest value without being
   // re-bound on every render.
   const pauseResumeFromRef = useRef(null)
-  const error = status === 'disconnected' ? 'WebSocket disconnected' : null
+  const error = status === 'disconnected' ? t('spec.err_disconnected') : null
 
+  // Depends on `t`: without it the tab title would keep the language it
+  // was mounted in after a switch.
   useEffect(() => {
-    document.title = 'HEXDEK Live'
-  }, [])
+    document.title = t('spec.doc_title')
+  }, [t])
 
   const handleHeatmapHover = useCallback((e, seatIdx) => {
     const canvas = heatmapRefs.current[seatIdx]
@@ -736,11 +750,11 @@ export default function Spectator() {
   if (error && !game) {
     return (
       <>
-        <Tape left="SPECTATOR / / FISHTANK" mid="OFFLINE" right="" />
+        <Tape left={t('spec.tape_title')} mid={t('spec.tape_offline')} right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
           <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            &gt; SHOWMATCH ENGINE OFFLINE<br />
-            &gt; START SERVER WITH AST CORPUS TO ENABLE FISHTANK<br />
+            {t('spec.offline_1')}<br />
+            {t('spec.offline_2')}<br />
             &gt; {error}<span className="blink">_</span>
           </div>
         </div>
@@ -751,9 +765,9 @@ export default function Spectator() {
   if (!game || game.status === 'starting') {
     return (
       <>
-        <Tape left="SPECTATOR / / FISHTANK" mid="LOADING" right="" />
+        <Tape left={t('spec.tape_title')} mid={t('spec.tape_loading')} right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; LOADING FIRST SHOWMATCH<span className="blink">_</span></div>
+          <div className="t-md muted">{t('spec.loading_first')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -813,7 +827,7 @@ export default function Spectator() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Keyboard shortcuts"
+          aria-label={t('spec.kb_aria')}
           onClick={() => setHelpOpen(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
@@ -842,7 +856,7 @@ export default function Spectator() {
             }}
           >
             <div style={{ fontWeight: 700, letterSpacing: '0.08em', marginBottom: 12 }}>
-              KEYBOARD SHORTCUTS
+              {t('spec.kb_title')}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -862,20 +876,20 @@ export default function Spectator() {
                         </Fragment>
                       ))}
                     </td>
-                    <td style={{ padding: '4px 0', color: 'var(--ink-2)' }}>{b.label}</td>
+                    <td style={{ padding: '4px 0', color: 'var(--ink-2)' }}>{t(b.labelKey)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className="muted" style={{ marginTop: 12, fontSize: 10 }}>
-              Press <kbd>?</kbd> or click outside to close.
+              {fill(t('spec.kb_close_hint'), { key: <kbd>?</kbd> })}
             </div>
           </div>
         </div>
       )}
       <Tape
-        left={`SPECTATOR / / FISHTANK`}
-        mid={game.finished ? 'GAME OVER' : 'LIVE TELEMETRY'}
+        left={t('spec.tape_title')}
+        mid={game.finished ? t('spec.tape_game_over') : t('spec.tape_live')}
         right={`GAME ${game.game_id} / ${rt(game.turn)}`}
       />
 
@@ -911,27 +925,32 @@ export default function Spectator() {
               const isWinner = game.finished && game.winner === i
               const artUrl = cardArtUrl(s.commander)
               const elimTurn = elimTurnBySeat[i]
+              // R60 a11y: roll the seat's status up into one sentence so SR
+              // users hear "Seat 1, Atraxa, 38 life, active turn" instead of
+              // a stream of disjoint pips. Built from parts rather than one
+              // key because which clauses apply varies per seat.
+              const seatAria = [
+                t('spec.aria_seat', { n: i + 1, commander: s.commander || t('spec.unknown_commander') }),
+                t('spec.aria_life', { life: s.life }),
+              ]
+              if (isActive) seatAria.push(t('spec.aria_active'))
+              if (isWinner) seatAria.push(t('spec.aria_winner'))
+              if (s.lost) {
+                seatAria.push(s.loss_reason
+                  ? t('spec.aria_eliminated_reason', { reason: s.loss_reason })
+                  : t('spec.aria_eliminated'))
+              }
 
               return (
                 <div
                   key={i}
                   className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}
                   role="group"
-                  aria-label={
-                    // R60 a11y: roll up the seat's status into one
-                    // aria-label so SR users hear "Seat 1, Atraxa,
-                    // 38 life, active turn" instead of a stream of
-                    // disjoint pips.
-                    `Seat ${i + 1}, ${s.commander || 'unknown commander'}` +
-                    `, ${s.life} life` +
-                    (isActive ? ', active turn' : '') +
-                    (isWinner ? ', winner' : '') +
-                    (s.lost ? `, eliminated${s.loss_reason ? ` (${s.loss_reason})` : ''}` : '')
-                  }
+                  aria-label={seatAria.join(', ')}
                 >
                   <div className="seat-hd">
                     <span className="seat-name">
-                      {s.commander?.toUpperCase() || 'UNKNOWN'}
+                      {s.commander?.toUpperCase() || t('spec.seat_unknown')}
                       {isActive && <span style={{ color: 'var(--warn)' }} aria-hidden="true"> ●</span>}
                       {isWinner && <span style={{ color: 'var(--ok)' }} aria-hidden="true"> ★</span>}
                       {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }} aria-hidden="true"> ✕</span>}
@@ -939,7 +958,7 @@ export default function Spectator() {
                     <span className="seat-stats" aria-hidden="true">
                       <span
                         className={`life-pip ${s.life <= 5 ? 'life-pip--crit' : s.life <= 10 ? 'life-pip--low' : ''}`}
-                        title={s.life <= 5 ? 'Lethal range' : s.life <= 10 ? 'Low life' : `${s.life} life`}
+                        title={s.life <= 5 ? t('spec.lethal_range') : s.life <= 10 ? t('spec.low_life') : t('spec.aria_life', { life: s.life })}
                       >
                         ♥{s.life}
                       </span>
@@ -1019,16 +1038,16 @@ export default function Spectator() {
                                 .join(', ')
                             : ''
                           const ariaLabel =
-                            (p.name || 'unknown card') +
-                            (p.is_commander ? ' (commander)' : '') +
-                            (p.tapped ? ', tapped' : '') +
+                            (p.name || t('spec.unknown_card')) +
+                            (p.is_commander ? ` (${t('spec.aria_commander')})` : '') +
+                            (p.tapped ? `, ${t('common.tapped')}` : '') +
                             (p.count > 1 ? `, ×${p.count}` : '') +
                             (permStat(p) ? `, ${permStat(p)}` : '') +
-                            (countersList ? `, counters: ${countersList}` : '')
+                            (countersList ? `, ${t('spec.aria_counters', { list: countersList })}` : '')
                           return (
                           <div
                             key={j}
-                            title={lineageTitle(p)}
+                            title={lineageTitle(t, p)}
                             className="perm-tile"
                             role="listitem"
                             aria-label={ariaLabel}
@@ -1041,7 +1060,7 @@ export default function Spectator() {
                               position: 'relative',
                             }}
                           >
-                            <span className="perm-tag" aria-hidden="true">{typeTag(p)}{p.count > 1 ? `×${p.count}` : ''}</span>
+                            <span className="perm-tag" aria-hidden="true">{typeTag(t, p)}{p.count > 1 ? `×${p.count}` : ''}</span>
                             {permStat(p) && <span className="perm-stat" aria-hidden="true">{permStat(p)}</span>}
                             {/* Counter overlay — only renders when the
                                 permanent carries non-zero counters. */}
@@ -1088,7 +1107,7 @@ export default function Spectator() {
                       </span>{' '}
                       <span
                         className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
-                        title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
+                        title={s.library_size <= 3 ? t('spec.mill_danger') : s.library_size <= 7 ? t('spec.low_library') : t('spec.cards_left', { count: s.library_size })}
                       >L{s.library_size}</span>{' '}
                       G{s.gy_size} B{perms.length}
                       {/* Mana pool: prefer the new per-color pips when
@@ -1100,11 +1119,11 @@ export default function Spectator() {
                       ) : s.mana_pool > 0 ? (
                         <>
                           {' '}
-                          <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
+                          <span className="mana-pip" title={t('spec.floating_mana', { count: s.mana_pool })}>◊{s.mana_pool}</span>
                         </>
                       ) : null}
                     </span>
-                    {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
+                    {isActive && <span style={{ color: 'var(--ok)' }}>● {t('spec.pri')}</span>}
                   </div>
                 </div>
               )
@@ -1161,7 +1180,7 @@ export default function Spectator() {
                 <span className="turn-bar-right" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span>{rt(game.turn)}</span>
                   {game.game_id != null && (
-                    <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>VIEW REPORT</Btn>
+                    <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>{t('spec.view_report')}</Btn>
                   )}
                 </span>
               </>
