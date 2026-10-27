@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "TEMETŐÉRTÉK",
     "p_winlines": "GYŐZELMI VONALAK / / {count} TALÁLAT",
     "tutors": "TUTOROK: {list}",
-    "p_value": "VALUE ENGINE / / {count} KULCSLAP",
     "p_no_analysis": "FREYA / / MOTORELEMZÉS",
     "na_1": "NINCS FREYA-ELEMZÉS",
     "na_2": "FUTTASD EZT: {tool} A STRATÉGIAI JELENTÉSHEZ",

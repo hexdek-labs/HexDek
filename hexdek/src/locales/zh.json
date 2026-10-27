@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "坟场价值",
     "p_winlines": "获胜路线 / / 检出 {count} 条",
     "tutors": "搜寻: {list}",
-    "p_value": "价值引擎 / / {count} 张关键牌",
     "p_no_analysis": "FREYA / / 引擎分析",
     "na_1": "没有 FREYA 分析记录",
     "na_2": "运行 {tool} 以生成策略报告",

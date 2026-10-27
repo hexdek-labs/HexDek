@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "ЦЕННОСТЬ КЛАДБИЩА",
     "p_winlines": "ЛИНИИ ПОБЕДЫ / / НАЙДЕНО {count}",
     "tutors": "ТЬЮТОРЫ: {list}",
-    "p_value": "VALUE ENGINE / / {count} КЛЮЧЕВЫХ КАРТ",
     "p_no_analysis": "FREYA / / АНАЛИЗ ДВИЖКА",
     "na_1": "АНАЛИЗА FREYA НЕТ",
     "na_2": "ЗАПУСТИТЕ {tool}, ЧТОБЫ СФОРМИРОВАТЬ СТРАТЕГИЧЕСКИЙ ОТЧЁТ",

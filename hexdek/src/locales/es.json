@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "VALOR DEL CEMENTERIO",
     "p_winlines": "LÍNEAS DE VICTORIA / / {count} DETECTADAS",
     "tutors": "TUTORES: {list}",
-    "p_value": "VALUE ENGINE / / {count} CARTAS CLAVE",
     "p_no_analysis": "FREYA / / ANÁLISIS DEL MOTOR",
     "na_1": "NO HAY ANÁLISIS DE FREYA",
     "na_2": "EJECUTA {tool} PARA GENERAR EL INFORME DE ESTRATEGIA",

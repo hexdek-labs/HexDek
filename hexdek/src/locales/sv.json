@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "KYRKOGÅRDSVÄRDE",
     "p_winlines": "VINSTLINJER / / {count} HITTADE",
     "tutors": "TUTORS: {list}",
-    "p_value": "VALUE ENGINE / / {count} NYCKELKORT",
     "p_no_analysis": "FREYA / / ENGINE-ANALYS",
     "na_1": "INGEN FREYA-ANALYS SPARAD",
     "na_2": "KÖR {tool} FÖR ATT GENERERA STRATEGIRAPPORT",

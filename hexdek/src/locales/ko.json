@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "무덤 가치",
     "p_winlines": "승리 루트 / / {count}개 감지",
     "tutors": "서치: {list}",
-    "p_value": "밸류 엔진 / / 핵심 카드 {count}장",
     "p_no_analysis": "FREYA / / 엔진 분석",
     "na_1": "FREYA 분석 기록 없음",
     "na_2": "{tool} 을(를) 실행해 전략 리포트를 생성하세요",

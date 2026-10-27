@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "GRAVEYARD VALUE",
     "p_winlines": "WIN LINES / / {count} DETECTED",
     "tutors": "TUTORS: {list}",
-    "p_value": "VALUE ENGINE / / {count} KEY CARDS",
     "p_no_analysis": "FREYA / / ENGINE ANALYSIS",
     "na_1": "NO FREYA ANALYSIS ON FILE",
     "na_2": "RUN {tool} TO GENERATE STRATEGY REPORT",

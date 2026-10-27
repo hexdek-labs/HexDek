@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "VALEUR DU CIMETIÈRE",
     "p_winlines": "LIGNES DE VICTOIRE / / {count} DÉTECTÉES",
     "tutors": "TUTEURS : {list}",
-    "p_value": "VALUE ENGINE / / {count} CARTES CLÉS",
     "p_no_analysis": "FREYA / / ANALYSE DU MOTEUR",
     "na_1": "AUCUNE ANALYSE FREYA ENREGISTRÉE",
     "na_2": "LANCEZ {tool} POUR GÉNÉRER LE RAPPORT DE STRATÉGIE",

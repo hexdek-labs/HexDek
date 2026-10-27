@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "ΑΞΙΑ ΝΕΚΡΟΤΑΦΕΙΟΥ",
     "p_winlines": "ΓΡΑΜΜΕΣ ΝΙΚΗΣ / / {count} ΕΝΤΟΠΙΣΤΗΚΑΝ",
     "tutors": "TUTORS: {list}",
-    "p_value": "VALUE ENGINE / / {count} ΚΡΙΣΙΜΕΣ ΚΑΡΤΕΣ",
     "p_no_analysis": "FREYA / / ΑΝΑΛΥΣΗ ΜΗΧΑΝΗΣ",
     "na_1": "ΔΕΝ ΥΠΑΡΧΕΙ ΑΝΑΛΥΣΗ FREYA",
     "na_2": "ΤΡΕΞΤΕ {tool} ΓΙΑ ΝΑ ΠΑΡΑΧΘΕΙ ΑΝΑΦΟΡΑ ΣΤΡΑΤΗΓΙΚΗΣ",

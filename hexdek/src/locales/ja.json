@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "墓地の価値",
     "p_winlines": "勝ち筋 / / {count} 件検出",
     "tutors": "サーチ: {list}",
-    "p_value": "バリューエンジン / / {count} 枚のキーカード",
     "p_no_analysis": "FREYA / / エンジン解析",
     "na_1": "FREYA の解析がありません",
     "na_2": "{tool} を実行して戦略レポートを生成してください",

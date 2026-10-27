@@ -305,9 +305,14 @@ export default function Forge() {
                   </Panel>
                 )}
 
-                {/* Value engine */}
+                {/* Value engine. Reads the deck archive's key deliberately:
+                    both screens render this same panel off the same
+                    analysis.value_engine_keys field, and holding one sentence
+                    in two keys is what let one of them keep the English
+                    'VALUE ENGINE' in 18 locales. One key cannot drift from
+                    itself. */}
                 {valueKeys.length > 0 && (
-                  <Panel code="11.D" title={t('frg.p_value', { count: valueKeys.length })}>
+                  <Panel code="11.D" title={t('dka.value_engine', { count: valueKeys.length })}>
                     <div className="grid col-5 gap-2">
                       {valueKeys.slice(0, 10).map((name, i) => (
                         <div key={i} className="panel" style={{ padding: 0 }}>

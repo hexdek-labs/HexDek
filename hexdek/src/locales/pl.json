@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "WARTOŚĆ CMENTARZA",
     "p_winlines": "LINIE ZWYCIĘSTWA / / WYKRYTO {count}",
     "tutors": "TUTORY: {list}",
-    "p_value": "VALUE ENGINE / / {count} KLUCZOWYCH KART",
     "p_no_analysis": "FREYA / / ANALIZA SILNIKA",
     "na_1": "BRAK ANALIZY FREYA",
     "na_2": "URUCHOM {tool}, ABY WYGENEROWAĆ RAPORT STRATEGICZNY",

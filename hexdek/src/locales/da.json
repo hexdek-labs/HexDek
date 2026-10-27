@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "KIRKEGÅRDSVÆRDI",
     "p_winlines": "SEJRSLINJER / / {count} FUNDET",
     "tutors": "TUTORS: {list}",
-    "p_value": "VALUE ENGINE / / {count} NØGLEKORT",
     "p_no_analysis": "FREYA / / ENGINE-ANALYSE",
     "na_1": "INGEN FREYA-ANALYSE PÅ FIL",
     "na_2": "KØR {tool} FOR AT GENERERE STRATEGIRAPPORT",

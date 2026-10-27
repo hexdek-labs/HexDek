@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "GRAFTUINWAARDE",
     "p_winlines": "WINLIJNEN / / {count} GEDETECTEERD",
     "tutors": "TUTORS: {list}",
-    "p_value": "VALUE ENGINE / / {count} SLEUTELKAARTEN",
     "p_no_analysis": "FREYA / / ENGINE-ANALYSE",
     "na_1": "GEEN FREYA-ANALYSE AANWEZIG",
     "na_2": "VOER {tool} UIT OM EEN STRATEGIERAPPORT TE GENEREREN",

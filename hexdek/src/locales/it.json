@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "VALORE DEL CIMITERO",
     "p_winlines": "LINEE DI VITTORIA / / {count} RILEVATE",
     "tutors": "TUTOR: {list}",
-    "p_value": "VALUE ENGINE / / {count} CARTE CHIAVE",
     "p_no_analysis": "FREYA / / ANALISI DEL MOTORE",
     "na_1": "NESSUNA ANALISI FREYA",
     "na_2": "ESEGUI {tool} PER GENERARE IL REPORT STRATEGICO",

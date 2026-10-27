@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "NILAI KUBURAN",
     "p_winlines": "JALUR KEMENANGAN / / {count} TERDETEKSI",
     "tutors": "TUTOR: {list}",
-    "p_value": "VALUE ENGINE / / {count} KARTU KUNCI",
     "p_no_analysis": "FREYA / / ANALISIS MESIN",
     "na_1": "TIDAK ADA ANALISIS FREYA",
     "na_2": "JALANKAN {tool} UNTUK MEMBUAT LAPORAN STRATEGI",

@@ -1201,7 +1201,6 @@
     "ew_graveyard_value": "FRIEDHOFSWERT",
     "p_winlines": "SIEGLINIEN / / {count} ERKANNT",
     "tutors": "TUTOREN: {list}",
-    "p_value": "VALUE ENGINE / / {count} SCHLÜSSELKARTEN",
     "p_no_analysis": "FREYA / / ENGINE-ANALYSE",
     "na_1": "KEINE FREYA-ANALYSE VORHANDEN",
     "na_2": "{tool} AUSFÜHREN, UM EINEN STRATEGIEBERICHT ZU ERZEUGEN",
