@@ -1592,5 +1592,24 @@
     "triggers": "{actor} declanșează {name}.",
     "activates": "{actor} activează {name}.",
     "searches": "{actor} caută în biblioteca sa."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Clasament",
+    "intro": "Ratinguri HexDek în timp real, ordonate după Hex Rating (un punctaj derivat din TrueSkill care combină rata de victorii, puterea adversarilor și cât de recente sunt rezultatele). Dă clic pe orice rând pentru a deschide arhiva acelui pachet — analiză, rezultate de gauntlet, confruntări. Filtrează după nivel mai sus sau sortează după altă coloană.",
+    "tape_left": "CLASAMENT / {bracket} / POZIȚII ÎN DIRECT",
+    "search_ph": "CAUTĂ COMANDANT SAU PROPRIETAR...",
+    "n_ranked": "{count} CLASATE",
+    "n_ranked_one": "{count} CLASAT",
+    "th_conf": "ÎNCRED.",
+    "awaiting_elo": "SE AȘTEAPTĂ DATELE ELO",
+    "shame_tape_left": "PERETELE RUȘINII / {bracket} / ULTIMELE {count}",
+    "shame_tape_mid": "REGISTRU ELO NEGATIV",
+    "rec_w": "{n}V",
+    "rec_l": "{n}Î",
+    "tier_uninstall": "DEZINSTALEAZĂ",
+    "tier_packitup": "STRÂNGE TOT",
+    "tier_cooked": "TERMINAT",
+    "tier_downbad": "LA FUND",
+    "tier_mid": "MEDIOCRU"
   }
 }

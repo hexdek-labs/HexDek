@@ -1592,5 +1592,24 @@
     "triggers": "{actor} innesca {name}.",
     "activates": "{actor} attiva {name}.",
     "searches": "{actor} cerca nel suo grimorio."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Classifica",
+    "intro": "Valutazioni HexDek in diretta, ordinate per Hex Rating (un punteggio derivato da TrueSkill che combina percentuale di vittorie, forza degli avversari e freschezza dei risultati). Clicca una riga per aprire l'archivio di quel mazzo — analisi, risultati dei gauntlet, matchup. Filtra per livello qui sopra oppure ordina per un'altra colonna.",
+    "tape_left": "CLASSIFICA / {bracket} / POSIZIONI IN DIRETTA",
+    "search_ph": "CERCA COMANDANTE O PROPRIETARIO...",
+    "n_ranked": "{count} IN CLASSIFICA",
+    "n_ranked_one": "{count} IN CLASSIFICA",
+    "th_conf": "AFFID.",
+    "awaiting_elo": "IN ATTESA DEI DATI ELO",
+    "shame_tape_left": "MURO DELLA VERGOGNA / {bracket} / ULTIMI {count}",
+    "shame_tape_mid": "REGISTRO ELO NEGATIVI",
+    "rec_w": "{n}V",
+    "rec_l": "{n}S",
+    "tier_uninstall": "DISINSTALLA",
+    "tier_packitup": "METTI VIA TUTTO",
+    "tier_cooked": "FRITTO",
+    "tier_downbad": "A TERRA",
+    "tier_mid": "MEDIOCRE"
   }
 }

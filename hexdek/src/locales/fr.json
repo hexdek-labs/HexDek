@@ -1592,5 +1592,24 @@
     "triggers": "{actor} déclenche {name}.",
     "activates": "{actor} active {name}.",
     "searches": "{actor} cherche dans sa bibliothèque."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Classement",
+    "intro": "Classements HexDek en direct, triés par Hex Rating (un score dérivé de TrueSkill combinant taux de victoire, force des adversaires et fraîcheur des résultats). Clique sur une ligne pour ouvrir l'archive du deck — analyse, résultats de gauntlet, matchups. Filtre par niveau ci-dessus ou trie selon une autre colonne.",
+    "tape_left": "CLASSEMENT / {bracket} / POSITIONS EN DIRECT",
+    "search_ph": "RECHERCHER UN COMMANDANT OU UN PROPRIÉTAIRE...",
+    "n_ranked": "{count} CLASSÉS",
+    "n_ranked_one": "{count} CLASSÉ",
+    "th_conf": "CONF.",
+    "awaiting_elo": "EN ATTENTE DES DONNÉES ELO",
+    "shame_tape_left": "MUR DE LA HONTE / {bracket} / {count} DERNIERS",
+    "shame_tape_mid": "REGISTRE DES ELO NÉGATIFS",
+    "rec_w": "{n}V",
+    "rec_l": "{n}D",
+    "tier_uninstall": "DÉSINSTALLE",
+    "tier_packitup": "REMBALLE",
+    "tier_cooked": "CUIT",
+    "tier_downbad": "AU FOND DU TROU",
+    "tier_mid": "MOYEN"
   }
 }

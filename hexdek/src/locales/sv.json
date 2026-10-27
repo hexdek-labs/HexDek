@@ -1592,5 +1592,24 @@
     "triggers": "{actor} utlöser {name}.",
     "activates": "{actor} aktiverar {name}.",
     "searches": "{actor} söker i sitt bibliotek."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Rankning",
+    "intro": "Liverankning för HexDek, sorterad efter Hex Rating (en TrueSkill-baserad poäng som kombinerar vinstandel, motståndarstyrka och hur färska resultaten är). Klicka på en rad för att öppna lekens arkiv — analys, gauntlet-resultat, matchups. Filtrera efter nivå ovan eller sortera på en annan kolumn.",
+    "tape_left": "RANKNING / {bracket} / LIVEPLACERINGAR",
+    "search_ph": "SÖK COMMANDER ELLER ÄGARE...",
+    "n_ranked": "{count} RANKADE",
+    "n_ranked_one": "{count} RANKAD",
+    "th_conf": "TILLF.",
+    "awaiting_elo": "VÄNTAR PÅ ELO-DATA",
+    "shame_tape_left": "SKAMMENS VÄGG / {bracket} / NEDERSTA {count}",
+    "shame_tape_mid": "REGISTER ÖVER NEGATIV ELO",
+    "rec_w": "{n}V",
+    "rec_l": "{n}F",
+    "tier_uninstall": "AVINSTALLERA",
+    "tier_packitup": "PACKA IHOP",
+    "tier_cooked": "KOKT",
+    "tier_downbad": "PÅ DJUPET",
+    "tier_mid": "MEDELMÅTTA"
   }
 }

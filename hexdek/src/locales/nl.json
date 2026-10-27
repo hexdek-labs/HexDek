@@ -1592,5 +1592,24 @@
     "triggers": "{actor} triggert {name}.",
     "activates": "{actor} activeert {name}.",
     "searches": "{actor} zoekt in zijn bibliotheek."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Ranglijst",
+    "intro": "Live HexDek-ratings, gesorteerd op Hex Rating (een van TrueSkill afgeleide score die winstpercentage, sterkte van tegenstanders en actualiteit combineert). Klik op een rij om het archief van dat deck te openen — analyse, gauntlet-resultaten, matchups. Filter hierboven op niveau of sorteer op een andere kolom.",
+    "tape_left": "RANGLIJST / {bracket} / LIVE POSITIES",
+    "search_ph": "ZOEK COMMANDER OF EIGENAAR...",
+    "n_ranked": "{count} GERANGSCHIKT",
+    "n_ranked_one": "{count} GERANGSCHIKT",
+    "th_conf": "VERTR.",
+    "awaiting_elo": "WACHTEN OP ELO-DATA",
+    "shame_tape_left": "MUUR VAN SCHAAMTE / {bracket} / LAATSTE {count}",
+    "shame_tape_mid": "REGISTER NEGATIEVE ELO",
+    "rec_w": "{n}W",
+    "rec_l": "{n}V",
+    "tier_uninstall": "VERWIJDEREN",
+    "tier_packitup": "OPRUIMEN",
+    "tier_cooked": "GAAR",
+    "tier_downbad": "DIEP GEZONKEN",
+    "tier_mid": "MIDDELMATIG"
   }
 }

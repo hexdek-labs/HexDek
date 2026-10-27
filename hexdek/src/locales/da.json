@@ -1592,5 +1592,24 @@
     "triggers": "{actor} udløser {name}.",
     "activates": "{actor} aktiverer {name}.",
     "searches": "{actor} søger i sit bibliotek."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Rangliste",
+    "intro": "Live HexDek-ratings, sorteret efter Hex Rating (en TrueSkill-baseret score, der kombinerer sejrsrate, modstanderstyrke og aktualitet). Klik på en række for at åbne det dæks arkiv — analyse, gauntlet-resultater, matchups. Filtrér efter niveau ovenfor, eller sortér efter en anden kolonne.",
+    "tape_left": "RANGLISTE / {bracket} / LIVE PLACERINGER",
+    "search_ph": "SØG EFTER COMMANDER ELLER EJER...",
+    "n_ranked": "{count} PLACERET",
+    "n_ranked_one": "{count} PLACERET",
+    "th_conf": "TILLID",
+    "awaiting_elo": "AFVENTER ELO-DATA",
+    "shame_tape_left": "SKAMMENS VÆG / {bracket} / NEDERSTE {count}",
+    "shame_tape_mid": "REGISTER OVER NEGATIV ELO",
+    "rec_w": "{n}S",
+    "rec_l": "{n}N",
+    "tier_uninstall": "AFINSTALLER",
+    "tier_packitup": "PAK SAMMEN",
+    "tier_cooked": "KOGT",
+    "tier_downbad": "PÅ BUNDEN",
+    "tier_mid": "MIDDELMÅDIG"
   }
 }

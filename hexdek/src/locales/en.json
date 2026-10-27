@@ -1592,5 +1592,24 @@
     "triggers": "{actor} triggers {name}.",
     "activates": "{actor} activates {name}.",
     "searches": "{actor} searches their library."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Leaderboard",
+    "intro": "Live HexDek ratings, ranked by Hex Rating (a TrueSkill-derived score combining win rate, opponent strength, and recency). Click any row to open that deck's archive — analysis, gauntlet results, matchups. Filter by bracket above or sort by a different column.",
+    "tape_left": "LEADERBOARD / {bracket} / LIVE RANKINGS",
+    "search_ph": "SEARCH COMMANDER OR OWNER...",
+    "n_ranked": "{count} RANKED",
+    "n_ranked_one": "{count} RANKED",
+    "th_conf": "CONF",
+    "awaiting_elo": "AWAITING ELO DATA",
+    "shame_tape_left": "WALL OF SHAME / {bracket} / BOTTOM {count}",
+    "shame_tape_mid": "NEGATIVE ELO REGISTRY",
+    "rec_w": "{n}W",
+    "rec_l": "{n}L",
+    "tier_uninstall": "UNINSTALL",
+    "tier_packitup": "PACK IT UP",
+    "tier_cooked": "COOKED",
+    "tier_downbad": "DOWN BAD",
+    "tier_mid": "MID"
   }
 }

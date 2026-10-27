@@ -1592,5 +1592,24 @@
     "triggers": "{actor} memicu {name}.",
     "activates": "{actor} mengaktifkan {name}.",
     "searches": "{actor} mencari di perpustakaannya."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Peringkat",
+    "intro": "Rating HexDek langsung, diurutkan berdasarkan Hex Rating (skor turunan TrueSkill yang menggabungkan tingkat kemenangan, kekuatan lawan, dan kebaruan hasil). Klik baris mana pun untuk membuka arsip dek tersebut — analisis, hasil gauntlet, matchup. Filter berdasarkan tingkat di atas atau urutkan dengan kolom lain.",
+    "tape_left": "PERINGKAT / {bracket} / POSISI LANGSUNG",
+    "search_ph": "CARI COMMANDER ATAU PEMILIK...",
+    "n_ranked": "{count} DIPERINGKAT",
+    "n_ranked_one": "{count} DIPERINGKAT",
+    "th_conf": "KEYAK.",
+    "awaiting_elo": "MENUNGGU DATA ELO",
+    "shame_tape_left": "DINDING MEMALUKAN / {bracket} / {count} TERBAWAH",
+    "shame_tape_mid": "REGISTER ELO NEGATIF",
+    "rec_w": "{n}M",
+    "rec_l": "{n}K",
+    "tier_uninstall": "UNINSTALL AJA",
+    "tier_packitup": "BERES-BERES",
+    "tier_cooked": "MATANG",
+    "tier_downbad": "DI DASAR",
+    "tier_mid": "BIASA AJA"
   }
 }

@@ -1592,5 +1592,24 @@
     "triggers": "{actor} spouští {name}.",
     "activates": "{actor} aktivuje {name}.",
     "searches": "{actor} prohledává svou knihovnu."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Žebříček",
+    "intro": "Živá hodnocení HexDek, řazená podle Hex Ratingu (skóre vycházející z TrueSkill, které kombinuje úspěšnost, sílu protivníků a aktuálnost). Kliknutím na řádek otevřeš archiv daného balíčku — analýzu, výsledky gauntletů, matchupy. Výše filtruj podle úrovně nebo řaď podle jiného sloupce.",
+    "tape_left": "ŽEBŘÍČEK / {bracket} / ŽIVÁ POŘADÍ",
+    "search_ph": "HLEDAT VELITELE NEBO VLASTNÍKA...",
+    "n_ranked": "V POŘADÍ: {count}",
+    "n_ranked_one": "V POŘADÍ: {count}",
+    "th_conf": "DŮV.",
+    "awaiting_elo": "ČEKÁ SE NA DATA ELO",
+    "shame_tape_left": "ZEĎ HANBY / {bracket} / NEJHORŠÍCH {count}",
+    "shame_tape_mid": "REGISTR NEGATIVNÍHO ELO",
+    "rec_w": "{n}V",
+    "rec_l": "{n}P",
+    "tier_uninstall": "ODINSTALUJ",
+    "tier_packitup": "SBAL SI TO",
+    "tier_cooked": "UVAŘENO",
+    "tier_downbad": "NA DNĚ",
+    "tier_mid": "PRŮMĚR"
   }
 }

@@ -1592,5 +1592,24 @@
     "triggers": "{actor} löst {name} aus.",
     "activates": "{actor} aktiviert {name}.",
     "searches": "{actor} durchsucht seine Bibliothek."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Rangliste",
+    "intro": "Live-Wertungen von HexDek, sortiert nach Hex Rating (ein von TrueSkill abgeleiteter Wert aus Siegquote, Gegnerstärke und Aktualität). Klicke auf eine Zeile, um das Archiv des Decks zu öffnen — Analyse, Gauntlet-Ergebnisse, Matchups. Oben nach Stufe filtern oder nach einer anderen Spalte sortieren.",
+    "tape_left": "RANGLISTE / {bracket} / LIVE-PLATZIERUNGEN",
+    "search_ph": "COMMANDER ODER BESITZER SUCHEN...",
+    "n_ranked": "{count} PLATZIERT",
+    "n_ranked_one": "{count} PLATZIERT",
+    "th_conf": "VERTR.",
+    "awaiting_elo": "WARTE AUF ELO-DATEN",
+    "shame_tape_left": "WAND DER SCHANDE / {bracket} / LETZTE {count}",
+    "shame_tape_mid": "REGISTER NEGATIVER ELO",
+    "rec_w": "{n}S",
+    "rec_l": "{n}N",
+    "tier_uninstall": "DEINSTALLIEREN",
+    "tier_packitup": "PACK EIN",
+    "tier_cooked": "ERLEDIGT",
+    "tier_downbad": "TIEF GESUNKEN",
+    "tier_mid": "MITTELMASS"
   }
 }

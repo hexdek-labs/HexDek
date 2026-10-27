@@ -1592,5 +1592,24 @@
     "triggers": "{actor} يُطلق {name}.",
     "activates": "{actor} يُنشّط {name}.",
     "searches": "{actor} يبحث في مكتبته."
+  },
+  "lb": {
+    "doc_title": "HEXDEK لوحة التصنيف",
+    "intro": "تصنيفات HexDek المباشرة، مرتبة حسب Hex Rating (درجة مشتقة من TrueSkill تجمع نسبة الفوز وقوة الخصوم والحداثة). انقر أي صف لفتح أرشيف ذلك الديك — التحليل ونتائج المواجهات والمقابلات. رشّح حسب الفئة أعلاه أو رتّب بعمود آخر.",
+    "tape_left": "التصنيف / {bracket} / تصنيفات مباشرة",
+    "search_ph": "ابحث عن قائد أو مالك...",
+    "n_ranked": "{count} مصنّف",
+    "n_ranked_one": "{count} مصنّف",
+    "th_conf": "ثقة",
+    "awaiting_elo": "في انتظار بيانات ELO",
+    "shame_tape_left": "جدار العار / {bracket} / أدنى {count}",
+    "shame_tape_mid": "سجل ELO السلبي",
+    "rec_w": "{n} ف",
+    "rec_l": "{n} خ",
+    "tier_uninstall": "احذف اللعبة",
+    "tier_packitup": "اجمع أدواتك",
+    "tier_cooked": "انتهى أمرك",
+    "tier_downbad": "في القاع",
+    "tier_mid": "متوسط الحال"
   }
 }

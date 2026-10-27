@@ -1592,5 +1592,24 @@
     "triggers": "{actor} desencadeia {name}.",
     "activates": "{actor} ativa {name}.",
     "searches": "{actor} procura em sua biblioteca."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Classificação",
+    "intro": "Avaliações HexDek ao vivo, ordenadas por Hex Rating (uma pontuação derivada do TrueSkill que combina taxa de vitórias, força dos adversários e quão recentes são os resultados). Clique em qualquer linha para abrir o arquivo desse deck — análise, resultados de gauntlet, confrontos. Filtre por nível acima ou ordene por outra coluna.",
+    "tape_left": "CLASSIFICAÇÃO / {bracket} / POSIÇÕES AO VIVO",
+    "search_ph": "BUSCAR COMANDANTE OU DONO...",
+    "n_ranked": "{count} CLASSIFICADOS",
+    "n_ranked_one": "{count} CLASSIFICADO",
+    "th_conf": "CONF.",
+    "awaiting_elo": "AGUARDANDO DADOS DE ELO",
+    "shame_tape_left": "MURO DA VERGONHA / {bracket} / ÚLTIMOS {count}",
+    "shame_tape_mid": "REGISTRO DE ELO NEGATIVO",
+    "rec_w": "{n}V",
+    "rec_l": "{n}D",
+    "tier_uninstall": "DESINSTALA",
+    "tier_packitup": "ARRUMA E VAI",
+    "tier_cooked": "FRITO",
+    "tier_downbad": "NO FUNDO DO POÇO",
+    "tier_mid": "MEDÍOCRE"
   }
 }

@@ -1592,5 +1592,24 @@
     "triggers": "{actor} làm {name} kích phát.",
     "activates": "{actor} kích hoạt {name}.",
     "searches": "{actor} tìm trong thư viện của mình."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Xếp hạng",
+    "intro": "Điểm HexDek trực tiếp, sắp theo Hex Rating (điểm dẫn xuất từ TrueSkill, kết hợp tỉ lệ thắng, sức mạnh đối thủ và độ mới của kết quả). Nhấp vào bất kỳ dòng nào để mở kho lưu của bộ bài đó — phân tích, kết quả gauntlet, đối đầu. Lọc theo cấp ở trên hoặc sắp xếp theo cột khác.",
+    "tape_left": "XẾP HẠNG / {bracket} / THỨ HẠNG TRỰC TIẾP",
+    "search_ph": "TÌM TƯỚNG HOẶC CHỦ SỞ HỮU...",
+    "n_ranked": "{count} ĐƯỢC XẾP HẠNG",
+    "n_ranked_one": "{count} ĐƯỢC XẾP HẠNG",
+    "th_conf": "TIN CẬY",
+    "awaiting_elo": "ĐANG CHỜ DỮ LIỆU ELO",
+    "shame_tape_left": "BỨC TƯỜNG NHỤC NHÃ / {bracket} / {count} CUỐI BẢNG",
+    "shame_tape_mid": "DANH SÁCH ELO ÂM",
+    "rec_w": "{n}T",
+    "rec_l": "{n}B",
+    "tier_uninstall": "XOÁ GAME ĐI",
+    "tier_packitup": "DỌN HÀNG ĐI",
+    "tier_cooked": "TOANG",
+    "tier_downbad": "ĐÁY VỰC",
+    "tier_mid": "THƯỜNG THÔI"
   }
 }

@@ -1592,5 +1592,24 @@
     "triggers": "{actor} 触发 {name}。",
     "activates": "{actor} 启动 {name}。",
     "searches": "{actor} 搜寻自己的牌库。"
+  },
+  "lb": {
+    "doc_title": "HEXDEK 排行榜",
+    "intro": "实时 HexDek 评分，按 Hex Rating 排序（由 TrueSkill 衍生的分数，综合胜率、对手强度与结果新近程度）。点击任意一行即可打开该套牌的档案 — 分析、车轮战结果、对局比较。可在上方按等级筛选，或按其他列排序。",
+    "tape_left": "排行榜 / {bracket} / 实时排名",
+    "search_ph": "搜索指挥官或拥有者...",
+    "n_ranked": "{count} 个已排名",
+    "n_ranked_one": "{count} 个已排名",
+    "th_conf": "置信度",
+    "awaiting_elo": "等待 ELO 数据",
+    "shame_tape_left": "耻辱墙 / {bracket} / 末 {count} 名",
+    "shame_tape_mid": "负 ELO 登记簿",
+    "rec_w": "{n}胜",
+    "rec_l": "{n}负",
+    "tier_uninstall": "卸载吧",
+    "tier_packitup": "收摊吧",
+    "tier_cooked": "凉了",
+    "tier_downbad": "跌到谷底",
+    "tier_mid": "平庸"
   }
 }

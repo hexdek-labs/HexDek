@@ -1592,5 +1592,24 @@
     "triggers": "{actor} wyzwala {name}.",
     "activates": "{actor} aktywuje {name}.",
     "searches": "{actor} przeszukuje swoją bibliotekę."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Ranking",
+    "intro": "Rankingi HexDek na żywo, uporządkowane według Hex Rating (wynik oparty na TrueSkill, łączący skuteczność, siłę przeciwników i świeżość rezultatów). Kliknij wiersz, aby otworzyć archiwum tej talii — analizę, wyniki gauntletów, matchupy. Filtruj powyżej według poziomu lub sortuj po innej kolumnie.",
+    "tape_left": "RANKING / {bracket} / POZYCJE NA ŻYWO",
+    "search_ph": "SZUKAJ DOWÓDCY LUB WŁAŚCICIELA...",
+    "n_ranked": "W RANKINGU: {count}",
+    "n_ranked_one": "W RANKINGU: {count}",
+    "th_conf": "PEWN.",
+    "awaiting_elo": "OCZEKIWANIE NA DANE ELO",
+    "shame_tape_left": "ŚCIANA WSTYDU / {bracket} / OSTATNIE {count}",
+    "shame_tape_mid": "REJESTR UJEMNEGO ELO",
+    "rec_w": "{n}Z",
+    "rec_l": "{n}P",
+    "tier_uninstall": "ODINSTALUJ",
+    "tier_packitup": "ZWIJAJ SIĘ",
+    "tier_cooked": "UGOTOWANY",
+    "tier_downbad": "NA DNIE",
+    "tier_mid": "ŚREDNIAK"
   }
 }

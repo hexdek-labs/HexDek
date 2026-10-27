@@ -1592,5 +1592,24 @@
     "triggers": "{actor} の {name} が誘発した。",
     "activates": "{actor} が {name} を起動した。",
     "searches": "{actor} がライブラリーを探した。"
+  },
+  "lb": {
+    "doc_title": "HEXDEK ランキング",
+    "intro": "HexDek のライブレーティング。Hex Rating 順（勝率・対戦相手の強さ・直近性を組み合わせた TrueSkill 由来のスコア）。任意の行をクリックするとそのデッキのアーカイブが開きます — 解析、ガントレット結果、マッチアップ。上のブラケットで絞り込むか、別の列で並べ替えできます。",
+    "tape_left": "ランキング / {bracket} / ライブ順位",
+    "search_ph": "統率者または所有者を検索...",
+    "n_ranked": "ランク {count} 件",
+    "n_ranked_one": "ランク {count} 件",
+    "th_conf": "信頼度",
+    "awaiting_elo": "ELO データ待ち",
+    "shame_tape_left": "恥の壁 / {bracket} / 下位 {count}",
+    "shame_tape_mid": "マイナス ELO 名簿",
+    "rec_w": "{n}勝",
+    "rec_l": "{n}敗",
+    "tier_uninstall": "アンインストール",
+    "tier_packitup": "店じまい",
+    "tier_cooked": "終わった",
+    "tier_downbad": "どん底",
+    "tier_mid": "凡庸"
   }
 }

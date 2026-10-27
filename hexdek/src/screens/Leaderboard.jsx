@@ -8,24 +8,36 @@ import { useArtContrast } from '../hooks/useArtContrast'
 import { api, cardArtUrl } from '../services/api'
 import { countryFlagEmoji } from '../lib/flag'
 import ContextBox from '../components/ContextBox'
+import { useT, getLocale } from '../i18n'
 
+// A plain `label` survives only where the text stays English in all 25
+// locales: HexELO is a product term and TS μ is a symbol. Everything else
+// carries a catalog PATH worded at the render site, because a module-level
+// map of English is read once at module load and then never re-words on a
+// locale change -- the dominant defect of this whole program.
+//
+// All five paths are REUSED from screens that already settled this exact
+// column vocabulary; none of them is new.
 const SORT_KEYS = [
-  { key: 'hex_rating', label: 'HEXELO',  term: 'hexelo' },
-  { key: 'mu',         label: 'TS μ',    term: 'ts_mu' },
-  { key: 'games',      label: 'GAMES',   term: 'games' },
-  { key: 'win_rate',   label: 'WIN %',   term: 'win_rate' },
-  { key: 'wins',       label: 'WINS',    term: 'record' },
-  { key: 'losses',     label: 'LOSSES',  term: 'record' },
-  { key: 'delta',      label: 'DELTA',   term: 'delta' },
+  { key: 'hex_rating', label: 'HEXELO',            term: 'hexelo' },
+  { key: 'mu',         label: 'TS μ',              term: 'ts_mu' },
+  { key: 'games',      labelKey: 'deck.games',     term: 'games' },
+  { key: 'win_rate',   labelKey: 'tlm.th_winpct',  term: 'win_rate' },
+  { key: 'wins',       labelKey: 'rpt.wins',       term: 'record' },
+  { key: 'losses',     labelKey: 'rpt.losses',     term: 'record' },
+  { key: 'delta',      labelKey: 'crd.delta',      term: 'delta' },
 ]
 
+// B1-B5 are plates and stay English; only ALL is a word. Each row carries an
+// `id` because the React key used to be the LABEL -- keying a list on
+// translated text remounts the whole list on every locale change.
 const BRACKETS = [
-  { value: null, label: 'ALL' },
-  { value: 1, label: 'B1' },
-  { value: 2, label: 'B2' },
-  { value: 3, label: 'B3' },
-  { value: 4, label: 'B4' },
-  { value: 5, label: 'B5' },
+  { id: 'all', value: null, labelKey: 'common.all' },
+  { id: 'b1', value: 1, label: 'B1' },
+  { id: 'b2', value: 2, label: 'B2' },
+  { id: 'b3', value: 3, label: 'B3' },
+  { id: 'b4', value: 4, label: 'B4' },
+  { id: 'b5', value: 5, label: 'B5' },
 ]
 
 const BRACKET_KIND = { 1: undefined, 2: 'ok', 3: 'info', 4: 'warn', 5: 'danger' }
@@ -39,13 +51,20 @@ function BandTag({ band, bracket }) {
   )
 }
 
+// Returns a catalog PATH, not a word: this is a module-level pure function
+// with no translator, and its result is read at render time by ShameBadge.
+//
+// 'MID' here is the slang sense -- mediocre, unremarkable -- and is NOT
+// spec.gb_scale_mid, which is the board-SCALE mid (de MITTEL, ja 中). Two
+// concepts spelled the same in English, so reusing that key would have
+// rendered a deck insult as "medium-sized".
 function shameTier(rating) {
   const r = rating ?? 0
-  if (r <= -500) return { label: 'UNINSTALL', kind: 'bad' }
-  if (r <= -300) return { label: 'PACK IT UP', kind: 'bad' }
-  if (r <= -200) return { label: 'COOKED', kind: 'bad' }
-  if (r <= -100) return { label: 'DOWN BAD', kind: 'bad' }
-  if (r <= 0) return { label: 'MID', kind: 'warn' }
+  if (r <= -500) return { labelKey: 'lb.tier_uninstall', kind: 'bad' }
+  if (r <= -300) return { labelKey: 'lb.tier_packitup', kind: 'bad' }
+  if (r <= -200) return { labelKey: 'lb.tier_cooked', kind: 'bad' }
+  if (r <= -100) return { labelKey: 'lb.tier_downbad', kind: 'bad' }
+  if (r <= 0) return { labelKey: 'lb.tier_mid', kind: 'warn' }
   return null
 }
 
@@ -56,6 +75,7 @@ function shameTier(rating) {
 // is positive contradicts the leaderboard's own ranking — only fire when
 // BOTH metrics agree the deck is underperforming.
 function ShameBadge({ rating, hexRating }) {
+  const t = useT()
   // Suppress badge when the hex_rating signal says the deck is fine.
   // 600 is the rough "median deck" threshold (range usually 0-2500).
   if (hexRating != null && hexRating > 600) return null
@@ -63,7 +83,7 @@ function ShameBadge({ rating, hexRating }) {
   if (!tier) return null
   return (
     <Tag kind={tier.kind} solid style={{ fontSize: 8, padding: '1px 4px', marginLeft: 4 }}>
-      {tier.label}
+      {t(tier.labelKey)}
     </Tag>
   )
 }
@@ -78,17 +98,25 @@ function DeltaDisplay({ delta }) {
   )
 }
 
+// The W and L are real strings, not glyphs, and this app already translates
+// them: dash.kpi_games_sub carries a settled pair per locale (cs V/P, de S/N,
+// ja 勝/敗, ru П/Пр). Each side is a FRAGMENT rather than a bare letter so a
+// locale can put its word in front of the number -- th reads 'ชนะ {n}'.
+// Two separate keys because the two halves render in different colours, so a
+// single composed value could not be reused.
 function RecordDisplay({ wins, losses }) {
+  const t = useT()
   return (
     <span>
-      <span style={{ color: 'var(--ok)' }}>{wins.toLocaleString()}W</span>
+      <span style={{ color: 'var(--ok)' }}>{t('lb.rec_w', { n: wins.toLocaleString() })}</span>
       <span className="muted-2"> - </span>
-      <span style={{ color: 'var(--danger)' }}>{losses.toLocaleString()}L</span>
+      <span style={{ color: 'var(--danger)' }}>{t('lb.rec_l', { n: losses.toLocaleString() })}</span>
     </span>
   )
 }
 
 export default function Leaderboard() {
+  const t = useT()
   const [searchParams, setSearchParams] = useSearchParams()
   const view = searchParams.get('view') === 'meta' ? 'meta' : 'rankings'
   const setView = (v) => {
@@ -101,8 +129,8 @@ export default function Leaderboard() {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, padding: '10px 18px 0', alignItems: 'center' }}>
-        <Tag solid={view === 'rankings'} onClick={() => setView('rankings')} style={{ cursor: 'pointer' }}>RANKINGS</Tag>
-        <Tag solid={view === 'meta'} onClick={() => setView('meta')} style={{ cursor: 'pointer' }}>META</Tag>
+        <Tag solid={view === 'rankings'} onClick={() => setView('rankings')} style={{ cursor: 'pointer' }}>{t('nav.leaderboard')}</Tag>
+        <Tag solid={view === 'meta'} onClick={() => setView('meta')} style={{ cursor: 'pointer' }}>{t('nav.meta')}</Tag>
       </div>
       {view === 'meta' ? <Meta /> : <LeaderboardContent />}
     </>
@@ -110,9 +138,14 @@ export default function Leaderboard() {
 }
 
 function LeaderboardContent() {
+  const t = useT()
+  // Depends on the locale STRING, not on `t`: useT returns the stable
+  // module-level translator, so `[t]` would never re-fire and the tab title
+  // would keep whatever language it was mounted in.
+  const locale = getLocale()
   useEffect(() => {
-    document.title = 'HEXDEK Leaderboard'
-  }, [])
+    document.title = t('lb.doc_title')
+  }, [locale, t])
 
   const [filter, setFilter] = useState('')
   const [sortKey, setSortKey] = useState('hex_rating')
@@ -211,16 +244,19 @@ function LeaderboardContent() {
     }
   }
 
-  const bracketLabel = bracket != null ? `B${bracket}` : 'ALL'
+  // B{n} is a plate and stays English; ALL is a word.
+  const bracketLabel = bracket != null ? `B${bracket}` : t('common.all')
 
   return (
     <>
-      <Tape left={`LEADERBOARD / ${bracketLabel} / LIVE RANKINGS`} mid={`${sorted.length} DECKS`} right="DOC HX-500" />
+      <Tape
+        left={t('lb.tape_left', { bracket: bracketLabel })}
+        mid={t(sorted.length === 1 ? 'deckpower.decks_one' : 'deckpower.decks', { count: sorted.length })}
+        right="DOC HX-500"
+      />
 
       <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <ContextBox id="leaderboard.intro">
-          Live HexDek ratings, ranked by Hex Rating (a TrueSkill-derived score combining win rate, opponent strength, and recency). Click any row to open that deck's archive — analysis, gauntlet results, matchups. Filter by bracket above or sort by a different column.
-        </ContextBox>
+        <ContextBox id="leaderboard.intro">{t('lb.intro')}</ContextBox>
         {/* Search + Sort controls */}
         <div className="lb-search-row" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="panel" style={{ padding: 0, flex: 1, minWidth: 200, borderStyle: filter ? 'solid' : 'dashed' }}>
@@ -228,7 +264,7 @@ function LeaderboardContent() {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="SEARCH COMMANDER OR OWNER..."
+              placeholder={t('lb.search_ph')}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -243,23 +279,25 @@ function LeaderboardContent() {
               }}
             />
           </div>
-          <span className="t-xs muted">{sorted.length} RANKED</span>
+          <span className="t-xs muted">
+            {t(sorted.length === 1 ? 'lb.n_ranked_one' : 'lb.n_ranked', { count: sorted.length })}
+          </span>
         </div>
 
         {/* Bracket filter */}
         <div className="lb-sort-bar" style={{ alignItems: 'center', gap: 8 }}>
           <GlossaryTerm term="bracket" compact>
-            <span className="t-xs muted">BRACKET</span>
+            <span className="t-xs muted">{t('deck.bracket')}</span>
           </GlossaryTerm>
           {BRACKETS.map(b => (
             <Tag
-              key={b.label}
+              key={b.id}
               kind={bracket === b.value ? (BRACKET_KIND[b.value] || 'ok') : undefined}
               solid={bracket === b.value}
               onClick={() => setBracket(b.value)}
               style={{ cursor: 'pointer', fontSize: 9 }}
             >
-              {b.label}
+              {b.labelKey ? t(b.labelKey) : b.label}
             </Tag>
           ))}
         </div>
@@ -274,7 +312,7 @@ function LeaderboardContent() {
               onClick={() => handleSort(sk.key)}
               style={{ cursor: 'pointer', fontSize: 9 }}
             >
-              {sk.label}{sortArrow(sk.key)}
+              {sk.labelKey ? t(sk.labelKey) : sk.label}{sortArrow(sk.key)}
             </Tag>
           ))}
         </div>
@@ -285,8 +323,8 @@ function LeaderboardContent() {
             <thead>
               <tr>
                 <th className="lb-th lb-th--rank">#</th>
-                <th className="lb-th lb-th--cmdr">COMMANDER</th>
-                <th className="lb-th lb-th--owner">OWNER</th>
+                <th className="lb-th lb-th--cmdr">{t('common.commander')}</th>
+                <th className="lb-th lb-th--owner">{t('deck.owner')}</th>
                 {SORT_KEYS.map(sk => (
                   <th
                     key={sk.key}
@@ -295,17 +333,17 @@ function LeaderboardContent() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <GlossaryTerm term={sk.term} compact>
                         <span onClick={() => handleSort(sk.key)} style={{ cursor: 'pointer' }}>
-                          {sk.label}{sortArrow(sk.key)}
+                          {sk.labelKey ? t(sk.labelKey) : sk.label}{sortArrow(sk.key)}
                         </span>
                       </GlossaryTerm>
                     </span>
                   </th>
                 ))}
                 <th className="lb-th lb-th--conf">
-                  <GlossaryTerm term="confidence" compact>CONF</GlossaryTerm>
+                  <GlossaryTerm term="confidence" compact>{t('lb.th_conf')}</GlossaryTerm>
                 </th>
                 <th className="lb-th lb-th--record">
-                  <GlossaryTerm term="record" compact>RECORD</GlossaryTerm>
+                  <GlossaryTerm term="record" compact>{t('deck.record')}</GlossaryTerm>
                 </th>
               </tr>
             </thead>
@@ -331,7 +369,7 @@ function LeaderboardContent() {
                         style={{ cursor: 'pointer', color: 'var(--ink-2)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                       >
                         {flagFor(entry.owner) && (
-                          <span aria-label={`Country: ${countries[entry.owner]}`} style={{ fontSize: 13, lineHeight: 1 }}>
+                          <span aria-label={t('op.country_aria', { code: countries[entry.owner] })} style={{ fontSize: 13, lineHeight: 1 }}>
                             {flagFor(entry.owner)}
                           </span>
                         )}
@@ -365,8 +403,8 @@ function LeaderboardContent() {
           {sorted.length === 0 && (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>
               {elo?.length === 0
-                ? <>&gt; AWAITING ELO DATA<span className="blink">_</span></>
-                : <>&gt; NO MATCHES FOUND</>
+                ? <>&gt; {t('lb.awaiting_elo')}<span className="blink">_</span></>
+                : <>&gt; {t('cmp.no_matches')}</>
               }
             </div>
           )}
@@ -388,8 +426,8 @@ function LeaderboardContent() {
           {sorted.length === 0 && (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>
               {elo?.length === 0
-                ? <>&gt; AWAITING ELO DATA<span className="blink">_</span></>
-                : <>&gt; NO MATCHES FOUND</>
+                ? <>&gt; {t('lb.awaiting_elo')}<span className="blink">_</span></>
+                : <>&gt; {t('cmp.no_matches')}</>
               }
             </div>
           )}
@@ -398,8 +436,8 @@ function LeaderboardContent() {
         {wallOfShame.length > 0 && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Tape
-              left={`WALL OF SHAME / ${bracketLabel} / BOTTOM ${wallOfShame.length}`}
-              mid="NEGATIVE ELO REGISTRY"
+              left={t('lb.shame_tape_left', { bracket: bracketLabel, count: wallOfShame.length })}
+              mid={t('lb.shame_tape_mid')}
               right="DOC HX-666"
             />
             <div className="panel" style={{ padding: 0 }}>
@@ -432,7 +470,7 @@ function LeaderboardContent() {
                         style={{ cursor: 'pointer', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
                         {flagFor(entry.owner) && (
-                          <span aria-label={`Country: ${countries[entry.owner]}`} style={{ fontSize: 12, lineHeight: 1 }}>
+                          <span aria-label={t('op.country_aria', { code: countries[entry.owner] })} style={{ fontSize: 12, lineHeight: 1 }}>
                             {flagFor(entry.owner)}
                           </span>
                         )}
@@ -459,6 +497,7 @@ function LeaderboardContent() {
 // LeaderboardMobileCard — extracted so useArtContrast can run per-row.
 // data-art-contrast adapts overlays to bright vs dark commander art.
 function LeaderboardMobileCard({ entry, index, flagFor, countries, navigate, onClick }) {
+  const t = useT()
   const artUrl = cardArtUrl(entry.commander_card || entry.commander)
   const artContrast = useArtContrast(artUrl)
   return (
@@ -504,7 +543,7 @@ function LeaderboardMobileCard({ entry, index, flagFor, countries, navigate, onC
                   style={{ cursor: 'pointer', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 >
                   {flagFor(entry.owner) && (
-                    <span aria-label={`Country: ${countries[entry.owner]}`} style={{ fontSize: 12, lineHeight: 1 }}>
+                    <span aria-label={t('op.country_aria', { code: countries[entry.owner] })} style={{ fontSize: 12, lineHeight: 1 }}>
                       {flagFor(entry.owner)}
                     </span>
                   )}
@@ -520,7 +559,9 @@ function LeaderboardMobileCard({ entry, index, flagFor, countries, navigate, onC
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="t-xs muted">{(entry.games || 0).toLocaleString()} GAMES</span>
+              <span className="t-xs muted">
+                {t((entry.games || 0) === 1 ? 'shelf.games_one' : 'shelf.games', { count: (entry.games || 0).toLocaleString() })}
+              </span>
               <DeltaDisplay delta={entry.delta} />
             </div>
           </div>

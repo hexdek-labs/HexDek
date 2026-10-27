@@ -1592,5 +1592,24 @@
     "triggers": "{actor}, {name} tetikliyor.",
     "activates": "{actor}, {name} etkinleştiriyor.",
     "searches": "{actor} kütüphanesinde arama yapıyor."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Sıralama",
+    "intro": "Canlı HexDek puanları, Hex Rating sırasına göre (kazanma oranı, rakip gücü ve sonuçların güncelliğini birleştiren, TrueSkill türevi bir puan). Bir destenin arşivini açmak için herhangi bir satıra tıklayın — analiz, gauntlet sonuçları, eşleşmeler. Yukarıdan seviyeye göre filtreleyin veya başka bir sütuna göre sıralayın.",
+    "tape_left": "SIRALAMA / {bracket} / CANLI SIRALAR",
+    "search_ph": "KOMUTAN VEYA SAHİP ARA...",
+    "n_ranked": "{count} SIRALANDI",
+    "n_ranked_one": "{count} SIRALANDI",
+    "th_conf": "GÜVEN.",
+    "awaiting_elo": "ELO VERİSİ BEKLENİYOR",
+    "shame_tape_left": "UTANÇ DUVARI / {bracket} / EN ALTTAKİ {count}",
+    "shame_tape_mid": "NEGATİF ELO KAYDI",
+    "rec_w": "{n}G",
+    "rec_l": "{n}M",
+    "tier_uninstall": "KALDIR GİTSİN",
+    "tier_packitup": "TOPLA GİT",
+    "tier_cooked": "YANDI",
+    "tier_downbad": "DİBE VURDU",
+    "tier_mid": "VASAT"
   }
 }

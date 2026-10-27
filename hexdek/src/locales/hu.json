@@ -1592,5 +1592,24 @@
     "triggers": "{actor} kiváltja: {name}.",
     "activates": "{actor} aktiválja: {name}.",
     "searches": "{actor} átkutatja a könyvtárát."
+  },
+  "lb": {
+    "doc_title": "HEXDEK Rangsor",
+    "intro": "Élő HexDek-értékelések, Hex Rating szerint rendezve (TrueSkillből származtatott pontszám, amely a győzelmi arányt, az ellenfelek erejét és az eredmények frissességét ötvözi). Kattints bármelyik sorra a pakli archívumának megnyitásához — elemzés, gauntlet-eredmények, párosítások. Fentebb szűrj szint szerint, vagy rendezz másik oszlop alapján.",
+    "tape_left": "RANGSOR / {bracket} / ÉLŐ HELYEZÉSEK",
+    "search_ph": "VEZÉR VAGY TULAJDONOS KERESÉSE...",
+    "n_ranked": "{count} RANGSOROLT",
+    "n_ranked_one": "{count} RANGSOROLT",
+    "th_conf": "MEGB.",
+    "awaiting_elo": "ELO-ADATOKRA VÁRVA",
+    "shame_tape_left": "SZÉGYENFAL / {bracket} / UTOLSÓ {count}",
+    "shame_tape_mid": "NEGATÍV ELO NYILVÁNTARTÁS",
+    "rec_w": "{n}GY",
+    "rec_l": "{n}V",
+    "tier_uninstall": "TÖRÖLD LE",
+    "tier_packitup": "PAKOLJ ÖSSZE",
+    "tier_cooked": "MEGFŐTT",
+    "tier_downbad": "A MÉLYPONTON",
+    "tier_mid": "ÁTLAGOS"
   }
 }

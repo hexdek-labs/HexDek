@@ -1592,5 +1592,24 @@
     "triggers": "{actor}의 {name}이(가) 유발됩니다.",
     "activates": "{actor}이(가) {name}을(를) 활성화합니다.",
     "searches": "{actor}이(가) 자신의 라이브러리를 찾습니다."
+  },
+  "lb": {
+    "doc_title": "HEXDEK 순위",
+    "intro": "실시간 HexDek 레이팅, Hex Rating 기준 정렬(승률, 상대 강도, 최신성을 결합한 TrueSkill 기반 점수). 아무 행이나 클릭하면 해당 덱의 아카이브가 열립니다 — 분석, 건틀릿 결과, 매치업. 위에서 등급으로 필터링하거나 다른 열로 정렬하세요.",
+    "tape_left": "순위 / {bracket} / 실시간 순위",
+    "search_ph": "커맨더 또는 소유자 검색...",
+    "n_ranked": "{count}개 순위",
+    "n_ranked_one": "{count}개 순위",
+    "th_conf": "신뢰도",
+    "awaiting_elo": "ELO 데이터 대기 중",
+    "shame_tape_left": "수치의 벽 / {bracket} / 최하위 {count}",
+    "shame_tape_mid": "마이너스 ELO 명부",
+    "rec_w": "{n}승",
+    "rec_l": "{n}패",
+    "tier_uninstall": "게임 삭제해라",
+    "tier_packitup": "짐 싸라",
+    "tier_cooked": "망했다",
+    "tier_downbad": "바닥이다",
+    "tier_mid": "평범"
   }
 }
