@@ -37,7 +37,9 @@
     "copied": "コピー完了！",
     "loading": "読み込み中",
     "saving": "保存中...",
-    "analyzing": "解析中..."
+    "analyzing": "解析中...",
+    "all": "すべて",
+    "close": "閉じる"
   },
   "deck": {
     "owner": "所有者",
@@ -216,5 +218,89 @@
     "fishtank_standby": "待機中",
     "fishtank_scroll": "スクロールでライブ配信を読み込み",
     "fishtank_loading": "フィッシュタンクを読み込み中"
+  },
+  "chip": {
+    "multi": "多色"
+  },
+  "ctx": {
+    "dismiss_aria": "このヘルプを閉じる",
+    "dismiss_title": "閉じる — 次回から表示しません"
+  },
+  "shelf": {
+    "add_deck": "デッキを追加",
+    "add_hint": "リストを貼り付けてください。Freya が数秒で解析します。",
+    "no_art": "アートなし",
+    "version": "V{n} / {total}",
+    "cards": "{count} 枚",
+    "cards_one": "{count} 枚",
+    "unrated": "レーティングなし",
+    "games": "{count} 戦",
+    "games_one": "{count} 戦"
+  },
+  "decks": {
+    "tape_mine": "デッキアーカイブ / / 自分のビルド",
+    "tape_all": "デッキアーカイブ / / すべてのビルド",
+    "tape_count": "{shown} / {total} 件",
+    "intro_1": "プラットフォーム上のすべてのデッキを閲覧・検索できます。デッキをクリックすると、解析・ガントレット結果・デッキリスト・マッチアップのアーカイブが開きます。",
+    "intro_2": "{action}（リスト表示、または棚のアップロードタイル）から Moxfield のリンクを取り込むか、リストを貼り付けてください。アップロード後、Freya が自動で解析します。",
+    "ctx_import": "下をクリックしてデッキを取り込みます。Moxfield の URL か、素のデッキリストを貼り付けてください。Freya が自動で解析し（約 10〜20 秒）、新しいデッキのページへ移動します。",
+    "filter_label": "フィルター：",
+    "chip_owner": "オーナー · {name}",
+    "chip_contains": "含む · {text}",
+    "tab_all": "すべてのデッキ",
+    "legal": "適正",
+    "illegal": "不適正",
+    "search_placeholder": "デッキを検索...",
+    "search_aria": "デッキを検索",
+    "matches": "{count} 件",
+    "matches_one": "{count} 件",
+    "view_shelf": "棚",
+    "view_list": "リスト",
+    "aria_bracket": "ブラケットフィルター",
+    "aria_color": "色フィルター",
+    "aria_archetype": "アーキタイプフィルター",
+    "legend_color": "色",
+    "loading": "デッキアーカイブを読み込み中",
+    "showing_cap": "60 / {total} 件を表示 — さらに見るには検索を絞ってください",
+    "col_name": "名前",
+    "col_commander": "統率者",
+    "col_elo": "ELO",
+    "sort_by": "{field}で並べ替え"
+  },
+  "deckpower": {
+    "title": "マイコレクション / / パワーティア分布",
+    "decks": "{count} デッキ",
+    "decks_one": "{count} デッキ",
+    "no_data_aria": "ブラケットのデータなし",
+    "no_tier_data": "— ティアのデータなし —",
+    "seg_title": "{label} — {count}（{pct}%）",
+    "no_brackets": "ブラケットはまだありません — Freya を実行して生成してください",
+    "peak": "あなたのコレクションの中心は {label} です（{count} デッキ · {pct}%）",
+    "peak_one": "あなたのコレクションの中心は {label} です（{count} デッキ · {pct}%）",
+    "top_archetypes": "主なアーキタイプ：",
+    "tier_b1": "B1 · カジュアル",
+    "tier_b2": "B2 · 方向性あり",
+    "tier_b3": "B3 · 最適化",
+    "tier_b4": "B4 · ハイパワー",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "不明"
+  },
+  "quickpaste": {
+    "toggle": "デッキリストをすばやく貼り付け",
+    "title": "クイック貼り付け / / 素のデッキリスト",
+    "placeholder": "デッキリストを貼り付けてください。\"1 Sol Ring\"、\"1x Sol Ring (CMM) 339\"、\"Commander: Atraxa, Praetors' Voice\"、サイドボードの見出し、# で始まるコメントに対応しています…",
+    "parsed": "読み取り：{count} 枚 · {unique} 種類",
+    "parsed_one": "読み取り：{count} 枚 · {unique} 種類",
+    "commander": "統率者：",
+    "multiples": "基本でないカードの複数枚が見つかりました",
+    "aria_commander": "統率者",
+    "cmdr_override": "統率者：{name} — 入力すると上書きできます",
+    "cmdr_placeholder": "統率者（任意 — カード名を正確に入力）",
+    "name_default": "デッキ名（既定：{name}）",
+    "name_placeholder": "デッキ名",
+    "importing": "取り込み中…",
+    "submit": "取り込み + 解析",
+    "toast_imported": "デッキを取り込みました",
+    "err_failed": "取り込みに失敗しました"
   }
 }

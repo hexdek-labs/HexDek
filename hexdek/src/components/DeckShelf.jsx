@@ -1,22 +1,23 @@
 import { cardArtUrl } from '../services/api'
 import { useArtContrast } from '../hooks/useArtContrast'
+import { useT } from '../i18n'
 
-// Compact game-count formatter: 30957 → "31K", 1234567 → "1.2M". Used
-// on deck tiles where the raw int blows the row width on mobile.
+// Compact game-count formatter: 30957 → "31K", 1234567 → "1.2M". Returns
+// the number alone — the caller wraps it in the translated "{count} GAMES"
+// so the word order and the plural form stay the translator's call.
 function humanizeGames(n) {
-  if (n == null) return '—'
-  if (n < 1000) return `${n} GAMES`
+  if (n < 1000) return `${n}`
   if (n < 100_000) {
     const k = (n / 1000).toFixed(1).replace(/\.0$/, '')
     // 99999 → "100.0" → "100" — fold into the >=100K branch so the
     // visual category lines up with the numeric value.
-    if (k === '100') return `100K GAMES`
-    return `${k}K GAMES`
+    if (k === '100') return '100K'
+    return `${k}K`
   }
   // Round to the nearest thousand, but promote to M once we hit 1000K
   // so 999500 renders as "1M" instead of the broken "1000K".
-  if (n < 999_500) return `${Math.round(n / 1000)}K GAMES`
-  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M GAMES`
+  if (n < 999_500) return `${Math.round(n / 1000)}K`
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
 }
 
 // DeckShelf — grid of commander-art deck tiles. Used by DeckList (with
@@ -40,6 +41,7 @@ export function deckBracketLabel(d) {
 }
 
 function UploadShelfCard({ onClick }) {
+  const t = useT()
   return (
     <div
       onClick={onClick}
@@ -75,15 +77,16 @@ function UploadShelfCard({ onClick }) {
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
         color: 'var(--ink)',
-      }}>ADD YOUR DECK</div>
+      }}>{t('shelf.add_deck')}</div>
       <div className="t-xs muted" style={{ marginTop: 6, lineHeight: 1.4 }}>
-        PASTE A LIST. FREYA<br />ANALYZES IN SECONDS.
+        {t('shelf.add_hint')}
       </div>
     </div>
   )
 }
 
 function DeckShelfCard({ deck: d, deckElo, navigate, siblingIndex, siblingCount }) {
+  const t = useT()
   const cmdrName = d.commander_card || d.commander
   const bracketLabel = deckBracketLabel(d)
   const deckKey = `${d.owner}/${d.id}`
@@ -138,7 +141,7 @@ function DeckShelfCard({ deck: d, deckElo, navigate, siblingIndex, siblingCount 
             }}
           />
         ) : (
-          <span style={{ position: 'absolute', top: 6, left: 8, fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>NO ART</span>
+          <span style={{ position: 'absolute', top: 6, left: 8, fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>{t('shelf.no_art')}</span>
         )}
         <div
           style={{
@@ -236,7 +239,7 @@ function DeckShelfCard({ deck: d, deckElo, navigate, siblingIndex, siblingCount 
                   textShadow: 'none',
                 }}
               >
-                V{siblingIndex + 1} OF {siblingCount}
+                {t('shelf.version', { n: siblingIndex + 1, total: siblingCount })}
               </span>
             </div>
           )}
@@ -256,7 +259,11 @@ function DeckShelfCard({ deck: d, deckElo, navigate, siblingIndex, siblingCount 
           letterSpacing: '0.06em',
         }}
       >
-        <span className="muted" style={{ minWidth: 0, whiteSpace: 'nowrap' }}>{d.card_count || d.cardCount || 0} CARDS</span>
+        <span className="muted" style={{ minWidth: 0, whiteSpace: 'nowrap' }}>
+          {(d.card_count || d.cardCount || 0) === 1
+            ? t('shelf.cards_one', { count: 1 })
+            : t('shelf.cards', { count: d.card_count || d.cardCount || 0 })}
+        </span>
         {deckElo && deckElo.games > 0 ? (
           <span style={{ minWidth: 0, whiteSpace: 'nowrap', textAlign: 'right' }}>
             <span style={{ fontWeight: 700 }}>{Math.round(deckElo.rating)}</span>
@@ -265,10 +272,14 @@ function DeckShelfCard({ deck: d, deckElo, navigate, siblingIndex, siblingCount 
               {deckElo.win_rate != null ? `${Math.round(deckElo.win_rate)}%` : '—'}
             </span>
             <span className="muted"> · </span>
-            <span className="muted">{humanizeGames(deckElo.games)}</span>
+            <span className="muted">
+              {deckElo.games === 1
+                ? t('shelf.games_one', { count: 1 })
+                : t('shelf.games', { count: humanizeGames(deckElo.games) })}
+            </span>
           </span>
         ) : (
-          <span className="muted">UNRATED</span>
+          <span className="muted">{t('shelf.unrated')}</span>
         )}
       </div>
     </div>

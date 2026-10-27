@@ -18,7 +18,7 @@ export function deckBracketInt(d) {
 }
 
 export const BRACKET_CHIPS = [
-  { id: 'all', label: 'ALL' },
+  { id: 'all', label: 'ALL', labelKey: 'common.all' },
   { id: 'b1', label: 'B1', bracket: 1 },
   { id: 'b2', label: 'B2', bracket: 2 },
   { id: 'b3', label: 'B3', bracket: 3 },
@@ -66,14 +66,14 @@ export function deckColorIdentity(d) {
 }
 
 export const COLOR_CHIPS = [
-  { id: 'all', label: 'ALL' },
+  { id: 'all', label: 'ALL', labelKey: 'common.all' },
   { id: 'w', label: 'W', color: 'W' },
   { id: 'u', label: 'U', color: 'U' },
   { id: 'b', label: 'B', color: 'B' },
   { id: 'r', label: 'R', color: 'R' },
   { id: 'g', label: 'G', color: 'G' },
   { id: 'colorless', label: 'C' },
-  { id: 'multi', label: 'MULTI' },
+  { id: 'multi', label: 'MULTI', labelKey: 'chip.multi' },
 ]
 
 export function matchesColorChip(d, chipId) {
@@ -91,8 +91,14 @@ export function matchesColorChip(d, chipId) {
 // Mirrors the chip list DeckList.jsx already used (kept here so the three
 // filter axes live in one module). `match` runs against a lowercased
 // archetype string; "all" always matches.
+//
+// A chip renders `labelKey` through the catalog when it has one. The
+// archetype names deliberately don't: AGGRO / COMBO / STAX / VOLTRON are
+// Magic jargon the community uses in English in every locale, the same
+// rule card names follow. Single mana letters (W/U/B/R/G) and the B1–B5
+// bracket codes are symbols, so they don't get a key either.
 export const ARCHETYPE_CHIPS = [
-  { id: 'all', label: 'ALL', match: () => true },
+  { id: 'all', label: 'ALL', labelKey: 'common.all', match: () => true },
   { id: 'aggro', label: 'AGGRO', match: (a) => a.includes('aggro') },
   { id: 'combo', label: 'COMBO', match: (a) => a.includes('combo') || a.includes('storm') },
   { id: 'control', label: 'CONTROL', match: (a) => a.includes('control') },

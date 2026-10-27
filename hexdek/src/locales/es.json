@@ -37,7 +37,9 @@
     "copied": "¡COPIADO!",
     "loading": "CARGANDO",
     "saving": "GUARDANDO...",
-    "analyzing": "ANALIZANDO..."
+    "analyzing": "ANALIZANDO...",
+    "all": "TODO",
+    "close": "CERRAR"
   },
   "deck": {
     "owner": "PROPIETARIO",
@@ -216,5 +218,89 @@
     "fishtank_standby": "EN ESPERA",
     "fishtank_scroll": "DESPLÁZATE PARA CARGAR EL DIRECTO",
     "fishtank_loading": "CARGANDO LA PECERA"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Descartar este cuadro de ayuda",
+    "dismiss_title": "Descartar — no volverá a aparecer"
+  },
+  "shelf": {
+    "add_deck": "AÑADE TU MAZO",
+    "add_hint": "PEGA UNA LISTA. FREYA LA ANALIZA EN SEGUNDOS.",
+    "no_art": "SIN ARTE",
+    "version": "V{n} DE {total}",
+    "cards": "{count} CARTAS",
+    "cards_one": "{count} CARTA",
+    "unrated": "SIN CLASIFICAR",
+    "games": "{count} PARTIDAS",
+    "games_one": "{count} PARTIDA"
+  },
+  "decks": {
+    "tape_mine": "ARCHIVO DE MAZOS / / MIS CONSTRUCCIONES",
+    "tape_all": "ARCHIVO DE MAZOS / / TODAS LAS CONSTRUCCIONES",
+    "tape_count": "{shown} / {total} EN TOTAL",
+    "intro_1": "Explora y busca cualquier mazo de la plataforma. Haz clic en uno para abrir su archivo: análisis, resultados de gauntlet, lista y emparejamientos.",
+    "intro_2": "Usa {action} (en la vista de lista o en la casilla de subida de la estantería) para importar un enlace de Moxfield o pegar una lista; Freya la analiza automáticamente tras la subida.",
+    "ctx_import": "Haz clic abajo para importar un mazo: pega una URL de Moxfield o una lista en texto. Freya la analiza automáticamente (~10–20 segundos) y luego te lleva a la página del nuevo mazo.",
+    "filter_label": "FILTRO:",
+    "chip_owner": "PROPIETARIO · {name}",
+    "chip_contains": "CONTIENE · {text}",
+    "tab_all": "TODOS LOS MAZOS",
+    "legal": "LEGAL",
+    "illegal": "ILEGAL",
+    "search_placeholder": "BUSCAR MAZOS...",
+    "search_aria": "Buscar mazos",
+    "matches": "{count} COINCIDENCIAS",
+    "matches_one": "{count} COINCIDENCIA",
+    "view_shelf": "ESTANTERÍA",
+    "view_list": "LISTA",
+    "aria_bracket": "Filtro de bracket",
+    "aria_color": "Filtro de color",
+    "aria_archetype": "Filtro de arquetipo",
+    "legend_color": "COLOR",
+    "loading": "CARGANDO ARCHIVO DE MAZOS",
+    "showing_cap": "MOSTRANDO 60 / {total} — AFINA LA BÚSQUEDA PARA VER MÁS",
+    "col_name": "NOMBRE",
+    "col_commander": "COMANDANTE",
+    "col_elo": "ELO",
+    "sort_by": "Ordenar por {field}"
+  },
+  "deckpower": {
+    "title": "MI COLECCIÓN / / DISTRIBUCIÓN POR NIVEL DE PODER",
+    "decks": "{count} MAZOS",
+    "decks_one": "{count} MAZO",
+    "no_data_aria": "Sin datos de bracket",
+    "no_tier_data": "— SIN DATOS DE NIVEL —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "AÚN NO HAY BRACKETS — EJECUTA FREYA PARA RELLENARLOS",
+    "peak": "TU COLECCIÓN SE CONCENTRA EN {label} ({count} MAZOS · {pct}%)",
+    "peak_one": "TU COLECCIÓN SE CONCENTRA EN {label} ({count} MAZO · {pct}%)",
+    "top_archetypes": "ARQUETIPOS PRINCIPALES:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · ENFOCADO",
+    "tier_b3": "B3 · OPTIMIZADO",
+    "tier_b4": "B4 · ALTA POTENCIA",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "DESCONOCIDO"
+  },
+  "quickpaste": {
+    "toggle": "PEGADO RÁPIDO DE UNA LISTA",
+    "title": "PEGADO RÁPIDO / / LISTA EN TEXTO",
+    "placeholder": "Pega una lista de mazo. Admite \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", secciones de sideboard y comentarios con #…",
+    "parsed": "ANALIZADO: {count} CARTAS · {unique} ÚNICAS",
+    "parsed_one": "ANALIZADO: {count} CARTA · {unique} ÚNICA",
+    "commander": "COMANDANTE:",
+    "multiples": "SE DETECTARON COPIAS MÚLTIPLES DE UNA NO BÁSICA",
+    "aria_commander": "Comandante",
+    "cmdr_override": "Comandante: {name} — escribe para cambiarlo",
+    "cmdr_placeholder": "Comandante (opcional — escribe el nombre exacto de la carta)",
+    "name_default": "Nombre del mazo (por defecto {name})",
+    "name_placeholder": "Nombre del mazo",
+    "importing": "IMPORTANDO…",
+    "submit": "IMPORTAR + ANALIZAR",
+    "toast_imported": "MAZO IMPORTADO",
+    "err_failed": "FALLÓ LA IMPORTACIÓN"
   }
 }

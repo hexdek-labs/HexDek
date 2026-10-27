@@ -37,7 +37,9 @@
     "copied": "KOPIERAT!",
     "loading": "LADDAR",
     "saving": "SPARAR...",
-    "analyzing": "ANALYSERAR..."
+    "analyzing": "ANALYSERAR...",
+    "all": "ALLA",
+    "close": "STÄNG"
   },
   "deck": {
     "owner": "ÄGARE",
@@ -216,5 +218,89 @@
     "fishtank_standby": "STANDBY",
     "fishtank_scroll": "SKROLLA FÖR ATT LADDA LIVEFLÖDET",
     "fishtank_loading": "LADDAR FISHTANK"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Dölj den här hjälprutan",
+    "dismiss_title": "Dölj — visas inte igen"
+  },
+  "shelf": {
+    "add_deck": "LÄGG TILL DIN LEK",
+    "add_hint": "KLISTRA IN EN LISTA. FREYA ANALYSERAR DEN PÅ SEKUNDER.",
+    "no_art": "INGEN BILD",
+    "version": "V{n} AV {total}",
+    "cards": "{count} KORT",
+    "cards_one": "{count} KORT",
+    "unrated": "OSEEDAD",
+    "games": "{count} MATCHER",
+    "games_one": "{count} MATCH"
+  },
+  "decks": {
+    "tape_mine": "LEKARKIV / / MINA BYGGEN",
+    "tape_all": "LEKARKIV / / ALLA BYGGEN",
+    "tape_count": "{shown} / {total} TOTALT",
+    "intro_1": "Bläddra och sök bland alla lekar på plattformen. Klicka på en lek för att öppna dess arkiv: analys, gauntletresultat, leklista och matchups.",
+    "intro_2": "Använd {action} (i listvyn eller uppladdningsrutan i hyllan) för att importera en Moxfield-länk eller klistra in en lista; Freya analyserar den automatiskt efter uppladdningen.",
+    "ctx_import": "Klicka nedan för att importera en lek: klistra in en Moxfield-URL eller en ren leklista. Freya analyserar den automatiskt (~10–20 sekunder) och skickar dig sedan till den nya leksidan.",
+    "filter_label": "FILTER:",
+    "chip_owner": "ÄGARE · {name}",
+    "chip_contains": "INNEHÅLLER · {text}",
+    "tab_all": "ALLA LEKAR",
+    "legal": "LAGLIG",
+    "illegal": "OLAGLIG",
+    "search_placeholder": "SÖK LEKAR...",
+    "search_aria": "Sök lekar",
+    "matches": "{count} TRÄFFAR",
+    "matches_one": "{count} TRÄFF",
+    "view_shelf": "HYLLA",
+    "view_list": "LISTA",
+    "aria_bracket": "Bracketfilter",
+    "aria_color": "Färgfilter",
+    "aria_archetype": "Arketypfilter",
+    "legend_color": "FÄRG",
+    "loading": "LADDAR LEKARKIVET",
+    "showing_cap": "VISAR 60 / {total} — FÖRFINA SÖKNINGEN FÖR FLER",
+    "col_name": "NAMN",
+    "col_commander": "COMMANDER",
+    "col_elo": "ELO",
+    "sort_by": "Sortera efter {field}"
+  },
+  "deckpower": {
+    "title": "MIN SAMLING / / FÖRDELNING EFTER STYRKENIVÅ",
+    "decks": "{count} LEKAR",
+    "decks_one": "{count} LEK",
+    "no_data_aria": "Inga bracketdata",
+    "no_tier_data": "— INGA NIVÅDATA —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "INGA BRACKETS ÄN — KÖR FREYA FÖR ATT FYLLA PÅ",
+    "peak": "DIN SAMLING TOPPAR PÅ {label} ({count} LEKAR · {pct}%)",
+    "peak_one": "DIN SAMLING TOPPAR PÅ {label} ({count} LEK · {pct}%)",
+    "top_archetypes": "TOPPARKETYPER:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FOKUSERAD",
+    "tier_b3": "B3 · OPTIMERAD",
+    "tier_b4": "B4 · HÖG STYRKA",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "OKÄND"
+  },
+  "quickpaste": {
+    "toggle": "KLISTRA IN EN LEKLISTA SNABBT",
+    "title": "SNABBINKLISTRING / / REN LEKLISTA",
+    "placeholder": "Klistra in en leklista. Stöder \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboardsektioner och #-kommentarer…",
+    "parsed": "INLÄST: {count} KORT · {unique} UNIKA",
+    "parsed_one": "INLÄST: {count} KORT · {unique} UNIKT",
+    "commander": "COMMANDER:",
+    "multiples": "FLERA EXEMPLAR AV ETT ICKE-BASKORT UPPTÄCKTA",
+    "aria_commander": "Commander",
+    "cmdr_override": "Commander: {name} — skriv för att ersätta",
+    "cmdr_placeholder": "Commander (valfritt — skriv det exakta kortnamnet)",
+    "name_default": "Leknamn (standard: {name})",
+    "name_placeholder": "Leknamn",
+    "importing": "IMPORTERAR…",
+    "submit": "IMPORTERA + ANALYSERA",
+    "toast_imported": "LEK IMPORTERAD",
+    "err_failed": "IMPORTEN MISSLYCKADES"
   }
 }

@@ -37,7 +37,9 @@
     "copied": "ZKOPÍROVÁNO!",
     "loading": "NAČÍTÁNÍ",
     "saving": "UKLÁDÁNÍ...",
-    "analyzing": "ANALÝZA..."
+    "analyzing": "ANALÝZA...",
+    "all": "VŠE",
+    "close": "ZAVŘÍT"
   },
   "deck": {
     "owner": "VLASTNÍK",
@@ -216,5 +218,89 @@
     "fishtank_standby": "POHOTOVOST",
     "fishtank_scroll": "POSUŇ DOLŮ PRO NAČTENÍ ŽIVÉHO PŘENOSU",
     "fishtank_loading": "NAČÍTÁM AKVÁRIUM"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Skrýt tuto nápovědu",
+    "dismiss_title": "Skrýt — už se neobjeví"
+  },
+  "shelf": {
+    "add_deck": "PŘIDEJ SVŮJ BALÍČEK",
+    "add_hint": "VLOŽ LISTINU. FREYA JI ZANALYZUJE ZA PÁR SEKUND.",
+    "no_art": "BEZ ILUSTRACE",
+    "version": "V{n} Z {total}",
+    "cards": "KARET: {count}",
+    "cards_one": "KARTA: {count}",
+    "unrated": "BEZ HODNOCENÍ",
+    "games": "HER: {count}",
+    "games_one": "HRA: {count}"
+  },
+  "decks": {
+    "tape_mine": "ARCHIV BALÍČKŮ / / MOJE BUILDY",
+    "tape_all": "ARCHIV BALÍČKŮ / / VŠECHNY BUILDY",
+    "tape_count": "{shown} / {total} CELKEM",
+    "intro_1": "Procházej a prohledávej každý balíček na platformě. Klikni na libovolný balíček a otevřeš jeho archiv: analýzu, výsledky gauntletu, listinu a matchupy.",
+    "intro_2": "Použij {action} (v zobrazení seznamu nebo dlaždici pro nahrání na polici) k importu odkazu z Moxfieldu nebo vložení listiny; Freya ji po nahrání zanalyzuje sama.",
+    "ctx_import": "Klikni níže a naimportuj balíček: vlož URL z Moxfieldu nebo čistou listinu. Freya ji zanalyzuje sama (~10–20 sekund) a pak tě přesměruje na stránku nového balíčku.",
+    "filter_label": "FILTR:",
+    "chip_owner": "VLASTNÍK · {name}",
+    "chip_contains": "OBSAHUJE · {text}",
+    "tab_all": "VŠECHNY BALÍČKY",
+    "legal": "LEGÁLNÍ",
+    "illegal": "NELEGÁLNÍ",
+    "search_placeholder": "HLEDAT BALÍČKY...",
+    "search_aria": "Hledat balíčky",
+    "matches": "VÝSLEDKŮ: {count}",
+    "matches_one": "VÝSLEDEK: {count}",
+    "view_shelf": "POLICE",
+    "view_list": "SEZNAM",
+    "aria_bracket": "Filtr bracketu",
+    "aria_color": "Filtr barvy",
+    "aria_archetype": "Filtr archetypu",
+    "legend_color": "BARVA",
+    "loading": "NAČÍTÁM ARCHIV BALÍČKŮ",
+    "showing_cap": "ZOBRAZENO 60 / {total} — ZPŘESNI HLEDÁNÍ PRO VÍCE",
+    "col_name": "NÁZEV",
+    "col_commander": "VELITEL",
+    "col_elo": "ELO",
+    "sort_by": "Seřadit podle: {field}"
+  },
+  "deckpower": {
+    "title": "MOJE SBÍRKA / / ROZLOŽENÍ ÚROVNÍ SÍLY",
+    "decks": "BALÍČKŮ: {count}",
+    "decks_one": "BALÍČEK: {count}",
+    "no_data_aria": "Žádná data o bracketu",
+    "no_tier_data": "— ŽÁDNÁ DATA O ÚROVNI —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "ZATÍM ŽÁDNÉ BRACKETY — SPUSŤ FREYU A DOPLŇ JE",
+    "peak": "TVÁ SBÍRKA VRCHOLÍ NA {label} ({count} BALÍČKŮ · {pct}%)",
+    "peak_one": "TVÁ SBÍRKA VRCHOLÍ NA {label} ({count} BALÍČEK · {pct}%)",
+    "top_archetypes": "HLAVNÍ ARCHETYPY:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · ZAMĚŘENÝ",
+    "tier_b3": "B3 · OPTIMALIZOVANÝ",
+    "tier_b4": "B4 · VYSOKÝ VÝKON",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "NEZNÁMÝ"
+  },
+  "quickpaste": {
+    "toggle": "RYCHLE VLOŽIT LISTINU",
+    "title": "RYCHLÉ VLOŽENÍ / / ČISTÁ LISTINA",
+    "placeholder": "Vlož listinu balíčku. Podporuje \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sekce sideboardu i komentáře s #…",
+    "parsed": "NAČTENO: {count} KARET · {unique} UNIKÁTNÍCH",
+    "parsed_one": "NAČTENO: {count} KARTA · {unique} UNIKÁTNÍ",
+    "commander": "VELITEL:",
+    "multiples": "ZJIŠTĚNO VÍCE KOPIÍ NEZÁKLADNÍ KARTY",
+    "aria_commander": "Velitel",
+    "cmdr_override": "Velitel: {name} — napiš pro přepsání",
+    "cmdr_placeholder": "Velitel (nepovinné — napiš přesný název karty)",
+    "name_default": "Název balíčku (výchozí: {name})",
+    "name_placeholder": "Název balíčku",
+    "importing": "IMPORTUJI…",
+    "submit": "IMPORTOVAT + ANALYZOVAT",
+    "toast_imported": "BALÍČEK NAIMPORTOVÁN",
+    "err_failed": "IMPORT SELHAL"
   }
 }

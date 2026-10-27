@@ -9,6 +9,7 @@ import { useUploadDeck } from '../hooks/useUploadDeck'
 import { MOCK_DECKS } from '../services/mock'
 import ContextBox from '../components/ContextBox'
 import { toast } from '../components/Toast'
+import { useT } from '../i18n'
 import {
   ARCHETYPE_CHIPS,
   BRACKET_CHIPS,
@@ -24,14 +25,34 @@ import {
 } from '../lib/deckParser'
 import {
   POWER_TIER_KEYS,
-  POWER_TIER_LABELS,
-  peakFlavor,
   summarizePowerTiers,
   topArchetypes,
 } from '../lib/deckPowerSummary'
 
 const VIEW_KEY = 'hexdek_deck_view'
 const SORT_KEY = 'hexdek_deck_sort'
+
+// Sort column → catalog key. Reuses the shared deck.* labels where one
+// already exists so the same word isn't carried twice in every catalog.
+const COL_KEY = {
+  name: 'decks.col_name',
+  commander: 'decks.col_commander',
+  owner: 'deck.owner',
+  bracket: 'deck.bracket',
+  elo: 'decks.col_elo',
+  record: 'deck.record',
+}
+
+// fill renders a translated sentence whose {token} stands for a React node
+// (bold text, a link) rather than a plain value. Splitting at render time
+// means the token can sit anywhere in the sentence, so word order stays
+// the translator's choice instead of being frozen by JSX concatenation.
+function fill(str, nodes) {
+  return str.split(/(\{\w+\})/g).map((part, i) => {
+    const m = /^\{(\w+)\}$/.exec(part)
+    return m && nodes[m[1]] !== undefined ? <span key={i}>{nodes[m[1]]}</span> : part
+  })
+}
 
 // Bracket strings look like "B4", "B3.5", "B?". Pull out the numeric piece for sort;
 // unknowns sink to the bottom regardless of direction.
@@ -98,6 +119,7 @@ export default function DeckList() {
     return { key: 'elo', dir: 'desc' }
   })
   const navigate = useNavigate()
+  const t = useT()
   const { elo } = useLiveSocket()
   const upload = useUploadDeck(() => loadDecks())
 
@@ -161,36 +183,40 @@ export default function DeckList() {
   const filtered = [...matched].sort((a, b) => compareDecks(a, b, sort.key, sort.dir, eloByDeckId))
 
   const tapeLabel = tab === 'mine' && hasMyDecks
-    ? `DECK ARCHIVE / / MY BUILDS`
-    : `DECK ARCHIVE / / ALL BUILDS`
+    ? t('decks.tape_mine')
+    : t('decks.tape_all')
 
   return (
     <>
-      <Tape left={tapeLabel} mid={`${filtered.length} / ${decks.length} TOTAL`} right="DOC HX-400" />
+      <Tape
+        left={tapeLabel}
+        mid={t('decks.tape_count', { shown: filtered.length, total: decks.length })}
+        right="DOC HX-400"
+      />
 
       <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
         {user && (
           <ContextBox id="decklist.intro">
-            Browse and search every deck on the platform. Click any deck to open its archive — analysis, gauntlet results, decklist, and matchups.
-            {' '}Use <strong>ADD YOUR DECK</strong> (in the list view, or the upload tile on the shelf) to import a Moxfield link or paste a decklist; Freya analyzes it automatically after upload.
+            {t('decks.intro_1')}
+            {' '}{fill(t('decks.intro_2'), { action: <strong>{t('shelf.add_deck')}</strong> })}
           </ContextBox>
         )}
         {(ownerParam || containsParam) && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-2)' }}>
-            <span>FILTER:</span>
+            <span>{t('decks.filter_label')}</span>
             {ownerParam && (
               <Tag solid style={{ cursor: 'pointer' }} onClick={() => {
                 const next = new URLSearchParams(searchParams)
                 next.delete('owner')
                 setSearchParams(next, { replace: true })
-              }}>OWNER · {ownerParam.toUpperCase()} ✕</Tag>
+              }}>{t('decks.chip_owner', { name: ownerParam.toUpperCase() })} ✕</Tag>
             )}
             {containsParam && (
               <Tag solid style={{ cursor: 'pointer' }} onClick={() => {
                 const next = new URLSearchParams(searchParams)
                 next.delete('contains')
                 setSearchParams(next, { replace: true })
-              }}>CONTAINS · {containsParam.toUpperCase()} ✕</Tag>
+              }}>{t('decks.chip_contains', { text: containsParam.toUpperCase() })} ✕</Tag>
             )}
           </div>
         )}
@@ -198,16 +224,16 @@ export default function DeckList() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {user && (
             <>
-              <Tag solid={tab === 'mine'} onClick={() => setTab('mine')} style={{ cursor: 'pointer' }}>MY DECKS</Tag>
-              <Tag solid={tab === 'all'} onClick={() => setTab('all')} style={{ cursor: 'pointer' }}>ALL DECKS</Tag>
+              <Tag solid={tab === 'mine'} onClick={() => setTab('mine')} style={{ cursor: 'pointer' }}>{t('nav.my_decks')}</Tag>
+              <Tag solid={tab === 'all'} onClick={() => setTab('all')} style={{ cursor: 'pointer' }}>{t('decks.tab_all')}</Tag>
               <div style={{ width: 1, height: 16, background: 'var(--rule-2)' }} />
             </>
           )}
           {hasLegalityData && (
             <>
-              <Tag solid={legalFilter === 'all'} onClick={() => setLegalFilter('all')} style={{ cursor: 'pointer' }}>ALL</Tag>
-              <Tag solid={legalFilter === 'legal'} onClick={() => setLegalFilter('legal')} style={{ cursor: 'pointer', color: legalFilter === 'legal' ? undefined : 'var(--ok)' }}>✓ LEGAL</Tag>
-              <Tag solid={legalFilter === 'illegal'} onClick={() => setLegalFilter('illegal')} style={{ cursor: 'pointer', color: legalFilter === 'illegal' ? undefined : 'var(--danger)' }}>✗ ILLEGAL</Tag>
+              <Tag solid={legalFilter === 'all'} onClick={() => setLegalFilter('all')} style={{ cursor: 'pointer' }}>{t('common.all')}</Tag>
+              <Tag solid={legalFilter === 'legal'} onClick={() => setLegalFilter('legal')} style={{ cursor: 'pointer', color: legalFilter === 'legal' ? undefined : 'var(--ok)' }}>✓ {t('decks.legal')}</Tag>
+              <Tag solid={legalFilter === 'illegal'} onClick={() => setLegalFilter('illegal')} style={{ cursor: 'pointer', color: legalFilter === 'illegal' ? undefined : 'var(--danger)' }}>✗ {t('decks.illegal')}</Tag>
               <div style={{ width: 1, height: 16, background: 'var(--rule-2)' }} />
             </>
           )}
@@ -216,8 +242,8 @@ export default function DeckList() {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="SEARCH DECKS..."
-              aria-label="Search decks"
+              placeholder={t('decks.search_placeholder')}
+              aria-label={t('decks.search_aria')}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -232,18 +258,22 @@ export default function DeckList() {
               }}
             />
           </div>
-          <span className="t-xs muted">{filtered.length} MATCHES</span>
+          <span className="t-xs muted">
+            {filtered.length === 1
+              ? t('decks.matches_one', { count: 1 })
+              : t('decks.matches', { count: filtered.length })}
+          </span>
           <div style={{ width: 1, height: 16, background: 'var(--rule-2)' }} />
-          <Tag solid={viewMode === 'shelf'} onClick={() => setViewMode('shelf')} style={{ cursor: 'pointer' }}>SHELF</Tag>
-          <Tag solid={viewMode === 'list'} onClick={() => setViewMode('list')} style={{ cursor: 'pointer' }}>LIST</Tag>
+          <Tag solid={viewMode === 'shelf'} onClick={() => setViewMode('shelf')} style={{ cursor: 'pointer' }}>{t('decks.view_shelf')}</Tag>
+          <Tag solid={viewMode === 'list'} onClick={() => setViewMode('list')} style={{ cursor: 'pointer' }}>{t('decks.view_list')}</Tag>
         </div>
 
         {/* Filter chip rows: bracket / color / archetype. Each chip mutates
             the matching URL param so deep-links carry the active filter. */}
         <ChipRow
-          aria-label="Bracket filter"
+          aria-label={t('decks.aria_bracket')}
           dataTestId="bracket-chips"
-          legend="BRACKET"
+          legend={t('deck.bracket')}
           chips={BRACKET_CHIPS}
           active={bracketFilter}
           paramKey="bracket"
@@ -252,9 +282,9 @@ export default function DeckList() {
           setSearchParams={setSearchParams}
         />
         <ChipRow
-          aria-label="Color filter"
+          aria-label={t('decks.aria_color')}
           dataTestId="color-chips"
-          legend="COLOR"
+          legend={t('decks.legend_color')}
           chips={COLOR_CHIPS}
           active={colorFilter}
           paramKey="color"
@@ -263,9 +293,9 @@ export default function DeckList() {
           setSearchParams={setSearchParams}
         />
         <ChipRow
-          aria-label="Archetype filter"
+          aria-label={t('decks.aria_archetype')}
           dataTestId="archetype-chips"
-          legend="ARCHETYPE"
+          legend={t('deck.archetype')}
           chips={ARCHETYPE_CHIPS}
           active={archetypeFilter}
           paramKey="archetype"
@@ -297,7 +327,7 @@ export default function DeckList() {
 
         {/* Deck grid */}
         {loading ? (
-          <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>&gt; LOADING DECK ARCHIVE<span className="blink">_</span></div>
+          <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>&gt; {t('decks.loading')}<span className="blink">_</span></div>
         ) : viewMode === 'shelf' ? (
           <DeckShelf decks={filtered.slice(0, 60)} eloByDeckId={eloByDeckId} navigate={navigate} onAddCard={upload.open} />
         ) : (
@@ -306,7 +336,7 @@ export default function DeckList() {
 
         {filtered.length > 60 && (
           <div className="t-xs muted" style={{ textAlign: 'center' }}>
-            &gt; SHOWING 60 / {filtered.length} — REFINE SEARCH TO SEE MORE
+            &gt; {t('decks.showing_cap', { total: filtered.length })}
           </div>
         )}
       </div>
@@ -330,9 +360,22 @@ const POWER_TIER_COLORS = {
 }
 
 function DeckPowerSummaryPanel({ decks }) {
+  const t = useT()
   const summary = summarizePowerTiers(decks)
   const top = topArchetypes(decks, 5)
-  const flavor = peakFlavor(summary)
+  const tierLabel = (k) => t(`deckpower.tier_${k}`)
+  // peakFlavor() in lib/ stays the pure English source of truth for the
+  // unit suite and any non-React caller; the panel builds the same
+  // sentence from the catalog so it can be read in the user's language.
+  const flavor = summary.total === 0
+    ? ''
+    : !summary.peak
+      ? t('deckpower.no_brackets')
+      : t(summary.peakCount === 1 ? 'deckpower.peak_one' : 'deckpower.peak', {
+          label: tierLabel(summary.peak),
+          count: summary.peakCount,
+          pct: summary.percentages[summary.peak] || 0,
+        })
   const segments = POWER_TIER_KEYS
     .map(k => ({ k, count: summary.counts[k], pct: summary.percentages[k] }))
     .filter(s => s.count > 0)
@@ -351,10 +394,12 @@ function DeckPowerSummaryPanel({ decks }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
-          MY COLLECTION / / POWER-TIER DISTRIBUTION
+          {t('deckpower.title')}
         </span>
         <span className="t-xs muted" style={{ letterSpacing: '0.06em' }}>
-          {summary.total} DECKS
+          {summary.total === 1
+            ? t('deckpower.decks_one', { count: 1 })
+            : t('deckpower.decks', { count: summary.total })}
         </span>
       </div>
 
@@ -365,7 +410,7 @@ function DeckPowerSummaryPanel({ decks }) {
       <div
         data-testid="deck-power-tier-bar"
         role="img"
-        aria-label={flavor || 'No bracket data'}
+        aria-label={flavor || t('deckpower.no_data_aria')}
         style={{
           display: 'flex',
           width: '100%',
@@ -377,14 +422,14 @@ function DeckPowerSummaryPanel({ decks }) {
       >
         {segments.length === 0 ? (
           <div className="t-xs muted" style={{ alignSelf: 'center', margin: '0 auto', letterSpacing: '0.06em' }}>
-            — NO TIER DATA —
+            {t('deckpower.no_tier_data')}
           </div>
         ) : segments.map(seg => (
           <div
             key={seg.k}
             data-tier={seg.k}
             data-count={seg.count}
-            title={`${POWER_TIER_LABELS[seg.k]} — ${seg.count} (${seg.pct}%)`}
+            title={t('deckpower.seg_title', { label: tierLabel(seg.k), count: seg.count, pct: seg.pct })}
             style={{
               width: `${seg.pct}%`,
               minWidth: seg.count > 0 ? 4 : 0, // visible sliver even at 1%
@@ -425,7 +470,7 @@ function DeckPowerSummaryPanel({ decks }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, background: POWER_TIER_COLORS[k], border: '1px solid var(--rule-2)' }} />
                 <span className="t-xs muted" style={{ letterSpacing: '0.06em', fontWeight: 700 }}>
-                  {POWER_TIER_LABELS[k]}
+                  {tierLabel(k)}
                 </span>
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
@@ -448,7 +493,7 @@ function DeckPowerSummaryPanel({ decks }) {
       {top.length > 0 && (
         <div data-testid="deck-power-top-archetypes" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
-            TOP ARCHETYPES:
+            {t('deckpower.top_archetypes')}
           </span>
           {top.map((r, i) => (
             <span key={r.archetype} className="t-xs" style={{ letterSpacing: '0.04em' }}>
@@ -464,6 +509,7 @@ function DeckPowerSummaryPanel({ decks }) {
 }
 
 function QuickPasteImport({ onImported, navigate, defaultOwner }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [name, setName] = useState('')
@@ -508,10 +554,10 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
       setOpen(false)
       setImporting(false)
       if (id) navigate(`/decks/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`)
-      else toast.success('DECK IMPORTED')
+      else toast.success(t('quickpaste.toast_imported'))
     } catch (err) {
       setImporting(false)
-      setError(err?.message || 'IMPORT FAILED')
+      setError(err?.message || t('quickpaste.err_failed'))
     }
   }
 
@@ -534,7 +580,7 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
           cursor: 'pointer',
         }}
       >
-        + QUICK PASTE A DECKLIST
+        + {t('quickpaste.toggle')}
       </button>
     )
   }
@@ -553,21 +599,21 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
-          QUICK PASTE / / PLAIN DECKLIST
+          {t('quickpaste.title')}
         </span>
         <button
           type="button"
           onClick={() => { setOpen(false); setError(null); setText(''); setName('') }}
           style={{ background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11 }}
         >
-          ✕ CLOSE
+          ✕ {t('common.close')}
         </button>
       </div>
       <textarea
         data-testid="quick-paste-textarea"
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder={`Paste a decklist. Supports "1 Sol Ring", "1x Sol Ring (CMM) 339", "Commander: Atraxa, Praetors' Voice", sideboard sections, # comments…`}
+        placeholder={t('quickpaste.placeholder')}
         rows={10}
         spellCheck={false}
         style={{
@@ -588,19 +634,25 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
         style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', fontSize: 11 }}
       >
         <span className="t-xs muted" style={{ letterSpacing: '0.08em' }}>
-          PARSED:{' '}
-          <strong style={{ color: 'var(--ink)' }}>{summary.cardCount}</strong>{' '}
-          CARDS · {summary.uniqueCount} UNIQUE
+          {/* {count} is deliberately left un-interpolated here so fill()
+              can put the bold number in whatever position the sentence
+              puts it in this language. */}
+          {fill(
+            t(summary.cardCount === 1 ? 'quickpaste.parsed_one' : 'quickpaste.parsed', {
+              unique: summary.uniqueCount,
+            }),
+            { count: <strong style={{ color: 'var(--ink)' }}>{summary.cardCount}</strong> },
+          )}
         </span>
         {detectedCommander && (
           <span className="t-xs muted" style={{ letterSpacing: '0.08em' }}>
-            COMMANDER:{' '}
+            {t('quickpaste.commander')}{' '}
             <strong style={{ color: 'var(--ink)' }}>{detectedCommander.toUpperCase()}</strong>
           </span>
         )}
         {summary.hasIllegalMultiples && (
           <span className="t-xs" style={{ color: 'var(--warn, #c0a060)', letterSpacing: '0.08em' }}>
-            ⚠ MULTIPLES OF A NON-BASIC DETECTED
+            ⚠ {t('quickpaste.multiples')}
           </span>
         )}
       </div>
@@ -609,8 +661,10 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
         data-testid="quick-paste-commander"
         value={commander}
         onChange={e => setCommander(e.target.value)}
-        aria-label="Commander"
-        placeholder={detectedCommander ? `Commander: ${detectedCommander} — type to override` : 'Commander (optional — type the exact card name)'}
+        aria-label={t('quickpaste.aria_commander')}
+        placeholder={detectedCommander
+          ? t('quickpaste.cmdr_override', { name: detectedCommander })
+          : t('quickpaste.cmdr_placeholder')}
         style={{
           width: '100%',
           padding: '6px 10px',
@@ -627,8 +681,10 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder={detectedCommander ? `Deck name (defaults to ${detectedCommander})` : 'Deck name'}
-          aria-label="Deck name"
+          placeholder={detectedCommander
+            ? t('quickpaste.name_default', { name: detectedCommander })
+            : t('quickpaste.name_placeholder')}
+          aria-label={t('quickpaste.name_placeholder')}
           style={{
             flex: 1, minWidth: 200,
             padding: '6px 10px',
@@ -658,7 +714,7 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
             textTransform: 'uppercase',
           }}
         >
-          {importing ? 'IMPORTING…' : 'IMPORT + ANALYZE'}
+          {importing ? t('quickpaste.importing') : t('quickpaste.submit')}
         </button>
       </div>
       {error && (
@@ -671,6 +727,7 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
 }
 
 function ChipRow({ legend, chips, active, paramKey, onSelect, searchParams, setSearchParams, dataTestId, ...rest }) {
+  const t = useT()
   return (
     <div
       role="group"
@@ -706,16 +763,18 @@ function ChipRow({ legend, chips, active, paramKey, onSelect, searchParams, setS
           data-chip-id={chip.id}
           data-chip-group={paramKey}
         >
-          {chip.label}
+          {chip.labelKey ? t(chip.labelKey) : chip.label}
         </Tag>
       ))}
     </div>
   )
 }
 
-function SortHeader({ sortKey, sort, onSort, children }) {
+function SortHeader({ sortKey, sort, onSort }) {
+  const t = useT()
   const active = sort?.key === sortKey
   const arrow = active ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+  const label = t(COL_KEY[sortKey] || sortKey)
   return (
     <span
       onClick={() => onSort?.(sortKey)}
@@ -724,14 +783,15 @@ function SortHeader({ sortKey, sort, onSort, children }) {
         color: active ? 'var(--ink)' : 'var(--ink-3)',
         userSelect: 'none',
       }}
-      title={`Sort by ${sortKey}`}
+      title={t('decks.sort_by', { field: label })}
     >
-      {children}{arrow}
+      {label}{arrow}
     </span>
   )
 }
 
 function ListView({ decks, eloByDeckId, navigate, onUpload, sort, onSort }) {
+  const t = useT()
   return (
     <div className="panel" style={{ padding: 0 }}>
       <div
@@ -748,15 +808,15 @@ function ListView({ decks, eloByDeckId, navigate, onUpload, sort, onSort }) {
         }}
       >
         <span></span>
-        <SortHeader sortKey="name" sort={sort} onSort={onSort}>NAME</SortHeader>
-        <SortHeader sortKey="commander" sort={sort} onSort={onSort}>COMMANDER</SortHeader>
-        <SortHeader sortKey="owner" sort={sort} onSort={onSort}>OWNER</SortHeader>
-        <SortHeader sortKey="bracket" sort={sort} onSort={onSort}>BRACKET</SortHeader>
-        <SortHeader sortKey="elo" sort={sort} onSort={onSort}>ELO</SortHeader>
-        <SortHeader sortKey="record" sort={sort} onSort={onSort}>RECORD</SortHeader>
+        <SortHeader sortKey="name" sort={sort} onSort={onSort} />
+        <SortHeader sortKey="commander" sort={sort} onSort={onSort} />
+        <SortHeader sortKey="owner" sort={sort} onSort={onSort} />
+        <SortHeader sortKey="bracket" sort={sort} onSort={onSort} />
+        <SortHeader sortKey="elo" sort={sort} onSort={onSort} />
+        <SortHeader sortKey="record" sort={sort} onSort={onSort} />
       </div>
       <div style={{ padding: '6px 10px 0', borderBottom: '1px solid var(--rule)' }}>
-        <ContextBox id="decklist.import" compact>Click below to import a deck — paste a Moxfield URL or raw decklist. Freya analyzes it automatically (~10–20 seconds) and then redirects you to the new deck page.</ContextBox>
+        <ContextBox id="decklist.import" compact>{t('decks.ctx_import')}</ContextBox>
       </div>
       <div
         onClick={onUpload}
@@ -786,7 +846,7 @@ function ListView({ decks, eloByDeckId, navigate, onUpload, sort, onSort }) {
         }}
       >
         <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 900 }}>+</span>
-        <span>ADD YOUR DECK</span>
+        <span>{t('shelf.add_deck')}</span>
       </div>
       {decks.map((d) => {
         const deckKey = `${d.owner}/${d.id}`

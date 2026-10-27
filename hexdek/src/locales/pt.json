@@ -37,7 +37,9 @@
     "copied": "COPIADO!",
     "loading": "CARREGANDO",
     "saving": "SALVANDO...",
-    "analyzing": "ANALISANDO..."
+    "analyzing": "ANALISANDO...",
+    "all": "TUDO",
+    "close": "FECHAR"
   },
   "deck": {
     "owner": "DONO",
@@ -216,5 +218,89 @@
     "fishtank_standby": "EM ESPERA",
     "fishtank_scroll": "ROLE PARA CARREGAR O AO VIVO",
     "fishtank_loading": "CARREGANDO O AQUÁRIO"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Dispensar esta caixa de ajuda",
+    "dismiss_title": "Dispensar — não aparece de novo"
+  },
+  "shelf": {
+    "add_deck": "ADICIONE SEU DECK",
+    "add_hint": "COLE UMA LISTA. A FREYA ANALISA EM SEGUNDOS.",
+    "no_art": "SEM ARTE",
+    "version": "V{n} DE {total}",
+    "cards": "{count} CARTAS",
+    "cards_one": "{count} CARTA",
+    "unrated": "SEM CLASSIFICAÇÃO",
+    "games": "{count} PARTIDAS",
+    "games_one": "{count} PARTIDA"
+  },
+  "decks": {
+    "tape_mine": "ARQUIVO DE DECKS / / MEUS BUILDS",
+    "tape_all": "ARQUIVO DE DECKS / / TODOS OS BUILDS",
+    "tape_count": "{shown} / {total} NO TOTAL",
+    "intro_1": "Navegue e pesquise todos os decks da plataforma. Clique em qualquer deck para abrir o arquivo dele: análise, resultados de gauntlet, lista e confrontos.",
+    "intro_2": "Use {action} (na visão em lista ou no bloco de upload da estante) para importar um link do Moxfield ou colar uma lista; a Freya analisa automaticamente após o upload.",
+    "ctx_import": "Clique abaixo para importar um deck: cole uma URL do Moxfield ou uma lista em texto. A Freya analisa automaticamente (~10–20 segundos) e depois leva você à página do novo deck.",
+    "filter_label": "FILTRO:",
+    "chip_owner": "DONO · {name}",
+    "chip_contains": "CONTÉM · {text}",
+    "tab_all": "TODOS OS DECKS",
+    "legal": "LEGAL",
+    "illegal": "ILEGAL",
+    "search_placeholder": "BUSCAR DECKS...",
+    "search_aria": "Buscar decks",
+    "matches": "{count} RESULTADOS",
+    "matches_one": "{count} RESULTADO",
+    "view_shelf": "ESTANTE",
+    "view_list": "LISTA",
+    "aria_bracket": "Filtro de bracket",
+    "aria_color": "Filtro de cor",
+    "aria_archetype": "Filtro de arquétipo",
+    "legend_color": "COR",
+    "loading": "CARREGANDO ARQUIVO DE DECKS",
+    "showing_cap": "MOSTRANDO 60 / {total} — REFINE A BUSCA PARA VER MAIS",
+    "col_name": "NOME",
+    "col_commander": "COMANDANTE",
+    "col_elo": "ELO",
+    "sort_by": "Ordenar por {field}"
+  },
+  "deckpower": {
+    "title": "MINHA COLEÇÃO / / DISTRIBUIÇÃO POR NÍVEL DE PODER",
+    "decks": "{count} DECKS",
+    "decks_one": "{count} DECK",
+    "no_data_aria": "Sem dados de bracket",
+    "no_tier_data": "— SEM DADOS DE NÍVEL —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "AINDA SEM BRACKETS — RODE A FREYA PARA PREENCHER",
+    "peak": "SUA COLEÇÃO SE CONCENTRA EM {label} ({count} DECKS · {pct}%)",
+    "peak_one": "SUA COLEÇÃO SE CONCENTRA EM {label} ({count} DECK · {pct}%)",
+    "top_archetypes": "PRINCIPAIS ARQUÉTIPOS:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FOCADO",
+    "tier_b3": "B3 · OTIMIZADO",
+    "tier_b4": "B4 · ALTO PODER",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "DESCONHECIDO"
+  },
+  "quickpaste": {
+    "toggle": "COLAGEM RÁPIDA DE UMA LISTA",
+    "title": "COLAGEM RÁPIDA / / LISTA EM TEXTO",
+    "placeholder": "Cole uma lista de deck. Aceita \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", seções de sideboard e comentários com #…",
+    "parsed": "LIDO: {count} CARTAS · {unique} ÚNICAS",
+    "parsed_one": "LIDO: {count} CARTA · {unique} ÚNICA",
+    "commander": "COMANDANTE:",
+    "multiples": "MÚLTIPLAS CÓPIAS DE UMA CARTA NÃO BÁSICA DETECTADAS",
+    "aria_commander": "Comandante",
+    "cmdr_override": "Comandante: {name} — digite para substituir",
+    "cmdr_placeholder": "Comandante (opcional — digite o nome exato da carta)",
+    "name_default": "Nome do deck (padrão: {name})",
+    "name_placeholder": "Nome do deck",
+    "importing": "IMPORTANDO…",
+    "submit": "IMPORTAR + ANALISAR",
+    "toast_imported": "DECK IMPORTADO",
+    "err_failed": "FALHA NA IMPORTAÇÃO"
   }
 }

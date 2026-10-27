@@ -37,7 +37,9 @@
     "copied": "복사 완료!",
     "loading": "불러오는 중",
     "saving": "저장 중...",
-    "analyzing": "분석 중..."
+    "analyzing": "분석 중...",
+    "all": "전체",
+    "close": "닫기"
   },
   "deck": {
     "owner": "소유자",
@@ -216,5 +218,89 @@
     "fishtank_standby": "대기",
     "fishtank_scroll": "스크롤하면 라이브 피드가 로드됩니다",
     "fishtank_loading": "피시탱크 로딩 중"
+  },
+  "chip": {
+    "multi": "다색"
+  },
+  "ctx": {
+    "dismiss_aria": "이 도움말 닫기",
+    "dismiss_title": "닫기 — 다시 표시하지 않음"
+  },
+  "shelf": {
+    "add_deck": "덱 추가하기",
+    "add_hint": "리스트를 붙여넣으세요. Freya가 몇 초 만에 분석합니다.",
+    "no_art": "아트 없음",
+    "version": "V{n} / {total}",
+    "cards": "{count}장",
+    "cards_one": "{count}장",
+    "unrated": "레이팅 없음",
+    "games": "{count}판",
+    "games_one": "{count}판"
+  },
+  "decks": {
+    "tape_mine": "덱 아카이브 / / 내 빌드",
+    "tape_all": "덱 아카이브 / / 전체 빌드",
+    "tape_count": "{shown} / 전체 {total}",
+    "intro_1": "플랫폼의 모든 덱을 둘러보고 검색하세요. 덱을 클릭하면 분석, 건틀릿 결과, 덱리스트, 매치업이 담긴 아카이브가 열립니다.",
+    "intro_2": "{action}(리스트 보기 또는 선반의 업로드 타일)을 눌러 Moxfield 링크를 가져오거나 리스트를 붙여넣으세요. 업로드 후 Freya가 자동으로 분석합니다.",
+    "ctx_import": "아래를 눌러 덱을 가져오세요. Moxfield URL이나 일반 덱리스트를 붙여넣으면 됩니다. Freya가 자동으로 분석하고(약 10~20초) 새 덱 페이지로 이동시켜 줍니다.",
+    "filter_label": "필터:",
+    "chip_owner": "소유자 · {name}",
+    "chip_contains": "포함 · {text}",
+    "tab_all": "전체 덱",
+    "legal": "적법",
+    "illegal": "부적법",
+    "search_placeholder": "덱 검색...",
+    "search_aria": "덱 검색",
+    "matches": "{count}개 결과",
+    "matches_one": "{count}개 결과",
+    "view_shelf": "선반",
+    "view_list": "리스트",
+    "aria_bracket": "브래킷 필터",
+    "aria_color": "색 필터",
+    "aria_archetype": "아키타입 필터",
+    "legend_color": "색",
+    "loading": "덱 아카이브 불러오는 중",
+    "showing_cap": "{total}개 중 60개 표시 — 더 보려면 검색을 좁히세요",
+    "col_name": "이름",
+    "col_commander": "사령관",
+    "col_elo": "ELO",
+    "sort_by": "{field} 기준 정렬"
+  },
+  "deckpower": {
+    "title": "내 컬렉션 / / 파워 티어 분포",
+    "decks": "{count}개 덱",
+    "decks_one": "{count}개 덱",
+    "no_data_aria": "브래킷 데이터 없음",
+    "no_tier_data": "— 티어 데이터 없음 —",
+    "seg_title": "{label} — {count}개 ({pct}%)",
+    "no_brackets": "아직 브래킷이 없습니다 — Freya를 실행해 채우세요",
+    "peak": "당신의 컬렉션은 {label}에 몰려 있습니다 ({count}개 덱 · {pct}%)",
+    "peak_one": "당신의 컬렉션은 {label}에 몰려 있습니다 ({count}개 덱 · {pct}%)",
+    "top_archetypes": "주요 아키타입:",
+    "tier_b1": "B1 · 캐주얼",
+    "tier_b2": "B2 · 방향성 있음",
+    "tier_b3": "B3 · 최적화",
+    "tier_b4": "B4 · 고출력",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "알 수 없음"
+  },
+  "quickpaste": {
+    "toggle": "덱리스트 빠르게 붙여넣기",
+    "title": "빠른 붙여넣기 / / 일반 덱리스트",
+    "placeholder": "덱리스트를 붙여넣으세요. \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", 사이드보드 구획, # 주석을 지원합니다…",
+    "parsed": "읽음: {count}장 · {unique}종",
+    "parsed_one": "읽음: {count}장 · {unique}종",
+    "commander": "사령관:",
+    "multiples": "기본 토지가 아닌 카드의 중복이 감지되었습니다",
+    "aria_commander": "사령관",
+    "cmdr_override": "사령관: {name} — 입력하면 덮어씁니다",
+    "cmdr_placeholder": "사령관 (선택 — 카드 이름을 정확히 입력)",
+    "name_default": "덱 이름 (기본값: {name})",
+    "name_placeholder": "덱 이름",
+    "importing": "가져오는 중…",
+    "submit": "가져오기 + 분석",
+    "toast_imported": "덱을 가져왔습니다",
+    "err_failed": "가져오기 실패"
   }
 }

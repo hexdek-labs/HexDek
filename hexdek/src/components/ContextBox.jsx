@@ -17,6 +17,7 @@
 // for inline help that's always relevant (e.g. confirmation flows).
 
 import { useState, useCallback } from 'react'
+import { useT } from '../i18n'
 
 const STORAGE_PREFIX = 'ctxbox:dismiss:'
 
@@ -49,6 +50,7 @@ export default function ContextBox({
 }) {
   // Default: dismissible iff an id was supplied. Callers can force on/off
   // explicitly by passing dismissible={true|false}.
+  const t = useT()
   const canDismiss = dismissible === undefined ? Boolean(id) : Boolean(dismissible)
 
   // Lazy initializer reads the persisted dismissal state once on mount.
@@ -93,8 +95,8 @@ export default function ContextBox({
         <button
           type="button"
           className="ctx-box__dismiss"
-          aria-label="Dismiss this context box"
-          title="Dismiss — won't show again"
+          aria-label={t('ctx.dismiss_aria')}
+          title={t('ctx.dismiss_title')}
           onClick={handleDismiss}
           style={{
             position: 'absolute',

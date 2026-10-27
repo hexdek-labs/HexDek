@@ -39,7 +39,8 @@ test('decks: bracket chip toggles URL param and reduces match count', async ({ p
   await page.goto('/decks')
   await waitForDecks(page)
 
-  const matchLabel = page.locator('text=/\\d+ MATCHES/').first()
+  // MATCH / MATCHES — the count label now takes the correct singular at 1.
+  const matchLabel = page.locator('text=/\\d+ MATCH(ES)?/').first()
   const before = await matchLabel.innerText()
   const beforeN = parseInt(before, 10)
 

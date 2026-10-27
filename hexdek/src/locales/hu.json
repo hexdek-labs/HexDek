@@ -37,7 +37,9 @@
     "copied": "MÁSOLVA!",
     "loading": "BETÖLTÉS",
     "saving": "MENTÉS...",
-    "analyzing": "ELEMZÉS..."
+    "analyzing": "ELEMZÉS...",
+    "all": "ÖSSZES",
+    "close": "BEZÁRÁS"
   },
   "deck": {
     "owner": "TULAJDONOS",
@@ -216,5 +218,89 @@
     "fishtank_standby": "KÉSZENLÉT",
     "fishtank_scroll": "GÖRGESS AZ ÉLŐ ADÁS BETÖLTÉSÉHEZ",
     "fishtank_loading": "AKVÁRIUM BETÖLTÉSE"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Súgódoboz elrejtése",
+    "dismiss_title": "Elrejtés — többé nem jelenik meg"
+  },
+  "shelf": {
+    "add_deck": "ADD HOZZÁ A PAKLIDAT",
+    "add_hint": "ILLESSZ BE EGY LISTÁT. A FREYA MÁSODPERCEK ALATT ELEMZI.",
+    "no_art": "NINCS ILLUSZTRÁCIÓ",
+    "version": "V{n} / {total}",
+    "cards": "{count} LAP",
+    "cards_one": "{count} LAP",
+    "unrated": "ÉRTÉKELÉS NÉLKÜL",
+    "games": "{count} JÁTSZMA",
+    "games_one": "{count} JÁTSZMA"
+  },
+  "decks": {
+    "tape_mine": "PAKLIARCHÍVUM / / SAJÁT BUILDEK",
+    "tape_all": "PAKLIARCHÍVUM / / ÖSSZES BUILD",
+    "tape_count": "{shown} / {total} ÖSSZESEN",
+    "intro_1": "Böngéssz és keress a platform összes paklija között. Kattints bármelyikre az archívuma megnyitásához: elemzés, gauntlet-eredmények, paklilista és matchupok.",
+    "intro_2": "Használd a {action} gombot (a listanézetben vagy a polc feltöltő csempéjén) Moxfield-link importálásához vagy lista beillesztéséhez; a Freya feltöltés után automatikusan elemzi.",
+    "ctx_import": "Kattints alább a pakli importálásához: illessz be egy Moxfield-URL-t vagy egy sima paklilistát. A Freya automatikusan elemzi (~10–20 másodperc), majd átvisz az új pakli oldalára.",
+    "filter_label": "SZŰRŐ:",
+    "chip_owner": "TULAJDONOS · {name}",
+    "chip_contains": "TARTALMAZZA · {text}",
+    "tab_all": "ÖSSZES PAKLI",
+    "legal": "LEGÁLIS",
+    "illegal": "ILLEGÁLIS",
+    "search_placeholder": "PAKLIK KERESÉSE...",
+    "search_aria": "Paklik keresése",
+    "matches": "{count} TALÁLAT",
+    "matches_one": "{count} TALÁLAT",
+    "view_shelf": "POLC",
+    "view_list": "LISTA",
+    "aria_bracket": "Bracket-szűrő",
+    "aria_color": "Színszűrő",
+    "aria_archetype": "Archetípus-szűrő",
+    "legend_color": "SZÍN",
+    "loading": "PAKLIARCHÍVUM BETÖLTÉSE",
+    "showing_cap": "MEGJELENÍTVE 60 / {total} — SZŰKÍTSD A KERESÉST A TÖBBIHEZ",
+    "col_name": "NÉV",
+    "col_commander": "PARANCSNOK",
+    "col_elo": "ELO",
+    "sort_by": "Rendezés: {field}"
+  },
+  "deckpower": {
+    "title": "GYŰJTEMÉNYEM / / ERŐSZINT SZERINTI ELOSZLÁS",
+    "decks": "{count} PAKLI",
+    "decks_one": "{count} PAKLI",
+    "no_data_aria": "Nincs bracket-adat",
+    "no_tier_data": "— NINCS SZINTADAT —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "MÉG NINCS BRACKET — FUTTASD A FREYÁT A KITÖLTÉSHEZ",
+    "peak": "A GYŰJTEMÉNYED SÚLYPONTJA {label} ({count} PAKLI · {pct}%)",
+    "peak_one": "A GYŰJTEMÉNYED SÚLYPONTJA {label} ({count} PAKLI · {pct}%)",
+    "top_archetypes": "FŐ ARCHETÍPUSOK:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FÓKUSZÁLT",
+    "tier_b3": "B3 · OPTIMALIZÁLT",
+    "tier_b4": "B4 · NAGY ERŐ",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "ISMERETLEN"
+  },
+  "quickpaste": {
+    "toggle": "GYORS LISTABEILLESZTÉS",
+    "title": "GYORS BEILLESZTÉS / / SIMA PAKLILISTA",
+    "placeholder": "Illessz be egy paklilistát. Támogatja ezeket: \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboard-szakaszok és #-megjegyzések…",
+    "parsed": "BEOLVASVA: {count} LAP · {unique} EGYEDI",
+    "parsed_one": "BEOLVASVA: {count} LAP · {unique} EGYEDI",
+    "commander": "PARANCSNOK:",
+    "multiples": "TÖBB PÉLDÁNY EGY NEM ALAPLAPBÓL",
+    "aria_commander": "Parancsnok",
+    "cmdr_override": "Parancsnok: {name} — írd be a felülíráshoz",
+    "cmdr_placeholder": "Parancsnok (nem kötelező — írd be a lap pontos nevét)",
+    "name_default": "Pakli neve (alapértelmezés: {name})",
+    "name_placeholder": "Pakli neve",
+    "importing": "IMPORTÁLÁS…",
+    "submit": "IMPORTÁLÁS + ELEMZÉS",
+    "toast_imported": "PAKLI IMPORTÁLVA",
+    "err_failed": "AZ IMPORTÁLÁS NEM SIKERÜLT"
   }
 }

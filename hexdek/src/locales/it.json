@@ -37,7 +37,9 @@
     "copied": "COPIATO!",
     "loading": "CARICAMENTO",
     "saving": "SALVATAGGIO...",
-    "analyzing": "ANALISI..."
+    "analyzing": "ANALISI...",
+    "all": "TUTTI",
+    "close": "CHIUDI"
   },
   "deck": {
     "owner": "PROPRIETARIO",
@@ -216,5 +218,89 @@
     "fishtank_standby": "IN ATTESA",
     "fishtank_scroll": "SCORRI PER CARICARE IL LIVE",
     "fishtank_loading": "CARICAMENTO DELL'ACQUARIO"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Nascondi questo riquadro",
+    "dismiss_title": "Nascondi — non comparirà più"
+  },
+  "shelf": {
+    "add_deck": "AGGIUNGI IL TUO MAZZO",
+    "add_hint": "INCOLLA UNA LISTA. FREYA LA ANALIZZA IN POCHI SECONDI.",
+    "no_art": "NESSUNA ILLUSTRAZIONE",
+    "version": "V{n} DI {total}",
+    "cards": "{count} CARTE",
+    "cards_one": "{count} CARTA",
+    "unrated": "NON CLASSIFICATO",
+    "games": "{count} PARTITE",
+    "games_one": "{count} PARTITA"
+  },
+  "decks": {
+    "tape_mine": "ARCHIVIO MAZZI / / LE MIE BUILD",
+    "tape_all": "ARCHIVIO MAZZI / / TUTTE LE BUILD",
+    "tape_count": "{shown} / {total} IN TOTALE",
+    "intro_1": "Sfoglia e cerca ogni mazzo della piattaforma. Clicca su un mazzo per aprirne l'archivio: analisi, risultati del gauntlet, lista e matchup.",
+    "intro_2": "Usa {action} (nella vista elenco o nel riquadro di caricamento sullo scaffale) per importare un link Moxfield o incollare una lista; Freya la analizza da sola dopo il caricamento.",
+    "ctx_import": "Clicca qui sotto per importare un mazzo: incolla un URL Moxfield o una lista in testo. Freya la analizza da sola (~10–20 secondi) e poi ti porta alla pagina del nuovo mazzo.",
+    "filter_label": "FILTRO:",
+    "chip_owner": "PROPRIETARIO · {name}",
+    "chip_contains": "CONTIENE · {text}",
+    "tab_all": "TUTTI I MAZZI",
+    "legal": "LEGALE",
+    "illegal": "ILLEGALE",
+    "search_placeholder": "CERCA MAZZI...",
+    "search_aria": "Cerca mazzi",
+    "matches": "{count} RISULTATI",
+    "matches_one": "{count} RISULTATO",
+    "view_shelf": "SCAFFALE",
+    "view_list": "ELENCO",
+    "aria_bracket": "Filtro bracket",
+    "aria_color": "Filtro colore",
+    "aria_archetype": "Filtro archetipo",
+    "legend_color": "COLORE",
+    "loading": "CARICAMENTO ARCHIVIO MAZZI",
+    "showing_cap": "MOSTRATI 60 / {total} — AFFINA LA RICERCA PER VEDERNE ALTRI",
+    "col_name": "NOME",
+    "col_commander": "COMANDANTE",
+    "col_elo": "ELO",
+    "sort_by": "Ordina per {field}"
+  },
+  "deckpower": {
+    "title": "LA MIA COLLEZIONE / / DISTRIBUZIONE PER LIVELLO DI POTENZA",
+    "decks": "{count} MAZZI",
+    "decks_one": "{count} MAZZO",
+    "no_data_aria": "Nessun dato sui bracket",
+    "no_tier_data": "— NESSUN DATO SUL LIVELLO —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "ANCORA NESSUN BRACKET — LANCIA FREYA PER POPOLARLI",
+    "peak": "LA TUA COLLEZIONE SI CONCENTRA SU {label} ({count} MAZZI · {pct}%)",
+    "peak_one": "LA TUA COLLEZIONE SI CONCENTRA SU {label} ({count} MAZZO · {pct}%)",
+    "top_archetypes": "ARCHETIPI PRINCIPALI:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · MIRATO",
+    "tier_b3": "B3 · OTTIMIZZATO",
+    "tier_b4": "B4 · ALTA POTENZA",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "SCONOSCIUTO"
+  },
+  "quickpaste": {
+    "toggle": "INCOLLA RAPIDAMENTE UNA LISTA",
+    "title": "INCOLLA RAPIDO / / LISTA IN TESTO",
+    "placeholder": "Incolla una lista di mazzo. Supporta \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", le sezioni sideboard e i commenti con #…",
+    "parsed": "LETTE: {count} CARTE · {unique} UNICHE",
+    "parsed_one": "LETTA: {count} CARTA · {unique} UNICA",
+    "commander": "COMANDANTE:",
+    "multiples": "RILEVATE PIÙ COPIE DI UNA CARTA NON BASE",
+    "aria_commander": "Comandante",
+    "cmdr_override": "Comandante: {name} — scrivi per sostituirlo",
+    "cmdr_placeholder": "Comandante (facoltativo — scrivi il nome esatto della carta)",
+    "name_default": "Nome del mazzo (predefinito: {name})",
+    "name_placeholder": "Nome del mazzo",
+    "importing": "IMPORTAZIONE…",
+    "submit": "IMPORTA + ANALIZZA",
+    "toast_imported": "MAZZO IMPORTATO",
+    "err_failed": "IMPORTAZIONE FALLITA"
   }
 }

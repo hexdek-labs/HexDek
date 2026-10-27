@@ -37,7 +37,9 @@
     "copied": "已复制!",
     "loading": "加载中",
     "saving": "保存中...",
-    "analyzing": "分析中..."
+    "analyzing": "分析中...",
+    "all": "全部",
+    "close": "关闭"
   },
   "deck": {
     "owner": "拥有者",
@@ -216,5 +218,89 @@
     "fishtank_standby": "待机",
     "fishtank_scroll": "向下滚动以加载直播",
     "fishtank_loading": "正在加载鱼缸"
+  },
+  "chip": {
+    "multi": "多色"
+  },
+  "ctx": {
+    "dismiss_aria": "关闭这个提示框",
+    "dismiss_title": "关闭 — 不再显示"
+  },
+  "shelf": {
+    "add_deck": "添加你的套牌",
+    "add_hint": "粘贴一份清单，Freya 几秒钟就能分析完。",
+    "no_art": "无插画",
+    "version": "第 {n} 个 / 共 {total} 个",
+    "cards": "{count} 张牌",
+    "cards_one": "{count} 张牌",
+    "unrated": "暂无评分",
+    "games": "{count} 局",
+    "games_one": "{count} 局"
+  },
+  "decks": {
+    "tape_mine": "套牌档案 / / 我的构筑",
+    "tape_all": "套牌档案 / / 全部构筑",
+    "tape_count": "{shown} / 共 {total}",
+    "intro_1": "浏览并搜索平台上的每一副套牌。点开任意一副即可打开它的档案：分析、车轮战结果、牌表与对位。",
+    "intro_2": "用 {action}（在列表视图里，或牌架上的上传方块）导入 Moxfield 链接或粘贴牌表；上传后 Freya 会自动分析。",
+    "ctx_import": "点击下方导入套牌：粘贴 Moxfield 链接或纯文本牌表。Freya 会自动分析（约 10–20 秒），然后把你带到新套牌页面。",
+    "filter_label": "筛选：",
+    "chip_owner": "所有者 · {name}",
+    "chip_contains": "包含 · {text}",
+    "tab_all": "全部套牌",
+    "legal": "合法",
+    "illegal": "不合法",
+    "search_placeholder": "搜索套牌...",
+    "search_aria": "搜索套牌",
+    "matches": "{count} 条结果",
+    "matches_one": "{count} 条结果",
+    "view_shelf": "牌架",
+    "view_list": "列表",
+    "aria_bracket": "分级筛选",
+    "aria_color": "颜色筛选",
+    "aria_archetype": "原型筛选",
+    "legend_color": "颜色",
+    "loading": "正在加载套牌档案",
+    "showing_cap": "显示 60 / 共 {total} — 缩小搜索范围以查看更多",
+    "col_name": "名称",
+    "col_commander": "指挥官",
+    "col_elo": "ELO",
+    "sort_by": "按{field}排序"
+  },
+  "deckpower": {
+    "title": "我的收藏 / / 强度分级分布",
+    "decks": "{count} 副套牌",
+    "decks_one": "{count} 副套牌",
+    "no_data_aria": "没有分级数据",
+    "no_tier_data": "— 没有分级数据 —",
+    "seg_title": "{label} — {count}（{pct}%）",
+    "no_brackets": "还没有分级 — 运行 Freya 来生成",
+    "peak": "你的收藏集中在 {label}（{count} 副 · {pct}%）",
+    "peak_one": "你的收藏集中在 {label}（{count} 副 · {pct}%）",
+    "top_archetypes": "主要原型：",
+    "tier_b1": "B1 · 休闲",
+    "tier_b2": "B2 · 有主题",
+    "tier_b3": "B3 · 已优化",
+    "tier_b4": "B4 · 高强度",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "未知"
+  },
+  "quickpaste": {
+    "toggle": "快速粘贴牌表",
+    "title": "快速粘贴 / / 纯文本牌表",
+    "placeholder": "粘贴一份牌表。支持 \"1 Sol Ring\"、\"1x Sol Ring (CMM) 339\"、\"Commander: Atraxa, Praetors' Voice\"、备牌区以及以 # 开头的注释…",
+    "parsed": "已读取：{count} 张牌 · {unique} 种",
+    "parsed_one": "已读取：{count} 张牌 · {unique} 种",
+    "commander": "指挥官：",
+    "multiples": "检测到同名非基本牌有多张",
+    "aria_commander": "指挥官",
+    "cmdr_override": "指挥官：{name} — 输入可覆盖",
+    "cmdr_placeholder": "指挥官（可选 — 输入准确的牌名）",
+    "name_default": "套牌名称（默认为 {name}）",
+    "name_placeholder": "套牌名称",
+    "importing": "导入中…",
+    "submit": "导入 + 分析",
+    "toast_imported": "套牌已导入",
+    "err_failed": "导入失败"
   }
 }

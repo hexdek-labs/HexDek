@@ -37,7 +37,9 @@
     "copied": "تم النسخ!",
     "loading": "جارٍ التحميل",
     "saving": "جارٍ الحفظ...",
-    "analyzing": "جارٍ التحليل..."
+    "analyzing": "جارٍ التحليل...",
+    "all": "الكل",
+    "close": "إغلاق"
   },
   "deck": {
     "owner": "المالك",
@@ -216,5 +218,89 @@
     "fishtank_standby": "في الانتظار",
     "fishtank_scroll": "مرّر لتحميل البث المباشر",
     "fishtank_loading": "جارٍ تحميل الحوض"
+  },
+  "chip": {
+    "multi": "متعدد"
+  },
+  "ctx": {
+    "dismiss_aria": "إخفاء مربع المساعدة هذا",
+    "dismiss_title": "إخفاء — لن يظهر مرة أخرى"
+  },
+  "shelf": {
+    "add_deck": "أضف الديك الخاص بك",
+    "add_hint": "الصق قائمة. تحللها Freya في ثوانٍ.",
+    "no_art": "بدون صورة",
+    "version": "النسخة {n} من {total}",
+    "cards": "{count} بطاقة",
+    "cards_one": "{count} بطاقة",
+    "unrated": "بدون تصنيف",
+    "games": "{count} مباراة",
+    "games_one": "{count} مباراة"
+  },
+  "decks": {
+    "tape_mine": "أرشيف الديكات / / بناءاتي",
+    "tape_all": "أرشيف الديكات / / كل البناءات",
+    "tape_count": "{shown} / {total} الإجمالي",
+    "intro_1": "تصفّح وابحث في كل ديك على المنصة. اضغط على أي ديك لفتح أرشيفه: التحليل ونتائج الـ gauntlet وقائمة البطاقات والمواجهات.",
+    "intro_2": "استخدم {action} (في عرض القائمة أو مربع الرفع على الرف) لاستيراد رابط Moxfield أو لصق قائمة؛ تحللها Freya تلقائيًا بعد الرفع.",
+    "ctx_import": "اضغط أدناه لاستيراد ديك: الصق رابط Moxfield أو قائمة بطاقات نصية. تحللها Freya تلقائيًا (~10–20 ثانية) ثم تنقلك إلى صفحة الديك الجديد.",
+    "filter_label": "تصفية:",
+    "chip_owner": "المالك · {name}",
+    "chip_contains": "يحتوي على · {text}",
+    "tab_all": "كل الديكات",
+    "legal": "قانوني",
+    "illegal": "غير قانوني",
+    "search_placeholder": "ابحث في الديكات...",
+    "search_aria": "ابحث في الديكات",
+    "matches": "{count} نتيجة",
+    "matches_one": "{count} نتيجة",
+    "view_shelf": "الرف",
+    "view_list": "قائمة",
+    "aria_bracket": "تصفية حسب الـ bracket",
+    "aria_color": "تصفية حسب اللون",
+    "aria_archetype": "تصفية حسب النمط",
+    "legend_color": "اللون",
+    "loading": "جارٍ تحميل أرشيف الديكات",
+    "showing_cap": "يُعرض 60 من {total} — ضيّق البحث لرؤية المزيد",
+    "col_name": "الاسم",
+    "col_commander": "القائد",
+    "col_elo": "ELO",
+    "sort_by": "ترتيب حسب {field}"
+  },
+  "deckpower": {
+    "title": "مجموعتي / / توزيع مستويات القوة",
+    "decks": "{count} ديك",
+    "decks_one": "{count} ديك",
+    "no_data_aria": "لا توجد بيانات bracket",
+    "no_tier_data": "— لا توجد بيانات مستوى —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "لا توجد brackets بعد — شغّل Freya لتعبئتها",
+    "peak": "تتركز مجموعتك عند {label} ({count} ديك · {pct}%)",
+    "peak_one": "تتركز مجموعتك عند {label} ({count} ديك · {pct}%)",
+    "top_archetypes": "أبرز الأنماط:",
+    "tier_b1": "B1 · ودّي",
+    "tier_b2": "B2 · مركّز",
+    "tier_b3": "B3 · محسّن",
+    "tier_b4": "B4 · قوة عالية",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "غير معروف"
+  },
+  "quickpaste": {
+    "toggle": "لصق سريع لقائمة",
+    "title": "لصق سريع / / قائمة نصية",
+    "placeholder": "الصق قائمة ديك. تدعم \"1 Sol Ring\" و\"1x Sol Ring (CMM) 339\" و\"Commander: Atraxa, Praetors' Voice\" وأقسام الـ sideboard والتعليقات التي تبدأ بـ #…",
+    "parsed": "تمت القراءة: {count} بطاقة · {unique} فريدة",
+    "parsed_one": "تمت القراءة: {count} بطاقة · {unique} فريدة",
+    "commander": "القائد:",
+    "multiples": "تم رصد نسخ متعددة من بطاقة غير أساسية",
+    "aria_commander": "القائد",
+    "cmdr_override": "القائد: {name} — اكتب للاستبدال",
+    "cmdr_placeholder": "القائد (اختياري — اكتب اسم البطاقة بالضبط)",
+    "name_default": "اسم الديك (افتراضيًا: {name})",
+    "name_placeholder": "اسم الديك",
+    "importing": "جارٍ الاستيراد…",
+    "submit": "استيراد + تحليل",
+    "toast_imported": "تم استيراد الديك",
+    "err_failed": "فشل الاستيراد"
   }
 }

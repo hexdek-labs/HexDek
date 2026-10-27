@@ -37,7 +37,9 @@
     "copied": "ĐÃ SAO CHÉP!",
     "loading": "ĐANG TẢI",
     "saving": "ĐANG LƯU...",
-    "analyzing": "ĐANG PHÂN TÍCH..."
+    "analyzing": "ĐANG PHÂN TÍCH...",
+    "all": "TẤT CẢ",
+    "close": "ĐÓNG"
   },
   "deck": {
     "owner": "CHỦ SỞ HỮU",
@@ -216,5 +218,89 @@
     "fishtank_standby": "CHỜ SẴN",
     "fishtank_scroll": "CUỘN XUỐNG ĐỂ TẢI LUỒNG TRỰC TIẾP",
     "fishtank_loading": "ĐANG TẢI BỂ CÁ"
+  },
+  "chip": {
+    "multi": "ĐA MÀU"
+  },
+  "ctx": {
+    "dismiss_aria": "Ẩn hộp trợ giúp này",
+    "dismiss_title": "Ẩn — sẽ không hiện lại"
+  },
+  "shelf": {
+    "add_deck": "THÊM BỘ BÀI CỦA BẠN",
+    "add_hint": "DÁN MỘT DANH SÁCH. FREYA PHÂN TÍCH TRONG VÀI GIÂY.",
+    "no_art": "KHÔNG CÓ ẢNH",
+    "version": "V{n} TRÊN {total}",
+    "cards": "{count} LÁ",
+    "cards_one": "{count} LÁ",
+    "unrated": "CHƯA XẾP HẠNG",
+    "games": "{count} VÁN",
+    "games_one": "{count} VÁN"
+  },
+  "decks": {
+    "tape_mine": "KHO BỘ BÀI / / BẢN DỰNG CỦA TÔI",
+    "tape_all": "KHO BỘ BÀI / / TẤT CẢ BẢN DỰNG",
+    "tape_count": "{shown} / {total} TỔNG CỘNG",
+    "intro_1": "Duyệt và tìm mọi bộ bài trên nền tảng. Nhấp vào một bộ bài để mở kho của nó: phân tích, kết quả gauntlet, danh sách bài và các cặp đấu.",
+    "intro_2": "Dùng {action} (ở chế độ danh sách, hoặc ô tải lên trên kệ) để nhập một liên kết Moxfield hoặc dán danh sách; Freya tự phân tích sau khi tải lên.",
+    "ctx_import": "Nhấp bên dưới để nhập một bộ bài: dán URL Moxfield hoặc danh sách bài dạng văn bản. Freya tự phân tích (~10–20 giây) rồi đưa bạn tới trang bộ bài mới.",
+    "filter_label": "BỘ LỌC:",
+    "chip_owner": "CHỦ SỞ HỮU · {name}",
+    "chip_contains": "CÓ CHỨA · {text}",
+    "tab_all": "TẤT CẢ BỘ BÀI",
+    "legal": "HỢP LỆ",
+    "illegal": "KHÔNG HỢP LỆ",
+    "search_placeholder": "TÌM BỘ BÀI...",
+    "search_aria": "Tìm bộ bài",
+    "matches": "{count} KẾT QUẢ",
+    "matches_one": "{count} KẾT QUẢ",
+    "view_shelf": "KỆ",
+    "view_list": "DANH SÁCH",
+    "aria_bracket": "Bộ lọc bracket",
+    "aria_color": "Bộ lọc màu",
+    "aria_archetype": "Bộ lọc archetype",
+    "legend_color": "MÀU",
+    "loading": "ĐANG TẢI KHO BỘ BÀI",
+    "showing_cap": "HIỂN THỊ 60 / {total} — THU HẸP TÌM KIẾM ĐỂ XEM THÊM",
+    "col_name": "TÊN",
+    "col_commander": "CHỈ HUY",
+    "col_elo": "ELO",
+    "sort_by": "Sắp xếp theo {field}"
+  },
+  "deckpower": {
+    "title": "BỘ SƯU TẬP CỦA TÔI / / PHÂN BỔ THEO CẤP SỨC MẠNH",
+    "decks": "{count} BỘ BÀI",
+    "decks_one": "{count} BỘ BÀI",
+    "no_data_aria": "Không có dữ liệu bracket",
+    "no_tier_data": "— KHÔNG CÓ DỮ LIỆU CẤP —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "CHƯA CÓ BRACKET — CHẠY FREYA ĐỂ ĐIỀN VÀO",
+    "peak": "BỘ SƯU TẬP CỦA BẠN TẬP TRUNG Ở {label} ({count} BỘ BÀI · {pct}%)",
+    "peak_one": "BỘ SƯU TẬP CỦA BẠN TẬP TRUNG Ở {label} ({count} BỘ BÀI · {pct}%)",
+    "top_archetypes": "ARCHETYPE NỔI BẬT:",
+    "tier_b1": "B1 · GIẢI TRÍ",
+    "tier_b2": "B2 · CÓ ĐỊNH HƯỚNG",
+    "tier_b3": "B3 · TỐI ƯU",
+    "tier_b4": "B4 · SỨC MẠNH CAO",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "KHÔNG RÕ"
+  },
+  "quickpaste": {
+    "toggle": "DÁN NHANH MỘT DANH SÁCH",
+    "title": "DÁN NHANH / / DANH SÁCH THUẦN VĂN BẢN",
+    "placeholder": "Dán danh sách bộ bài. Hỗ trợ \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", các mục sideboard và chú thích bắt đầu bằng #…",
+    "parsed": "ĐÃ ĐỌC: {count} LÁ · {unique} LÁ KHÁC NHAU",
+    "parsed_one": "ĐÃ ĐỌC: {count} LÁ · {unique} LÁ KHÁC NHAU",
+    "commander": "CHỈ HUY:",
+    "multiples": "PHÁT HIỆN NHIỀU BẢN SAO CỦA MỘT LÁ KHÔNG PHẢI ĐẤT CƠ BẢN",
+    "aria_commander": "Chỉ huy",
+    "cmdr_override": "Chỉ huy: {name} — gõ để thay thế",
+    "cmdr_placeholder": "Chỉ huy (tùy chọn — gõ đúng tên lá bài)",
+    "name_default": "Tên bộ bài (mặc định: {name})",
+    "name_placeholder": "Tên bộ bài",
+    "importing": "ĐANG NHẬP…",
+    "submit": "NHẬP + PHÂN TÍCH",
+    "toast_imported": "ĐÃ NHẬP BỘ BÀI",
+    "err_failed": "NHẬP THẤT BẠI"
   }
 }

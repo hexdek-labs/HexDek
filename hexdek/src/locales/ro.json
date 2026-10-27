@@ -37,7 +37,9 @@
     "copied": "COPIAT!",
     "loading": "SE ÎNCARCĂ",
     "saving": "SE SALVEAZĂ...",
-    "analyzing": "SE ANALIZEAZĂ..."
+    "analyzing": "SE ANALIZEAZĂ...",
+    "all": "TOATE",
+    "close": "ÎNCHIDE"
   },
   "deck": {
     "owner": "PROPRIETAR",
@@ -216,5 +218,89 @@
     "fishtank_standby": "ÎN AȘTEPTARE",
     "fishtank_scroll": "DERULEAZĂ PENTRU A ÎNCĂRCA TRANSMISIUNEA",
     "fishtank_loading": "SE ÎNCARCĂ ACVARIUL"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Ascunde această casetă",
+    "dismiss_title": "Ascunde — nu va mai apărea"
+  },
+  "shelf": {
+    "add_deck": "ADAUGĂ-ȚI PACHETUL",
+    "add_hint": "LIPEȘTE O LISTĂ. FREYA O ANALIZEAZĂ ÎN CÂTEVA SECUNDE.",
+    "no_art": "FĂRĂ ILUSTRAȚIE",
+    "version": "V{n} DIN {total}",
+    "cards": "{count} CĂRȚI",
+    "cards_one": "{count} CARTE",
+    "unrated": "NECLASIFICAT",
+    "games": "{count} PARTIDE",
+    "games_one": "{count} PARTIDĂ"
+  },
+  "decks": {
+    "tape_mine": "ARHIVA DE PACHETE / / BUILD-URILE MELE",
+    "tape_all": "ARHIVA DE PACHETE / / TOATE BUILD-URILE",
+    "tape_count": "{shown} / {total} ÎN TOTAL",
+    "intro_1": "Răsfoiește și caută orice pachet de pe platformă. Dă clic pe un pachet ca să-i deschizi arhiva: analiză, rezultate de gauntlet, listă și matchup-uri.",
+    "intro_2": "Folosește {action} (în vizualizarea listă sau pe caseta de încărcare din raft) ca să imporți un link Moxfield sau să lipești o listă; Freya o analizează automat după încărcare.",
+    "ctx_import": "Dă clic mai jos ca să imporți un pachet: lipește un URL Moxfield sau o listă simplă. Freya o analizează automat (~10–20 secunde) și apoi te duce la pagina noului pachet.",
+    "filter_label": "FILTRU:",
+    "chip_owner": "PROPRIETAR · {name}",
+    "chip_contains": "CONȚINE · {text}",
+    "tab_all": "TOATE PACHETELE",
+    "legal": "LEGAL",
+    "illegal": "ILEGAL",
+    "search_placeholder": "CAUTĂ PACHETE...",
+    "search_aria": "Caută pachete",
+    "matches": "{count} REZULTATE",
+    "matches_one": "{count} REZULTAT",
+    "view_shelf": "RAFT",
+    "view_list": "LISTĂ",
+    "aria_bracket": "Filtru de bracket",
+    "aria_color": "Filtru de culoare",
+    "aria_archetype": "Filtru de arhetip",
+    "legend_color": "CULOARE",
+    "loading": "SE ÎNCARCĂ ARHIVA DE PACHETE",
+    "showing_cap": "SE AFIȘEAZĂ 60 / {total} — RESTRÂNGE CĂUTAREA PENTRU MAI MULTE",
+    "col_name": "NUME",
+    "col_commander": "COMANDANT",
+    "col_elo": "ELO",
+    "sort_by": "Sortează după {field}"
+  },
+  "deckpower": {
+    "title": "COLECȚIA MEA / / DISTRIBUȚIA PE NIVELURI DE PUTERE",
+    "decks": "{count} PACHETE",
+    "decks_one": "{count} PACHET",
+    "no_data_aria": "Fără date de bracket",
+    "no_tier_data": "— FĂRĂ DATE DE NIVEL —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "ÎNCĂ NU EXISTĂ BRACKET-URI — RULEAZĂ FREYA PENTRU A LE COMPLETA",
+    "peak": "COLECȚIA TA CULMINEAZĂ LA {label} ({count} PACHETE · {pct}%)",
+    "peak_one": "COLECȚIA TA CULMINEAZĂ LA {label} ({count} PACHET · {pct}%)",
+    "top_archetypes": "ARHETIPURI PRINCIPALE:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FOCALIZAT",
+    "tier_b3": "B3 · OPTIMIZAT",
+    "tier_b4": "B4 · PUTERE MARE",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "NECUNOSCUT"
+  },
+  "quickpaste": {
+    "toggle": "LIPEȘTE RAPID O LISTĂ",
+    "title": "LIPIRE RAPIDĂ / / LISTĂ SIMPLĂ",
+    "placeholder": "Lipește o listă de pachet. Acceptă \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", secțiuni de sideboard și comentarii cu #…",
+    "parsed": "CITITE: {count} CĂRȚI · {unique} UNICE",
+    "parsed_one": "CITITĂ: {count} CARTE · {unique} UNICĂ",
+    "commander": "COMANDANT:",
+    "multiples": "AU FOST DETECTATE MAI MULTE COPII ALE UNEI CĂRȚI NE-BAZICE",
+    "aria_commander": "Comandant",
+    "cmdr_override": "Comandant: {name} — scrie ca să înlocuiești",
+    "cmdr_placeholder": "Comandant (opțional — scrie numele exact al cărții)",
+    "name_default": "Numele pachetului (implicit: {name})",
+    "name_placeholder": "Numele pachetului",
+    "importing": "SE IMPORTĂ…",
+    "submit": "IMPORTĂ + ANALIZEAZĂ",
+    "toast_imported": "PACHET IMPORTAT",
+    "err_failed": "IMPORTUL A EȘUAT"
   }
 }

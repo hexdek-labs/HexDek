@@ -37,7 +37,9 @@
     "copied": "KOPYALANDI!",
     "loading": "YÜKLENİYOR",
     "saving": "KAYDEDİLİYOR...",
-    "analyzing": "ANALİZ EDİLİYOR..."
+    "analyzing": "ANALİZ EDİLİYOR...",
+    "all": "TÜMÜ",
+    "close": "KAPAT"
   },
   "deck": {
     "owner": "SAHİP",
@@ -216,5 +218,89 @@
     "fishtank_standby": "BEKLEMEDE",
     "fishtank_scroll": "CANLI YAYINI YÜKLEMEK İÇİN KAYDIR",
     "fishtank_loading": "AKVARYUM YÜKLENİYOR"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Bu yardım kutusunu gizle",
+    "dismiss_title": "Gizle — bir daha görünmez"
+  },
+  "shelf": {
+    "add_deck": "DESTENİ EKLE",
+    "add_hint": "BİR LİSTE YAPIŞTIR. FREYA SANİYELER İÇİNDE ANALİZ EDER.",
+    "no_art": "GÖRSEL YOK",
+    "version": "V{n} / {total}",
+    "cards": "{count} KART",
+    "cards_one": "{count} KART",
+    "unrated": "DERECESİZ",
+    "games": "{count} OYUN",
+    "games_one": "{count} OYUN"
+  },
+  "decks": {
+    "tape_mine": "DESTE ARŞİVİ / / BENİM BUILD'LERİM",
+    "tape_all": "DESTE ARŞİVİ / / TÜM BUILD'LER",
+    "tape_count": "{shown} / {total} TOPLAM",
+    "intro_1": "Platformdaki her desteye göz at ve ara. Arşivini açmak için bir desteye tıkla: analiz, gauntlet sonuçları, deste listesi ve eşleşmeler.",
+    "intro_2": "Moxfield bağlantısı içe aktarmak veya liste yapıştırmak için {action} ögesini kullan (liste görünümünde ya da raftaki yükleme karosunda); Freya yüklemeden sonra listeyi kendiliğinden analiz eder.",
+    "ctx_import": "Deste içe aktarmak için aşağıya tıkla: bir Moxfield URL'si veya düz deste listesi yapıştır. Freya listeyi kendiliğinden analiz eder (~10–20 saniye) ve seni yeni destenin sayfasına götürür.",
+    "filter_label": "FİLTRE:",
+    "chip_owner": "SAHİBİ · {name}",
+    "chip_contains": "İÇERİR · {text}",
+    "tab_all": "TÜM DESTELER",
+    "legal": "KURALLARA UYGUN",
+    "illegal": "KURAL DIŞI",
+    "search_placeholder": "DESTE ARA...",
+    "search_aria": "Deste ara",
+    "matches": "{count} SONUÇ",
+    "matches_one": "{count} SONUÇ",
+    "view_shelf": "RAF",
+    "view_list": "LİSTE",
+    "aria_bracket": "Bracket filtresi",
+    "aria_color": "Renk filtresi",
+    "aria_archetype": "Arketip filtresi",
+    "legend_color": "RENK",
+    "loading": "DESTE ARŞİVİ YÜKLENİYOR",
+    "showing_cap": "60 / {total} GÖSTERİLİYOR — DAHA FAZLASI İÇİN ARAMAYI DARALT",
+    "col_name": "AD",
+    "col_commander": "KOMUTAN",
+    "col_elo": "ELO",
+    "sort_by": "{field} ölçütüne göre sırala"
+  },
+  "deckpower": {
+    "title": "KOLEKSİYONUM / / GÜÇ SEVİYESİ DAĞILIMI",
+    "decks": "{count} DESTE",
+    "decks_one": "{count} DESTE",
+    "no_data_aria": "Bracket verisi yok",
+    "no_tier_data": "— SEVİYE VERİSİ YOK —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "HENÜZ BRACKET YOK — DOLDURMAK İÇİN FREYA'YI ÇALIŞTIR",
+    "peak": "KOLEKSİYONUN {label} SEVİYESİNDE YOĞUNLAŞIYOR ({count} DESTE · {pct}%)",
+    "peak_one": "KOLEKSİYONUN {label} SEVİYESİNDE YOĞUNLAŞIYOR ({count} DESTE · {pct}%)",
+    "top_archetypes": "ÖNE ÇIKAN ARKETİPLER:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · ODAKLI",
+    "tier_b3": "B3 · OPTİMİZE",
+    "tier_b4": "B4 · YÜKSEK GÜÇ",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "BİLİNMİYOR"
+  },
+  "quickpaste": {
+    "toggle": "HIZLI LİSTE YAPIŞTIRMA",
+    "title": "HIZLI YAPIŞTIRMA / / DÜZ DESTE LİSTESİ",
+    "placeholder": "Bir deste listesi yapıştır. Şunları destekler: \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboard bölümleri ve # ile başlayan yorumlar…",
+    "parsed": "OKUNDU: {count} KART · {unique} FARKLI",
+    "parsed_one": "OKUNDU: {count} KART · {unique} FARKLI",
+    "commander": "KOMUTAN:",
+    "multiples": "TEMEL OLMAYAN BİR KARTIN BİRDEN FAZLA KOPYASI BULUNDU",
+    "aria_commander": "Komutan",
+    "cmdr_override": "Komutan: {name} — değiştirmek için yaz",
+    "cmdr_placeholder": "Komutan (isteğe bağlı — kartın tam adını yaz)",
+    "name_default": "Deste adı (varsayılan: {name})",
+    "name_placeholder": "Deste adı",
+    "importing": "İÇE AKTARILIYOR…",
+    "submit": "İÇE AKTAR + ANALİZ ET",
+    "toast_imported": "DESTE İÇE AKTARILDI",
+    "err_failed": "İÇE AKTARMA BAŞARISIZ"
   }
 }

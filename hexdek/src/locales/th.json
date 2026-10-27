@@ -37,7 +37,9 @@
     "copied": "คัดลอกแล้ว!",
     "loading": "กำลังโหลด",
     "saving": "กำลังบันทึก...",
-    "analyzing": "กำลังวิเคราะห์..."
+    "analyzing": "กำลังวิเคราะห์...",
+    "all": "ทั้งหมด",
+    "close": "ปิด"
   },
   "deck": {
     "owner": "เจ้าของ",
@@ -216,5 +218,89 @@
     "fishtank_standby": "สแตนด์บาย",
     "fishtank_scroll": "เลื่อนลงเพื่อโหลดฟีดสด",
     "fishtank_loading": "กำลังโหลดตู้ปลา"
+  },
+  "chip": {
+    "multi": "หลายสี"
+  },
+  "ctx": {
+    "dismiss_aria": "ซ่อนกล่องช่วยเหลือนี้",
+    "dismiss_title": "ซ่อน — จะไม่แสดงอีก"
+  },
+  "shelf": {
+    "add_deck": "เพิ่มเด็คของคุณ",
+    "add_hint": "วางรายการการ์ด แล้ว Freya จะวิเคราะห์ให้ในไม่กี่วินาที",
+    "no_art": "ไม่มีภาพ",
+    "version": "V{n} จาก {total}",
+    "cards": "{count} ใบ",
+    "cards_one": "{count} ใบ",
+    "unrated": "ยังไม่มีเรตติ้ง",
+    "games": "{count} เกม",
+    "games_one": "{count} เกม"
+  },
+  "decks": {
+    "tape_mine": "คลังเด็ค / / เด็คของฉัน",
+    "tape_all": "คลังเด็ค / / เด็คทั้งหมด",
+    "tape_count": "{shown} / {total} ทั้งหมด",
+    "intro_1": "เรียกดูและค้นหาเด็คทุกใบบนแพลตฟอร์ม คลิกเด็คใดก็ได้เพื่อเปิดคลังของมัน: บทวิเคราะห์ ผลกอนต์เล็ต รายการการ์ด และการเจอกัน",
+    "intro_2": "ใช้ {action} (ในมุมมองรายการ หรือช่องอัปโหลดบนชั้นวาง) เพื่อนำเข้าลิงก์ Moxfield หรือวางรายการการ์ด Freya จะวิเคราะห์ให้เองหลังอัปโหลด",
+    "ctx_import": "คลิกด้านล่างเพื่อนำเข้าเด็ค: วาง URL ของ Moxfield หรือรายการการ์ดแบบข้อความ Freya จะวิเคราะห์ให้เอง (~10–20 วินาที) แล้วพาคุณไปยังหน้าเด็คใหม่",
+    "filter_label": "ตัวกรอง:",
+    "chip_owner": "เจ้าของ · {name}",
+    "chip_contains": "มีการ์ด · {text}",
+    "tab_all": "เด็คทั้งหมด",
+    "legal": "ถูกกติกา",
+    "illegal": "ผิดกติกา",
+    "search_placeholder": "ค้นหาเด็ค...",
+    "search_aria": "ค้นหาเด็ค",
+    "matches": "{count} รายการ",
+    "matches_one": "{count} รายการ",
+    "view_shelf": "ชั้นวาง",
+    "view_list": "รายการ",
+    "aria_bracket": "ตัวกรองแบร็กเก็ต",
+    "aria_color": "ตัวกรองสี",
+    "aria_archetype": "ตัวกรองอาร์คีไทป์",
+    "legend_color": "สี",
+    "loading": "กำลังโหลดคลังเด็ค",
+    "showing_cap": "แสดง 60 จาก {total} — จำกัดการค้นหาเพื่อดูเพิ่ม",
+    "col_name": "ชื่อ",
+    "col_commander": "ผู้บัญชาการ",
+    "col_elo": "ELO",
+    "sort_by": "เรียงตาม {field}"
+  },
+  "deckpower": {
+    "title": "คอลเลกชันของฉัน / / การกระจายระดับพลัง",
+    "decks": "{count} เด็ค",
+    "decks_one": "{count} เด็ค",
+    "no_data_aria": "ไม่มีข้อมูลแบร็กเก็ต",
+    "no_tier_data": "— ไม่มีข้อมูลระดับ —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "ยังไม่มีแบร็กเก็ต — รัน Freya เพื่อเติมข้อมูล",
+    "peak": "คอลเลกชันของคุณกระจุกอยู่ที่ {label} ({count} เด็ค · {pct}%)",
+    "peak_one": "คอลเลกชันของคุณกระจุกอยู่ที่ {label} ({count} เด็ค · {pct}%)",
+    "top_archetypes": "อาร์คีไทป์เด่น:",
+    "tier_b1": "B1 · สบาย ๆ",
+    "tier_b2": "B2 · มีทิศทาง",
+    "tier_b3": "B3 · ปรับจูนแล้ว",
+    "tier_b4": "B4 · พลังสูง",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "ไม่ทราบ"
+  },
+  "quickpaste": {
+    "toggle": "วางรายการการ์ดแบบเร็ว",
+    "title": "วางแบบเร็ว / / รายการการ์ดล้วน",
+    "placeholder": "วางรายการการ์ดของเด็ค รองรับ \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", ส่วนไซด์บอร์ด และคอมเมนต์ที่ขึ้นต้นด้วย #…",
+    "parsed": "อ่านได้: {count} ใบ · ไม่ซ้ำ {unique} ใบ",
+    "parsed_one": "อ่านได้: {count} ใบ · ไม่ซ้ำ {unique} ใบ",
+    "commander": "ผู้บัญชาการ:",
+    "multiples": "พบการ์ดที่ไม่ใช่พื้นฐานซ้ำหลายใบ",
+    "aria_commander": "ผู้บัญชาการ",
+    "cmdr_override": "ผู้บัญชาการ: {name} — พิมพ์เพื่อเปลี่ยน",
+    "cmdr_placeholder": "ผู้บัญชาการ (ไม่บังคับ — พิมพ์ชื่อการ์ดให้ตรง)",
+    "name_default": "ชื่อเด็ค (ค่าเริ่มต้น: {name})",
+    "name_placeholder": "ชื่อเด็ค",
+    "importing": "กำลังนำเข้า…",
+    "submit": "นำเข้า + วิเคราะห์",
+    "toast_imported": "นำเข้าเด็คแล้ว",
+    "err_failed": "นำเข้าไม่สำเร็จ"
   }
 }

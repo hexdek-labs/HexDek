@@ -37,7 +37,9 @@
     "copied": "SKOPIOWANO!",
     "loading": "ŁADOWANIE",
     "saving": "ZAPISYWANIE...",
-    "analyzing": "ANALIZOWANIE..."
+    "analyzing": "ANALIZOWANIE...",
+    "all": "WSZYSTKIE",
+    "close": "ZAMKNIJ"
   },
   "deck": {
     "owner": "WŁAŚCICIEL",
@@ -216,5 +218,89 @@
     "fishtank_standby": "CZUWANIE",
     "fishtank_scroll": "PRZEWIŃ, BY ZAŁADOWAĆ TRANSMISJĘ",
     "fishtank_loading": "ŁADOWANIE AKWARIUM"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Ukryj tę podpowiedź",
+    "dismiss_title": "Ukryj — nie pokaże się ponownie"
+  },
+  "shelf": {
+    "add_deck": "DODAJ SWOJĄ TALIĘ",
+    "add_hint": "WKLEJ LISTĘ. FREYA PRZEANALIZUJE JĄ W KILKA SEKUND.",
+    "no_art": "BRAK GRAFIKI",
+    "version": "V{n} Z {total}",
+    "cards": "KARTY: {count}",
+    "cards_one": "KARTA: {count}",
+    "unrated": "BEZ RANKINGU",
+    "games": "PARTIE: {count}",
+    "games_one": "PARTIA: {count}"
+  },
+  "decks": {
+    "tape_mine": "ARCHIWUM TALII / / MOJE BUILDY",
+    "tape_all": "ARCHIWUM TALII / / WSZYSTKIE BUILDY",
+    "tape_count": "{shown} / {total} ŁĄCZNIE",
+    "intro_1": "Przeglądaj i przeszukuj każdą talię na platformie. Kliknij dowolną talię, aby otworzyć jej archiwum: analizę, wyniki gauntletu, listę kart i matchupy.",
+    "intro_2": "Użyj {action} (w widoku listy albo kafelka wgrywania na półce), aby zaimportować link z Moxfielda lub wkleić listę; Freya analizuje ją automatycznie po wgraniu.",
+    "ctx_import": "Kliknij poniżej, aby zaimportować talię: wklej adres z Moxfielda albo samą listę kart. Freya analizuje ją automatycznie (~10–20 sekund) i przenosi Cię na stronę nowej talii.",
+    "filter_label": "FILTR:",
+    "chip_owner": "WŁAŚCICIEL · {name}",
+    "chip_contains": "ZAWIERA · {text}",
+    "tab_all": "WSZYSTKIE TALIE",
+    "legal": "LEGALNA",
+    "illegal": "NIELEGALNA",
+    "search_placeholder": "SZUKAJ TALII...",
+    "search_aria": "Szukaj talii",
+    "matches": "WYNIKI: {count}",
+    "matches_one": "WYNIK: {count}",
+    "view_shelf": "PÓŁKA",
+    "view_list": "LISTA",
+    "aria_bracket": "Filtr bracketu",
+    "aria_color": "Filtr koloru",
+    "aria_archetype": "Filtr archetypu",
+    "legend_color": "KOLOR",
+    "loading": "WCZYTYWANIE ARCHIWUM TALII",
+    "showing_cap": "POKAZANO 60 / {total} — ZAWĘŹ WYSZUKIWANIE, ABY ZOBACZYĆ WIĘCEJ",
+    "col_name": "NAZWA",
+    "col_commander": "DOWÓDCA",
+    "col_elo": "ELO",
+    "sort_by": "Sortuj wg: {field}"
+  },
+  "deckpower": {
+    "title": "MOJA KOLEKCJA / / ROZKŁAD POZIOMÓW MOCY",
+    "decks": "TALIE: {count}",
+    "decks_one": "TALIA: {count}",
+    "no_data_aria": "Brak danych o brackecie",
+    "no_tier_data": "— BRAK DANYCH O POZIOMIE —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "JESZCZE BRAK BRACKETÓW — URUCHOM FREYĘ, ABY JE UZUPEŁNIĆ",
+    "peak": "TWOJA KOLEKCJA KONCENTRUJE SIĘ NA {label} ({count} TALII · {pct}%)",
+    "peak_one": "TWOJA KOLEKCJA KONCENTRUJE SIĘ NA {label} ({count} TALIA · {pct}%)",
+    "top_archetypes": "NAJCZĘSTSZE ARCHETYPY:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · UKIERUNKOWANA",
+    "tier_b3": "B3 · ZOPTYMALIZOWANA",
+    "tier_b4": "B4 · WYSOKA MOC",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "NIEZNANY"
+  },
+  "quickpaste": {
+    "toggle": "SZYBKIE WKLEJENIE LISTY",
+    "title": "SZYBKIE WKLEJANIE / / ZWYKŁA LISTA",
+    "placeholder": "Wklej listę talii. Obsługuje \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sekcje sideboardu i komentarze z #…",
+    "parsed": "WCZYTANO: {count} KART · {unique} UNIKATOWYCH",
+    "parsed_one": "WCZYTANO: {count} KARTĘ · {unique} UNIKATOWĄ",
+    "commander": "DOWÓDCA:",
+    "multiples": "WYKRYTO KILKA KOPII KARTY NIEPODSTAWOWEJ",
+    "aria_commander": "Dowódca",
+    "cmdr_override": "Dowódca: {name} — wpisz, aby zmienić",
+    "cmdr_placeholder": "Dowódca (opcjonalnie — wpisz dokładną nazwę karty)",
+    "name_default": "Nazwa talii (domyślnie: {name})",
+    "name_placeholder": "Nazwa talii",
+    "importing": "IMPORTOWANIE…",
+    "submit": "IMPORTUJ + ANALIZUJ",
+    "toast_imported": "TALIA ZAIMPORTOWANA",
+    "err_failed": "IMPORT NIE POWIÓDŁ SIĘ"
   }
 }

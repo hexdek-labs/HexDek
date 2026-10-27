@@ -37,7 +37,9 @@
     "copied": "COPIED!",
     "loading": "LOADING",
     "saving": "SAVING...",
-    "analyzing": "ANALYZING..."
+    "analyzing": "ANALYZING...",
+    "all": "ALL",
+    "close": "CLOSE"
   },
   "deck": {
     "owner": "OWNER",
@@ -216,5 +218,89 @@
     "fishtank_standby": "STANDBY",
     "fishtank_scroll": "SCROLL TO LOAD LIVE FEED",
     "fishtank_loading": "LOADING FISHTANK"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Dismiss this context box",
+    "dismiss_title": "Dismiss — won't show again"
+  },
+  "shelf": {
+    "add_deck": "ADD YOUR DECK",
+    "add_hint": "PASTE A LIST. FREYA ANALYZES IN SECONDS.",
+    "no_art": "NO ART",
+    "version": "V{n} OF {total}",
+    "cards": "{count} CARDS",
+    "cards_one": "{count} CARD",
+    "unrated": "UNRATED",
+    "games": "{count} GAMES",
+    "games_one": "{count} GAME"
+  },
+  "decks": {
+    "tape_mine": "DECK ARCHIVE / / MY BUILDS",
+    "tape_all": "DECK ARCHIVE / / ALL BUILDS",
+    "tape_count": "{shown} / {total} TOTAL",
+    "intro_1": "Browse and search every deck on the platform. Click any deck to open its archive — analysis, gauntlet results, decklist, and matchups.",
+    "intro_2": "Use {action} (in the list view, or the upload tile on the shelf) to import a Moxfield link or paste a decklist; Freya analyzes it automatically after upload.",
+    "ctx_import": "Click below to import a deck — paste a Moxfield URL or raw decklist. Freya analyzes it automatically (~10–20 seconds) and then redirects you to the new deck page.",
+    "filter_label": "FILTER:",
+    "chip_owner": "OWNER · {name}",
+    "chip_contains": "CONTAINS · {text}",
+    "tab_all": "ALL DECKS",
+    "legal": "LEGAL",
+    "illegal": "ILLEGAL",
+    "search_placeholder": "SEARCH DECKS...",
+    "search_aria": "Search decks",
+    "matches": "{count} MATCHES",
+    "matches_one": "{count} MATCH",
+    "view_shelf": "SHELF",
+    "view_list": "LIST",
+    "aria_bracket": "Bracket filter",
+    "aria_color": "Color filter",
+    "aria_archetype": "Archetype filter",
+    "legend_color": "COLOR",
+    "loading": "LOADING DECK ARCHIVE",
+    "showing_cap": "SHOWING 60 / {total} — REFINE SEARCH TO SEE MORE",
+    "col_name": "NAME",
+    "col_commander": "COMMANDER",
+    "col_elo": "ELO",
+    "sort_by": "Sort by {field}"
+  },
+  "deckpower": {
+    "title": "MY COLLECTION / / POWER-TIER DISTRIBUTION",
+    "decks": "{count} DECKS",
+    "decks_one": "{count} DECK",
+    "no_data_aria": "No bracket data",
+    "no_tier_data": "— NO TIER DATA —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "NO BRACKETS YET — RUN FREYA TO POPULATE",
+    "peak": "YOUR COLLECTION PEAKS AT {label} ({count} DECKS · {pct}%)",
+    "peak_one": "YOUR COLLECTION PEAKS AT {label} ({count} DECK · {pct}%)",
+    "top_archetypes": "TOP ARCHETYPES:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FOCUSED",
+    "tier_b3": "B3 · OPTIMIZED",
+    "tier_b4": "B4 · HIGH POWER",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "UNKNOWN"
+  },
+  "quickpaste": {
+    "toggle": "QUICK PASTE A DECKLIST",
+    "title": "QUICK PASTE / / PLAIN DECKLIST",
+    "placeholder": "Paste a decklist. Supports \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboard sections, # comments…",
+    "parsed": "PARSED: {count} CARDS · {unique} UNIQUE",
+    "parsed_one": "PARSED: {count} CARD · {unique} UNIQUE",
+    "commander": "COMMANDER:",
+    "multiples": "MULTIPLES OF A NON-BASIC DETECTED",
+    "aria_commander": "Commander",
+    "cmdr_override": "Commander: {name} — type to override",
+    "cmdr_placeholder": "Commander (optional — type the exact card name)",
+    "name_default": "Deck name (defaults to {name})",
+    "name_placeholder": "Deck name",
+    "importing": "IMPORTING…",
+    "submit": "IMPORT + ANALYZE",
+    "toast_imported": "DECK IMPORTED",
+    "err_failed": "IMPORT FAILED"
   }
 }

@@ -37,7 +37,9 @@
     "copied": "GEKOPIEERD!",
     "loading": "LADEN",
     "saving": "OPSLAAN...",
-    "analyzing": "ANALYSEREN..."
+    "analyzing": "ANALYSEREN...",
+    "all": "ALLE",
+    "close": "SLUITEN"
   },
   "deck": {
     "owner": "EIGENAAR",
@@ -216,5 +218,89 @@
     "fishtank_standby": "STAND-BY",
     "fishtank_scroll": "SCROL OM DE LIVEFEED TE LADEN",
     "fishtank_loading": "FISHTANK WORDT GELADEN"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Dit hulpvenster sluiten",
+    "dismiss_title": "Sluiten — komt niet terug"
+  },
+  "shelf": {
+    "add_deck": "VOEG JE DECK TOE",
+    "add_hint": "PLAK EEN LIJST. FREYA ANALYSEERT HEM IN SECONDEN.",
+    "no_art": "GEEN ARTWORK",
+    "version": "V{n} VAN {total}",
+    "cards": "{count} KAARTEN",
+    "cards_one": "{count} KAART",
+    "unrated": "ONGEWAARDEERD",
+    "games": "{count} POTJES",
+    "games_one": "{count} POTJE"
+  },
+  "decks": {
+    "tape_mine": "DECKARCHIEF / / MIJN BUILDS",
+    "tape_all": "DECKARCHIEF / / ALLE BUILDS",
+    "tape_count": "{shown} / {total} TOTAAL",
+    "intro_1": "Blader en zoek door elk deck op het platform. Klik op een deck om het archief te openen: analyse, gauntletresultaten, decklijst en matchups.",
+    "intro_2": "Gebruik {action} (in de lijstweergave of de uploadtegel op de plank) om een Moxfield-link te importeren of een lijst te plakken; Freya analyseert hem automatisch na het uploaden.",
+    "ctx_import": "Klik hieronder om een deck te importeren: plak een Moxfield-URL of een kale decklijst. Freya analyseert hem automatisch (~10–20 seconden) en stuurt je daarna door naar de nieuwe deckpagina.",
+    "filter_label": "FILTER:",
+    "chip_owner": "EIGENAAR · {name}",
+    "chip_contains": "BEVAT · {text}",
+    "tab_all": "ALLE DECKS",
+    "legal": "LEGAAL",
+    "illegal": "ILLEGAAL",
+    "search_placeholder": "ZOEK DECKS...",
+    "search_aria": "Zoek decks",
+    "matches": "{count} TREFFERS",
+    "matches_one": "{count} TREFFER",
+    "view_shelf": "PLANK",
+    "view_list": "LIJST",
+    "aria_bracket": "Bracketfilter",
+    "aria_color": "Kleurfilter",
+    "aria_archetype": "Archetypefilter",
+    "legend_color": "KLEUR",
+    "loading": "DECKARCHIEF WORDT GELADEN",
+    "showing_cap": "TOONT 60 / {total} — VERFIJN DE ZOEKOPDRACHT VOOR MEER",
+    "col_name": "NAAM",
+    "col_commander": "COMMANDER",
+    "col_elo": "ELO",
+    "sort_by": "Sorteer op {field}"
+  },
+  "deckpower": {
+    "title": "MIJN COLLECTIE / / VERDELING NAAR KRACHTNIVEAU",
+    "decks": "{count} DECKS",
+    "decks_one": "{count} DECK",
+    "no_data_aria": "Geen bracketgegevens",
+    "no_tier_data": "— GEEN NIVEAUGEGEVENS —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "NOG GEEN BRACKETS — DRAAI FREYA OM ZE TE VULLEN",
+    "peak": "JE COLLECTIE PIEKT OP {label} ({count} DECKS · {pct}%)",
+    "peak_one": "JE COLLECTIE PIEKT OP {label} ({count} DECK · {pct}%)",
+    "top_archetypes": "TOPARCHETYPEN:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · GERICHT",
+    "tier_b3": "B3 · GEOPTIMALISEERD",
+    "tier_b4": "B4 · HOOG VERMOGEN",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "ONBEKEND"
+  },
+  "quickpaste": {
+    "toggle": "SNEL EEN DECKLIJST PLAKKEN",
+    "title": "SNEL PLAKKEN / / KALE DECKLIJST",
+    "placeholder": "Plak een decklijst. Ondersteunt \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboardsecties en #-opmerkingen…",
+    "parsed": "GELEZEN: {count} KAARTEN · {unique} UNIEK",
+    "parsed_one": "GELEZEN: {count} KAART · {unique} UNIEK",
+    "commander": "COMMANDER:",
+    "multiples": "MEERDERE KOPIEËN VAN EEN NIET-BASISKAART GEVONDEN",
+    "aria_commander": "Commander",
+    "cmdr_override": "Commander: {name} — typ om te overschrijven",
+    "cmdr_placeholder": "Commander (optioneel — typ de exacte kaartnaam)",
+    "name_default": "Decknaam (standaard {name})",
+    "name_placeholder": "Decknaam",
+    "importing": "IMPORTEREN…",
+    "submit": "IMPORTEREN + ANALYSEREN",
+    "toast_imported": "DECK GEÏMPORTEERD",
+    "err_failed": "IMPORT MISLUKT"
   }
 }

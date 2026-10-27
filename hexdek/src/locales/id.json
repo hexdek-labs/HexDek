@@ -37,7 +37,9 @@
     "copied": "TERSALIN!",
     "loading": "MEMUAT",
     "saving": "MENYIMPAN...",
-    "analyzing": "MENGANALISIS..."
+    "analyzing": "MENGANALISIS...",
+    "all": "SEMUA",
+    "close": "TUTUP"
   },
   "deck": {
     "owner": "PEMILIK",
@@ -216,5 +218,89 @@
     "fishtank_standby": "SIAGA",
     "fishtank_scroll": "GULIR UNTUK MEMUAT SIARAN LANGSUNG",
     "fishtank_loading": "MEMUAT AKUARIUM"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Sembunyikan kotak bantuan ini",
+    "dismiss_title": "Sembunyikan — tidak muncul lagi"
+  },
+  "shelf": {
+    "add_deck": "TAMBAHKAN DEKMU",
+    "add_hint": "TEMPEL SEBUAH DAFTAR. FREYA MENGANALISISNYA DALAM HITUNGAN DETIK.",
+    "no_art": "TANPA ILUSTRASI",
+    "version": "V{n} DARI {total}",
+    "cards": "{count} KARTU",
+    "cards_one": "{count} KARTU",
+    "unrated": "BELUM DINILAI",
+    "games": "{count} PERTANDINGAN",
+    "games_one": "{count} PERTANDINGAN"
+  },
+  "decks": {
+    "tape_mine": "ARSIP DEK / / BUILD SAYA",
+    "tape_all": "ARSIP DEK / / SEMUA BUILD",
+    "tape_count": "{shown} / {total} TOTAL",
+    "intro_1": "Jelajahi dan cari setiap dek di platform. Klik dek mana pun untuk membuka arsipnya: analisis, hasil gauntlet, daftar kartu, dan matchup.",
+    "intro_2": "Gunakan {action} (di tampilan daftar, atau kotak unggah di rak) untuk mengimpor tautan Moxfield atau menempel daftar kartu; Freya menganalisisnya otomatis setelah diunggah.",
+    "ctx_import": "Klik di bawah untuk mengimpor dek: tempel URL Moxfield atau daftar kartu biasa. Freya menganalisisnya otomatis (~10–20 detik) lalu mengarahkanmu ke halaman dek baru.",
+    "filter_label": "FILTER:",
+    "chip_owner": "PEMILIK · {name}",
+    "chip_contains": "MENGANDUNG · {text}",
+    "tab_all": "SEMUA DEK",
+    "legal": "LEGAL",
+    "illegal": "TIDAK LEGAL",
+    "search_placeholder": "CARI DEK...",
+    "search_aria": "Cari dek",
+    "matches": "{count} HASIL",
+    "matches_one": "{count} HASIL",
+    "view_shelf": "RAK",
+    "view_list": "DAFTAR",
+    "aria_bracket": "Filter bracket",
+    "aria_color": "Filter warna",
+    "aria_archetype": "Filter arketipe",
+    "legend_color": "WARNA",
+    "loading": "MEMUAT ARSIP DEK",
+    "showing_cap": "MENAMPILKAN 60 / {total} — PERSEMPIT PENCARIAN UNTUK MELIHAT LEBIH BANYAK",
+    "col_name": "NAMA",
+    "col_commander": "COMMANDER",
+    "col_elo": "ELO",
+    "sort_by": "Urutkan menurut {field}"
+  },
+  "deckpower": {
+    "title": "KOLEKSI SAYA / / SEBARAN TINGKAT KEKUATAN",
+    "decks": "{count} DEK",
+    "decks_one": "{count} DEK",
+    "no_data_aria": "Tidak ada data bracket",
+    "no_tier_data": "— TIDAK ADA DATA TINGKAT —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "BELUM ADA BRACKET — JALANKAN FREYA UNTUK MENGISINYA",
+    "peak": "KOLEKSIMU TERPUSAT DI {label} ({count} DEK · {pct}%)",
+    "peak_one": "KOLEKSIMU TERPUSAT DI {label} ({count} DEK · {pct}%)",
+    "top_archetypes": "ARKETIPE TERATAS:",
+    "tier_b1": "B1 · SANTAI",
+    "tier_b2": "B2 · TERFOKUS",
+    "tier_b3": "B3 · DIOPTIMALKAN",
+    "tier_b4": "B4 · DAYA TINGGI",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "TIDAK DIKETAHUI"
+  },
+  "quickpaste": {
+    "toggle": "TEMPEL CEPAT SEBUAH DAFTAR",
+    "title": "TEMPEL CEPAT / / DAFTAR KARTU BIASA",
+    "placeholder": "Tempel daftar dek. Mendukung \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", bagian sideboard, dan komentar berawalan #…",
+    "parsed": "TERBACA: {count} KARTU · {unique} UNIK",
+    "parsed_one": "TERBACA: {count} KARTU · {unique} UNIK",
+    "commander": "COMMANDER:",
+    "multiples": "TERDETEKSI BEBERAPA SALINAN KARTU NON-DASAR",
+    "aria_commander": "Commander",
+    "cmdr_override": "Commander: {name} — ketik untuk mengganti",
+    "cmdr_placeholder": "Commander (opsional — ketik nama kartu persis)",
+    "name_default": "Nama dek (bawaan: {name})",
+    "name_placeholder": "Nama dek",
+    "importing": "MENGIMPOR…",
+    "submit": "IMPOR + ANALISIS",
+    "toast_imported": "DEK DIIMPOR",
+    "err_failed": "IMPOR GAGAL"
   }
 }

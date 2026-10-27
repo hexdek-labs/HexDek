@@ -37,7 +37,9 @@
     "copied": "KOPIERET!",
     "loading": "INDLÆSER",
     "saving": "GEMMER...",
-    "analyzing": "ANALYSERER..."
+    "analyzing": "ANALYSERER...",
+    "all": "ALLE",
+    "close": "LUK"
   },
   "deck": {
     "owner": "EJER",
@@ -216,5 +218,89 @@
     "fishtank_standby": "STANDBY",
     "fishtank_scroll": "SCROLL FOR AT INDLÆSE LIVEFEEDET",
     "fishtank_loading": "INDLÆSER FISHTANK"
+  },
+  "chip": {
+    "multi": "MULTI"
+  },
+  "ctx": {
+    "dismiss_aria": "Skjul denne hjælpeboks",
+    "dismiss_title": "Skjul — vises ikke igen"
+  },
+  "shelf": {
+    "add_deck": "TILFØJ DIT DÆK",
+    "add_hint": "INDSÆT EN LISTE. FREYA ANALYSERER DEN PÅ SEKUNDER.",
+    "no_art": "INGEN ILLUSTRATION",
+    "version": "V{n} AF {total}",
+    "cards": "{count} KORT",
+    "cards_one": "{count} KORT",
+    "unrated": "UVURDERET",
+    "games": "{count} PARTIER",
+    "games_one": "{count} PARTI"
+  },
+  "decks": {
+    "tape_mine": "DÆKARKIV / / MINE BUILDS",
+    "tape_all": "DÆKARKIV / / ALLE BUILDS",
+    "tape_count": "{shown} / {total} I ALT",
+    "intro_1": "Gennemse og søg i alle dæk på platformen. Klik på et dæk for at åbne dets arkiv: analyse, gauntletresultater, dækliste og matchups.",
+    "intro_2": "Brug {action} (i listevisningen eller upload-feltet på hylden) til at importere et Moxfield-link eller indsætte en liste; Freya analyserer den automatisk efter upload.",
+    "ctx_import": "Klik nedenfor for at importere et dæk: indsæt en Moxfield-URL eller en ren dækliste. Freya analyserer den automatisk (~10–20 sekunder) og sender dig derefter til den nye dækside.",
+    "filter_label": "FILTER:",
+    "chip_owner": "EJER · {name}",
+    "chip_contains": "INDEHOLDER · {text}",
+    "tab_all": "ALLE DÆK",
+    "legal": "LOVLIG",
+    "illegal": "ULOVLIG",
+    "search_placeholder": "SØG DÆK...",
+    "search_aria": "Søg dæk",
+    "matches": "{count} TRÆFFERE",
+    "matches_one": "{count} TRÆFFER",
+    "view_shelf": "HYLDE",
+    "view_list": "LISTE",
+    "aria_bracket": "Bracketfilter",
+    "aria_color": "Farvefilter",
+    "aria_archetype": "Arketypefilter",
+    "legend_color": "FARVE",
+    "loading": "INDLÆSER DÆKARKIVET",
+    "showing_cap": "VISER 60 / {total} — INDSNÆVR SØGNINGEN FOR AT SE FLERE",
+    "col_name": "NAVN",
+    "col_commander": "COMMANDER",
+    "col_elo": "ELO",
+    "sort_by": "Sortér efter {field}"
+  },
+  "deckpower": {
+    "title": "MIN SAMLING / / FORDELING EFTER STYRKENIVEAU",
+    "decks": "{count} DÆK",
+    "decks_one": "{count} DÆK",
+    "no_data_aria": "Ingen bracketdata",
+    "no_tier_data": "— INGEN NIVEAUDATA —",
+    "seg_title": "{label} — {count} ({pct}%)",
+    "no_brackets": "INGEN BRACKETS ENDNU — KØR FREYA FOR AT UDFYLDE",
+    "peak": "DIN SAMLING TOPPER PÅ {label} ({count} DÆK · {pct}%)",
+    "peak_one": "DIN SAMLING TOPPER PÅ {label} ({count} DÆK · {pct}%)",
+    "top_archetypes": "TOPARKETYPER:",
+    "tier_b1": "B1 · CASUAL",
+    "tier_b2": "B2 · FOKUSERET",
+    "tier_b3": "B3 · OPTIMERET",
+    "tier_b4": "B4 · HØJ STYRKE",
+    "tier_b5": "B5 · cEDH",
+    "tier_unknown": "UKENDT"
+  },
+  "quickpaste": {
+    "toggle": "INDSÆT HURTIGT EN DÆKLISTE",
+    "title": "HURTIG INDSÆTNING / / REN DÆKLISTE",
+    "placeholder": "Indsæt en dækliste. Understøtter \"1 Sol Ring\", \"1x Sol Ring (CMM) 339\", \"Commander: Atraxa, Praetors' Voice\", sideboard-sektioner og #-kommentarer…",
+    "parsed": "INDLÆST: {count} KORT · {unique} UNIKKE",
+    "parsed_one": "INDLÆST: {count} KORT · {unique} UNIKT",
+    "commander": "COMMANDER:",
+    "multiples": "FLERE KOPIER AF ET IKKE-BASISKORT FUNDET",
+    "aria_commander": "Commander",
+    "cmdr_override": "Commander: {name} — skriv for at overskrive",
+    "cmdr_placeholder": "Commander (valgfrit — skriv det præcise kortnavn)",
+    "name_default": "Dæknavn (standard: {name})",
+    "name_placeholder": "Dæknavn",
+    "importing": "IMPORTERER…",
+    "submit": "IMPORTÉR + ANALYSÉR",
+    "toast_imported": "DÆK IMPORTERET",
+    "err_failed": "IMPORTEN MISLYKKEDES"
   }
 }
