@@ -26,7 +26,7 @@ import useTurnAnnouncer from '../hooks/useTurnAnnouncer'
 import CommandZoneStrip from '../components/CommandZoneStrip'
 import ReplaySlider from '../components/ReplaySlider'
 import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/replayHelpers.js'
-import { useT } from '../i18n'
+import { useT, getLocale } from '../i18n'
 import { fill } from '../components/fill'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
@@ -485,11 +485,13 @@ export default function Spectator() {
   const pauseResumeFromRef = useRef(null)
   const error = status === 'disconnected' ? t('spec.err_disconnected') : null
 
-  // Depends on `t`: without it the tab title would keep the language it
-  // was mounted in after a switch.
+  // Depends on the locale STRING, not on `t`: useT returns the stable
+  // module-level translator, so `[t]` would never re-fire and the tab
+  // title would keep the language it was mounted in.
+  const locale = getLocale()
   useEffect(() => {
     document.title = t('spec.doc_title')
-  }, [t])
+  }, [locale, t])
 
   const handleHeatmapHover = useCallback((e, seatIdx) => {
     const canvas = heatmapRefs.current[seatIdx]

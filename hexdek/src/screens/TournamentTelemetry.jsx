@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, Tag, Tape } from '../components/chrome'
 import { API_BASE } from '../services/api'
+import { useT } from '../i18n'
 
 // TournamentTelemetry — /tournaments/:id/telemetry
 //
@@ -87,27 +88,30 @@ function heatColor(rate) {
 // ---- subcomponents ----
 
 function ConvergenceCard({ c }) {
+  // useT before the early return - it is a hook.
+  const t = useT()
   if (!c) return null
   const pct = (c.convergence_ratio * 100).toFixed(1)
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-      <Stat label="STATUS" value={c.converged ? 'CONVERGED' : 'OPEN'} kind={c.converged ? 'ok' : 'warn'} />
-      <Stat label="RATIO" value={`${pct}%`} sub={`THRESH 50.0%`} />
-      <Stat label="MEAN σ" value={fmtFloat(c.mean_sigma)} sub={`PRIOR ${fmtFloat(c.initial_sigma)}`} />
-      <Stat label="σ RANGE" value={`${fmtFloat(c.min_sigma)}-${fmtFloat(c.max_sigma)}`} sub={`GAP ${fmtFloat(c.max_sigma - c.min_sigma)}`} />
+      <Stat label={t('tlm.status')} value={c.converged ? t('tlm.converged') : t('tlm.open')} kind={c.converged ? 'ok' : 'warn'} />
+      <Stat label={t('tlm.ratio')} value={`${pct}%`} sub={t('tlm.thresh', { value: '50.0%' })} />
+      <Stat label={t('tlm.mean_sigma')} value={fmtFloat(c.mean_sigma)} sub={t('tlm.prior', { value: fmtFloat(c.initial_sigma) })} />
+      <Stat label={t('tlm.sigma_range')} value={`${fmtFloat(c.min_sigma)}-${fmtFloat(c.max_sigma)}`} sub={t('tlm.gap', { value: fmtFloat(c.max_sigma - c.min_sigma) })} />
     </div>
   )
 }
 
 function ELODistributionCard({ d }) {
+  const t = useT()
   if (!d) return null
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
-      <Stat label="MIN" value={fmtFloat(d.min, 0)} />
-      <Stat label="MAX" value={fmtFloat(d.max, 0)} />
-      <Stat label="MEAN" value={fmtFloat(d.mean, 0)} />
-      <Stat label="STD DEV" value={fmtFloat(d.std_dev, 1)} />
-      <Stat label="SPREAD" value={fmtFloat(d.spread, 0)} />
+      <Stat label={t('tlm.min')} value={fmtFloat(d.min, 0)} />
+      <Stat label={t('tlm.max')} value={fmtFloat(d.max, 0)} />
+      <Stat label={t('tlm.mean')} value={fmtFloat(d.mean, 0)} />
+      <Stat label={t('tlm.std_dev')} value={fmtFloat(d.std_dev, 1)} />
+      <Stat label={t('tlm.spread')} value={fmtFloat(d.spread, 0)} />
     </div>
   )
 }
@@ -124,16 +128,17 @@ function Stat({ label, value, sub, kind }) {
 }
 
 function CommandersTable({ rows }) {
-  if (!rows || rows.length === 0) return <Empty>NO COMMANDERS</Empty>
+  const t = useT()
+  if (!rows || rows.length === 0) return <Empty>{t('tlm.no_commanders')}</Empty>
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
       <thead>
         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--rule-2)' }}>
-          <th style={th}>COMMANDER</th>
-          <th style={th}>ARCHETYPE</th>
-          <th style={thR}>GAMES</th>
-          <th style={thR}>WINS</th>
-          <th style={thR}>WIN %</th>
+          <th style={th}>{t('tlm.th_commander')}</th>
+          <th style={th}>{t('tlm.th_archetype')}</th>
+          <th style={thR}>{t('tlm.th_games')}</th>
+          <th style={thR}>{t('tlm.th_wins')}</th>
+          <th style={thR}>{t('tlm.th_winpct')}</th>
           <th style={thR}>ELO</th>
           <th style={thR}>μ</th>
           <th style={thR}>σ</th>
@@ -158,7 +163,8 @@ function CommandersTable({ rows }) {
 }
 
 function WinRateHeatmap({ rounds, commanders }) {
-  if (!rounds || rounds.length === 0) return <Empty>NO ROUND DATA — RUN A SWISS TOURNAMENT</Empty>
+  const t = useT()
+  if (!rounds || rounds.length === 0) return <Empty>{t('tlm.no_round_data')}</Empty>
   const names = commanders.map(c => c.name)
   const cellH = 26
   const cellW = 78
@@ -204,23 +210,24 @@ function WinRateHeatmap({ rounds, commanders }) {
 }
 
 function ArchetypeMatrix({ matrix }) {
+  const t = useT()
   const rows = useMemo(() => {
     if (!matrix) return []
     return Object.entries(matrix)
       .map(([arch, stats]) => ({ archetype: arch, ...stats }))
       .sort((a, b) => b.win_rate - a.win_rate)
   }, [matrix])
-  if (rows.length === 0) return <Empty>NO ARCHETYPE TAGS — PROVIDE DeckArchetypes</Empty>
+  if (rows.length === 0) return <Empty>{t('tlm.no_archetype_tags')}</Empty>
   const maxWR = Math.max(...rows.map(r => r.win_rate), 0.01)
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
       <thead>
         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--rule-2)' }}>
-          <th style={th}>ARCHETYPE</th>
-          <th style={thR}>DECKS</th>
-          <th style={thR}>GAMES</th>
-          <th style={thR}>WINS</th>
-          <th style={thR}>WIN %</th>
+          <th style={th}>{t('tlm.th_archetype')}</th>
+          <th style={thR}>{t('tlm.th_decks')}</th>
+          <th style={thR}>{t('tlm.th_games')}</th>
+          <th style={thR}>{t('tlm.th_wins')}</th>
+          <th style={thR}>{t('tlm.th_winpct')}</th>
           <th style={{ ...th, width: '40%' }}></th>
         </tr>
       </thead>
@@ -251,10 +258,11 @@ function ArchetypeMatrix({ matrix }) {
 // LineChart — generic per-deck trajectory chart (used for OMW% + sigma).
 // `series` is [{ name, points: [{ x, y }] }, ...]. yDomain = [0, max].
 function LineChart({ series, height = 220, yLabel, xLabel, yFormat = v => v.toFixed(2), yMaxOverride }) {
-  if (!series || series.length === 0) return <Empty>NO TRAJECTORY DATA</Empty>
+  const t = useT()
+  if (!series || series.length === 0) return <Empty>{t('tlm.no_traj_data')}</Empty>
   const allX = series.flatMap(s => s.points.map(p => p.x))
   const allY = series.flatMap(s => s.points.map(p => p.y))
-  if (allX.length === 0) return <Empty>NO TRAJECTORY POINTS</Empty>
+  if (allX.length === 0) return <Empty>{t('tlm.no_traj_points')}</Empty>
   const minX = Math.min(...allX), maxX = Math.max(...allX)
   const minY = 0
   const maxY = yMaxOverride ?? Math.max(...allY, 0.1)
@@ -345,7 +353,14 @@ const tdR = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
 
 // ---- main screen ----
 
+// Sentinel for "the fetch failed and carried no message of its own". A
+// worded fallback parked in state would freeze in whatever language was
+// active at fetch time, so state holds the catalog path and the render
+// site words it.
+const FETCH_FAILED = 'tlm.fetch_failed_short'
+
 export default function TournamentTelemetry() {
+  const t = useT()
   const { id = 'sample' } = useParams()
   const [searchParams] = useSearchParams()
   const [data, setData] = useState(null)
@@ -382,7 +397,7 @@ export default function TournamentTelemetry() {
       .catch(e => {
         if (cancelled) return
         // Network / parse failure — show sample plus an error notice.
-        setError(e.message || 'fetch failed')
+        setError(e.message || FETCH_FAILED)
         setData(SAMPLE_TELEMETRY)
         setIsSample(true)
       })
@@ -401,44 +416,51 @@ export default function TournamentTelemetry() {
   }, [data])
 
   // Sigma trajectory (single line — mean σ across rounds).
-  const sigmaSeries = useMemo(() => {
+  const sigmaPoints = useMemo(() => {
     if (!data?.rounds) return []
-    return [{
-      name: 'MEAN σ',
-      points: data.rounds.map(r => ({ x: r.round, y: r.sigma_mean })),
-    }]
+    return data.rounds.map(r => ({ x: r.round, y: r.sigma_mean }))
   }, [data])
+  // Worded out here, not inside the memo: the legend label is the one
+  // string on this screen that a memo would hold across a switch.
+  const sigmaSeries = sigmaPoints.length
+    ? [{ name: t('tlm.mean_sigma'), points: sigmaPoints }]
+    : []
   const sigmaMax = data?.convergence?.initial_sigma || 8.333
 
   return (
     <>
       <Tape
-        left={`TELEMETRY / / ${id === 'sample' ? 'SAMPLE' : `RUN ${id}`}`}
-        mid={data ? `${data.games} GAMES / ${(data.source_mode || '').toUpperCase()}` : (error ? 'ERROR' : 'LOADING')}
-        right={data?.schema_version ? `SCHEMA v${data.schema_version}` : ''}
+        left={t('tlm.tape_left', { what: id === 'sample' ? t('tlm.tape_sample') : t('tlm.tape_run', { id }) })}
+        mid={data
+          ? t('tlm.tape_games', { count: data.games, mode: (data.source_mode || '').toUpperCase() })
+          : (error ? t('tlm.tape_error') : t('tlm.tape_loading'))}
+        right={data?.schema_version ? t('tlm.tape_schema', { version: data.schema_version }) : ''}
       />
 
       <div style={{ padding: '24px 30px', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {isSample && (
           <div className="panel" style={{ borderColor: 'var(--accent, var(--ink-2))' }}>
             <div className="panel-bd t-xs">
-              &gt; SHOWING SAMPLE TELEMETRY. The /api/tournament/&#123;id&#125;/telemetry endpoint
-              is not yet wired to persistent storage — once telemetry persistence lands,
-              navigate to /tournaments/&#123;runId&#125;/telemetry for the live data.
+              {/* The two route templates ride in as values so they are written
+                  once here rather than 25 times across the catalogs. */}
+              &gt; {t('tlm.sample_notice', {
+                endpoint: '/api/tournament/{id}/telemetry',
+                path: '/tournaments/{runId}/telemetry',
+              })}
             </div>
           </div>
         )}
         {error && !isSample && (
           <div className="panel" style={{ borderColor: 'var(--danger)' }}>
             <div className="panel-bd t-xs" style={{ color: 'var(--danger)' }}>
-              &gt; TELEMETRY FETCH FAILED — {error.toUpperCase()}
+              &gt; {t('tlm.fetch_failed', { error: error === FETCH_FAILED ? t(FETCH_FAILED) : error })}
             </div>
           </div>
         )}
 
         {!data && !error && (
           <div className="t-md muted" style={{ padding: '40px 0', textAlign: 'center' }}>
-            &gt; FETCHING TELEMETRY<span className="blink">_</span>
+            &gt; {t('tlm.fetching')}<span className="blink">_</span>
           </div>
         )}
 
@@ -446,9 +468,9 @@ export default function TournamentTelemetry() {
           <>
             <Panel
               code="TLM.A"
-              title="CONVERGENCE / / IS THIS GAUNTLET DONE?"
+              title={t('tlm.p_convergence')}
               right={<Tag solid kind={data.convergence?.converged ? 'ok' : undefined}>
-                {data.convergence?.converged ? 'YES' : 'OPEN'}
+                {data.convergence?.converged ? t('tlm.yes') : t('tlm.open')}
               </Tag>}
             >
               <ConvergenceCard c={data.convergence} />
@@ -456,14 +478,14 @@ export default function TournamentTelemetry() {
 
             <Panel
               code="TLM.B"
-              title="ELO DISTRIBUTION / / SPREAD ACROSS DECKS"
+              title={t('tlm.p_elo')}
             >
               <ELODistributionCard d={data.elo_distribution} />
             </Panel>
 
             <Panel
               code="TLM.C"
-              title="COMMANDERS / / SORTED BY ELO"
+              title={t('tlm.p_commanders')}
               right={<Tag solid>{data.commanders?.length || 0}</Tag>}
             >
               <CommandersTable rows={data.commanders} />
@@ -471,14 +493,14 @@ export default function TournamentTelemetry() {
 
             <Panel
               code="TLM.D"
-              title={`WIN % HEATMAP / / ROUNDS × COMMANDERS (${data.rounds?.length || 0} R)`}
+              title={t('tlm.p_heatmap', { rounds: data.rounds?.length || 0 })}
             >
               <WinRateHeatmap rounds={data.rounds} commanders={data.commanders || []} />
             </Panel>
 
             <Panel
               code="TLM.E"
-              title="ARCHETYPE MATRIX / / WINRATE BY ARCHETYPE"
+              title={t('tlm.p_archetype')}
               right={<Tag solid>{Object.keys(data.archetype_matrix || {}).length}</Tag>}
             >
               <ArchetypeMatrix matrix={data.archetype_matrix} />
@@ -486,24 +508,24 @@ export default function TournamentTelemetry() {
 
             <Panel
               code="TLM.F"
-              title="OMW % TRAJECTORY / / STRENGTH-OF-SCHEDULE OVER ROUNDS"
+              title={t('tlm.p_omw')}
             >
               <LineChart
                 series={omwSeries}
                 yLabel="OMW %"
-                xLabel="ROUND"
+                xLabel={t('tlm.ax_round')}
                 yFormat={v => `${(v * 100).toFixed(0)}%`}
               />
             </Panel>
 
             <Panel
               code="TLM.G"
-              title="σ CONVERGENCE / / MEAN TRUESKILL UNCERTAINTY"
+              title={t('tlm.p_sigma')}
             >
               <LineChart
                 series={sigmaSeries}
                 yLabel="σ"
-                xLabel="ROUND"
+                xLabel={t('tlm.ax_round')}
                 yFormat={v => v.toFixed(2)}
                 yMaxOverride={sigmaMax}
               />
