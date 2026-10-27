@@ -84,45 +84,54 @@ const Stat2 = ({ k, v, big }) => (
   </div>
 )
 
-const HeuristicTag = () => (
-  <Tag kind="warn" style={{ fontSize: 8, padding: '1px 5px' }}>HEURISTIC</Tag>
-)
+const HeuristicTag = () => {
+  const t = useT()
+  return <Tag kind="warn" style={{ fontSize: 8, padding: '1px 5px' }}>{t('rpt.heuristic')}</Tag>
+}
 
 // classifyWinCondition derives a human-readable win-condition label from
 // CompletedGame.end_reason. Honest mapping; nothing mocked here.
+// The table holds catalog KEYS, not words. Holding the English label
+// here and reading it at render would freeze it at module load and
+// ignore a language switch.
 const WIN_CONDITION_MAP = {
-  sba_704_5a: { label: 'COMBAT / BURN DAMAGE', detail: 'OPPONENTS REDUCED TO 0 LIFE', kind: 'damage' },
-  sba_704_5b: { label: 'MILL — DECKED OUT', detail: 'OPPONENTS DREW FROM EMPTY LIBRARY', kind: 'mill' },
-  sba_704_5c: { label: 'INFECT / POISON', detail: '10+ POISON COUNTERS DELIVERED', kind: 'poison' },
-  sba_704_5d: { label: 'COMMANDER DAMAGE', detail: '21+ DAMAGE FROM A SINGLE COMMANDER', kind: 'commander_damage' },
-  concession: { label: 'SCOOP / CONCESSION', detail: 'OPPONENT CONCEDED', kind: 'concession' },
-  turn_limit: { label: 'TURN LIMIT REACHED', detail: 'GAME ENDED ON SCHEDULED CAP', kind: 'stall' },
+  sba_704_5a: { labelKey: 'rpt.wc_damage', detailKey: 'rpt.wc_damage_d', kind: 'damage' },
+  sba_704_5b: { labelKey: 'rpt.wc_mill', detailKey: 'rpt.wc_mill_d', kind: 'mill' },
+  sba_704_5c: { labelKey: 'rpt.wc_poison', detailKey: 'rpt.wc_poison_d', kind: 'poison' },
+  sba_704_5d: { labelKey: 'rpt.wc_cmdr', detailKey: 'rpt.wc_cmdr_d', kind: 'commander_damage' },
+  concession: { labelKey: 'rpt.wc_concede', detailKey: 'rpt.wc_concede_d', kind: 'concession' },
+  turn_limit: { labelKey: 'rpt.wc_turn_limit', detailKey: 'rpt.wc_turn_limit_d', kind: 'stall' },
 }
 const classifyWinCondition = (endReason) => {
-  if (!endReason) return { label: 'UNKNOWN', detail: 'NO END REASON RECORDED', kind: 'unknown' }
+  if (!endReason) return { labelKey: 'dash.unknown', detailKey: 'rpt.wc_unknown_d', kind: 'unknown' }
   const key = endReason.toLowerCase()
+  // Unrecognised end reason: echo the server's own value rather than
+  // inventing a label for it, exactly as before.
   return WIN_CONDITION_MAP[key] || {
     label: endReason.replace(/_/g, ' ').toUpperCase(),
-    detail: 'STATE-BASED ELIMINATION',
+    detailKey: 'rpt.wc_sba_d',
     kind: 'sba',
   }
 }
+// Resolves either shape — a keyed row, or the echoed server value.
+const wcLabel = (t, wc) => (wc.labelKey ? t(wc.labelKey) : wc.label)
 
 // Short label for the END stat in the result block — the column is
 // narrow (1fr of 4 in result-block-grid) and the raw replacement
 // produces strings like "LAST SEAT STANDING" that overflow.
 const END_REASON_SHORT = {
-  last_seat_standing: 'LAST SEAT',
-  sba_704_5a: 'DAMAGE',
-  sba_704_5b: 'MILL',
-  sba_704_5c: 'POISON',
-  sba_704_5d: 'CMDR DMG',
-  concession: 'CONCEDE',
-  turn_limit: 'TURN CAP',
+  last_seat_standing: 'rpt.es_last_seat',
+  sba_704_5a: 'rpt.es_damage',
+  sba_704_5b: 'rpt.es_mill',
+  sba_704_5c: 'rpt.es_poison',
+  sba_704_5d: 'rpt.es_cmdr_dmg',
+  concession: 'rpt.es_concede',
+  turn_limit: 'rpt.es_turn_cap',
 }
-const endReasonShort = (r) => {
+const endReasonShort = (t, r) => {
   if (!r) return '?'
-  return END_REASON_SHORT[r.toLowerCase()] || r.replace(/_/g, ' ').toUpperCase()
+  const key = END_REASON_SHORT[r.toLowerCase()]
+  return key ? t(key) : r.replace(/_/g, ' ').toUpperCase()
 }
 
 // pickMVP scores the winner's final-board permanents by a composite
@@ -140,7 +149,7 @@ const endReasonShort = (r) => {
 //   toughness    +toughness/2  staying-power tiebreak
 //   non-land     +5       avoid promoting basics
 //   counters     +Σcounters*3  +1/+1, charge, loyalty proxy
-const pickMVP = (winnerSeat) => {
+const pickMVP = (t, winnerSeat) => {
   if (!winnerSeat?.battlefield?.length) return null
   const perms = winnerSeat.battlefield
   const score = (p) => {
@@ -164,19 +173,20 @@ const pickMVP = (winnerSeat) => {
     const s = score(p)
     if (s > bestScore) { best = p; bestScore = s }
   }
-  // Build a reason string from the dominant signal.
+  // Build a reason string from the dominant signal. `t` comes from the
+  // call site so this stays a plain function.
   let reason
   if (best.is_commander) {
-    reason = 'COMMANDER ALIVE AT VICTORY — PRIMARY THREAT VECTOR'
+    reason = t('rpt.mvp_commander')
   } else if (best.power != null && best.power >= 5) {
-    reason = `${best.power}/${best.toughness ?? '?'} CREATURE — HIGHEST POWER ON BOARD`
+    reason = t('rpt.mvp_power', { pt: `${best.power}/${best.toughness ?? '?'}` })
   } else if (best.counters && Object.values(best.counters).some(v => v >= 3)) {
     const total = Object.values(best.counters).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0)
-    reason = `LOADED WITH ${total} COUNTER${total === 1 ? '' : 'S'} — VALUE ENGINE`
+    reason = t(total === 1 ? 'rpt.mvp_counters_one' : 'rpt.mvp_counters', { count: total })
   } else if (!best.is_land) {
-    reason = 'TOP-RANKED NON-LAND PERMANENT BY COMPOSITE SCORE'
+    reason = t('rpt.mvp_nonland')
   } else {
-    reason = 'ONLY SURVIVING PERMANENT ON FINAL BOARD'
+    reason = t('rpt.mvp_only')
   }
   return { perm: best, reason, score: bestScore }
 }
@@ -192,11 +202,11 @@ const pickMVP = (winnerSeat) => {
 // entry with all losers stacked, ordering preserved by seat index.
 // This is intentionally honest — every line in the returned list is
 // derivable from data the API already returns; nothing is invented.
-const deriveTimeline = (game, commanders) => {
+const deriveTimeline = (t, game, commanders) => {
   if (!game) return []
   const total = Math.max(1, game.turns || 1)
   const winner = game.winner ?? -1
-  const winName = winner >= 0 ? (commanders[winner] || 'WINNER').split(',')[0].toUpperCase() : null
+  const winName = winner >= 0 ? (commanders[winner] || t('rpt.tl_winner_fallback')).split(',')[0].toUpperCase() : null
   const seats = game.final_seats || []
   const cond = classifyWinCondition(game.end_reason)
 
@@ -206,8 +216,8 @@ const deriveTimeline = (game, commanders) => {
     turn: 1,
     seat: -1,
     kind: 'open',
-    action: `GAME OPENS · ${commanders.length} SEATS`,
-    detail: commanders.map(c => (c || 'UNKNOWN').split(',')[0].toUpperCase()).join(' · '),
+    action: t(commanders.length === 1 ? 'rpt.tl_open_one' : 'rpt.tl_open', { count: commanders.length }),
+    detail: commanders.map(c => (c || t('dash.unknown')).split(',')[0].toUpperCase()).join(' · '),
   })
 
   // Eliminations — collected from final_seats. Without per-turn data
@@ -216,41 +226,42 @@ const deriveTimeline = (game, commanders) => {
     .map((s, i) => ({ s, i }))
     .filter(x => x.s.lost && x.i !== winner)
   for (const { s, i } of losers) {
-    const cmdrShort = (commanders[i] || 'UNKNOWN').split(',')[0].toUpperCase()
+    const cmdrShort = (commanders[i] || t('dash.unknown')).split(',')[0].toUpperCase()
     const reason = (s.loss_reason || s.LossReason || '').replace(/_/g, ' ').toUpperCase().trim()
     out.push({
       turn: null, // unknown — we don't have per-elimination turn data
       seat: i,
       kind: 'eliminated',
-      action: `${cmdrShort} ELIMINATED`,
-      detail: reason ? `LOSS: ${reason}` : 'LOSS: STATE-BASED',
+      action: t('rpt.tl_eliminated', { name: cmdrShort }),
+      detail: reason ? t('rpt.tl_loss', { reason }) : t('rpt.tl_loss_sba'),
     })
   }
 
   // Finishing line — anchored at the recorded turn count.
   if (winner >= 0) {
-    const finishMap = {
-      damage:            `${winName} CLOSES OUT — LETHAL DAMAGE`,
-      mill:              `${winName} DECKS OUT FINAL OPPONENT`,
-      poison:            `${winName} HITS 10+ POISON ON FINAL TARGET`,
-      commander_damage:  `${winName} DEALS 21+ COMMANDER DAMAGE`,
-      concession:        `${winName} ACCEPTS CONCESSION`,
-      stall:             `GAME HITS TURN-LIMIT CAP — ${winName} ON TOP`,
+    const finishKeys = {
+      damage:            'rpt.tl_fin_damage',
+      mill:              'rpt.tl_fin_mill',
+      poison:            'rpt.tl_fin_poison',
+      commander_damage:  'rpt.tl_fin_cmdr',
+      concession:        'rpt.tl_fin_concede',
+      stall:             'rpt.tl_fin_stall',
     }
+    const endReason = (game.end_reason || '?').replace(/_/g, ' ').toUpperCase()
     out.push({
       turn: total,
       seat: winner,
       kind: 'win',
-      action: finishMap[cond.kind] || `${winName} SECURES VICTORY`,
-      detail: `END REASON: ${(game.end_reason || '?').replace(/_/g, ' ').toUpperCase()}`,
+      action: t(finishKeys[cond.kind] || 'rpt.tl_fin_generic', { name: winName }),
+      detail: t('rpt.tl_end_reason', { reason: endReason }),
     })
   } else {
     out.push({
       turn: total,
       seat: -1,
       kind: 'draw',
-      action: 'GAME ENDS IN DRAW',
-      detail: `END REASON: ${(game.end_reason || '?').replace(/_/g, ' ').toUpperCase()}`,
+      action: t('rpt.tl_draw'),
+      detail: t('rpt.tl_end_reason', { reason: (game.end_reason || '?').replace(/_/g, ' ').toUpperCase() }),
     })
   }
   return out
@@ -1122,6 +1133,7 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
 
 /* ─── Deck Context Selector (top bar) ────────────────────────── */
 const DeckSelector = ({ commanders, selected, onSelect }) => {
+  const t = useT()
   // Deduplicate commander names from all games
   const unique = [...new Set(commanders)].sort()
   if (unique.length === 0) return null
@@ -1131,8 +1143,8 @@ const DeckSelector = ({ commanders, selected, onSelect }) => {
       display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
       padding: '10px 18px', borderBottom: '1px solid var(--rule-2)',
     }}>
-      <span className="t-xs muted" style={{ marginRight: 4 }}>DECK CONTEXT:</span>
-      <Tag solid={!selected} onClick={() => onSelect(null)} style={{ cursor: 'pointer' }}>ALL</Tag>
+      <span className="t-xs muted" style={{ marginRight: 4 }}>{t('rpt.deck_context')}</span>
+      <Tag solid={!selected} onClick={() => onSelect(null)} style={{ cursor: 'pointer' }}>{t('common.all')}</Tag>
       {unique.map(c => (
         <Tag
           key={c}
@@ -1149,6 +1161,7 @@ const DeckSelector = ({ commanders, selected, onSelect }) => {
 
 /* ─── Per-Deck Stats Panel ───────────────────────────────────── */
 const DeckStatsPanel = ({ games, elo, selectedDeck }) => {
+  const t = useT()
   if (!selectedDeck) return null
 
   // Find ELO entry for this commander
@@ -1169,32 +1182,32 @@ const DeckStatsPanel = ({ games, elo, selectedDeck }) => {
   return (
     <div className="panel" style={{ padding: 0, gridColumn: '1 / -1' }}>
       <div className="panel-hd">
-        <span>DECK STATS / / {selectedDeck.split(',')[0].toUpperCase()}</span>
-        <span>{totalFiltered} GAMES</span>
+        <span>{t('rpt.deck_stats', { name: selectedDeck.split(',')[0].toUpperCase() })}</span>
+        <span>{t(totalFiltered === 1 ? 'rpt.games_count_one' : 'rpt.games_count', { count: totalFiltered })}</span>
       </div>
       <div className="deck-stats-row" style={{ padding: '14px 22px' }}>
         <div>
-          <div className="t-xs muted">GAMES</div>
+          <div className="t-xs muted">{t('rpt.games')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4 }}>{totalFiltered}</div>
         </div>
         <div>
-          <div className="t-xs muted">WINS</div>
+          <div className="t-xs muted">{t('rpt.wins')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4, color: 'var(--ok)' }}>{wins}</div>
         </div>
         <div>
-          <div className="t-xs muted">LOSSES</div>
+          <div className="t-xs muted">{t('rpt.losses')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4, color: 'var(--danger)' }}>{losses}</div>
         </div>
         <div>
-          <div className="t-xs muted">WIN RATE</div>
+          <div className="t-xs muted">{t('rpt.win_rate')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4 }}>{wr}%</div>
         </div>
         <div>
-          <div className="t-xs muted">AVG TURNS</div>
+          <div className="t-xs muted">{t('rpt.avg_turns')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4 }}>{avgTurns}</div>
         </div>
         <div>
-          <div className="t-xs muted">ELO</div>
+          <div className="t-xs muted">{t('rpt.elo')}</div>
           <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4 }}>
             {eloEntry ? Math.round(eloEntry.rating) : '—'}
             {eloEntry && (
@@ -1210,6 +1223,7 @@ const DeckStatsPanel = ({ games, elo, selectedDeck }) => {
 }
 
 export default function Report() {
+  const t = useT()
   const { gameId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const [game, setGame] = useState(null)
@@ -1286,9 +1300,9 @@ export default function Report() {
   if (loading) {
     return (
       <>
-        <Tape left="POST-GAME REPORT" mid="LOADING" right="" />
+        <Tape left={t('rpt.tape_left')} mid={t('common.loading')} right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; LOADING REPORT<span className="blink">_</span></div>
+          <div className="t-md muted">&gt; {t('rpt.loading')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -1312,10 +1326,10 @@ export default function Report() {
   if (!game && filteredGames.length === 0) {
     return (
       <>
-        <Tape left="POST-GAME REPORT" mid="NO DATA" right="" />
+        <Tape left={t('rpt.tape_left')} mid={t('gs.no_data')} right="" />
         <DeckSelector commanders={allCommanders} selected={selectedDeck} onSelect={setSelectedDeck} />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; NO COMPLETED GAMES YET — WAIT FOR SHOWMATCH TO FINISH<span className="blink">_</span></div>
+          <div className="t-md muted">&gt; {t('rpt.no_games')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -1327,14 +1341,14 @@ export default function Report() {
   const commanders = featuredGame?.commanders || []
   const seats = featuredGame?.final_seats || []
   const winnerIdx = featuredGame?.winner
-  const winnerName = featuredGame?.winner_name || 'DRAW'
+  const winnerName = featuredGame?.winner_name || t('gs.draw')
   const isVictory = winnerIdx >= 0
 
   return (
     <>
       <Tape
-        left={featuredGame ? `POST-GAME / / GAME #${featuredGame.game_id}` : 'POST-GAME REPORT'}
-        mid={isVictory ? 'VICTORY' : 'DRAW'}
+        left={featuredGame ? t('rpt.tape_game', { id: featuredGame.game_id }) : t('rpt.tape_left')}
+        mid={isVictory ? t('rpt.victory') : t('gs.draw')}
         right={featuredGame?.finished_at ? new Date(featuredGame.finished_at).toLocaleString().toUpperCase() : ''}
       />
 
@@ -1349,7 +1363,7 @@ export default function Report() {
         {featuredGame && (
           <div className="panel" style={{ padding: 0, gridColumn: '1 / -1' }}>
             <div className="panel-hd">
-              <span>RESULT BLOCK</span>
+              <span>{t('rpt.result_block')}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                 <SummaryActions gameId={featuredGame.game_id} />
                 <span>GAME.{featuredGame.game_id}</span>
@@ -1357,20 +1371,20 @@ export default function Report() {
             </div>
             <div className="result-block-grid" style={{ padding: '18px 22px' }}>
               <div>
-                <div className="t-xs muted">OUTCOME</div>
+                <div className="t-xs muted">{t('rpt.outcome')}</div>
                 <div className="t-3xl" style={{ color: isVictory ? 'var(--ok)' : 'var(--warn)', fontWeight: 800 }}>
-                  {isVictory ? 'VICTORY' : 'DRAW'}
+                  {isVictory ? t('rpt.victory') : t('gs.draw')}
                 </div>
                 <div className="t-md muted" style={{ marginTop: 6 }}>
-                  TURN {featuredGame.turns} · {(featuredGame.end_reason || '').replace(/_/g, ' ').toUpperCase()}
+                  {t('rpt.turn_reason', { turn: featuredGame.turns, reason: (featuredGame.end_reason || '').replace(/_/g, ' ').toUpperCase() })}
                 </div>
                 <div className="t-xs muted-2" style={{ marginTop: 4 }}>
-                  WINNER: {winnerName.toUpperCase()}
+                  {t('rpt.winner_is', { name: winnerName.toUpperCase() })}
                 </div>
               </div>
-              <Stat2 k="TURNS" v={String(featuredGame.turns)} />
-              <Stat2 k="PLAYERS" v={String(commanders.length)} big />
-              <Stat2 k="END" v={endReasonShort(featuredGame.end_reason)} />
+              <Stat2 k={t('rpt.turns')} v={String(featuredGame.turns)} />
+              <Stat2 k={t('rpt.players')} v={String(commanders.length)} big />
+              <Stat2 k={t('rpt.end')} v={endReasonShort(t, featuredGame.end_reason)} />
             </div>
           </div>
         )}
@@ -1387,13 +1401,13 @@ export default function Report() {
                   sm
                   arrow={null}
                   onClick={() => setComparePickerOpen(v => !v)}
-                  title="Open a side-by-side comparison with another game"
+                  title={t('rpt.tip_compare')}
                 >
-                  {comparePickerOpen ? '✕ COMPARE…' : '⇄ COMPARE…'}
+                  {comparePickerOpen ? t('rpt.compare_close') : t('rpt.compare_open')}
                 </Btn>
                 {comparePickerOpen && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-                    <span className="t-xs muted">PICK GAME:</span>
+                    <span className="t-xs muted">{t('rpt.pick_game')}</span>
                     {games
                       .filter(g => g.game_id !== featuredGame.game_id)
                       .slice(0, 8)
@@ -1416,7 +1430,7 @@ export default function Report() {
                             color: 'var(--ink)',
                           }}
                         >
-                          #{g.game_id} · {(g.commanders?.[g.winner]?.split(',')[0] || 'DRAW').toUpperCase()}
+                          #{g.game_id} · {(g.commanders?.[g.winner]?.split(',')[0] || t('gs.draw')).toUpperCase()}
                         </button>
                       ))}
                   </div>
@@ -1440,12 +1454,12 @@ export default function Report() {
         {/* Final board state — all seats */}
         {featuredGame && (
           <div className="panel" style={{ gridColumn: '1 / -1', padding: 0 }}>
-            <div className="panel-hd"><span>FINAL BOARD STATE</span><span>{commanders.length} SEATS</span></div>
+            <div className="panel-hd"><span>{t('rpt.final_board')}</span><span>{t(commanders.length === 1 ? 'rpt.seats_one' : 'rpt.seats', { count: commanders.length })}</span></div>
             <div style={{ padding: '18px 22px' }}>
               <div className="grid col-4 gap-4">
                 {seats.map((s, i) => {
                   const isWinner = i === winnerIdx
-                  const cmdr = commanders[i] || 'UNKNOWN'
+                  const cmdr = commanders[i] || t('dash.unknown')
                   const perms = s.battlefield || []
                   const artUrl = cardArtUrl(cmdr)
 
@@ -1463,20 +1477,20 @@ export default function Report() {
                       <div style={{ padding: '8px 10px' }}>
                         <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
                           <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
-                          {isWinner && <Tag kind="ok" solid>WINNER</Tag>}
-                          {s.lost && !isWinner && <Tag kind="bad">ELIMINATED</Tag>}
-                          {!s.lost && !isWinner && <Tag>ALIVE</Tag>}
+                          {isWinner && <Tag kind="ok" solid>{t('common.winner')}</Tag>}
+                          {s.lost && !isWinner && <Tag kind="bad">{t('common.eliminated')}</Tag>}
+                          {!s.lost && !isWinner && <Tag>{t('common.alive')}</Tag>}
                         </div>
                         <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
                           {cmdr.toUpperCase()}
                         </div>
                         <div className="hr" style={{ margin: '8px 0' }} />
                         <KV rows={[
-                          ['LIFE', String(s.life)],
-                          ['HAND', String(s.hand_size)],
-                          ['LIBRARY', String(s.library_size)],
-                          ['GRAVEYARD', String(s.gy_size)],
-                          ['BATTLEFIELD', String(perms.length)],
+                          [t('common.life'), String(s.life)],
+                          [t('common.hand'), String(s.hand_size)],
+                          [t('common.library'), String(s.library_size)],
+                          [t('common.graveyard'), String(s.gy_size)],
+                          [t('common.battlefield'), String(perms.length)],
                         ]} />
                       </div>
                     </div>
@@ -1489,10 +1503,10 @@ export default function Report() {
 
         {/* Battlefield breakdown for winner */}
         {featuredGame && isVictory && seats[winnerIdx] && (
-          <Panel code="RPT.A" title={`WINNER BATTLEFIELD / / ${winnerName.toUpperCase()}`}>
-            <div className="t-xs muted" style={{ marginBottom: 6 }}>PERMANENTS AT GAME END</div>
+          <Panel code="RPT.A" title={t('rpt.winner_bf', { name: winnerName.toUpperCase() })}>
+            <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('rpt.perms_at_end')}</div>
             {(seats[winnerIdx].battlefield || []).length === 0 ? (
-              <div className="t-xs muted-2">— NO PERMANENTS —</div>
+              <div className="t-xs muted-2">{t('rpt.no_perms')}</div>
             ) : (
               (seats[winnerIdx].battlefield || []).map((p, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', padding: '4px 0', borderBottom: '1px dashed var(--rule-2)', alignItems: 'center', gap: 8 }}>
@@ -1500,7 +1514,7 @@ export default function Report() {
                     {p.is_commander ? '* ' : ''}{p.name?.toUpperCase()}
                   </span>
                   <span className="t-xs muted">{p.type || '—'}</span>
-                  <span className="t-xs muted text-right">{p.tapped ? 'TAPPED' : 'UNTAPPED'}</span>
+                  <span className="t-xs muted text-right">{t(p.tapped ? 'common.tapped' : 'common.untapped')}</span>
                 </div>
               ))
             )}
@@ -1509,7 +1523,10 @@ export default function Report() {
 
         {/* Game history list (filtered by deck) */}
         {filteredGames.length > 0 && (
-          <Panel code="RPT.B" title={`${selectedDeck ? selectedDeck.split(',')[0].toUpperCase() + ' ' : ''}GAME LOG / / ${filteredGames.length} GAMES`}
+          <Panel code="RPT.B" title={selectedDeck
+            ? t(filteredGames.length === 1 ? 'rpt.game_log_deck_one' : 'rpt.game_log_deck',
+                { deck: selectedDeck.split(',')[0].toUpperCase(), count: filteredGames.length })
+            : t(filteredGames.length === 1 ? 'rpt.game_log_one' : 'rpt.game_log', { count: filteredGames.length })}
             style={featuredGame && isVictory && seats[winnerIdx] ? {} : { gridColumn: '1 / -1' }}
           >
             <div>
@@ -1529,17 +1546,17 @@ export default function Report() {
                   }}>
                     <span className="t-xs muted-2">#{g.game_id}</span>
                     <div>
-                      <div className="t-md" style={{ fontWeight: 600 }}>{g.winner_name?.toUpperCase() || 'DRAW'}</div>
+                      <div className="t-md" style={{ fontWeight: 600 }}>{g.winner_name?.toUpperCase() || t('gs.draw')}</div>
                       <div className="t-xs muted">T{g.turns} · {(g.end_reason || '').replace(/_/g, ' ')}</div>
                     </div>
                     {selectedDeck ? (
                       <Tag kind={deckWon ? 'ok' : isWin ? 'bad' : 'warn'} solid>
-                        {deckWon ? 'WIN' : isWin ? 'LOSS' : 'DRAW'}
+                        {deckWon ? t('dash.result_win') : isWin ? t('rpt.loss') : t('gs.draw')}
                       </Tag>
                     ) : (
-                      <Tag kind={isWin ? 'ok' : 'warn'} solid>{isWin ? 'WIN' : 'DRAW'}</Tag>
+                      <Tag kind={isWin ? 'ok' : 'warn'} solid>{isWin ? t('dash.result_win') : t('gs.draw')}</Tag>
                     )}
-                    <span className="t-xs muted text-right">{g.commanders?.length || 0}P</span>
+                    <span className="t-xs muted text-right">{t('rpt.players_short', { count: g.commanders?.length || 0 })}</span>
                   </div>
                 )
               })}
@@ -1560,31 +1577,33 @@ export default function Report() {
             .map((s, i) => ({ s, i, name: commanders[i] }))
             .filter(x => x.s.lost && x.i !== winnerIdx)
           return (
-            <Panel code="RPT.C" title="WIN CONDITION" style={{ gridColumn: '1 / -1' }}
-              right={<Tag solid kind="ok">{wc.label}</Tag>}>
+            <Panel code="RPT.C" title={t('rpt.win_condition')} style={{ gridColumn: '1 / -1' }}
+              right={<Tag solid kind="ok">{wcLabel(t, wc)}</Tag>}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 22, padding: '4px 0' }}>
                 <div>
-                  <div className="t-xs muted">RESOLUTION</div>
-                  <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4, color: 'var(--ok)' }}>{wc.label}</div>
+                  <div className="t-xs muted">{t('rpt.resolution')}</div>
+                  <div className="t-2xl" style={{ fontWeight: 800, marginTop: 4, color: 'var(--ok)' }}>{wcLabel(t, wc)}</div>
                   <div className="t-md muted" style={{ marginTop: 8, lineHeight: 1.55, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    &gt; {wc.detail}
+                    &gt; {t(wc.detailKey)}
                     <br />
-                    &gt; CR.{(featuredGame.end_reason || '').replace(/_/g, '.')} · TURN {featuredGame.turns}
+                    &gt; {t('rpt.cr_line', { code: (featuredGame.end_reason || '').replace(/_/g, '.'), turn: featuredGame.turns })}
                     <br />
-                    &gt; WINNER: {winnerName.toUpperCase()}
+                    &gt; {t('rpt.winner_is', { name: winnerName.toUpperCase() })}
                   </div>
                 </div>
                 <div>
-                  <div className="t-xs muted" style={{ marginBottom: 6 }}>ELIMINATED SEATS</div>
+                  <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('rpt.elim_seats')}</div>
                   {eliminated.length === 0 ? (
-                    <div className="t-xs muted-2">— NONE — </div>
+                    <div className="t-xs muted-2">{t('rpt.none')} </div>
                   ) : eliminated.map(x => (
                     <div key={x.i} style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '5px 0', borderBottom: '1px dashed var(--rule-2)', alignItems: 'center', gap: 8 }}>
                       <div>
                         <div className="t-md" style={{ fontWeight: 700 }}>{x.name?.toUpperCase()}</div>
-                        <div className="t-xs muted">SEAT.{String(x.i + 1).padStart(2, '0')} · {(x.s.loss_reason || x.s.LossReason || 'STATE-BASED').replace(/_/g, ' ').toUpperCase()}</div>
+                        <div className="t-xs muted">SEAT.{String(x.i + 1).padStart(2, '0')} · {(x.s.loss_reason || x.s.LossReason)
+                          ? (x.s.loss_reason || x.s.LossReason).replace(/_/g, ' ').toUpperCase()
+                          : t('rpt.state_based')}</div>
                       </div>
-                      <Tag kind="bad">ELIM</Tag>
+                      <Tag kind="bad">{t('rpt.elim')}</Tag>
                     </div>
                   ))}
                 </div>
@@ -1595,33 +1614,33 @@ export default function Report() {
 
         {/* MVP card — heuristic pick from winner's battlefield. */}
         {featuredGame && isVictory && (() => {
-          const mvp = pickMVP(seats[winnerIdx])
+          const mvp = pickMVP(t, seats[winnerIdx])
           if (!mvp) return null
           const art = cardArtUrl(mvp.perm.name)
           return (
-            <Panel code="RPT.D" title="MVP CARD" right={<HeuristicTag />}>
+            <Panel code="RPT.D" title={t('rpt.mvp_card')} right={<HeuristicTag />}>
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                 <div style={{ width: 96, aspectRatio: '5/7', flexShrink: 0, border: '1px solid var(--rule-2)', overflow: 'hidden', background: 'var(--bg-2)' }}
                   className={art ? '' : 'hatch'}>
                   {art && <img src={art} alt={mvp.perm.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(0.7) contrast(1.05)' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.classList.add('hatch') }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="t-xs muted">CARD</div>
+                  <div className="t-xs muted">{t('rpt.card')}</div>
                   <div className="t-xl" style={{ fontWeight: 800, marginTop: 2, lineHeight: 1.1 }}>
                     {mvp.perm.is_commander && <span style={{ color: 'var(--warn)' }}>★ </span>}
                     {mvp.perm.name?.toUpperCase()}
                   </div>
                   <div className="t-xs muted" style={{ marginTop: 4 }}>
-                    {(mvp.perm.type || 'PERMANENT').toUpperCase()}
+                    {(mvp.perm.type || t('rpt.permanent')).toUpperCase()}
                     {mvp.perm.power != null ? ` · ${mvp.perm.power}/${mvp.perm.toughness ?? '?'}` : ''}
                   </div>
                   <div className="hr" style={{ margin: '10px 0' }} />
-                  <div className="t-xs muted">SELECTION REASON</div>
+                  <div className="t-xs muted">{t('rpt.selection_reason')}</div>
                   <div className="t-md" style={{ marginTop: 4, lineHeight: 1.5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     &gt; {mvp.reason}
                   </div>
                   <div className="t-xs muted-2" style={{ marginTop: 8, lineHeight: 1.5 }}>
-                    HEURISTIC PICK FROM FINAL BOARD STATE. PROPER MVP RANKING NEEDS PER-CARD IMPACT TELEMETRY (DAMAGE DEALT, COMBO ENABLED, ETC.) FROM THE ENGINE.
+                    {t('rpt.mvp_note')}
                   </div>
                 </div>
               </div>
@@ -1634,9 +1653,9 @@ export default function Report() {
             log[] isn't retained server-side yet, so mid-game eliminations
             are anchored without a turn number rather than fabricated. */}
         {featuredGame && (() => {
-          const timeline = deriveTimeline(featuredGame, commanders)
+          const timeline = deriveTimeline(t, featuredGame, commanders)
           return (
-            <Panel code="RPT.E" title="GAME TIMELINE"
+            <Panel code="RPT.E" title={t('rpt.game_timeline')}
               style={{ gridColumn: featuredGame && isVictory ? 'auto' : '1 / -1' }}>
               <div style={{ position: 'relative', paddingLeft: 18 }}>
                 <div style={{ position: 'absolute', left: 6, top: 4, bottom: 4, width: 1, background: 'var(--rule-2)' }} />
@@ -1665,7 +1684,7 @@ export default function Report() {
                   )
                 })}
                 <div className="t-xs muted-2" style={{ marginTop: 10, lineHeight: 1.5 }}>
-                  &gt; ENTRIES MARKED `— —` LACK A TURN STAMP — PER-TURN LOG RETENTION IS A SERVER-SIDE TODO.
+                  &gt; {t('rpt.timeline_note')}
                 </div>
               </div>
             </Panel>
@@ -1676,11 +1695,11 @@ export default function Report() {
             time sparkline was a fabricated curve; dropped until the
             engine retains a per-turn life_history field. */}
         {featuredGame && (
-          <Panel code="RPT.F" title="PER-SEAT PERFORMANCE" style={{ gridColumn: '1 / -1' }}>
+          <Panel code="RPT.F" title={t('rpt.per_seat')} style={{ gridColumn: '1 / -1' }}>
             <div className="grid col-2 gap-4">
               {seats.map((s, i) => {
                 const isWinner = i === winnerIdx
-                const cmdr = commanders[i] || 'UNKNOWN'
+                const cmdr = commanders[i] || t('dash.unknown')
                 const perms = s.battlefield || []
                 const lands = perms.filter(p => p.is_land).length
                 const nonLand = perms.length - lands
@@ -1694,12 +1713,12 @@ export default function Report() {
                       <span>{cmdr.split(',')[0].toUpperCase()}</span>
                       <span className="t-xs">
                         SEAT.{String(i + 1).padStart(2, '0')}
-                        {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>★ WINNER</span>}
-                        {s.lost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>✕ LOST</span>}
+                        {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>{t('rpt.winner_mark')}</span>}
+                        {s.lost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>{t('rpt.lost_mark')}</span>}
                       </span>
                     </div>
                     <div style={{ padding: 12 }}>
-                      <div className="t-xs muted" style={{ marginBottom: 2 }}>FINAL LIFE</div>
+                      <div className="t-xs muted" style={{ marginBottom: 2 }}>{t('rpt.final_life')}</div>
                       <Bar value={lifePct} lg />
                       <div className="t-xs" style={{ marginTop: 3, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' }}>
                         {s.life} / 40
@@ -1711,14 +1730,14 @@ export default function Report() {
                       </div>
                       <div className="hr" style={{ margin: '10px 0' }} />
                       <KV rows={[
-                        ['BATTLEFIELD', String(perms.length)],
-                        ['CREATURES', String(creatures)],
-                        ['NON-LAND', String(nonLand)],
-                        ['LANDS', String(lands)],
-                        ['HAND', String(s.hand_size)],
-                        ['LIBRARY', String(s.library_size)],
-                        ['GRAVEYARD', String(s.gy_size)],
-                        ['ZONE TOTAL', String(totalCardsKnown)],
+                        [t('common.battlefield'), String(perms.length)],
+                        [t('rpt.creatures'), String(creatures)],
+                        [t('rpt.nonland'), String(nonLand)],
+                        [t('rpt.lands'), String(lands)],
+                        [t('common.hand'), String(s.hand_size)],
+                        [t('common.library'), String(s.library_size)],
+                        [t('common.graveyard'), String(s.gy_size)],
+                        [t('rpt.zone_total'), String(totalCardsKnown)],
                       ]} />
                     </div>
                   </div>
@@ -1726,7 +1745,7 @@ export default function Report() {
               })}
             </div>
             <div className="t-xs muted-2" style={{ marginTop: 10, lineHeight: 1.5 }}>
-              &gt; ALL FIGURES READ DIRECTLY FROM `final_seats[]` — END-OF-GAME SNAPSHOT, NOT INTERPOLATED.
+              &gt; {t('rpt.seat_note')}
             </div>
           </Panel>
         )}
