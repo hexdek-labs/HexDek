@@ -1,8 +1,8 @@
 // i18n foundation for hexdek.dev.
 //
 // Locale catalogs are JSON files under src/locales/. Add a new language
-// by dropping a new file (e.g. src/locales/de.json) and importing it
-// into the LOCALES map below.
+// by dropping a new file (e.g. src/locales/sw.json), adding a LOADERS
+// entry for it, and giving it a LOCALE_NAMES display name.
 //
 // Usage from a component:
 //
@@ -15,53 +15,62 @@
 // {var} placeholders are interpolated from the second argument:
 //
 //   t('hello', { name: 'wiedeman' })  // "Hello, wiedeman"
+//
+// LOADING MODEL. English is bundled statically because it is also the
+// fallback for every missing key, so it must be present synchronously.
+// Every other catalog is a dynamic import, fetched only when that locale
+// becomes active. With 25 languages, bundling them all would ship 24
+// catalogs no visitor reads. Until the active catalog arrives, t() serves
+// English and re-renders when it lands — a first paint in the fallback
+// language, not a blank or a key string.
 
 import { useSyncExternalStore } from 'react'
 
 import en from './locales/en.json'
-import zh from './locales/zh.json'
-import es from './locales/es.json'
-import hi from './locales/hi.json'
-import ar from './locales/ar.json'
-import pt from './locales/pt.json'
-import ru from './locales/ru.json'
-import ja from './locales/ja.json'
-import de from './locales/de.json'
-import fr from './locales/fr.json'
-import ko from './locales/ko.json'
-import it from './locales/it.json'
-import tr from './locales/tr.json'
-import pl from './locales/pl.json'
-import nl from './locales/nl.json'
-import id from './locales/id.json'
-import vi from './locales/vi.json'
-import th from './locales/th.json'
-import uk from './locales/uk.json'
-import sv from './locales/sv.json'
-import cs from './locales/cs.json'
-import el from './locales/el.json'
-import ro from './locales/ro.json'
-import hu from './locales/hu.json'
-import da from './locales/da.json'
 
-// Add new languages here. Keep keys ISO 639-1 (en, de, ja, ...).
-// Missing keys in any catalog fall through to English, then to the
-// literal key string. Card names always stay English (Scryfall
-// localization is a separate step).
-// Ordered roughly by global reach; order here drives the picker.
-const LOCALES = {
-  en, zh, es, hi, ar, pt, ru, ja, de, fr, ko, it, tr,
-  pl, nl, id, vi, th, uk, sv, cs, el, ro, hu, da,
+// Dynamic catalogs. Vite code-splits each of these into its own chunk.
+// Ordered roughly by global reach; this order drives the picker.
+const LOADERS = {
+  zh: () => import('./locales/zh.json'),
+  es: () => import('./locales/es.json'),
+  hi: () => import('./locales/hi.json'),
+  ar: () => import('./locales/ar.json'),
+  pt: () => import('./locales/pt.json'),
+  ru: () => import('./locales/ru.json'),
+  ja: () => import('./locales/ja.json'),
+  de: () => import('./locales/de.json'),
+  fr: () => import('./locales/fr.json'),
+  ko: () => import('./locales/ko.json'),
+  it: () => import('./locales/it.json'),
+  tr: () => import('./locales/tr.json'),
+  pl: () => import('./locales/pl.json'),
+  nl: () => import('./locales/nl.json'),
+  id: () => import('./locales/id.json'),
+  vi: () => import('./locales/vi.json'),
+  th: () => import('./locales/th.json'),
+  uk: () => import('./locales/uk.json'),
+  sv: () => import('./locales/sv.json'),
+  cs: () => import('./locales/cs.json'),
+  el: () => import('./locales/el.json'),
+  ro: () => import('./locales/ro.json'),
+  hu: () => import('./locales/hu.json'),
+  da: () => import('./locales/da.json'),
 }
+
+const FALLBACK = 'en'
+const STORAGE_KEY = 'hexdek.locale'
+
+// Catalogs resolved so far. English is always here; others arrive async.
+const loaded = { en }
 
 // Locales written right-to-left. The <html dir> attribute follows the
 // active locale so the whole shell mirrors, not just the text runs.
 const RTL = new Set(['ar'])
-const FALLBACK = 'en'
-const STORAGE_KEY = 'hexdek.locale'
 
 // Display-name for each locale, used by the in-app language picker.
-// Self-rendered (the user reads them in their own script).
+// Self-rendered (the user reads them in their own script). Static on
+// purpose — the picker must list every language without downloading
+// 25 catalogs to find out what they are called.
 export const LOCALE_NAMES = {
   en: 'English',
   zh: '中文',
@@ -90,6 +99,10 @@ export const LOCALE_NAMES = {
   da: 'Dansk',
 }
 
+function isKnown(locale) {
+  return locale === FALLBACK || Object.prototype.hasOwnProperty.call(LOADERS, locale)
+}
+
 // initialLocale resolves a locale at module load time, in priority order:
 //   1. ?lang=<code> in window.location.search   (per-link sharing)
 //   2. localStorage[hexdek.locale]              (sticky user choice)
@@ -99,22 +112,26 @@ function initialLocale() {
   if (typeof window !== 'undefined') {
     try {
       const fromURL = new URLSearchParams(window.location.search).get('lang')
-      if (fromURL && LOCALES[fromURL]) return fromURL
+      if (fromURL && isKnown(fromURL)) return fromURL
     } catch {}
   }
   try {
     const saved = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY)
-    if (saved && LOCALES[saved]) return saved
+    if (saved && isKnown(saved)) return saved
   } catch {}
   if (typeof navigator !== 'undefined' && typeof navigator.language === 'string') {
     const prefix = navigator.language.toLowerCase().split('-')[0]
-    if (LOCALES[prefix]) return prefix
+    if (isKnown(prefix)) return prefix
   }
   return FALLBACK
 }
 
 let currentLocale = initialLocale()
 
+// Bumped whenever a catalog finishes loading, so a component that
+// rendered in the English fallback re-renders once its real catalog
+// arrives. The store snapshot combines it with the locale.
+let catalogVersion = 0
 
 const subscribers = new Set()
 
@@ -127,8 +144,32 @@ function subscribe(fn) {
   return () => subscribers.delete(fn)
 }
 
+// Snapshot must be a primitive that changes on BOTH axes React cares
+// about: which locale is active, and whether its catalog has landed.
 function getSnapshot() {
-  return currentLocale
+  return currentLocale + ':' + catalogVersion
+}
+
+// In-flight loads, so two components switching at once share one fetch.
+const pending = new Map()
+
+// ensureLocale loads a catalog if it isn't already resolved. A failed
+// import is swallowed deliberately: the locale stays on the English
+// fallback and the app keeps working rather than blanking on a chunk
+// that 404'd behind a stale deploy.
+function ensureLocale(locale) {
+  if (loaded[locale] || !LOADERS[locale]) return Promise.resolve()
+  if (pending.has(locale)) return pending.get(locale)
+  const p = LOADERS[locale]()
+    .then(mod => {
+      loaded[locale] = mod.default || mod
+      catalogVersion += 1
+      notify()
+    })
+    .catch(() => {})
+    .finally(() => { pending.delete(locale) })
+  pending.set(locale, p)
+  return p
 }
 
 // isRTL reports whether a locale is written right-to-left.
@@ -148,11 +189,12 @@ function applyDocumentLocale(locale) {
 }
 
 export function setLocale(locale) {
-  if (!LOCALES[locale] || locale === currentLocale) return
+  if (!isKnown(locale) || locale === currentLocale) return
   currentLocale = locale
   try { localStorage.setItem(STORAGE_KEY, locale) } catch {}
   applyDocumentLocale(locale)
   notify()
+  ensureLocale(locale)
 }
 
 export function getLocale() {
@@ -160,7 +202,13 @@ export function getLocale() {
 }
 
 export function availableLocales() {
-  return Object.keys(LOCALES)
+  return [FALLBACK, ...Object.keys(LOADERS)]
+}
+
+// localeReady reports whether the active locale's catalog has landed.
+// Useful for a caller that would rather wait than flash English.
+export function localeReady(locale) {
+  return Boolean(loaded[locale || currentLocale])
 }
 
 // lookup walks a dotted path through a catalog object. Returns undefined
@@ -185,10 +233,10 @@ function interpolate(str, vars) {
 // t resolves a key against the current locale, falling back to English
 // then to the raw key. Module-level export for use outside React.
 export function t(key, vars) {
-  const catalog = LOCALES[currentLocale] || LOCALES[FALLBACK]
+  const catalog = loaded[currentLocale] || loaded[FALLBACK]
   let value = lookup(catalog, key)
   if (value === undefined && currentLocale !== FALLBACK) {
-    value = lookup(LOCALES[FALLBACK], key)
+    value = lookup(loaded[FALLBACK], key)
   }
   if (value === undefined) return key
   return interpolate(value, vars)
@@ -197,10 +245,10 @@ export function t(key, vars) {
 // useTranslation subscribes the component to locale changes and
 // returns the translator + setter. No Provider required.
 export function useTranslation() {
-  const locale = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   return {
     t: (key, vars) => t(key, vars),
-    locale,
+    locale: currentLocale,
     setLocale,
     availableLocales: availableLocales(),
   }
@@ -220,5 +268,7 @@ export function useT() {
   return t
 }
 
-// Set <html lang>/<html dir> for the locale resolved at module load.
+// Resolve the startup locale: set <html lang>/<html dir> and fetch its
+// catalog. Until it lands, t() serves English.
 applyDocumentLocale(currentLocale)
+ensureLocale(currentLocale)
