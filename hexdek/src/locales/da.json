@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  HEXDEK-KERNEN KLAR  + + +",
+    "tagline": "OPEN SOURCE / / DREVET AF DONATIONER / / INGEN REKLAMER",
+    "guest": "GÆST",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "DÆK",
+    "leaderboard": "RANGLISTE",
+    "meta": "META",
+    "spectate": "SE MED",
+    "my_decks": "MINE DÆK",
+    "operator": "OPERATØR",
+    "friends": "VENNER",
+    "about": "OM",
+    "feedback": "FEJL / FORSLAG",
+    "donate": "DONÉR ♥",
+    "discord": "DISCORD",
+    "login": "LOG IND ↗",
+    "logout": "LOG UD"
+  },
+  "theme": {
+    "dark": "☽ MØRK",
+    "light": "☀ LYS"
+  },
+  "common": {
+    "save": "GEM",
+    "cancel": "ANNULLÉR",
+    "delete": "SLET",
+    "confirm": "BEKRÆFT",
+    "edit": "REDIGÉR",
+    "export": "EKSPORTÉR",
+    "share": "DEL",
+    "copied": "KOPIERET!",
+    "loading": "INDLÆSER",
+    "saving": "GEMMER...",
+    "analyzing": "ANALYSERER..."
+  },
+  "deck": {
+    "owner": "EJER",
+    "cards": "KORT",
+    "bracket": "NIVEAU",
+    "archetype": "ARKETYPE",
+    "win_rate": "SEJRSRATE",
+    "games": "KAMPE",
+    "record": "REKORD",
+    "no_analysis": "INGEN FREYA-ANALYSE"
+  },
+  "achievements": {
+    "title": "PRÆSTATIONER",
+    "stats": {
+      "games": "KAMPE",
+      "wins": "SEJRE",
+      "streak": "STRIBE",
+      "opponents": "MODSTANDERE"
+    },
+    "rarity": {
+      "common": "ALMINDELIG",
+      "uncommon": "USÆDVANLIG",
+      "rare": "SJÆLDEN",
+      "mythic": "MYTISK",
+      "secret": "HEMMELIG"
+    },
+    "secret_hidden": "Skjult præstation.",
+    "secret_tooltip": "Skjult præstation — bliv ved med at spille."
+  },
+  "status": {
+    "no_game": "INGET SPIL I GANG",
+    "in_progress": "I GANG"
+  },
+  "search": {
+    "label": "SØG",
+    "open": "Åbn søgning",
+    "placeholder": "SØG DÆK · KORT · SPILLERE · COMMANDERS",
+    "aria": "Universel søgning",
+    "min_chars": "SKRIV 2+ TEGN FOR AT SØGE",
+    "scanning": "SCANNER…",
+    "no_results": "INGEN RESULTATER",
+    "section": {
+      "deck": "DÆK",
+      "commander": "COMMANDERS",
+      "owner": "SPILLERE",
+      "card": "KORT"
+    }
+  },
+  "ws": {
+    "contacting": "KONTAKTER SERVEREN...",
+    "initializing": "INITIALISERER...",
+    "reconnecting": "GENOPRETTER FORBINDELSE — SE BANNER (FORSØG {attempt} / {max})",
+    "offline": "OFFLINE — OPGAV EFTER {max} FORSØG"
+  },
+  "session": {
+    "confirm_prompt": "AFBRYD SESSION?",
+    "confirm_yes": "JA, LOG UD",
+    "change_language": "Skift sprog"
+  }
+}

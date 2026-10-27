@@ -23,4 +23,4 @@ export { LOCALE_NAMES }
 // Re-export the hooks + setter so consumers can grab everything from
 // one path if they prefer. The original ../i18n.js exports are still
 // the canonical source of truth.
-export { useT, useTranslation, setLocale, getLocale, t } from '../i18n.js'
+export { useT, useTranslation, setLocale, getLocale, t, isRTL } from '../i18n.js'

@@ -19,19 +19,44 @@
 import { useSyncExternalStore } from 'react'
 
 import en from './locales/en.json'
+import zh from './locales/zh.json'
 import es from './locales/es.json'
+import hi from './locales/hi.json'
+import ar from './locales/ar.json'
+import pt from './locales/pt.json'
+import ru from './locales/ru.json'
 import ja from './locales/ja.json'
 import de from './locales/de.json'
 import fr from './locales/fr.json'
 import ko from './locales/ko.json'
-import zh from './locales/zh.json'
-import pt from './locales/pt.json'
+import it from './locales/it.json'
+import tr from './locales/tr.json'
+import pl from './locales/pl.json'
+import nl from './locales/nl.json'
+import id from './locales/id.json'
+import vi from './locales/vi.json'
+import th from './locales/th.json'
+import uk from './locales/uk.json'
+import sv from './locales/sv.json'
+import cs from './locales/cs.json'
+import el from './locales/el.json'
+import ro from './locales/ro.json'
+import hu from './locales/hu.json'
+import da from './locales/da.json'
 
 // Add new languages here. Keep keys ISO 639-1 (en, de, ja, ...).
 // Missing keys in any catalog fall through to English, then to the
 // literal key string. Card names always stay English (Scryfall
 // localization is a separate step).
-const LOCALES = { en, es, ja, de, fr, ko, zh, pt }
+// Ordered roughly by global reach; order here drives the picker.
+const LOCALES = {
+  en, zh, es, hi, ar, pt, ru, ja, de, fr, ko, it, tr,
+  pl, nl, id, vi, th, uk, sv, cs, el, ro, hu, da,
+}
+
+// Locales written right-to-left. The <html dir> attribute follows the
+// active locale so the whole shell mirrors, not just the text runs.
+const RTL = new Set(['ar'])
 const FALLBACK = 'en'
 const STORAGE_KEY = 'hexdek.locale'
 
@@ -39,13 +64,30 @@ const STORAGE_KEY = 'hexdek.locale'
 // Self-rendered (the user reads them in their own script).
 export const LOCALE_NAMES = {
   en: 'English',
+  zh: '中文',
   es: 'Español',
+  hi: 'हिन्दी',
+  ar: 'العربية',
+  pt: 'Português',
+  ru: 'Русский',
   ja: '日本語',
   de: 'Deutsch',
   fr: 'Français',
   ko: '한국어',
-  zh: '中文',
-  pt: 'Português',
+  it: 'Italiano',
+  tr: 'Türkçe',
+  pl: 'Polski',
+  nl: 'Nederlands',
+  id: 'Bahasa Indonesia',
+  vi: 'Tiếng Việt',
+  th: 'ไทย',
+  uk: 'Українська',
+  sv: 'Svenska',
+  cs: 'Čeština',
+  el: 'Ελληνικά',
+  ro: 'Română',
+  hu: 'Magyar',
+  da: 'Dansk',
 }
 
 // initialLocale resolves a locale at module load time, in priority order:
@@ -73,6 +115,7 @@ function initialLocale() {
 
 let currentLocale = initialLocale()
 
+
 const subscribers = new Set()
 
 function notify() {
@@ -88,10 +131,27 @@ function getSnapshot() {
   return currentLocale
 }
 
+// isRTL reports whether a locale is written right-to-left.
+export function isRTL(locale) {
+  return RTL.has(locale || currentLocale)
+}
+
+// applyDocumentLocale mirrors the active locale onto <html lang> and
+// <html dir>. Called on every locale change and once at module load, so
+// an RTL locale flips the whole shell rather than only its text runs.
+function applyDocumentLocale(locale) {
+  if (typeof document === 'undefined') return
+  try {
+    document.documentElement.setAttribute('lang', locale)
+    document.documentElement.setAttribute('dir', RTL.has(locale) ? 'rtl' : 'ltr')
+  } catch {}
+}
+
 export function setLocale(locale) {
   if (!LOCALES[locale] || locale === currentLocale) return
   currentLocale = locale
   try { localStorage.setItem(STORAGE_KEY, locale) } catch {}
+  applyDocumentLocale(locale)
   notify()
 }
 
@@ -159,3 +219,6 @@ export function useT() {
   useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   return t
 }
+
+// Set <html lang>/<html dir> for the locale resolved at module load.
+applyDocumentLocale(currentLocale)

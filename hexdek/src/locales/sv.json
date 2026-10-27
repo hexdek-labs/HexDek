@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  HEXDEK-KÄRNAN KLAR  + + +",
+    "tagline": "ÖPPEN KÄLLKOD / / DRIVS AV DONATIONER / / INGA ANNONSER",
+    "guest": "GÄST",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "LEKAR",
+    "leaderboard": "RANKNING",
+    "meta": "META",
+    "spectate": "TITTA",
+    "my_decks": "MINA LEKAR",
+    "operator": "OPERATÖR",
+    "friends": "VÄNNER",
+    "about": "OM",
+    "feedback": "BUGG / FÖRSLAG",
+    "donate": "DONERA ♥",
+    "discord": "DISCORD",
+    "login": "LOGGA IN ↗",
+    "logout": "LOGGA UT"
+  },
+  "theme": {
+    "dark": "☽ MÖRKT",
+    "light": "☀ LJUST"
+  },
+  "common": {
+    "save": "SPARA",
+    "cancel": "AVBRYT",
+    "delete": "RADERA",
+    "confirm": "BEKRÄFTA",
+    "edit": "REDIGERA",
+    "export": "EXPORTERA",
+    "share": "DELA",
+    "copied": "KOPIERAT!",
+    "loading": "LADDAR",
+    "saving": "SPARAR...",
+    "analyzing": "ANALYSERAR..."
+  },
+  "deck": {
+    "owner": "ÄGARE",
+    "cards": "KORT",
+    "bracket": "NIVÅ",
+    "archetype": "ARKETYP",
+    "win_rate": "VINSTANDEL",
+    "games": "MATCHER",
+    "record": "REKORD",
+    "no_analysis": "INGEN FREYA-ANALYS"
+  },
+  "achievements": {
+    "title": "PRESTATIONER",
+    "stats": {
+      "games": "MATCHER",
+      "wins": "VINSTER",
+      "streak": "SVIT",
+      "opponents": "MOTSTÅNDARE"
+    },
+    "rarity": {
+      "common": "VANLIG",
+      "uncommon": "OVANLIG",
+      "rare": "SÄLLSYNT",
+      "mythic": "MYTISK",
+      "secret": "HEMLIG"
+    },
+    "secret_hidden": "Dold prestation.",
+    "secret_tooltip": "Dold prestation — fortsätt spela."
+  },
+  "status": {
+    "no_game": "INGET PÅGÅENDE SPEL",
+    "in_progress": "PÅGÅR"
+  },
+  "search": {
+    "label": "SÖK",
+    "open": "Öppna sökning",
+    "placeholder": "SÖK LEKAR · KORT · SPELARE · COMMANDERS",
+    "aria": "Universell sökning",
+    "min_chars": "SKRIV 2+ TECKEN FÖR ATT SÖKA",
+    "scanning": "SKANNAR…",
+    "no_results": "INGA RESULTAT",
+    "section": {
+      "deck": "LEKAR",
+      "commander": "COMMANDERS",
+      "owner": "SPELARE",
+      "card": "KORT"
+    }
+  },
+  "ws": {
+    "contacting": "KONTAKTAR SERVERN...",
+    "initializing": "INITIERAR...",
+    "reconnecting": "ÅTERANSLUTER — SE BANNER (FÖRSÖK {attempt} / {max})",
+    "offline": "OFFLINE — GAV UPP EFTER {max} FÖRSÖK"
+  },
+  "session": {
+    "confirm_prompt": "KOPPLA FRÅN SESSIONEN?",
+    "confirm_yes": "JA, LOGGA UT",
+    "change_language": "Byt språk"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  NUCLEO HEXDEK PRONTO  + + +",
+    "tagline": "OPEN SOURCE / / SOSTENUTO DA DONAZIONI / / NIENTE PUBBLICITÀ",
+    "guest": "OSPITE",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "DECKS",
+    "leaderboard": "CLASSIFICA",
+    "meta": "META",
+    "spectate": "GUARDA",
+    "my_decks": "I MIEI DECKS",
+    "operator": "OPERATORE",
+    "friends": "AMICI",
+    "about": "INFO",
+    "feedback": "BUG / SUGGERIMENTO",
+    "donate": "DONA ♥",
+    "discord": "DISCORD",
+    "login": "ACCEDI ↗",
+    "logout": "ESCI"
+  },
+  "theme": {
+    "dark": "☽ SCURO",
+    "light": "☀ CHIARO"
+  },
+  "common": {
+    "save": "SALVA",
+    "cancel": "ANNULLA",
+    "delete": "ELIMINA",
+    "confirm": "CONFERMA",
+    "edit": "MODIFICA",
+    "export": "ESPORTA",
+    "share": "CONDIVIDI",
+    "copied": "COPIATO!",
+    "loading": "CARICAMENTO",
+    "saving": "SALVATAGGIO...",
+    "analyzing": "ANALISI..."
+  },
+  "deck": {
+    "owner": "PROPRIETARIO",
+    "cards": "CARTE",
+    "bracket": "LIVELLO",
+    "archetype": "ARCHETIPO",
+    "win_rate": "VITTORIE",
+    "games": "PARTITE",
+    "record": "RECORD",
+    "no_analysis": "NESSUNA ANALISI FREYA"
+  },
+  "achievements": {
+    "title": "OBIETTIVI",
+    "stats": {
+      "games": "PARTITE",
+      "wins": "VITTORIE",
+      "streak": "SERIE",
+      "opponents": "AVVERSARI"
+    },
+    "rarity": {
+      "common": "COMUNE",
+      "uncommon": "NON COMUNE",
+      "rare": "RARA",
+      "mythic": "MITICA",
+      "secret": "SEGRETA"
+    },
+    "secret_hidden": "Obiettivo nascosto.",
+    "secret_tooltip": "Obiettivo nascosto — continua a giocare."
+  },
+  "status": {
+    "no_game": "NESSUNA PARTITA IN CORSO",
+    "in_progress": "IN CORSO"
+  },
+  "search": {
+    "label": "CERCA",
+    "open": "Apri la ricerca",
+    "placeholder": "CERCA DECKS · CARTE · GIOCATORI · COMANDANTI",
+    "aria": "Ricerca universale",
+    "min_chars": "DIGITA 2+ CARATTERI PER CERCARE",
+    "scanning": "SCANSIONE…",
+    "no_results": "NESSUN RISULTATO",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMANDANTI",
+      "owner": "GIOCATORI",
+      "card": "CARTE"
+    }
+  },
+  "ws": {
+    "contacting": "CONNESSIONE AL SERVER...",
+    "initializing": "INIZIALIZZAZIONE...",
+    "reconnecting": "RICONNESSIONE — VEDI BANNER (TENTATIVO {attempt} / {max})",
+    "offline": "OFFLINE — INTERROTTO DOPO {max} TENTATIVI"
+  },
+  "session": {
+    "confirm_prompt": "DISCONNETTERE LA SESSIONE?",
+    "confirm_yes": "SÌ, ESCI",
+    "change_language": "Cambia lingua"
+  }
+}

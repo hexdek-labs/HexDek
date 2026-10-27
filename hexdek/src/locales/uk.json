@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  ЯДРО HEXDEK ГОТОВЕ  + + +",
+    "tagline": "ВІДКРИТИЙ КОД / / НА ПОЖЕРТВИ / / БЕЗ РЕКЛАМИ",
+    "guest": "ГІСТЬ",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "КОЛОДИ",
+    "leaderboard": "РЕЙТИНГ",
+    "meta": "МЕТА",
+    "spectate": "ДИВИТИСЬ",
+    "my_decks": "МОЇ КОЛОДИ",
+    "operator": "ОПЕРАТОР",
+    "friends": "ДРУЗІ",
+    "about": "ПРО ПРОЄКТ",
+    "feedback": "БАГ / ІДЕЯ",
+    "donate": "ПІДТРИМАТИ ♥",
+    "discord": "DISCORD",
+    "login": "УВІЙТИ ↗",
+    "logout": "ВИЙТИ"
+  },
+  "theme": {
+    "dark": "☽ ТЕМНА",
+    "light": "☀ СВІТЛА"
+  },
+  "common": {
+    "save": "ЗБЕРЕГТИ",
+    "cancel": "СКАСУВАТИ",
+    "delete": "ВИДАЛИТИ",
+    "confirm": "ПІДТВЕРДИТИ",
+    "edit": "РЕДАГУВАТИ",
+    "export": "ЕКСПОРТ",
+    "share": "ПОДІЛИТИСЯ",
+    "copied": "СКОПІЙОВАНО!",
+    "loading": "ЗАВАНТАЖЕННЯ",
+    "saving": "ЗБЕРЕЖЕННЯ...",
+    "analyzing": "АНАЛІЗ..."
+  },
+  "deck": {
+    "owner": "ВЛАСНИК",
+    "cards": "КАРТИ",
+    "bracket": "РІВЕНЬ",
+    "archetype": "АРХЕТИП",
+    "win_rate": "ПЕРЕМОГИ",
+    "games": "ІГРИ",
+    "record": "РЕКОРД",
+    "no_analysis": "НЕМАЄ АНАЛІЗУ FREYA"
+  },
+  "achievements": {
+    "title": "ДОСЯГНЕННЯ",
+    "stats": {
+      "games": "ІГРИ",
+      "wins": "ПЕРЕМОГИ",
+      "streak": "СЕРІЯ",
+      "opponents": "СУПЕРНИКИ"
+    },
+    "rarity": {
+      "common": "ЗВИЧАЙНЕ",
+      "uncommon": "НЕЗВИЧАЙНЕ",
+      "rare": "РІДКІСНЕ",
+      "mythic": "МІФІЧНЕ",
+      "secret": "СЕКРЕТНЕ"
+    },
+    "secret_hidden": "Приховане досягнення.",
+    "secret_tooltip": "Приховане досягнення — грай далі."
+  },
+  "status": {
+    "no_game": "НЕМАЄ АКТИВНОЇ ГРИ",
+    "in_progress": "ТРИВАЄ"
+  },
+  "search": {
+    "label": "ПОШУК",
+    "open": "Відкрити пошук",
+    "placeholder": "ПОШУК КОЛОД · КАРТ · ГРАВЦІВ · КОМАНДИРІВ",
+    "aria": "Загальний пошук",
+    "min_chars": "ВВЕДІТЬ 2+ СИМВОЛИ ДЛЯ ПОШУКУ",
+    "scanning": "СКАНУВАННЯ…",
+    "no_results": "НЕМАЄ РЕЗУЛЬТАТІВ",
+    "section": {
+      "deck": "КОЛОДИ",
+      "commander": "КОМАНДИРИ",
+      "owner": "ГРАВЦІ",
+      "card": "КАРТИ"
+    }
+  },
+  "ws": {
+    "contacting": "З'ЄДНАННЯ З СЕРВЕРОМ...",
+    "initializing": "ІНІЦІАЛІЗАЦІЯ...",
+    "reconnecting": "ПЕРЕПІДКЛЮЧЕННЯ — ДИВ. БАНЕР (СПРОБА {attempt} / {max})",
+    "offline": "ОФЛАЙН — ЗУПИНЕНО ПІСЛЯ {max} СПРОБ"
+  },
+  "session": {
+    "confirm_prompt": "ЗАВЕРШИТИ СЕАНС?",
+    "confirm_yes": "ТАК, ВИЙТИ",
+    "change_language": "Змінити мову"
+  }
+}

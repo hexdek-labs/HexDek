@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  NUCLEUL HEXDEK PREGĂTIT  + + +",
+    "tagline": "SURSĂ DESCHISĂ / / SUSȚINUT PRIN DONAȚII / / FĂRĂ RECLAME",
+    "guest": "OASPETE",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "PACHETE",
+    "leaderboard": "CLASAMENT",
+    "meta": "META",
+    "spectate": "URMĂREȘTE",
+    "my_decks": "PACHETELE MELE",
+    "operator": "OPERATOR",
+    "friends": "PRIETENI",
+    "about": "DESPRE",
+    "feedback": "EROARE / SUGESTIE",
+    "donate": "DONEAZĂ ♥",
+    "discord": "DISCORD",
+    "login": "AUTENTIFICARE ↗",
+    "logout": "DECONECTARE"
+  },
+  "theme": {
+    "dark": "☽ ÎNTUNECAT",
+    "light": "☀ LUMINOS"
+  },
+  "common": {
+    "save": "SALVEAZĂ",
+    "cancel": "ANULEAZĂ",
+    "delete": "ȘTERGE",
+    "confirm": "CONFIRMĂ",
+    "edit": "EDITEAZĂ",
+    "export": "EXPORTĂ",
+    "share": "DISTRIBUIE",
+    "copied": "COPIAT!",
+    "loading": "SE ÎNCARCĂ",
+    "saving": "SE SALVEAZĂ...",
+    "analyzing": "SE ANALIZEAZĂ..."
+  },
+  "deck": {
+    "owner": "PROPRIETAR",
+    "cards": "CĂRȚI",
+    "bracket": "NIVEL",
+    "archetype": "ARHETIP",
+    "win_rate": "RATA DE VICTORII",
+    "games": "PARTIDE",
+    "record": "BILANȚ",
+    "no_analysis": "NICIO ANALIZĂ FREYA"
+  },
+  "achievements": {
+    "title": "REALIZĂRI",
+    "stats": {
+      "games": "PARTIDE",
+      "wins": "VICTORII",
+      "streak": "SERIE",
+      "opponents": "ADVERSARI"
+    },
+    "rarity": {
+      "common": "COMUNĂ",
+      "uncommon": "NECOMUNĂ",
+      "rare": "RARĂ",
+      "mythic": "MITICĂ",
+      "secret": "SECRETĂ"
+    },
+    "secret_hidden": "Realizare ascunsă.",
+    "secret_tooltip": "Realizare ascunsă — continuă să joci."
+  },
+  "status": {
+    "no_game": "NICIO PARTIDĂ ÎN DESFĂȘURARE",
+    "in_progress": "ÎN DESFĂȘURARE"
+  },
+  "search": {
+    "label": "CAUTĂ",
+    "open": "Deschide căutarea",
+    "placeholder": "CAUTĂ PACHETE · CĂRȚI · JUCĂTORI · COMANDANȚI",
+    "aria": "Căutare universală",
+    "min_chars": "SCRIE 2+ CARACTERE PENTRU CĂUTARE",
+    "scanning": "SE SCANEAZĂ…",
+    "no_results": "NICIUN REZULTAT",
+    "section": {
+      "deck": "PACHETE",
+      "commander": "COMANDANȚI",
+      "owner": "JUCĂTORI",
+      "card": "CĂRȚI"
+    }
+  },
+  "ws": {
+    "contacting": "SE CONTACTEAZĂ SERVERUL...",
+    "initializing": "SE INIȚIALIZEAZĂ...",
+    "reconnecting": "RECONECTARE — VEZI BANNERUL (ÎNCERCAREA {attempt} / {max})",
+    "offline": "OFFLINE — OPRIT DUPĂ {max} ÎNCERCĂRI"
+  },
+  "session": {
+    "confirm_prompt": "DECONECTEZI SESIUNEA?",
+    "confirm_yes": "DA, DECONECTEAZĂ-MĂ",
+    "change_language": "Schimbă limba"
+  }
+}

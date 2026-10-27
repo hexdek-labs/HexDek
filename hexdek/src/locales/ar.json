@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  نواة HEXDEK جاهزة  + + +",
+    "tagline": "مفتوح المصدر / / مدعوم بالتبرعات / / بلا إعلانات",
+    "guest": "ضيف",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "الديكات",
+    "leaderboard": "التصنيف",
+    "meta": "الميتا",
+    "spectate": "المشاهدة",
+    "my_decks": "ديكاتي",
+    "operator": "المشغّل",
+    "friends": "الأصدقاء",
+    "about": "حول",
+    "feedback": "خطأ / اقتراح",
+    "donate": "تبرع ♥",
+    "discord": "DISCORD",
+    "login": "تسجيل الدخول ↗",
+    "logout": "تسجيل الخروج"
+  },
+  "theme": {
+    "dark": "☽ داكن",
+    "light": "☀ فاتح"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "confirm": "تأكيد",
+    "edit": "تعديل",
+    "export": "تصدير",
+    "share": "مشاركة",
+    "copied": "تم النسخ!",
+    "loading": "جارٍ التحميل",
+    "saving": "جارٍ الحفظ...",
+    "analyzing": "جارٍ التحليل..."
+  },
+  "deck": {
+    "owner": "المالك",
+    "cards": "البطاقات",
+    "bracket": "الفئة",
+    "archetype": "النمط",
+    "win_rate": "نسبة الفوز",
+    "games": "المباريات",
+    "record": "السجل",
+    "no_analysis": "لا يوجد تحليل FREYA"
+  },
+  "achievements": {
+    "title": "الإنجازات",
+    "stats": {
+      "games": "المباريات",
+      "wins": "الانتصارات",
+      "streak": "السلسلة",
+      "opponents": "الخصوم"
+    },
+    "rarity": {
+      "common": "عادي",
+      "uncommon": "غير عادي",
+      "rare": "نادر",
+      "mythic": "أسطوري",
+      "secret": "سري"
+    },
+    "secret_hidden": "إنجاز مخفي.",
+    "secret_tooltip": "إنجاز مخفي — واصل اللعب."
+  },
+  "status": {
+    "no_game": "لا توجد مباراة جارية",
+    "in_progress": "جارية"
+  },
+  "search": {
+    "label": "بحث",
+    "open": "فتح البحث",
+    "placeholder": "ابحث في الديكات · البطاقات · اللاعبين · القادة",
+    "aria": "بحث شامل",
+    "min_chars": "اكتب حرفين أو أكثر للبحث",
+    "scanning": "جارٍ المسح…",
+    "no_results": "لا نتائج",
+    "section": {
+      "deck": "الديكات",
+      "commander": "القادة",
+      "owner": "اللاعبون",
+      "card": "البطاقات"
+    }
+  },
+  "ws": {
+    "contacting": "جارٍ الاتصال بالخادم...",
+    "initializing": "جارٍ التهيئة...",
+    "reconnecting": "جارٍ إعادة الاتصال — انظر الشريط (محاولة {attempt} / {max})",
+    "offline": "غير متصل — توقف بعد {max} محاولات"
+  },
+  "session": {
+    "confirm_prompt": "إنهاء الجلسة؟",
+    "confirm_yes": "نعم، تسجيل الخروج",
+    "change_language": "تغيير اللغة"
+  }
+}

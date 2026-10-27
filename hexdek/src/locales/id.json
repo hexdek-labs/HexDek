@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  INTI HEXDEK SIAP  + + +",
+    "tagline": "SUMBER TERBUKA / / DIDUKUNG DONASI / / TANPA IKLAN",
+    "guest": "TAMU",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "DEK",
+    "leaderboard": "PERINGKAT",
+    "meta": "META",
+    "spectate": "TONTON",
+    "my_decks": "DEK SAYA",
+    "operator": "OPERATOR",
+    "friends": "TEMAN",
+    "about": "TENTANG",
+    "feedback": "BUG / SARAN",
+    "donate": "DONASI ♥",
+    "discord": "DISCORD",
+    "login": "MASUK ↗",
+    "logout": "KELUAR"
+  },
+  "theme": {
+    "dark": "☽ GELAP",
+    "light": "☀ TERANG"
+  },
+  "common": {
+    "save": "SIMPAN",
+    "cancel": "BATAL",
+    "delete": "HAPUS",
+    "confirm": "KONFIRMASI",
+    "edit": "EDIT",
+    "export": "EKSPOR",
+    "share": "BAGIKAN",
+    "copied": "TERSALIN!",
+    "loading": "MEMUAT",
+    "saving": "MENYIMPAN...",
+    "analyzing": "MENGANALISIS..."
+  },
+  "deck": {
+    "owner": "PEMILIK",
+    "cards": "KARTU",
+    "bracket": "TINGKAT",
+    "archetype": "ARKETIPE",
+    "win_rate": "TINGKAT MENANG",
+    "games": "PERTANDINGAN",
+    "record": "REKOR",
+    "no_analysis": "TIDAK ADA ANALISIS FREYA"
+  },
+  "achievements": {
+    "title": "PENCAPAIAN",
+    "stats": {
+      "games": "PERTANDINGAN",
+      "wins": "MENANG",
+      "streak": "RENTETAN",
+      "opponents": "LAWAN"
+    },
+    "rarity": {
+      "common": "UMUM",
+      "uncommon": "TIDAK UMUM",
+      "rare": "LANGKA",
+      "mythic": "MITOS",
+      "secret": "RAHASIA"
+    },
+    "secret_hidden": "Pencapaian tersembunyi.",
+    "secret_tooltip": "Pencapaian tersembunyi — teruslah bermain."
+  },
+  "status": {
+    "no_game": "TIDAK ADA PERTANDINGAN",
+    "in_progress": "BERLANGSUNG"
+  },
+  "search": {
+    "label": "CARI",
+    "open": "Buka pencarian",
+    "placeholder": "CARI DEK · KARTU · PEMAIN · COMMANDER",
+    "aria": "Pencarian universal",
+    "min_chars": "KETIK 2+ KARAKTER UNTUK MENCARI",
+    "scanning": "MEMINDAI…",
+    "no_results": "TIDAK ADA HASIL",
+    "section": {
+      "deck": "DEK",
+      "commander": "COMMANDER",
+      "owner": "PEMAIN",
+      "card": "KARTU"
+    }
+  },
+  "ws": {
+    "contacting": "MENGHUBUNGI SERVER...",
+    "initializing": "MENGINISIALISASI...",
+    "reconnecting": "MENYAMBUNG ULANG — LIHAT BANNER (PERCOBAAN {attempt} / {max})",
+    "offline": "OFFLINE — BERHENTI SETELAH {max} PERCOBAAN"
+  },
+  "session": {
+    "confirm_prompt": "PUTUSKAN SESI?",
+    "confirm_yes": "YA, KELUAR",
+    "change_language": "Ubah bahasa"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  HEXDEK ÇEKİRDEĞİ HAZIR  + + +",
+    "tagline": "AÇIK KAYNAK / / BAĞIŞLARLA / / REKLAMSIZ",
+    "guest": "MİSAFİR",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "DESTELER",
+    "leaderboard": "SIRALAMA",
+    "meta": "META",
+    "spectate": "İZLE",
+    "my_decks": "DESTELERİM",
+    "operator": "OPERATÖR",
+    "friends": "ARKADAŞLAR",
+    "about": "HAKKINDA",
+    "feedback": "HATA / ÖNERİ",
+    "donate": "BAĞIŞ ♥",
+    "discord": "DISCORD",
+    "login": "GİRİŞ YAP ↗",
+    "logout": "ÇIKIŞ"
+  },
+  "theme": {
+    "dark": "☽ KOYU",
+    "light": "☀ AÇIK"
+  },
+  "common": {
+    "save": "KAYDET",
+    "cancel": "İPTAL",
+    "delete": "SİL",
+    "confirm": "ONAYLA",
+    "edit": "DÜZENLE",
+    "export": "DIŞA AKTAR",
+    "share": "PAYLAŞ",
+    "copied": "KOPYALANDI!",
+    "loading": "YÜKLENİYOR",
+    "saving": "KAYDEDİLİYOR...",
+    "analyzing": "ANALİZ EDİLİYOR..."
+  },
+  "deck": {
+    "owner": "SAHİP",
+    "cards": "KARTLAR",
+    "bracket": "SEVİYE",
+    "archetype": "ARKETİP",
+    "win_rate": "KAZANMA ORANI",
+    "games": "OYUNLAR",
+    "record": "SİCİL",
+    "no_analysis": "FREYA ANALİZİ YOK"
+  },
+  "achievements": {
+    "title": "BAŞARIMLAR",
+    "stats": {
+      "games": "OYUNLAR",
+      "wins": "GALİBİYET",
+      "streak": "SERİ",
+      "opponents": "RAKİPLER"
+    },
+    "rarity": {
+      "common": "YAYGIN",
+      "uncommon": "AZ BULUNUR",
+      "rare": "NADİR",
+      "mythic": "EFSANEVİ",
+      "secret": "GİZLİ"
+    },
+    "secret_hidden": "Gizli başarım.",
+    "secret_tooltip": "Gizli başarım — oynamaya devam et."
+  },
+  "status": {
+    "no_game": "DEVAM EDEN OYUN YOK",
+    "in_progress": "DEVAM EDİYOR"
+  },
+  "search": {
+    "label": "ARA",
+    "open": "Aramayı aç",
+    "placeholder": "DESTE · KART · OYUNCU · KOMUTAN ARA",
+    "aria": "Evrensel arama",
+    "min_chars": "ARAMAK İÇİN 2+ KARAKTER YAZIN",
+    "scanning": "TARANIYOR…",
+    "no_results": "SONUÇ YOK",
+    "section": {
+      "deck": "DESTELER",
+      "commander": "KOMUTANLAR",
+      "owner": "OYUNCULAR",
+      "card": "KARTLAR"
+    }
+  },
+  "ws": {
+    "contacting": "SUNUCUYA BAĞLANILIYOR...",
+    "initializing": "BAŞLATILIYOR...",
+    "reconnecting": "YENİDEN BAĞLANILIYOR — AFİŞE BAKIN (DENEME {attempt} / {max})",
+    "offline": "ÇEVRİMDIŞI — {max} DENEMEDEN SONRA VAZGEÇİLDİ"
+  },
+  "session": {
+    "confirm_prompt": "OTURUM KAPATILSIN MI?",
+    "confirm_yes": "EVET, ÇIKIŞ YAP",
+    "change_language": "Dili değiştir"
+  }
+}

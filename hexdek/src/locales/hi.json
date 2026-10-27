@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  HEXDEK कोर तैयार  + + +",
+    "tagline": "ओपन सोर्स / / दान-संचालित / / कोई विज्ञापन नहीं",
+    "guest": "अतिथि",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "डेक",
+    "leaderboard": "रैंकिंग",
+    "meta": "मेटा",
+    "spectate": "देखें",
+    "my_decks": "मेरे डेक",
+    "operator": "ऑपरेटर",
+    "friends": "मित्र",
+    "about": "परिचय",
+    "feedback": "बग / सुझाव",
+    "donate": "दान करें ♥",
+    "discord": "DISCORD",
+    "login": "साइन इन ↗",
+    "logout": "लॉग आउट"
+  },
+  "theme": {
+    "dark": "☽ डार्क",
+    "light": "☀ लाइट"
+  },
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "confirm": "पुष्टि करें",
+    "edit": "संपादित करें",
+    "export": "निर्यात",
+    "share": "साझा करें",
+    "copied": "कॉपी हो गया!",
+    "loading": "लोड हो रहा है",
+    "saving": "सहेजा जा रहा है...",
+    "analyzing": "विश्लेषण हो रहा है..."
+  },
+  "deck": {
+    "owner": "स्वामी",
+    "cards": "कार्ड",
+    "bracket": "ब्रैकेट",
+    "archetype": "आर्कटाइप",
+    "win_rate": "जीत दर",
+    "games": "खेल",
+    "record": "रिकॉर्ड",
+    "no_analysis": "कोई FREYA विश्लेषण नहीं"
+  },
+  "achievements": {
+    "title": "उपलब्धियां",
+    "stats": {
+      "games": "खेल",
+      "wins": "जीत",
+      "streak": "श्रृंखला",
+      "opponents": "प्रतिद्वंद्वी"
+    },
+    "rarity": {
+      "common": "सामान्य",
+      "uncommon": "असामान्य",
+      "rare": "दुर्लभ",
+      "mythic": "पौराणिक",
+      "secret": "गुप्त"
+    },
+    "secret_hidden": "गुप्त उपलब्धि।",
+    "secret_tooltip": "गुप्त उपलब्धि — खेलते रहें।"
+  },
+  "status": {
+    "no_game": "कोई खेल नहीं चल रहा",
+    "in_progress": "चल रहा है"
+  },
+  "search": {
+    "label": "खोजें",
+    "open": "खोज खोलें",
+    "placeholder": "डेक · कार्ड · खिलाड़ी · कमांडर खोजें",
+    "aria": "सार्वभौमिक खोज",
+    "min_chars": "खोजने के लिए 2+ अक्षर लिखें",
+    "scanning": "स्कैन हो रहा है…",
+    "no_results": "कोई परिणाम नहीं",
+    "section": {
+      "deck": "डेक",
+      "commander": "कमांडर",
+      "owner": "खिलाड़ी",
+      "card": "कार्ड"
+    }
+  },
+  "ws": {
+    "contacting": "सर्वर से संपर्क हो रहा है...",
+    "initializing": "प्रारंभ हो रहा है...",
+    "reconnecting": "पुनः कनेक्ट हो रहा है — बैनर देखें (प्रयास {attempt} / {max})",
+    "offline": "ऑफ़लाइन — {max} प्रयासों के बाद रोका गया"
+  },
+  "session": {
+    "confirm_prompt": "सत्र समाप्त करें?",
+    "confirm_yes": "हाँ, लॉग आउट",
+    "change_language": "भाषा बदलें"
+  }
+}

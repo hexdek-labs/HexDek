@@ -7,7 +7,7 @@ import ReconnectBanner from './ReconnectBanner'
 import LazyBoundary from './LazyBoundary'
 import { useAuth } from '../context/AuthContext'
 import { useLiveSocket } from '../hooks/useLiveSocket'
-import { useTranslation } from '../i18n'
+import { useTranslation, LOCALE_NAMES } from '../i18n'
 
 const PUBLIC_NAV = [
   { to: '/decks', key: 'nav.decks' },
@@ -96,7 +96,7 @@ export default function AppShell() {
               >
                 {availableLocales.map(l => (
                   <option key={l} value={l} style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
-                    {l.toUpperCase()}
+                    {LOCALE_NAMES[l] || l.toUpperCase()}
                   </option>
                 ))}
               </select>

@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  ЯДРО HEXDEK ГОТОВО  + + +",
+    "tagline": "ОТКРЫТЫЙ КОД / / НА ПОЖЕРТВОВАНИЯХ / / БЕЗ РЕКЛАМЫ",
+    "guest": "ГОСТЬ",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "ДЕКИ",
+    "leaderboard": "РЕЙТИНГ",
+    "meta": "МЕТА",
+    "spectate": "СМОТРЕТЬ",
+    "my_decks": "МОИ ДЕКИ",
+    "operator": "ОПЕРАТОР",
+    "friends": "ДРУЗЬЯ",
+    "about": "О ПРОЕКТЕ",
+    "feedback": "БАГ / ИДЕЯ",
+    "donate": "ПОДДЕРЖАТЬ ♥",
+    "discord": "DISCORD",
+    "login": "ВОЙТИ ↗",
+    "logout": "ВЫЙТИ"
+  },
+  "theme": {
+    "dark": "☽ ТЁМНАЯ",
+    "light": "☀ СВЕТЛАЯ"
+  },
+  "common": {
+    "save": "СОХРАНИТЬ",
+    "cancel": "ОТМЕНА",
+    "delete": "УДАЛИТЬ",
+    "confirm": "ПОДТВЕРДИТЬ",
+    "edit": "ИЗМЕНИТЬ",
+    "export": "ЭКСПОРТ",
+    "share": "ПОДЕЛИТЬСЯ",
+    "copied": "СКОПИРОВАНО!",
+    "loading": "ЗАГРУЗКА",
+    "saving": "СОХРАНЕНИЕ...",
+    "analyzing": "АНАЛИЗ..."
+  },
+  "deck": {
+    "owner": "ВЛАДЕЛЕЦ",
+    "cards": "КАРТЫ",
+    "bracket": "УРОВЕНЬ",
+    "archetype": "АРХЕТИП",
+    "win_rate": "ПОБЕДЫ",
+    "games": "ИГРЫ",
+    "record": "РЕКОРД",
+    "no_analysis": "НЕТ АНАЛИЗА FREYA"
+  },
+  "achievements": {
+    "title": "ДОСТИЖЕНИЯ",
+    "stats": {
+      "games": "ИГРЫ",
+      "wins": "ПОБЕДЫ",
+      "streak": "СЕРИЯ",
+      "opponents": "ОППОНЕНТЫ"
+    },
+    "rarity": {
+      "common": "ОБЫЧНОЕ",
+      "uncommon": "НЕОБЫЧНОЕ",
+      "rare": "РЕДКОЕ",
+      "mythic": "МИФИЧЕСКОЕ",
+      "secret": "СЕКРЕТНОЕ"
+    },
+    "secret_hidden": "Скрытое достижение.",
+    "secret_tooltip": "Скрытое достижение — продолжайте играть."
+  },
+  "status": {
+    "no_game": "НЕТ АКТИВНОЙ ИГРЫ",
+    "in_progress": "ИДЁТ ИГРА"
+  },
+  "search": {
+    "label": "ПОИСК",
+    "open": "Открыть поиск",
+    "placeholder": "ПОИСК ДЕКОВ · КАРТ · ИГРОКОВ · КОМАНДИРОВ",
+    "aria": "Общий поиск",
+    "min_chars": "ВВЕДИТЕ 2+ СИМВОЛА ДЛЯ ПОИСКА",
+    "scanning": "СКАНИРОВАНИЕ…",
+    "no_results": "НЕТ РЕЗУЛЬТАТОВ",
+    "section": {
+      "deck": "ДЕКИ",
+      "commander": "КОМАНДИРЫ",
+      "owner": "ИГРОКИ",
+      "card": "КАРТЫ"
+    }
+  },
+  "ws": {
+    "contacting": "ПОДКЛЮЧЕНИЕ К СЕРВЕРУ...",
+    "initializing": "ИНИЦИАЛИЗАЦИЯ...",
+    "reconnecting": "ПЕРЕПОДКЛЮЧЕНИЕ — СМ. БАННЕР (ПОПЫТКА {attempt} / {max})",
+    "offline": "ОФФЛАЙН — ОСТАНОВЛЕНО ПОСЛЕ {max} ПОПЫТОК"
+  },
+  "session": {
+    "confirm_prompt": "ЗАВЕРШИТЬ СЕАНС?",
+    "confirm_yes": "ДА, ВЫЙТИ",
+    "change_language": "Сменить язык"
+  }
+}

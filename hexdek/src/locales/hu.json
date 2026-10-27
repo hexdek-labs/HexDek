@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  A HEXDEK MAG KÉSZ  + + +",
+    "tagline": "NYÍLT FORRÁSKÓDÚ / / ADOMÁNYOKBÓL / / REKLÁMMENTES",
+    "guest": "VENDÉG",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "PAKLIK",
+    "leaderboard": "RANGLISTA",
+    "meta": "META",
+    "spectate": "NÉZÉS",
+    "my_decks": "PAKLIJAIM",
+    "operator": "OPERÁTOR",
+    "friends": "BARÁTOK",
+    "about": "NÉVJEGY",
+    "feedback": "HIBA / ÖTLET",
+    "donate": "TÁMOGATÁS ♥",
+    "discord": "DISCORD",
+    "login": "BEJELENTKEZÉS ↗",
+    "logout": "KIJELENTKEZÉS"
+  },
+  "theme": {
+    "dark": "☽ SÖTÉT",
+    "light": "☀ VILÁGOS"
+  },
+  "common": {
+    "save": "MENTÉS",
+    "cancel": "MÉGSE",
+    "delete": "TÖRLÉS",
+    "confirm": "MEGERŐSÍTÉS",
+    "edit": "SZERKESZTÉS",
+    "export": "EXPORTÁLÁS",
+    "share": "MEGOSZTÁS",
+    "copied": "MÁSOLVA!",
+    "loading": "BETÖLTÉS",
+    "saving": "MENTÉS...",
+    "analyzing": "ELEMZÉS..."
+  },
+  "deck": {
+    "owner": "TULAJDONOS",
+    "cards": "LAPOK",
+    "bracket": "SZINT",
+    "archetype": "ARCHETÍPUS",
+    "win_rate": "GYŐZELMI ARÁNY",
+    "games": "JÁTSZMÁK",
+    "record": "MÉRLEG",
+    "no_analysis": "NINCS FREYA-ELEMZÉS"
+  },
+  "achievements": {
+    "title": "TELJESÍTMÉNYEK",
+    "stats": {
+      "games": "JÁTSZMÁK",
+      "wins": "GYŐZELMEK",
+      "streak": "SOROZAT",
+      "opponents": "ELLENFELEK"
+    },
+    "rarity": {
+      "common": "GYAKORI",
+      "uncommon": "NEM GYAKORI",
+      "rare": "RITKA",
+      "mythic": "MITIKUS",
+      "secret": "TITKOS"
+    },
+    "secret_hidden": "Rejtett teljesítmény.",
+    "secret_tooltip": "Rejtett teljesítmény — játssz tovább."
+  },
+  "status": {
+    "no_game": "NINCS FOLYAMATBAN LÉVŐ JÁTSZMA",
+    "in_progress": "FOLYAMATBAN"
+  },
+  "search": {
+    "label": "KERESÉS",
+    "open": "Keresés megnyitása",
+    "placeholder": "PAKLIK · LAPOK · JÁTÉKOSOK · PARANCSNOKOK KERESÉSE",
+    "aria": "Általános keresés",
+    "min_chars": "ÍRJ BE 2+ KARAKTERT A KERESÉSHEZ",
+    "scanning": "VIZSGÁLAT…",
+    "no_results": "NINCS TALÁLAT",
+    "section": {
+      "deck": "PAKLIK",
+      "commander": "PARANCSNOKOK",
+      "owner": "JÁTÉKOSOK",
+      "card": "LAPOK"
+    }
+  },
+  "ws": {
+    "contacting": "KAPCSOLÓDÁS A SZERVERHEZ...",
+    "initializing": "INICIALIZÁLÁS...",
+    "reconnecting": "ÚJRACSATLAKOZÁS — LÁSD A SÁVOT ({attempt} / {max}. PRÓBA)",
+    "offline": "OFFLINE — LEÁLLT {max} PRÓBA UTÁN"
+  },
+  "session": {
+    "confirm_prompt": "MEGSZAKÍTOD A MUNKAMENETET?",
+    "confirm_yes": "IGEN, KIJELENTKEZÉS",
+    "change_language": "Nyelv váltása"
+  }
+}

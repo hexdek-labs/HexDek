@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  JÁDRO HEXDEK PŘIPRAVENO  + + +",
+    "tagline": "OTEVŘENÝ ZDROJ / / POHÁNĚNO DARY / / BEZ REKLAM",
+    "guest": "HOST",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "BALÍČKY",
+    "leaderboard": "ŽEBŘÍČEK",
+    "meta": "META",
+    "spectate": "SLEDOVAT",
+    "my_decks": "MÉ BALÍČKY",
+    "operator": "OPERÁTOR",
+    "friends": "PŘÁTELÉ",
+    "about": "O PROJEKTU",
+    "feedback": "CHYBA / NÁVRH",
+    "donate": "PŘISPĚT ♥",
+    "discord": "DISCORD",
+    "login": "PŘIHLÁSIT ↗",
+    "logout": "ODHLÁSIT"
+  },
+  "theme": {
+    "dark": "☽ TMAVÝ",
+    "light": "☀ SVĚTLÝ"
+  },
+  "common": {
+    "save": "ULOŽIT",
+    "cancel": "ZRUŠIT",
+    "delete": "SMAZAT",
+    "confirm": "POTVRDIT",
+    "edit": "UPRAVIT",
+    "export": "EXPORT",
+    "share": "SDÍLET",
+    "copied": "ZKOPÍROVÁNO!",
+    "loading": "NAČÍTÁNÍ",
+    "saving": "UKLÁDÁNÍ...",
+    "analyzing": "ANALÝZA..."
+  },
+  "deck": {
+    "owner": "VLASTNÍK",
+    "cards": "KARTY",
+    "bracket": "ÚROVEŇ",
+    "archetype": "ARCHETYP",
+    "win_rate": "ÚSPĚŠNOST",
+    "games": "HRY",
+    "record": "BILANCE",
+    "no_analysis": "ŽÁDNÁ ANALÝZA FREYA"
+  },
+  "achievements": {
+    "title": "ÚSPĚCHY",
+    "stats": {
+      "games": "HRY",
+      "wins": "VÝHRY",
+      "streak": "SÉRIE",
+      "opponents": "SOUPEŘI"
+    },
+    "rarity": {
+      "common": "BĚŽNÁ",
+      "uncommon": "NEOBVYKLÁ",
+      "rare": "VZÁCNÁ",
+      "mythic": "MYTICKÁ",
+      "secret": "TAJNÁ"
+    },
+    "secret_hidden": "Skrytý úspěch.",
+    "secret_tooltip": "Skrytý úspěch — hraj dál."
+  },
+  "status": {
+    "no_game": "ŽÁDNÁ PROBÍHAJÍCÍ HRA",
+    "in_progress": "PROBÍHÁ"
+  },
+  "search": {
+    "label": "HLEDAT",
+    "open": "Otevřít hledání",
+    "placeholder": "HLEDAT BALÍČKY · KARTY · HRÁČE · VELITELE",
+    "aria": "Univerzální hledání",
+    "min_chars": "NAPIŠTE 2+ ZNAKY PRO HLEDÁNÍ",
+    "scanning": "SKENOVÁNÍ…",
+    "no_results": "ŽÁDNÉ VÝSLEDKY",
+    "section": {
+      "deck": "BALÍČKY",
+      "commander": "VELITELÉ",
+      "owner": "HRÁČI",
+      "card": "KARTY"
+    }
+  },
+  "ws": {
+    "contacting": "PŘIPOJOVÁNÍ K SERVERU...",
+    "initializing": "INICIALIZACE...",
+    "reconnecting": "OBNOVOVÁNÍ SPOJENÍ — VIZ BANNER (POKUS {attempt} / {max})",
+    "offline": "OFFLINE — UKONČENO PO {max} POKUSECH"
+  },
+  "session": {
+    "confirm_prompt": "ODPOJIT RELACI?",
+    "confirm_yes": "ANO, ODHLÁSIT",
+    "change_language": "Změnit jazyk"
+  }
+}

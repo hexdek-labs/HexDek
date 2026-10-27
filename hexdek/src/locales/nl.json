@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  HEXDEK CORE GEREED  + + +",
+    "tagline": "OPEN SOURCE / / DOOR DONATIES / / GEEN ADVERTENTIES",
+    "guest": "GAST",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "DECKS",
+    "leaderboard": "RANGLIJST",
+    "meta": "META",
+    "spectate": "KIJKEN",
+    "my_decks": "MIJN DECKS",
+    "operator": "OPERATOR",
+    "friends": "VRIENDEN",
+    "about": "OVER",
+    "feedback": "BUG / SUGGESTIE",
+    "donate": "DONEER ♥",
+    "discord": "DISCORD",
+    "login": "INLOGGEN ↗",
+    "logout": "UITLOGGEN"
+  },
+  "theme": {
+    "dark": "☽ DONKER",
+    "light": "☀ LICHT"
+  },
+  "common": {
+    "save": "OPSLAAN",
+    "cancel": "ANNULEREN",
+    "delete": "VERWIJDEREN",
+    "confirm": "BEVESTIGEN",
+    "edit": "BEWERKEN",
+    "export": "EXPORTEREN",
+    "share": "DELEN",
+    "copied": "GEKOPIEERD!",
+    "loading": "LADEN",
+    "saving": "OPSLAAN...",
+    "analyzing": "ANALYSEREN..."
+  },
+  "deck": {
+    "owner": "EIGENAAR",
+    "cards": "KAARTEN",
+    "bracket": "NIVEAU",
+    "archetype": "ARCHETYPE",
+    "win_rate": "WINPERCENTAGE",
+    "games": "PARTIJEN",
+    "record": "RECORD",
+    "no_analysis": "GEEN FREYA-ANALYSE"
+  },
+  "achievements": {
+    "title": "PRESTATIES",
+    "stats": {
+      "games": "PARTIJEN",
+      "wins": "OVERWINNINGEN",
+      "streak": "REEKS",
+      "opponents": "TEGENSTANDERS"
+    },
+    "rarity": {
+      "common": "GEWOON",
+      "uncommon": "ONGEWOON",
+      "rare": "ZELDZAAM",
+      "mythic": "MYTHISCH",
+      "secret": "GEHEIM"
+    },
+    "secret_hidden": "Verborgen prestatie.",
+    "secret_tooltip": "Verborgen prestatie — blijf spelen."
+  },
+  "status": {
+    "no_game": "GEEN PARTIJ BEZIG",
+    "in_progress": "BEZIG"
+  },
+  "search": {
+    "label": "ZOEKEN",
+    "open": "Zoeken openen",
+    "placeholder": "ZOEK DECKS · KAARTEN · SPELERS · COMMANDERS",
+    "aria": "Universeel zoeken",
+    "min_chars": "TYP 2+ TEKENS OM TE ZOEKEN",
+    "scanning": "SCANNEN…",
+    "no_results": "GEEN RESULTATEN",
+    "section": {
+      "deck": "DECKS",
+      "commander": "COMMANDERS",
+      "owner": "SPELERS",
+      "card": "KAARTEN"
+    }
+  },
+  "ws": {
+    "contacting": "VERBINDEN MET SERVER...",
+    "initializing": "INITIALISEREN...",
+    "reconnecting": "OPNIEUW VERBINDEN — ZIE BANNER (POGING {attempt} / {max})",
+    "offline": "OFFLINE — GESTOPT NA {max} POGINGEN"
+  },
+  "session": {
+    "confirm_prompt": "SESSIE VERBREKEN?",
+    "confirm_yes": "JA, UITLOGGEN",
+    "change_language": "Taal wijzigen"
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  LÕI HEXDEK SẴN SÀNG  + + +",
+    "tagline": "MÃ NGUỒN MỞ / / VẬN HÀNH BẰNG QUYÊN GÓP / / KHÔNG QUẢNG CÁO",
+    "guest": "KHÁCH",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "BỘ BÀI",
+    "leaderboard": "XẾP HẠNG",
+    "meta": "META",
+    "spectate": "XEM",
+    "my_decks": "BỘ BÀI CỦA TÔI",
+    "operator": "NGƯỜI VẬN HÀNH",
+    "friends": "BẠN BÈ",
+    "about": "GIỚI THIỆU",
+    "feedback": "LỖI / GÓP Ý",
+    "donate": "QUYÊN GÓP ♥",
+    "discord": "DISCORD",
+    "login": "ĐĂNG NHẬP ↗",
+    "logout": "ĐĂNG XUẤT"
+  },
+  "theme": {
+    "dark": "☽ TỐI",
+    "light": "☀ SÁNG"
+  },
+  "common": {
+    "save": "LƯU",
+    "cancel": "HỦY",
+    "delete": "XÓA",
+    "confirm": "XÁC NHẬN",
+    "edit": "SỬA",
+    "export": "XUẤT",
+    "share": "CHIA SẺ",
+    "copied": "ĐÃ SAO CHÉP!",
+    "loading": "ĐANG TẢI",
+    "saving": "ĐANG LƯU...",
+    "analyzing": "ĐANG PHÂN TÍCH..."
+  },
+  "deck": {
+    "owner": "CHỦ SỞ HỮU",
+    "cards": "LÁ BÀI",
+    "bracket": "CẤP",
+    "archetype": "NGUYÊN MẪU",
+    "win_rate": "TỶ LỆ THẮNG",
+    "games": "VÁN ĐẤU",
+    "record": "THÀNH TÍCH",
+    "no_analysis": "CHƯA CÓ PHÂN TÍCH FREYA"
+  },
+  "achievements": {
+    "title": "THÀNH TỰU",
+    "stats": {
+      "games": "VÁN ĐẤU",
+      "wins": "THẮNG",
+      "streak": "CHUỖI",
+      "opponents": "ĐỐI THỦ"
+    },
+    "rarity": {
+      "common": "THƯỜNG",
+      "uncommon": "ÍT GẶP",
+      "rare": "HIẾM",
+      "mythic": "HUYỀN THOẠI",
+      "secret": "BÍ MẬT"
+    },
+    "secret_hidden": "Thành tựu ẩn.",
+    "secret_tooltip": "Thành tựu ẩn — hãy tiếp tục chơi."
+  },
+  "status": {
+    "no_game": "KHÔNG CÓ VÁN ĐẤU NÀO",
+    "in_progress": "ĐANG DIỄN RA"
+  },
+  "search": {
+    "label": "TÌM KIẾM",
+    "open": "Mở tìm kiếm",
+    "placeholder": "TÌM BỘ BÀI · LÁ BÀI · NGƯỜI CHƠI · CHỈ HUY",
+    "aria": "Tìm kiếm toàn cục",
+    "min_chars": "NHẬP 2+ KÝ TỰ ĐỂ TÌM",
+    "scanning": "ĐANG QUÉT…",
+    "no_results": "KHÔNG CÓ KẾT QUẢ",
+    "section": {
+      "deck": "BỘ BÀI",
+      "commander": "CHỈ HUY",
+      "owner": "NGƯỜI CHƠI",
+      "card": "LÁ BÀI"
+    }
+  },
+  "ws": {
+    "contacting": "ĐANG KẾT NỐI MÁY CHỦ...",
+    "initializing": "ĐANG KHỞI TẠO...",
+    "reconnecting": "ĐANG KẾT NỐI LẠI — XEM BIỂU NGỮ (LẦN {attempt} / {max})",
+    "offline": "NGOẠI TUYẾN — DỪNG SAU {max} LẦN THỬ"
+  },
+  "session": {
+    "confirm_prompt": "NGẮT PHIÊN?",
+    "confirm_yes": "CÓ, ĐĂNG XUẤT",
+    "change_language": "Đổi ngôn ngữ"
+  }
+}

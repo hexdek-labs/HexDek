@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  แกนหลัก HEXDEK พร้อม  + + +",
+    "tagline": "โอเพนซอร์ส / / ขับเคลื่อนด้วยการบริจาค / / ไม่มีโฆษณา",
+    "guest": "ผู้เยี่ยมชม",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "เด็ค",
+    "leaderboard": "อันดับ",
+    "meta": "เมตา",
+    "spectate": "ชม",
+    "my_decks": "เด็คของฉัน",
+    "operator": "ผู้ควบคุม",
+    "friends": "เพื่อน",
+    "about": "เกี่ยวกับ",
+    "feedback": "บั๊ก / ข้อเสนอแนะ",
+    "donate": "บริจาค ♥",
+    "discord": "DISCORD",
+    "login": "เข้าสู่ระบบ ↗",
+    "logout": "ออกจากระบบ"
+  },
+  "theme": {
+    "dark": "☽ มืด",
+    "light": "☀ สว่าง"
+  },
+  "common": {
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "confirm": "ยืนยัน",
+    "edit": "แก้ไข",
+    "export": "ส่งออก",
+    "share": "แชร์",
+    "copied": "คัดลอกแล้ว!",
+    "loading": "กำลังโหลด",
+    "saving": "กำลังบันทึก...",
+    "analyzing": "กำลังวิเคราะห์..."
+  },
+  "deck": {
+    "owner": "เจ้าของ",
+    "cards": "การ์ด",
+    "bracket": "ระดับ",
+    "archetype": "อาร์คีไทป์",
+    "win_rate": "อัตราชนะ",
+    "games": "เกม",
+    "record": "สถิติ",
+    "no_analysis": "ไม่มีการวิเคราะห์ FREYA"
+  },
+  "achievements": {
+    "title": "ความสำเร็จ",
+    "stats": {
+      "games": "เกม",
+      "wins": "ชนะ",
+      "streak": "สตรีค",
+      "opponents": "คู่แข่ง"
+    },
+    "rarity": {
+      "common": "ธรรมดา",
+      "uncommon": "ไม่ธรรมดา",
+      "rare": "หายาก",
+      "mythic": "ตำนาน",
+      "secret": "ลับ"
+    },
+    "secret_hidden": "ความสำเร็จที่ซ่อนอยู่",
+    "secret_tooltip": "ความสำเร็จที่ซ่อนอยู่ — เล่นต่อไป"
+  },
+  "status": {
+    "no_game": "ไม่มีเกมที่กำลังเล่น",
+    "in_progress": "กำลังดำเนินการ"
+  },
+  "search": {
+    "label": "ค้นหา",
+    "open": "เปิดการค้นหา",
+    "placeholder": "ค้นหาเด็ค · การ์ด · ผู้เล่น · ผู้บัญชาการ",
+    "aria": "ค้นหาทั้งหมด",
+    "min_chars": "พิมพ์ 2 ตัวอักษรขึ้นไปเพื่อค้นหา",
+    "scanning": "กำลังสแกน…",
+    "no_results": "ไม่พบผลลัพธ์",
+    "section": {
+      "deck": "เด็ค",
+      "commander": "ผู้บัญชาการ",
+      "owner": "ผู้เล่น",
+      "card": "การ์ด"
+    }
+  },
+  "ws": {
+    "contacting": "กำลังติดต่อเซิร์ฟเวอร์...",
+    "initializing": "กำลังเริ่มต้น...",
+    "reconnecting": "กำลังเชื่อมต่อใหม่ — ดูแบนเนอร์ (ครั้งที่ {attempt} / {max})",
+    "offline": "ออฟไลน์ — หยุดหลังจาก {max} ครั้ง"
+  },
+  "session": {
+    "confirm_prompt": "ตัดการเชื่อมต่อเซสชัน?",
+    "confirm_yes": "ใช่ ออกจากระบบ",
+    "change_language": "เปลี่ยนภาษา"
+  }
+}

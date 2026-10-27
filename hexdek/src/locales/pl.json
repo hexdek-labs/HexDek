@@ -1,0 +1,100 @@
+{
+  "app": {
+    "brand": "HEXDEK//",
+    "build_label": "SYS.BUILD 25.04.28 · HEXDEK V0.10D",
+    "core_ready": "+ + +  RDZEŃ HEXDEK GOTOWY  + + +",
+    "tagline": "OTWARTE ŹRÓDŁO / / NAPĘDZANE DAROWIZNAMI / / BEZ REKLAM",
+    "guest": "GOŚĆ",
+    "user": "USR.{name}"
+  },
+  "nav": {
+    "decks": "TALIE",
+    "leaderboard": "RANKING",
+    "meta": "META",
+    "spectate": "OGLĄDAJ",
+    "my_decks": "MOJE TALIE",
+    "operator": "OPERATOR",
+    "friends": "ZNAJOMI",
+    "about": "O PROJEKCIE",
+    "feedback": "BŁĄD / SUGESTIA",
+    "donate": "WESPRZYJ ♥",
+    "discord": "DISCORD",
+    "login": "ZALOGUJ ↗",
+    "logout": "WYLOGUJ"
+  },
+  "theme": {
+    "dark": "☽ CIEMNY",
+    "light": "☀ JASNY"
+  },
+  "common": {
+    "save": "ZAPISZ",
+    "cancel": "ANULUJ",
+    "delete": "USUŃ",
+    "confirm": "POTWIERDŹ",
+    "edit": "EDYTUJ",
+    "export": "EKSPORT",
+    "share": "UDOSTĘPNIJ",
+    "copied": "SKOPIOWANO!",
+    "loading": "ŁADOWANIE",
+    "saving": "ZAPISYWANIE...",
+    "analyzing": "ANALIZOWANIE..."
+  },
+  "deck": {
+    "owner": "WŁAŚCICIEL",
+    "cards": "KARTY",
+    "bracket": "POZIOM",
+    "archetype": "ARCHETYP",
+    "win_rate": "WYGRANE",
+    "games": "GRY",
+    "record": "BILANS",
+    "no_analysis": "BRAK ANALIZY FREYA"
+  },
+  "achievements": {
+    "title": "OSIĄGNIĘCIA",
+    "stats": {
+      "games": "GRY",
+      "wins": "WYGRANE",
+      "streak": "SERIA",
+      "opponents": "PRZECIWNICY"
+    },
+    "rarity": {
+      "common": "POSPOLITA",
+      "uncommon": "NIEPOSPOLITA",
+      "rare": "RZADKA",
+      "mythic": "MITYCZNA",
+      "secret": "SEKRETNA"
+    },
+    "secret_hidden": "Ukryte osiągnięcie.",
+    "secret_tooltip": "Ukryte osiągnięcie — graj dalej."
+  },
+  "status": {
+    "no_game": "BRAK TRWAJĄCEJ GRY",
+    "in_progress": "W TOKU"
+  },
+  "search": {
+    "label": "SZUKAJ",
+    "open": "Otwórz wyszukiwanie",
+    "placeholder": "SZUKAJ TALII · KART · GRACZY · DOWÓDCÓW",
+    "aria": "Wyszukiwanie uniwersalne",
+    "min_chars": "WPISZ 2+ ZNAKI, ABY SZUKAĆ",
+    "scanning": "SKANOWANIE…",
+    "no_results": "BRAK WYNIKÓW",
+    "section": {
+      "deck": "TALIE",
+      "commander": "DOWÓDCY",
+      "owner": "GRACZE",
+      "card": "KARTY"
+    }
+  },
+  "ws": {
+    "contacting": "ŁĄCZENIE Z SERWEREM...",
+    "initializing": "INICJALIZACJA...",
+    "reconnecting": "PONOWNE ŁĄCZENIE — ZOBACZ BANER (PRÓBA {attempt} / {max})",
+    "offline": "OFFLINE — PRZERWANO PO {max} PRÓBACH"
+  },
+  "session": {
+    "confirm_prompt": "ROZŁĄCZYĆ SESJĘ?",
+    "confirm_yes": "TAK, WYLOGUJ",
+    "change_language": "Zmień język"
+  }
+}
