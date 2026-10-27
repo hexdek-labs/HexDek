@@ -166,21 +166,25 @@ const EVAL_GRID = [
   ['threat_exposure', 'commander_progress',  'graveyard_value'],
 ]
 
-const EVAL_LABELS = {
-  board_presence: 'Board',
-  card_advantage: 'Cards',
-  mana_advantage: 'Mana',
-  combo_proximity: 'Combo',
-  score: 'Score',
-  life_resource: 'Life',
-  threat_exposure: 'Threat',
-  commander_progress: 'Cmdr',
-  graveyard_value: 'Grave',
+// Catalog paths, not labels. Read at render from module scope, so an
+// English word here would be fixed at load and survive a language switch
+// - and this table also feeds the heatmap tooltip, which holds its
+// contents in state between a mousemove and the next render.
+const EVAL_LABEL_KEYS = {
+  board_presence: 'spec.ev_board',
+  card_advantage: 'spec.ev_cards',
+  mana_advantage: 'spec.ev_mana',
+  combo_proximity: 'spec.ev_combo',
+  score: 'spec.ev_score',
+  life_resource: 'spec.ev_life',
+  threat_exposure: 'spec.ev_threat',
+  commander_progress: 'spec.ev_cmdr',
+  graveyard_value: 'spec.ev_grave',
 }
 
 // Glossary id for each eval-grid cell. Lets the spectator panel wrap
 // every heatmap label with a tap-to-define disclosure without bloating
-// EVAL_LABELS itself (the short labels are also rendered into the
+// EVAL_LABEL_KEYS itself (the short labels are also rendered into the
 // per-seat heatmap, where a glossary disclosure would be way too much
 // chrome).
 const EVAL_TERMS = {
@@ -353,11 +357,11 @@ const ELIMINATION_KINDS = new Set([
   'elimination', 'sba_704_5a', 'sba_704_5b', 'sba_704_5c', 'sba_704_5d',
 ])
 
-const ELIMINATION_REASONS = {
-  sba_704_5a: 'LIFE ≤ 0',
-  sba_704_5b: 'EMPTY LIBRARY',
-  sba_704_5c: '10+ POISON',
-  sba_704_5d: '21+ COMMANDER DMG',
+const ELIMINATION_REASON_KEYS = {
+  sba_704_5a: 'spec.elim_life',
+  sba_704_5b: 'spec.elim_library',
+  sba_704_5c: 'spec.elim_poison',
+  sba_704_5d: 'spec.elim_cmdr_dmg',
 }
 
 function linkifyNarrated(text, source, targets) {
@@ -517,8 +521,11 @@ export default function Spectator() {
     const top = flipY
       ? Math.max(margin, e.clientY - 8 - tipH)
       : e.clientY - 8
+    // The KEY, not the word: this object lives in state from one
+    // mousemove until the next, which would otherwise freeze the label in
+    // whatever language was active when the pointer moved.
     setHeatmapTip({
-      label: EVAL_LABELS[key],
+      labelKey: EVAL_LABEL_KEYS[key],
       value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—',
       left,
       top,
@@ -820,7 +827,7 @@ export default function Spectator() {
 
       {heatmapTip && (
         <div className="heatmap-tooltip" style={{ left: heatmapTip.left, top: heatmapTip.top }}>
-          {heatmapTip.label}: {heatmapTip.value}
+          {t(heatmapTip.labelKey)}: {heatmapTip.value}
         </div>
       )}
       {helpOpen && (
@@ -1200,14 +1207,14 @@ export default function Spectator() {
         {/* Below the fold — log + sidebar controls */}
         <div className="spectator-lower">
           <div className="spectator-lower-main">
-            <Panel code="FT.LOG" title="LIVE ACTION LOG" right={<span className="t-xs muted">{log.length} EVT</span>}>
+            <Panel code="FT.LOG" title={t('spec.log_title')} right={<span className="t-xs muted">{t('spec.evt_count', { count: log.length })}</span>}>
               <div ref={logContainerRef} onScroll={(e) => {
                 const el = e.target
                 const atTop = el.scrollTop < 30
                 userScrolledRef.current = !atTop
               }} style={{ maxHeight: 480, overflow: 'auto', fontSize: 11, lineHeight: 1.6 }}>
                 {log.length === 0 ? (
-                  <div className="t-xs muted-2">— WAITING FOR EVENTS —</div>
+                  <div className="t-xs muted-2">{t('spec.waiting_events')}</div>
                 ) : (() => {
                   const currentRound = Math.ceil(game.turn / numSeats)
                   const reversed = [...log].reverse().slice(0, 100)
@@ -1216,7 +1223,7 @@ export default function Spectator() {
                     const entryRound = Math.ceil(entry.turn / numSeats)
                     const isOldRound = entryRound < currentRound
                     const isElim = ELIMINATION_KINDS.has(entry.kind)
-                    const elimReason = ELIMINATION_REASONS[entry.kind]
+                    const elimReasonKey = ELIMINATION_REASON_KEYS[entry.kind]
                     const gc = findGameChangerInText(entry.action)
                     const narrated = narrate(entry, seats)
                     const seatColor = SEAT_COLORS[entry.seat] || 'var(--ink-2)'
@@ -1283,7 +1290,7 @@ export default function Spectator() {
                                 fontWeight: 700,
                                 fontSize: 12,
                               }}>
-                                &gt;&gt;&gt; {entry.action}{elimReason ? ` [${elimReason}]` : ''}
+                                &gt;&gt;&gt; {entry.action}{elimReasonKey ? ` [${t(elimReasonKey)}]` : ''}
                               </span>
                             ) : (
                               <span style={{ color: LOG_COLORS[entry.kind] || 'var(--ink)', letterSpacing: '0.02em' }}>
@@ -1313,16 +1320,16 @@ export default function Spectator() {
               </div>
             </Panel>
 
-            <Panel code="FT.D" title="CURRENT GAME">
+            <Panel code="FT.D" title={t('spec.current_game')}>
               <div style={{ minHeight: 80 }}>
                 {game && (
                   <div className="kv" style={{ gridTemplateColumns: 'max-content 1fr minmax(80px, 140px)' }}>
                     {[
-                      ['GAME', `#${game.game_id}`],
-                      ['ROUND/TURN', rt(game.turn)],
-                      ['PHASE', (game.phase || '?').toUpperCase()],
-                      ['ACTIVE', seats[game.active_seat]?.commander?.toUpperCase() || '—'],
-                      ['ALIVE', `${seats.filter(s => !s.lost).length} / ${seats.length}`],
+                      [t('spec.kv_game'), `#${game.game_id}`],
+                      [t('spec.kv_round_turn'), rt(game.turn)],
+                      [t('spec.kv_phase'), (game.phase || '?').toUpperCase()],
+                      [t('common.active'), seats[game.active_seat]?.commander?.toUpperCase() || '—'],
+                      [t('common.alive'), `${seats.filter(s => !s.lost).length} / ${seats.length}`],
                     ].map(([k, v]) => (
                       <Fragment key={k}>
                         <span className="k">{k}</span>
@@ -1337,13 +1344,13 @@ export default function Spectator() {
           </div>
 
           <div className="spectator-lower-side">
-            <Panel code="FT.VM" title="EVAL HEATMAP KEY">
+            <Panel code="FT.VM" title={t('spec.heatmap_key')}>
               <div className="volcmap-legend">
                 <div className="volcmap-grid">
                   {EVAL_GRID.flat().map(key => (
                     <span key={key} className="volcmap-cell">
                       <GlossaryTerm term={EVAL_TERMS[key]} compact>
-                        {EVAL_LABELS[key]}
+                        {t(EVAL_LABEL_KEYS[key])}
                       </GlossaryTerm>
                     </span>
                   ))}
@@ -1351,8 +1358,8 @@ export default function Spectator() {
                 <div className="volcmap-scale">
                   <div className="volcmap-bar" />
                   <div className="volcmap-scale-labels">
-                    <span>LOW</span>
-                    <span>HIGH</span>
+                    <span>{t('spec.scale_low')}</span>
+                    <span>{t('spec.scale_high')}</span>
                   </div>
                 </div>
                 {game.seats?.some(s => s.eval?.archetype) && (
@@ -1376,24 +1383,24 @@ export default function Spectator() {
                 )}
                 <div className="hr" style={{ margin: '8px 0' }} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>♥</span> <span className="muted">LIFE TOTAL</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>H</span> <span className="muted">HAND SIZE</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>L</span> <span className="muted">LIBRARY SIZE</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>G</span> <span className="muted">GRAVEYARD</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>B</span> <span className="muted">BATTLEFIELD</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>R</span> <span className="muted">ROUND #</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>T</span> <span className="muted">TURN #</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>●</span> <span className="muted">ACTIVE PLAYER</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>★</span> <span className="muted">WINNER</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--danger)' }}>✕</span> <span className="muted">ELIMINATED</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>+N</span> <span className="muted">ELO GAINED</span></span>
-                  <span className="t-xs"><span style={{ color: 'var(--danger)' }}>-N</span> <span className="muted">ELO LOST</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>♥</span> <span className="muted">{t('spec.lg_life')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>H</span> <span className="muted">{t('spec.lg_hand')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>L</span> <span className="muted">{t('spec.lg_library')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>G</span> <span className="muted">{t('common.graveyard')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>B</span> <span className="muted">{t('common.battlefield')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>R</span> <span className="muted">{t('spec.lg_round')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ink)' }}>T</span> <span className="muted">{t('spec.lg_turn')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>●</span> <span className="muted">{t('spec.lg_active')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>★</span> <span className="muted">{t('common.winner')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--danger)' }}>✕</span> <span className="muted">{t('common.eliminated')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--ok)' }}>+N</span> <span className="muted">{t('spec.lg_elo_up')}</span></span>
+                  <span className="t-xs"><span style={{ color: 'var(--danger)' }}>-N</span> <span className="muted">{t('spec.lg_elo_down')}</span></span>
                 </div>
               </div>
             </Panel>
 
-            <Panel code="FT.SPD" title="SPEED CONTROL">
-              <ContextBox id="spectator.speed" compact>Adjusts how fast the live game ticks. Drag the slider or click a preset — 0.1× is slow study mode, 2× is fast forward.</ContextBox>
+            <Panel code="FT.SPD" title={t('spec.speed_control')}>
+              <ContextBox id="spectator.speed" compact>{t('spec.speed_help')}</ContextBox>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {(() => {
                   const idx = SPEED_MARKS.indexOf(speed) >= 0 ? SPEED_MARKS.indexOf(speed) : 2
@@ -1407,8 +1414,8 @@ export default function Spectator() {
                       step={1}
                       value={idx}
                       onChange={(e) => setSpeedMultiplier(SPEED_MARKS[e.target.value])}
-                      aria-label="Playback speed"
-                      aria-valuetext={`${parseFloat(speed.toFixed(2))}× playback`}
+                      aria-label={t('spec.speed_aria')}
+                      aria-valuetext={t('spec.speed_valuetext', { speed: parseFloat(speed.toFixed(2)) })}
                       style={{
                         flex: 1,
                         background: `linear-gradient(to right, var(--ok) ${pct}%, var(--rule-2) ${pct}%)`,
@@ -1420,7 +1427,7 @@ export default function Spectator() {
                   {parseFloat(speed.toFixed(2))}×
                 </span>
               </div>
-              <div className="speed-marks" role="group" aria-label="Speed presets">
+              <div className="speed-marks" role="group" aria-label={t('spec.speed_presets')}>
                 {SPEED_MARKS.map((m, i) => {
                   const active = Math.abs(speed - m) < 0.01
                   return (
@@ -1429,7 +1436,7 @@ export default function Spectator() {
                       key={i}
                       className="t-xs speed-mark-btn"
                       onClick={() => setSpeedMultiplier(m)}
-                      aria-label={`Set playback speed to ${m}×`}
+                      aria-label={t('spec.speed_set', { speed: m })}
                       aria-pressed={active}
                       style={{ color: active ? 'var(--ok)' : 'var(--ink-2)' }}
                     >
@@ -1440,10 +1447,10 @@ export default function Spectator() {
               </div>
             </Panel>
 
-            <Panel code="FT.B" title="LIVE ELO" right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
+            <Panel code="FT.B" title={t('spec.live_elo')} right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
               <div style={{ minHeight: 200 }}>
                 {elo.length === 0 ? (
-                  <div className="t-xs muted">NO ELO DATA YET</div>
+                  <div className="t-xs muted">{t('spec.no_elo')}</div>
                 ) : (
                   elo.slice(0, 10).map((r) => {
                     const goToDeck = () => {
@@ -1459,7 +1466,7 @@ export default function Spectator() {
                       className="elo-row"
                       role="button"
                       tabIndex={0}
-                      aria-label={`Open deck ${r.commander || r.deck_id}`}
+                      aria-label={t('spec.open_deck', { name: r.commander || r.deck_id })}
                       onClick={goToDeck}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -1489,28 +1496,30 @@ export default function Spectator() {
               </div>
             </Panel>
 
-            <Panel code="FT.C" title="SESSION STATS">
+            <Panel code="FT.C" title={t('spec.session_stats')}>
               <div style={{ minHeight: 120 }}>
                 {stats ? (
                   <KV rows={[
-                    ['GAMES PLAYED', `${stats.games_played}`, 'games'],
-                    ['AVG GAME', `${stats.avg_turns} TURNS`],
-                    ['DOMINANT', (stats.dominant?.split('//')[0]?.trim() || '—').toUpperCase()],
-                    ['WIN RATE', `${stats.dominant_win_rate}%`, 'win_rate'],
-                    ['GAMES/MIN', `${stats.games_per_min}`],
-                    ['UPTIME', stats.uptime],
-                    ['STATUS', stats.status?.toUpperCase()],
+                    [t('spec.kv_games_played'), `${stats.games_played}`, 'games'],
+                    [t('spec.kv_avg_game'), t('spec.avg_turns', { count: stats.avg_turns })],
+                    [t('spec.kv_dominant'), (stats.dominant?.split('//')[0]?.trim() || '—').toUpperCase()],
+                    [t('spec.kv_win_rate'), `${stats.dominant_win_rate}%`, 'win_rate'],
+                    [t('spec.kv_games_min'), `${stats.games_per_min}`],
+                    [t('spec.kv_uptime'), stats.uptime],
+                    // `status` arrives already worded from the server, so it
+                    // is echoed rather than keyed.
+                    [t('spec.kv_status'), stats.status?.toUpperCase()],
                   ]} />
                 ) : (
-                  <div className="t-xs muted">LOADING...</div>
+                  <div className="t-xs muted">{t('spec.loading_dots')}</div>
                 )}
               </div>
             </Panel>
 
-            <Panel code="FT.D" title="RECENT GAMES" right={<span className="t-xs muted">{history.length}</span>}>
+            <Panel code="FT.D" title={t('spec.recent_games')} right={<span className="t-xs muted">{history.length}</span>}>
               <div style={{ maxHeight: 340, overflow: 'auto' }}>
                 {history.length === 0 ? (
-                  <div className="t-xs muted">NO GAME HISTORY YET</div>
+                  <div className="t-xs muted">{t('spec.no_history')}</div>
                 ) : (
                   history.slice(0, 20).map((g) => (
                     <div
@@ -1522,7 +1531,7 @@ export default function Spectator() {
                           {(g.winner_name || g.commanders?.[g.winner] || '???').split('//')[0].trim().toUpperCase()}
                         </div>
                         <div className="t-xs muted-2" style={{ fontSize: 8 }}>
-                          {g.turns}T · {g.end_reason?.replace(/_/g, ' ')?.toUpperCase() || 'UNKNOWN'}
+                          {g.turns}T · {g.end_reason?.replace(/_/g, ' ')?.toUpperCase() || t('spec.seat_unknown')}
                         </div>
                       </div>
                       <span
@@ -1530,7 +1539,7 @@ export default function Spectator() {
                         style={{ color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 8, textDecoration: 'underline', textDecorationColor: 'var(--rule-2)' }}
                         onClick={() => navigate(`/report/${g.game_id}`)}
                       >
-                        REPORT →
+                        {t('spec.report_link')} →
                       </span>
                     </div>
                   ))
