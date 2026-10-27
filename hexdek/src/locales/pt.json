@@ -66,7 +66,17 @@
     "tya_sorcery": "FEI",
     "tya_artifact": "ART",
     "tya_enchantment": "ENC",
-    "tya_land": "TER"
+    "tya_land": "TER",
+    "avg_cmc": "CMC MÉDIO:",
+    "conf_locked": "CONSOLIDADO",
+    "conf_high": "ALTA CONFIANÇA",
+    "conf_converging": "A CONVERGIR",
+    "conf_warming": "A AQUECER",
+    "conf_provisional": "PROVISÓRIO",
+    "conf_title": "{count} partidas — {tier}",
+    "curve_low": "CURVA BAIXA",
+    "curve_mid": "CURVA MÉDIA",
+    "curve_high": "CURVA ALTA"
   },
   "deck": {
     "owner": "DONO",
@@ -113,7 +123,10 @@
       "commander": "COMANDANTES",
       "owner": "JOGADORES",
       "card": "CARTAS"
-    }
+    },
+    "kb_navigate": "NAVEGAR",
+    "kb_open": "ABRIR",
+    "kb_close": "FECHAR"
   },
   "ws": {
     "contacting": "CONTATANDO O SERVIDOR...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTADO: {name}",
     "default_moxfield": "DECK DO MOXFIELD",
     "default_archidekt": "DECK DO ARCHIDEKT",
-    "default_new": "NOVO DECK"
+    "default_new": "NOVO DECK",
+    "help_moxfield_1": "> COLA UM LINK PÚBLICO DE BARALHO DO MOXFIELD. O BARALHO SERÁ OBTIDO E IMPORTADO AUTOMATICAMENTE.",
+    "help_moxfield_2": "> O COMANDANTE E A LISTA DE CARTAS SÃO EXTRAÍDOS DA API DO MOXFIELD.",
+    "help_archidekt_1": "> COLA UM LINK PÚBLICO DE BARALHO DO ARCHIDEKT. O BARALHO SERÁ OBTIDO E IMPORTADO AUTOMATICAMENTE.",
+    "help_archidekt_2": "> O COMANDANTE, O BARALHO PRINCIPAL E O MAYBEBOARD SÃO PRESERVADOS A PARTIR DAS CATEGORIAS DO ARCHIDEKT.",
+    "err_no_commander": "Nenhum comandante designado",
+    "err_illegal_count": "{count}x — só é permitida 1 cópia em Commander"
   },
   "splash": {
     "tape_left": "INÍCIO / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VITÓRIA",
     "res_loss": "DERROTA",
     "res_draw": "EMPATE",
-    "vs_label": "contra"
+    "vs_label": "contra",
+    "untitled_deck": "BARALHO"
   }
 }

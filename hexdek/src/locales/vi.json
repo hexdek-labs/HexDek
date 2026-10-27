@@ -66,7 +66,17 @@
     "tya_sorcery": "PT",
     "tya_artifact": "CV",
     "tya_enchantment": "PDT",
-    "tya_land": "ĐẤT"
+    "tya_land": "ĐẤT",
+    "avg_cmc": "CMC TRUNG BÌNH:",
+    "conf_locked": "ĐÃ CHỐT",
+    "conf_high": "ĐỘ TIN CẬY CAO",
+    "conf_converging": "ĐANG HỘI TỤ",
+    "conf_warming": "ĐANG KHỞI ĐỘNG",
+    "conf_provisional": "TẠM THỜI",
+    "conf_title": "{count} ván — {tier}",
+    "curve_low": "ĐƯỜNG CONG THẤP",
+    "curve_mid": "ĐƯỜNG CONG TRUNG BÌNH",
+    "curve_high": "ĐƯỜNG CONG CAO"
   },
   "deck": {
     "owner": "CHỦ SỞ HỮU",
@@ -113,7 +123,10 @@
       "commander": "CHỈ HUY",
       "owner": "NGƯỜI CHƠI",
       "card": "LÁ BÀI"
-    }
+    },
+    "kb_navigate": "DI CHUYỂN",
+    "kb_open": "MỞ",
+    "kb_close": "ĐÓNG"
   },
   "ws": {
     "contacting": "ĐANG KẾT NỐI MÁY CHỦ...",
@@ -202,7 +215,13 @@
     "toast_imported": "ĐÃ NHẬP BỘ BÀI: {name}",
     "default_moxfield": "BỘ BÀI MOXFIELD",
     "default_archidekt": "BỘ BÀI ARCHIDEKT",
-    "default_new": "BỘ BÀI MỚI"
+    "default_new": "BỘ BÀI MỚI",
+    "help_moxfield_1": "> DÁN MỘT LIÊN KẾT BỘ BÀI MOXFIELD CÔNG KHAI. BỘ BÀI SẼ ĐƯỢC TẢI VÀ NHẬP TỰ ĐỘNG.",
+    "help_moxfield_2": "> CHỈ HUY VÀ DANH SÁCH LÁ BÀI ĐƯỢC TRÍCH XUẤT TỪ API CỦA MOXFIELD.",
+    "help_archidekt_1": "> DÁN MỘT LIÊN KẾT BỘ BÀI ARCHIDEKT CÔNG KHAI. BỘ BÀI SẼ ĐƯỢC TẢI VÀ NHẬP TỰ ĐỘNG.",
+    "help_archidekt_2": "> CHỈ HUY, BÀI CHÍNH VÀ MAYBEBOARD ĐƯỢC GIỮ NGUYÊN THEO DANH MỤC CỦA ARCHIDEKT.",
+    "err_no_commander": "Chưa chỉ định chỉ huy",
+    "err_illegal_count": "{count}x — Commander chỉ cho phép 1 bản"
   },
   "splash": {
     "tape_left": "TRANG CHỦ / / TÀI LIỆU HX-001",
@@ -953,6 +972,7 @@
     "res_win": "THẮNG",
     "res_loss": "THUA",
     "res_draw": "HÒA",
-    "vs_label": "đấu"
+    "vs_label": "đấu",
+    "untitled_deck": "BỘ BÀI"
   }
 }

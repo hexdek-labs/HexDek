@@ -66,7 +66,17 @@
     "tya_sorcery": "ซอร์",
     "tya_artifact": "อาร์",
     "tya_enchantment": "เอน",
-    "tya_land": "แลน"
+    "tya_land": "แลน",
+    "avg_cmc": "CMC เฉลี่ย:",
+    "conf_locked": "แน่นอนแล้ว",
+    "conf_high": "ความเชื่อมั่นสูง",
+    "conf_converging": "กำลังลู่เข้า",
+    "conf_warming": "กำลังอุ่นเครื่อง",
+    "conf_provisional": "เบื้องต้น",
+    "conf_title": "{count} เกม — {tier}",
+    "curve_low": "เส้นโค้งต่ำ",
+    "curve_mid": "เส้นโค้งกลาง",
+    "curve_high": "เส้นโค้งสูง"
   },
   "deck": {
     "owner": "เจ้าของ",
@@ -113,7 +123,10 @@
       "commander": "ผู้บัญชาการ",
       "owner": "ผู้เล่น",
       "card": "การ์ด"
-    }
+    },
+    "kb_navigate": "เลื่อน",
+    "kb_open": "เปิด",
+    "kb_close": "ปิด"
   },
   "ws": {
     "contacting": "กำลังติดต่อเซิร์ฟเวอร์...",
@@ -202,7 +215,13 @@
     "toast_imported": "นำเข้าเด็คแล้ว: {name}",
     "default_moxfield": "เด็คจาก MOXFIELD",
     "default_archidekt": "เด็คจาก ARCHIDEKT",
-    "default_new": "เด็คใหม่"
+    "default_new": "เด็คใหม่",
+    "help_moxfield_1": "> วางลิงก์เด็ค Moxfield แบบสาธารณะ ระบบจะดึงและนำเข้าเด็คให้อัตโนมัติ",
+    "help_moxfield_2": "> คอมมานเดอร์และรายการการ์ดถูกดึงมาจาก API ของ Moxfield",
+    "help_archidekt_1": "> วางลิงก์เด็ค Archidekt แบบสาธารณะ ระบบจะดึงและนำเข้าเด็คให้อัตโนมัติ",
+    "help_archidekt_2": "> คอมมานเดอร์ เมนบอร์ด และเมย์บีบอร์ด จะถูกเก็บรักษาไว้ตามหมวดหมู่ของ Archidekt",
+    "err_no_commander": "ยังไม่ได้ระบุคอมมานเดอร์",
+    "err_illegal_count": "{count}x — ใน Commander ใส่ได้เพียง 1 ใบเท่านั้น"
   },
   "splash": {
     "tape_left": "หน้าแรก / / เอกสาร HX-001",
@@ -953,6 +972,7 @@
     "res_win": "ชนะ",
     "res_loss": "แพ้",
     "res_draw": "เสมอ",
-    "vs_label": "ปะทะ"
+    "vs_label": "ปะทะ",
+    "untitled_deck": "เด็ค"
   }
 }

@@ -66,7 +66,17 @@
     "tya_sorcery": "TRY",
     "tya_artifact": "ART",
     "tya_enchantment": "FOR",
-    "tya_land": "LND"
+    "tya_land": "LND",
+    "avg_cmc": "GNS. CMC:",
+    "conf_locked": "LÅST FAST",
+    "conf_high": "HØJ SIKKERHED",
+    "conf_converging": "KONVERGERER",
+    "conf_warming": "VARMER OP",
+    "conf_provisional": "FORELØBIG",
+    "conf_title": "{count} spil — {tier}",
+    "curve_low": "LAV KURVE",
+    "curve_mid": "MELLEM KURVE",
+    "curve_high": "HØJ KURVE"
   },
   "deck": {
     "owner": "EJER",
@@ -113,7 +123,10 @@
       "commander": "COMMANDERS",
       "owner": "SPILLERE",
       "card": "KORT"
-    }
+    },
+    "kb_navigate": "NAVIGER",
+    "kb_open": "ÅBN",
+    "kb_close": "LUK"
   },
   "ws": {
     "contacting": "KONTAKTER SERVEREN...",
@@ -202,7 +215,13 @@
     "toast_imported": "DÆK IMPORTERET: {name}",
     "default_moxfield": "MOXFIELD-DÆK",
     "default_archidekt": "ARCHIDEKT-DÆK",
-    "default_new": "NYT DÆK"
+    "default_new": "NYT DÆK",
+    "help_moxfield_1": "> INDSÆT ET OFFENTLIGT MOXFIELD-DECKLINK. DECKET HENTES OG IMPORTERES AUTOMATISK.",
+    "help_moxfield_2": "> COMMANDER OG KORTLISTE HENTES FRA MOXFIELD-API’ET.",
+    "help_archidekt_1": "> INDSÆT ET OFFENTLIGT ARCHIDEKT-DECKLINK. DECKET HENTES OG IMPORTERES AUTOMATISK.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD OG MAYBEBOARD BEVARES FRA ARCHIDEKT-KATEGORIERNE.",
+    "err_no_commander": "Ingen commander angivet",
+    "err_illegal_count": "{count}x — kun 1 kopi tilladt i Commander"
   },
   "splash": {
     "tape_left": "START / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "SEJR",
     "res_loss": "NEDERLAG",
     "res_draw": "UAFGJORT",
-    "vs_label": "mod"
+    "vs_label": "mod",
+    "untitled_deck": "DECK"
   }
 }

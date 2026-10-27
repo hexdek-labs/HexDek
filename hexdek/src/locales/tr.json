@@ -66,7 +66,17 @@
     "tya_sorcery": "SİH",
     "tya_artifact": "ESR",
     "tya_enchantment": "BÜY",
-    "tya_land": "ARZ"
+    "tya_land": "ARZ",
+    "avg_cmc": "ORT. CMC:",
+    "conf_locked": "KESİNLEŞTİ",
+    "conf_high": "YÜKSEK GÜVEN",
+    "conf_converging": "YAKINSIYOR",
+    "conf_warming": "ISINIYOR",
+    "conf_provisional": "GEÇİCİ",
+    "conf_title": "{count} oyun — {tier}",
+    "curve_low": "DÜŞÜK EĞRİ",
+    "curve_mid": "ORTA EĞRİ",
+    "curve_high": "YÜKSEK EĞRİ"
   },
   "deck": {
     "owner": "SAHİP",
@@ -113,7 +123,10 @@
       "commander": "KOMUTANLAR",
       "owner": "OYUNCULAR",
       "card": "KARTLAR"
-    }
+    },
+    "kb_navigate": "GEZİN",
+    "kb_open": "AÇ",
+    "kb_close": "KAPAT"
   },
   "ws": {
     "contacting": "SUNUCUYA BAĞLANILIYOR...",
@@ -202,7 +215,13 @@
     "toast_imported": "DESTE İÇE AKTARILDI: {name}",
     "default_moxfield": "MOXFIELD DESTESİ",
     "default_archidekt": "ARCHIDEKT DESTESİ",
-    "default_new": "YENİ DESTE"
+    "default_new": "YENİ DESTE",
+    "help_moxfield_1": "> HERKESE AÇIK BİR MOXFIELD DESTE BAĞLANTISI YAPIŞTIR. DESTE OTOMATİK OLARAK ALINIP İÇE AKTARILACAK.",
+    "help_moxfield_2": "> KOMUTAN VE KART LİSTESİ MOXFIELD API’SİNDEN ALINIR.",
+    "help_archidekt_1": "> HERKESE AÇIK BİR ARCHIDEKT DESTE BAĞLANTISI YAPIŞTIR. DESTE OTOMATİK OLARAK ALINIP İÇE AKTARILACAK.",
+    "help_archidekt_2": "> KOMUTAN, ANA DESTE VE MAYBEBOARD ARCHIDEKT KATEGORİLERİNDEN KORUNUR.",
+    "err_no_commander": "Komutan belirlenmedi",
+    "err_illegal_count": "{count}x — Commander’da yalnızca 1 kopyaya izin verilir"
   },
   "splash": {
     "tape_left": "GİRİŞ / / BELGE HX-001",
@@ -953,6 +972,7 @@
     "res_win": "GALİBİYET",
     "res_loss": "MAĞLUBİYET",
     "res_draw": "BERABERLİK",
-    "vs_label": "karşı"
+    "vs_label": "karşı",
+    "untitled_deck": "DESTE"
   }
 }

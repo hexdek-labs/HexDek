@@ -66,7 +66,17 @@
     "tya_sorcery": "जाद",
     "tya_artifact": "कला",
     "tya_enchantment": "मंत",
-    "tya_land": "भूम"
+    "tya_land": "भूम",
+    "avg_cmc": "औसत CMC:",
+    "conf_locked": "पक्का",
+    "conf_high": "उच्च विश्वास",
+    "conf_converging": "स्थिर हो रहा है",
+    "conf_warming": "शुरुआती चरण",
+    "conf_provisional": "अस्थायी",
+    "conf_title": "{count} गेम — {tier}",
+    "curve_low": "निचला कर्व",
+    "curve_mid": "मध्यम कर्व",
+    "curve_high": "ऊँचा कर्व"
   },
   "deck": {
     "owner": "स्वामी",
@@ -113,7 +123,10 @@
       "commander": "कमांडर",
       "owner": "खिलाड़ी",
       "card": "कार्ड"
-    }
+    },
+    "kb_navigate": "नेविगेट",
+    "kb_open": "खोलें",
+    "kb_close": "बंद करें"
   },
   "ws": {
     "contacting": "सर्वर से संपर्क हो रहा है...",
@@ -202,7 +215,13 @@
     "toast_imported": "डेक आयात हुआ: {name}",
     "default_moxfield": "MOXFIELD डेक",
     "default_archidekt": "ARCHIDEKT डेक",
-    "default_new": "नया डेक"
+    "default_new": "नया डेक",
+    "help_moxfield_1": "> कोई सार्वजनिक Moxfield डेक लिंक चिपकाएँ। डेक अपने आप लाकर इम्पोर्ट कर लिया जाएगा।",
+    "help_moxfield_2": "> कमांडर और कार्ड सूची Moxfield API से ली जाती है।",
+    "help_archidekt_1": "> कोई सार्वजनिक Archidekt डेक लिंक चिपकाएँ। डेक अपने आप लाकर इम्पोर्ट कर लिया जाएगा।",
+    "help_archidekt_2": "> कमांडर, मेनबोर्ड और मेबीबोर्ड Archidekt की श्रेणियों से सुरक्षित रखे जाते हैं।",
+    "err_no_commander": "कोई कमांडर तय नहीं किया गया",
+    "err_illegal_count": "{count}x — Commander में केवल 1 प्रति ही मान्य है"
   },
   "splash": {
     "tape_left": "लैंडिंग / / दस्तावेज़ HX-001",
@@ -953,6 +972,7 @@
     "res_win": "जीत",
     "res_loss": "हार",
     "res_draw": "ड्रॉ",
-    "vs_label": "बनाम"
+    "vs_label": "बनाम",
+    "untitled_deck": "डेक"
   }
 }

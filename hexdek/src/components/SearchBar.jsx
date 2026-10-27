@@ -230,9 +230,9 @@ export default function SearchBar() {
               )}
             </div>
             <div className="searchbar-overlay__ft">
-              <span>↑↓ NAVIGATE</span>
-              <span>↵ OPEN</span>
-              <span>ESC CLOSE</span>
+              <span>↑↓ {t('search.kb_navigate')}</span>
+              <span>↵ {t('search.kb_open')}</span>
+              <span>ESC {t('search.kb_close')}</span>
             </div>
           </div>
         </div>

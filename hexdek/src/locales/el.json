@@ -66,7 +66,17 @@
     "tya_sorcery": "ΞΟΡ",
     "tya_artifact": "ΤΕΧ",
     "tya_enchantment": "ΜΑΓ",
-    "tya_land": "ΧΩΡ"
+    "tya_land": "ΧΩΡ",
+    "avg_cmc": "ΜΕΣΟ CMC:",
+    "conf_locked": "ΚΛΕΙΔΩΜΕΝΟ",
+    "conf_high": "ΥΨΗΛΗ ΒΕΒΑΙΟΤΗΤΑ",
+    "conf_converging": "ΣΥΓΚΛΙΝΕΙ",
+    "conf_warming": "ΠΡΟΘΕΡΜΑΝΣΗ",
+    "conf_provisional": "ΠΡΟΣΩΡΙΝΟ",
+    "conf_title": "{count} παιχνίδια — {tier}",
+    "curve_low": "ΧΑΜΗΛΗ ΚΑΜΠΥΛΗ",
+    "curve_mid": "ΜΕΣΑΙΑ ΚΑΜΠΥΛΗ",
+    "curve_high": "ΥΨΗΛΗ ΚΑΜΠΥΛΗ"
   },
   "deck": {
     "owner": "ΚΑΤΟΧΟΣ",
@@ -113,7 +123,10 @@
       "commander": "ΔΙΟΙΚΗΤΕΣ",
       "owner": "ΠΑΙΚΤΕΣ",
       "card": "ΚΑΡΤΕΣ"
-    }
+    },
+    "kb_navigate": "ΠΛΟΗΓΗΣΗ",
+    "kb_open": "ΑΝΟΙΓΜΑ",
+    "kb_close": "ΚΛΕΙΣΙΜΟ"
   },
   "ws": {
     "contacting": "ΕΠΙΚΟΙΝΩΝΙΑ ΜΕ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ...",
@@ -202,7 +215,13 @@
     "toast_imported": "Η ΤΡΑΠΟΥΛΑ ΕΙΣΗΧΘΗ: {name}",
     "default_moxfield": "ΤΡΑΠΟΥΛΑ MOXFIELD",
     "default_archidekt": "ΤΡΑΠΟΥΛΑ ARCHIDEKT",
-    "default_new": "ΝΕΑ ΤΡΑΠΟΥΛΑ"
+    "default_new": "ΝΕΑ ΤΡΑΠΟΥΛΑ",
+    "help_moxfield_1": "> ΕΠΙΚΟΛΛΗΣΕ ΕΝΑΝ ΔΗΜΟΣΙΟ ΣΥΝΔΕΣΜΟ ΤΡΑΠΟΥΛΑΣ MOXFIELD. Η ΤΡΑΠΟΥΛΑ ΘΑ ΛΗΦΘΕΙ ΚΑΙ ΘΑ ΕΙΣΑΧΘΕΙ ΑΥΤΟΜΑΤΑ.",
+    "help_moxfield_2": "> Ο COMMANDER ΚΑΙ Η ΛΙΣΤΑ ΚΑΡΤΩΝ ΑΝΤΛΟΥΝΤΑΙ ΑΠΟ ΤΟ API ΤΟΥ MOXFIELD.",
+    "help_archidekt_1": "> ΕΠΙΚΟΛΛΗΣΕ ΕΝΑΝ ΔΗΜΟΣΙΟ ΣΥΝΔΕΣΜΟ ΤΡΑΠΟΥΛΑΣ ARCHIDEKT. Η ΤΡΑΠΟΥΛΑ ΘΑ ΛΗΦΘΕΙ ΚΑΙ ΘΑ ΕΙΣΑΧΘΕΙ ΑΥΤΟΜΑΤΑ.",
+    "help_archidekt_2": "> Ο COMMANDER, ΤΟ MAINBOARD ΚΑΙ ΤΟ MAYBEBOARD ΔΙΑΤΗΡΟΥΝΤΑΙ ΑΠΟ ΤΙΣ ΚΑΤΗΓΟΡΙΕΣ ΤΟΥ ARCHIDEKT.",
+    "err_no_commander": "Δεν ορίστηκε commander",
+    "err_illegal_count": "{count}x — επιτρέπεται μόνο 1 αντίτυπο στο Commander"
   },
   "splash": {
     "tape_left": "ΑΡΧΙΚΗ / / ΕΓΓΡ. HX-001",
@@ -953,6 +972,7 @@
     "res_win": "ΝΙΚΗ",
     "res_loss": "ΗΤΤΑ",
     "res_draw": "ΙΣΟΠΑΛΙΑ",
-    "vs_label": "εναντίον"
+    "vs_label": "εναντίον",
+    "untitled_deck": "ΤΡΑΠΟΥΛΑ"
   }
 }

@@ -66,7 +66,17 @@
     "tya_sorcery": "法术",
     "tya_artifact": "神器",
     "tya_enchantment": "结界",
-    "tya_land": "地牌"
+    "tya_land": "地牌",
+    "avg_cmc": "平均法术力值:",
+    "conf_locked": "已锁定",
+    "conf_high": "高置信度",
+    "conf_converging": "收敛中",
+    "conf_warming": "预热中",
+    "conf_provisional": "暂定",
+    "conf_title": "{count} 局 — {tier}",
+    "curve_low": "低曲线",
+    "curve_mid": "中曲线",
+    "curve_high": "高曲线"
   },
   "deck": {
     "owner": "拥有者",
@@ -113,7 +123,10 @@
       "commander": "指挥官",
       "owner": "玩家",
       "card": "卡牌"
-    }
+    },
+    "kb_navigate": "导航",
+    "kb_open": "打开",
+    "kb_close": "关闭"
   },
   "ws": {
     "contacting": "正在连接服务器...",
@@ -202,7 +215,13 @@
     "toast_imported": "套牌已导入：{name}",
     "default_moxfield": "MOXFIELD 套牌",
     "default_archidekt": "ARCHIDEKT 套牌",
-    "default_new": "新套牌"
+    "default_new": "新套牌",
+    "help_moxfield_1": "> 粘贴一个公开的 Moxfield 套牌链接。系统会自动抓取并导入该套牌。",
+    "help_moxfield_2": "> 指挥官与卡牌列表取自 Moxfield API。",
+    "help_archidekt_1": "> 粘贴一个公开的 Archidekt 套牌链接。系统会自动抓取并导入该套牌。",
+    "help_archidekt_2": "> 指挥官、主牌库与备选牌库将按 Archidekt 的分类保留。",
+    "err_no_commander": "未指定指挥官",
+    "err_illegal_count": "{count}x — 指挥官赛制中每张牌只能放 1 张"
   },
   "splash": {
     "tape_left": "首页 / / 文档 HX-001",
@@ -953,6 +972,7 @@
     "res_win": "胜",
     "res_loss": "负",
     "res_draw": "平",
-    "vs_label": "对阵"
+    "vs_label": "对阵",
+    "untitled_deck": "套牌"
   }
 }

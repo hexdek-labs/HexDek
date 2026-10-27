@@ -66,7 +66,17 @@
     "tya_sorcery": "집중",
     "tya_artifact": "물체",
     "tya_enchantment": "부여",
-    "tya_land": "대지"
+    "tya_land": "대지",
+    "avg_cmc": "평균 CMC:",
+    "conf_locked": "확정",
+    "conf_high": "높은 신뢰도",
+    "conf_converging": "수렴 중",
+    "conf_warming": "예열 중",
+    "conf_provisional": "잠정",
+    "conf_title": "{count}게임 — {tier}",
+    "curve_low": "낮은 커브",
+    "curve_mid": "중간 커브",
+    "curve_high": "높은 커브"
   },
   "deck": {
     "owner": "소유자",
@@ -113,7 +123,10 @@
       "commander": "커맨더",
       "owner": "플레이어",
       "card": "카드"
-    }
+    },
+    "kb_navigate": "이동",
+    "kb_open": "열기",
+    "kb_close": "닫기"
   },
   "ws": {
     "contacting": "서버에 연결 중...",
@@ -202,7 +215,13 @@
     "toast_imported": "덱을 가져왔습니다: {name}",
     "default_moxfield": "MOXFIELD 덱",
     "default_archidekt": "ARCHIDEKT 덱",
-    "default_new": "새 덱"
+    "default_new": "새 덱",
+    "help_moxfield_1": "> 공개된 Moxfield 덱 링크를 붙여넣으세요. 덱을 자동으로 가져와 가져오기합니다.",
+    "help_moxfield_2": "> 커맨더와 카드 목록은 Moxfield API에서 가져옵니다.",
+    "help_archidekt_1": "> 공개된 Archidekt 덱 링크를 붙여넣으세요. 덱을 자동으로 가져와 가져오기합니다.",
+    "help_archidekt_2": "> 커맨더, 메인보드, 메이비보드는 Archidekt 카테고리에서 그대로 유지됩니다.",
+    "err_no_commander": "커맨더가 지정되지 않았습니다",
+    "err_illegal_count": "{count}x — Commander에서는 1장만 넣을 수 있습니다"
   },
   "splash": {
     "tape_left": "랜딩 / / 문서 HX-001",
@@ -953,6 +972,7 @@
     "res_win": "승",
     "res_loss": "패",
     "res_draw": "무",
-    "vs_label": "vs"
+    "vs_label": "vs",
+    "untitled_deck": "덱"
   }
 }

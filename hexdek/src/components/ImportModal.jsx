@@ -270,14 +270,14 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
         errors.push({
           name: card.name,
           type: 'illegal_count',
-          message: `${card.quantity}x — only 1 copy allowed in Commander`,
+          quantity: card.quantity,
         })
       }
     }
     // Missing commander check
     const hasCommander = commander || detectedCommander || parsedCards.some(c => c.isCommander)
     if (parsedCards.length > 0 && !hasCommander) {
-      errors.push({ type: 'missing_commander', message: 'No commander designated' })
+      errors.push({ type: 'missing_commander' })
     }
     return errors
   }, [parsedCards, validationResults, commander, detectedCommander])
@@ -615,8 +615,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                       placeholder={t('import.ph_moxfield')}
                     />
                     <div className="import-modal__moxfield-help">
-                      &gt; PASTE A PUBLIC MOXFIELD DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
-                      <br />&gt; COMMANDER AND CARD LIST ARE EXTRACTED FROM THE MOXFIELD API.
+                      {t('import.help_moxfield_1')}
+                      <br />{t('import.help_moxfield_2')}
                     </div>
                   </div>
                 </>
@@ -639,8 +639,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                       placeholder={t('import.ph_archidekt')}
                     />
                     <div className="import-modal__moxfield-help">
-                      &gt; PASTE A PUBLIC ARCHIDEKT DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
-                      <br />&gt; COMMANDER, MAINBOARD, AND MAYBEBOARD ARE PRESERVED FROM ARCHIDEKT CATEGORIES.
+                      {t('import.help_archidekt_1')}
+                      <br />{t('import.help_archidekt_2')}
                     </div>
                   </div>
                 </>
@@ -718,11 +718,11 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                       {err.type === 'illegal_count' && (
                         <>
                           <span className="import-modal__val-name">{err.name}</span>
-                          <span className="import-modal__val-msg">{err.message}</span>
+                          <span className="import-modal__val-msg">{t('import.err_illegal_count', { count: err.quantity })}</span>
                         </>
                       )}
                       {err.type === 'missing_commander' && (
-                        <span className="import-modal__val-msg">{err.message}</span>
+                        <span className="import-modal__val-msg">{t('import.err_no_commander')}</span>
                       )}
                     </div>
                   ))}

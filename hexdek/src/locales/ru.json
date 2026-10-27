@@ -66,7 +66,17 @@
     "tya_sorcery": "ВОЛ",
     "tya_artifact": "АРТ",
     "tya_enchantment": "ЧАР",
-    "tya_land": "ЗЕМ"
+    "tya_land": "ЗЕМ",
+    "avg_cmc": "СР. CMC:",
+    "conf_locked": "ЗАФИКСИРОВАНО",
+    "conf_high": "ВЫСОКАЯ УВЕРЕННОСТЬ",
+    "conf_converging": "СХОДИТСЯ",
+    "conf_warming": "РАЗОГРЕВ",
+    "conf_provisional": "ПРЕДВАРИТЕЛЬНО",
+    "conf_title": "{count} игр — {tier}",
+    "curve_low": "НИЗКАЯ КРИВАЯ",
+    "curve_mid": "СРЕДНЯЯ КРИВАЯ",
+    "curve_high": "ВЫСОКАЯ КРИВАЯ"
   },
   "deck": {
     "owner": "ВЛАДЕЛЕЦ",
@@ -113,7 +123,10 @@
       "commander": "КОМАНДИРЫ",
       "owner": "ИГРОКИ",
       "card": "КАРТЫ"
-    }
+    },
+    "kb_navigate": "НАВИГАЦИЯ",
+    "kb_open": "ОТКРЫТЬ",
+    "kb_close": "ЗАКРЫТЬ"
   },
   "ws": {
     "contacting": "ПОДКЛЮЧЕНИЕ К СЕРВЕРУ...",
@@ -202,7 +215,13 @@
     "toast_imported": "ДЕК ИМПОРТИРОВАН: {name}",
     "default_moxfield": "ДЕК С MOXFIELD",
     "default_archidekt": "ДЕК С ARCHIDEKT",
-    "default_new": "НОВЫЙ ДЕК"
+    "default_new": "НОВЫЙ ДЕК",
+    "help_moxfield_1": "> ВСТАВЬ ПУБЛИЧНУЮ ССЫЛКУ НА КОЛОДУ MOXFIELD. КОЛОДА БУДЕТ ЗАГРУЖЕНА И ИМПОРТИРОВАНА АВТОМАТИЧЕСКИ.",
+    "help_moxfield_2": "> КОМАНДИР И СПИСОК КАРТ БЕРУТСЯ ИЗ API MOXFIELD.",
+    "help_archidekt_1": "> ВСТАВЬ ПУБЛИЧНУЮ ССЫЛКУ НА КОЛОДУ ARCHIDEKT. КОЛОДА БУДЕТ ЗАГРУЖЕНА И ИМПОРТИРОВАНА АВТОМАТИЧЕСКИ.",
+    "help_archidekt_2": "> КОМАНДИР, ОСНОВНАЯ КОЛОДА И MAYBEBOARD СОХРАНЯЮТСЯ ИЗ КАТЕГОРИЙ ARCHIDEKT.",
+    "err_no_commander": "Командир не назначен",
+    "err_illegal_count": "{count}x — в Commander разрешена только 1 копия"
   },
   "splash": {
     "tape_left": "ГЛАВНАЯ / / ДОК HX-001",
@@ -953,6 +972,7 @@
     "res_win": "ПОБЕДА",
     "res_loss": "ПОРАЖЕНИЕ",
     "res_draw": "НИЧЬЯ",
-    "vs_label": "против"
+    "vs_label": "против",
+    "untitled_deck": "КОЛОДА"
   }
 }

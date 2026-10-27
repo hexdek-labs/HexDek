@@ -66,7 +66,17 @@
     "tya_sorcery": "BEZ",
     "tya_artifact": "ART",
     "tya_enchantment": "BET",
-    "tya_land": "LND"
+    "tya_land": "LND",
+    "avg_cmc": "GEM. CMC:",
+    "conf_locked": "VASTGEZET",
+    "conf_high": "HOGE ZEKERHEID",
+    "conf_converging": "CONVERGEERT",
+    "conf_warming": "OPWARMEN",
+    "conf_provisional": "VOORLOPIG",
+    "conf_title": "{count} potjes — {tier}",
+    "curve_low": "LAGE CURVE",
+    "curve_mid": "MIDDEN CURVE",
+    "curve_high": "HOGE CURVE"
   },
   "deck": {
     "owner": "EIGENAAR",
@@ -113,7 +123,10 @@
       "commander": "COMMANDERS",
       "owner": "SPELERS",
       "card": "KAARTEN"
-    }
+    },
+    "kb_navigate": "NAVIGEREN",
+    "kb_open": "OPENEN",
+    "kb_close": "SLUITEN"
   },
   "ws": {
     "contacting": "VERBINDEN MET SERVER...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK GEÏMPORTEERD: {name}",
     "default_moxfield": "MOXFIELD-DECK",
     "default_archidekt": "ARCHIDEKT-DECK",
-    "default_new": "NIEUW DECK"
+    "default_new": "NIEUW DECK",
+    "help_moxfield_1": "> PLAK EEN OPENBARE MOXFIELD-DECKLINK. HET DECK WORDT AUTOMATISCH OPGEHAALD EN GEÏMPORTEERD.",
+    "help_moxfield_2": "> COMMANDER EN KAARTENLIJST WORDEN UIT DE MOXFIELD-API GELEZEN.",
+    "help_archidekt_1": "> PLAK EEN OPENBARE ARCHIDEKT-DECKLINK. HET DECK WORDT AUTOMATISCH OPGEHAALD EN GEÏMPORTEERD.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD EN MAYBEBOARD BLIJVEN BEHOUDEN UIT DE ARCHIDEKT-CATEGORIEËN.",
+    "err_no_commander": "Geen commander aangewezen",
+    "err_illegal_count": "{count}x — in Commander is maar 1 exemplaar toegestaan"
   },
   "splash": {
     "tape_left": "START / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "WINST",
     "res_loss": "VERLIES",
     "res_draw": "GELIJKSPEL",
-    "vs_label": "tegen"
+    "vs_label": "tegen",
+    "untitled_deck": "DECK"
   }
 }

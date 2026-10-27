@@ -66,7 +66,17 @@
     "tya_sorcery": "تعو",
     "tya_artifact": "أثر",
     "tya_enchantment": "دائ",
-    "tya_land": "أرض"
+    "tya_land": "أرض",
+    "avg_cmc": "متوسط CMC:",
+    "conf_locked": "مثبّت",
+    "conf_high": "ثقة عالية",
+    "conf_converging": "يتقارب",
+    "conf_warming": "قيد الإحماء",
+    "conf_provisional": "مبدئي",
+    "conf_title": "{count} مباراة — {tier}",
+    "curve_low": "منحنى منخفض",
+    "curve_mid": "منحنى متوسط",
+    "curve_high": "منحنى مرتفع"
   },
   "deck": {
     "owner": "المالك",
@@ -113,7 +123,10 @@
       "commander": "القادة",
       "owner": "اللاعبون",
       "card": "البطاقات"
-    }
+    },
+    "kb_navigate": "تنقّل",
+    "kb_open": "فتح",
+    "kb_close": "إغلاق"
   },
   "ws": {
     "contacting": "جارٍ الاتصال بالخادم...",
@@ -202,7 +215,13 @@
     "toast_imported": "تم استيراد الديك: {name}",
     "default_moxfield": "ديك MOXFIELD",
     "default_archidekt": "ديك ARCHIDEKT",
-    "default_new": "ديك جديد"
+    "default_new": "ديك جديد",
+    "help_moxfield_1": "> الصق رابط ديك Moxfield عام. سيتم جلب الديك واستيراده تلقائيًا.",
+    "help_moxfield_2": "> يُستخرج القائد وقائمة البطاقات من واجهة Moxfield.",
+    "help_archidekt_1": "> الصق رابط ديك Archidekt عام. سيتم جلب الديك واستيراده تلقائيًا.",
+    "help_archidekt_2": "> يُحتفظ بالقائد واللوحة الرئيسية ولوحة الاحتمالات من فئات Archidekt.",
+    "err_no_commander": "لم يُحدَّد أي قائد",
+    "err_illegal_count": "{count}x — نسخة واحدة فقط مسموح بها في Commander"
   },
   "splash": {
     "tape_left": "الصفحة الرئيسية / / وثيقة HX-001",
@@ -953,6 +972,7 @@
     "res_win": "فوز",
     "res_loss": "خسارة",
     "res_draw": "تعادل",
-    "vs_label": "ضد"
+    "vs_label": "ضد",
+    "untitled_deck": "ديك"
   }
 }

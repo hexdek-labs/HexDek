@@ -66,7 +66,17 @@
     "tya_sorcery": "LEN",
     "tya_artifact": "ART",
     "tya_enchantment": "PER",
-    "tya_land": "TER"
+    "tya_land": "TER",
+    "avg_cmc": "CMC MEDIU:",
+    "conf_locked": "FIXAT",
+    "conf_high": "ÎNCREDERE RIDICATĂ",
+    "conf_converging": "ÎN CONVERGENȚĂ",
+    "conf_warming": "ÎN ÎNCĂLZIRE",
+    "conf_provisional": "PROVIZORIU",
+    "conf_title": "{count} partide — {tier}",
+    "curve_low": "CURBĂ JOASĂ",
+    "curve_mid": "CURBĂ MEDIE",
+    "curve_high": "CURBĂ ÎNALTĂ"
   },
   "deck": {
     "owner": "PROPRIETAR",
@@ -113,7 +123,10 @@
       "commander": "COMANDANȚI",
       "owner": "JUCĂTORI",
       "card": "CĂRȚI"
-    }
+    },
+    "kb_navigate": "NAVIGARE",
+    "kb_open": "DESCHIDE",
+    "kb_close": "ÎNCHIDE"
   },
   "ws": {
     "contacting": "SE CONTACTEAZĂ SERVERUL...",
@@ -202,7 +215,13 @@
     "toast_imported": "PACHET IMPORTAT: {name}",
     "default_moxfield": "PACHET MOXFIELD",
     "default_archidekt": "PACHET ARCHIDEKT",
-    "default_new": "PACHET NOU"
+    "default_new": "PACHET NOU",
+    "help_moxfield_1": "> LIPEȘTE UN LINK PUBLIC CĂTRE UN PACHET MOXFIELD. PACHETUL VA FI PRELUAT ȘI IMPORTAT AUTOMAT.",
+    "help_moxfield_2": "> COMANDANTUL ȘI LISTA DE CĂRȚI SUNT EXTRASE DIN API-UL MOXFIELD.",
+    "help_archidekt_1": "> LIPEȘTE UN LINK PUBLIC CĂTRE UN PACHET ARCHIDEKT. PACHETUL VA FI PRELUAT ȘI IMPORTAT AUTOMAT.",
+    "help_archidekt_2": "> COMANDANTUL, PACHETUL PRINCIPAL ȘI MAYBEBOARD-UL SUNT PĂSTRATE DIN CATEGORIILE ARCHIDEKT.",
+    "err_no_commander": "Niciun comandant desemnat",
+    "err_illegal_count": "{count}x — în Commander este permisă o singură copie"
   },
   "splash": {
     "tape_left": "ACASĂ / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VICTORIE",
     "res_loss": "ÎNFRÂNGERE",
     "res_draw": "EGALITATE",
-    "vs_label": "contra"
+    "vs_label": "contra",
+    "untitled_deck": "PACHET"
   }
 }

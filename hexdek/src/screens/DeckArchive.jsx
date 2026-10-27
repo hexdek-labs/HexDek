@@ -2089,7 +2089,7 @@ export default function DeckArchive() {
   // bracket marker, owner slug, and trailing moxfield hash so we don't
   // render titles like "HERIGAST ERUPTING NULLKITE B2 LAODI Z8BQG8TF".
   const slugToTitle = (slug, ownerSlug) => {
-    if (!slug) return 'DECK'
+    if (!slug) return t('dka.untitled_deck')
     let s = String(slug)
     // Moxfield-style trailing 8+char random hash.
     s = s.replace(/_[A-Za-z0-9]{8,}$/, '')
@@ -2306,7 +2306,7 @@ export default function DeckArchive() {
     }
     const avgCmc = nonlandCount > 0 ? totalCmc / nonlandCount : 0
     const peak = dist.indexOf(Math.max(...dist))
-    const shape = peak <= 2 ? 'LOW CURVE' : peak <= 4 ? 'MID CURVE' : 'HIGH CURVE'
+    const shape = peak <= 2 ? 'common.curve_low' : peak <= 4 ? 'common.curve_mid' : 'common.curve_high'
     return { distribution: dist, avg_cmc: avgCmc, curve_shape: shape, land_count: landCount, nonland_count: nonlandCount, demand }
   })()
 

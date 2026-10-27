@@ -66,7 +66,17 @@
     "tya_sorcery": "ČAR",
     "tya_artifact": "ART",
     "tya_enchantment": "AUR",
-    "tya_land": "ZEM"
+    "tya_land": "ZEM",
+    "avg_cmc": "PRŮM. CMC:",
+    "conf_locked": "POTVRZENO",
+    "conf_high": "VYSOKÁ JISTOTA",
+    "conf_converging": "USTALUJE SE",
+    "conf_warming": "ZAHŘÍVÁ SE",
+    "conf_provisional": "PŘEDBĚŽNÉ",
+    "conf_title": "{count} her — {tier}",
+    "curve_low": "NÍZKÁ KŘIVKA",
+    "curve_mid": "STŘEDNÍ KŘIVKA",
+    "curve_high": "VYSOKÁ KŘIVKA"
   },
   "deck": {
     "owner": "VLASTNÍK",
@@ -113,7 +123,10 @@
       "commander": "VELITELÉ",
       "owner": "HRÁČI",
       "card": "KARTY"
-    }
+    },
+    "kb_navigate": "PROCHÁZET",
+    "kb_open": "OTEVŘÍT",
+    "kb_close": "ZAVŘÍT"
   },
   "ws": {
     "contacting": "PŘIPOJOVÁNÍ K SERVERU...",
@@ -202,7 +215,13 @@
     "toast_imported": "BALÍČEK IMPORTOVÁN: {name}",
     "default_moxfield": "BALÍČEK Z MOXFIELDU",
     "default_archidekt": "BALÍČEK Z ARCHIDEKTU",
-    "default_new": "NOVÝ BALÍČEK"
+    "default_new": "NOVÝ BALÍČEK",
+    "help_moxfield_1": "> VLOŽ VEŘEJNÝ ODKAZ NA BALÍČEK MOXFIELD. BALÍČEK SE AUTOMATICKY NAČTE A NAIMPORTUJE.",
+    "help_moxfield_2": "> VELITEL A SEZNAM KARET SE ZÍSKÁVAJÍ Z API MOXFIELD.",
+    "help_archidekt_1": "> VLOŽ VEŘEJNÝ ODKAZ NA BALÍČEK ARCHIDEKT. BALÍČEK SE AUTOMATICKY NAČTE A NAIMPORTUJE.",
+    "help_archidekt_2": "> VELITEL, HLAVNÍ BALÍČEK I MAYBEBOARD SE ZACHOVÁVAJÍ Z KATEGORIÍ ARCHIDEKT.",
+    "err_no_commander": "Není určen žádný velitel",
+    "err_illegal_count": "{count}x — v Commanderu je povolena jen 1 kopie"
   },
   "splash": {
     "tape_left": "ÚVOD / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VÝHRA",
     "res_loss": "PROHRA",
     "res_draw": "REMÍZA",
-    "vs_label": "proti"
+    "vs_label": "proti",
+    "untitled_deck": "BALÍČEK"
   }
 }

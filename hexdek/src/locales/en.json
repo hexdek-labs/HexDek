@@ -66,7 +66,17 @@
     "tya_sorcery": "SOR",
     "tya_artifact": "ART",
     "tya_enchantment": "ENC",
-    "tya_land": "LND"
+    "tya_land": "LND",
+    "avg_cmc": "AVG CMC:",
+    "conf_locked": "LOCKED IN",
+    "conf_high": "HIGH CONFIDENCE",
+    "conf_converging": "CONVERGING",
+    "conf_warming": "WARMING UP",
+    "conf_provisional": "PROVISIONAL",
+    "conf_title": "{count} games — {tier}",
+    "curve_low": "LOW CURVE",
+    "curve_mid": "MID CURVE",
+    "curve_high": "HIGH CURVE"
   },
   "deck": {
     "owner": "OWNER",
@@ -113,7 +123,10 @@
       "commander": "COMMANDERS",
       "owner": "PLAYERS",
       "card": "CARDS"
-    }
+    },
+    "kb_navigate": "NAVIGATE",
+    "kb_open": "OPEN",
+    "kb_close": "CLOSE"
   },
   "ws": {
     "contacting": "CONTACTING SERVER...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTED: {name}",
     "default_moxfield": "MOXFIELD DECK",
     "default_archidekt": "ARCHIDEKT DECK",
-    "default_new": "NEW DECK"
+    "default_new": "NEW DECK",
+    "help_moxfield_1": "> PASTE A PUBLIC MOXFIELD DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.",
+    "help_moxfield_2": "> COMMANDER AND CARD LIST ARE EXTRACTED FROM THE MOXFIELD API.",
+    "help_archidekt_1": "> PASTE A PUBLIC ARCHIDEKT DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD, AND MAYBEBOARD ARE PRESERVED FROM ARCHIDEKT CATEGORIES.",
+    "err_no_commander": "No commander designated",
+    "err_illegal_count": "{count}x — only 1 copy allowed in Commander"
   },
   "splash": {
     "tape_left": "LANDING / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "WIN",
     "res_loss": "LOSS",
     "res_draw": "DRAW",
-    "vs_label": "vs"
+    "vs_label": "vs",
+    "untitled_deck": "DECK"
   }
 }

@@ -66,7 +66,17 @@
     "tya_sorcery": "SOR",
     "tya_artifact": "ART",
     "tya_enchantment": "ENC",
-    "tya_land": "TNH"
+    "tya_land": "TNH",
+    "avg_cmc": "RATA-RATA CMC:",
+    "conf_locked": "TERKUNCI",
+    "conf_high": "KEYAKINAN TINGGI",
+    "conf_converging": "MENYATU",
+    "conf_warming": "PEMANASAN",
+    "conf_provisional": "SEMENTARA",
+    "conf_title": "{count} permainan — {tier}",
+    "curve_low": "KURVA RENDAH",
+    "curve_mid": "KURVA SEDANG",
+    "curve_high": "KURVA TINGGI"
   },
   "deck": {
     "owner": "PEMILIK",
@@ -113,7 +123,10 @@
       "commander": "COMMANDER",
       "owner": "PEMAIN",
       "card": "KARTU"
-    }
+    },
+    "kb_navigate": "NAVIGASI",
+    "kb_open": "BUKA",
+    "kb_close": "TUTUP"
   },
   "ws": {
     "contacting": "MENGHUBUNGI SERVER...",
@@ -202,7 +215,13 @@
     "toast_imported": "DEK DIIMPOR: {name}",
     "default_moxfield": "DEK MOXFIELD",
     "default_archidekt": "DEK ARCHIDEKT",
-    "default_new": "DEK BARU"
+    "default_new": "DEK BARU",
+    "help_moxfield_1": "> TEMPEL TAUTAN DEK MOXFIELD PUBLIK. DEK AKAN DIAMBIL DAN DIIMPOR SECARA OTOMATIS.",
+    "help_moxfield_2": "> COMMANDER DAN DAFTAR KARTU DIAMBIL DARI API MOXFIELD.",
+    "help_archidekt_1": "> TEMPEL TAUTAN DEK ARCHIDEKT PUBLIK. DEK AKAN DIAMBIL DAN DIIMPOR SECARA OTOMATIS.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD, DAN MAYBEBOARD DIPERTAHANKAN DARI KATEGORI ARCHIDEKT.",
+    "err_no_commander": "Tidak ada commander yang ditetapkan",
+    "err_illegal_count": "{count}x — hanya 1 salinan yang diizinkan di Commander"
   },
   "splash": {
     "tape_left": "BERANDA / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "MENANG",
     "res_loss": "KALAH",
     "res_draw": "SERI",
-    "vs_label": "lawan"
+    "vs_label": "lawan",
+    "untitled_deck": "DEK"
   }
 }

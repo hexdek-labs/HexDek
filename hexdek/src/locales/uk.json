@@ -66,7 +66,17 @@
     "tya_sorcery": "ЧАК",
     "tya_artifact": "АРТ",
     "tya_enchantment": "ЧАР",
-    "tya_land": "ЗЕМ"
+    "tya_land": "ЗЕМ",
+    "avg_cmc": "СЕР. CMC:",
+    "conf_locked": "ЗАФІКСОВАНО",
+    "conf_high": "ВИСОКА ВПЕВНЕНІСТЬ",
+    "conf_converging": "СХОДИТЬСЯ",
+    "conf_warming": "РОЗІГРІВ",
+    "conf_provisional": "ПОПЕРЕДНЬО",
+    "conf_title": "{count} ігор — {tier}",
+    "curve_low": "НИЗЬКА КРИВА",
+    "curve_mid": "СЕРЕДНЯ КРИВА",
+    "curve_high": "ВИСОКА КРИВА"
   },
   "deck": {
     "owner": "ВЛАСНИК",
@@ -113,7 +123,10 @@
       "commander": "КОМАНДИРИ",
       "owner": "ГРАВЦІ",
       "card": "КАРТИ"
-    }
+    },
+    "kb_navigate": "НАВІГАЦІЯ",
+    "kb_open": "ВІДКРИТИ",
+    "kb_close": "ЗАКРИТИ"
   },
   "ws": {
     "contacting": "З'ЄДНАННЯ З СЕРВЕРОМ...",
@@ -202,7 +215,13 @@
     "toast_imported": "КОЛОДУ ІМПОРТОВАНО: {name}",
     "default_moxfield": "КОЛОДА З MOXFIELD",
     "default_archidekt": "КОЛОДА З ARCHIDEKT",
-    "default_new": "НОВА КОЛОДА"
+    "default_new": "НОВА КОЛОДА",
+    "help_moxfield_1": "> ВСТАВ ПУБЛІЧНЕ ПОСИЛАННЯ НА КОЛОДУ MOXFIELD. КОЛОДУ БУДЕ ЗАВАНТАЖЕНО ТА ІМПОРТОВАНО АВТОМАТИЧНО.",
+    "help_moxfield_2": "> КОМАНДИРА ТА СПИСОК КАРТ ОТРИМАНО З API MOXFIELD.",
+    "help_archidekt_1": "> ВСТАВ ПУБЛІЧНЕ ПОСИЛАННЯ НА КОЛОДУ ARCHIDEKT. КОЛОДУ БУДЕ ЗАВАНТАЖЕНО ТА ІМПОРТОВАНО АВТОМАТИЧНО.",
+    "help_archidekt_2": "> КОМАНДИР, ОСНОВНА КОЛОДА ТА MAYBEBOARD ЗБЕРІГАЮТЬСЯ З КАТЕГОРІЙ ARCHIDEKT.",
+    "err_no_commander": "Командира не призначено",
+    "err_illegal_count": "{count}x — у Commander дозволена лише 1 копія"
   },
   "splash": {
     "tape_left": "ГОЛОВНА / / ДОК HX-001",
@@ -953,6 +972,7 @@
     "res_win": "ПЕРЕМОГА",
     "res_loss": "ПОРАЗКА",
     "res_draw": "НІЧИЯ",
-    "vs_label": "проти"
+    "vs_label": "проти",
+    "untitled_deck": "КОЛОДА"
   }
 }

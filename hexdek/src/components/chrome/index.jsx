@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import GlossaryTerm from '../GlossaryTerm'
+import { useT } from '../../i18n'
 
 export const Crops = () => (
   <>
@@ -97,11 +98,11 @@ export const MiniBars = ({ data }) => (
 )
 
 const CONFIDENCE_TIERS = [
-  { min: 1000, label: 'LOCKED IN', dots: 5 },
-  { min: 300,  label: 'HIGH CONFIDENCE', dots: 4 },
-  { min: 100,  label: 'CONVERGING', dots: 3 },
-  { min: 50,   label: 'WARMING UP', dots: 2 },
-  { min: 0,    label: 'PROVISIONAL', dots: 1 },
+  { min: 1000, labelKey: 'common.conf_locked',      dots: 5 },
+  { min: 300,  labelKey: 'common.conf_high',        dots: 4 },
+  { min: 100,  labelKey: 'common.conf_converging',  dots: 3 },
+  { min: 50,   labelKey: 'common.conf_warming',     dots: 2 },
+  { min: 0,    labelKey: 'common.conf_provisional', dots: 1 },
 ]
 
 function getConfidenceTier(games) {
@@ -112,11 +113,12 @@ function getConfidenceTier(games) {
 }
 
 export const ConfidenceDots = ({ games, showLabel, size = 'sm' }) => {
+  const t = useT()
   const tier = getConfidenceTier(games || 0)
   const dotSize = size === 'lg' ? 10 : 6
   const gap = size === 'lg' ? 3 : 2
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: size === 'lg' ? 8 : 4 }} title={`${games} games — ${tier.label}`}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: size === 'lg' ? 8 : 4 }} title={t('common.conf_title', { count: games, tier: t(tier.labelKey) })}>
       <span style={{ display: 'inline-flex', gap }}>
         {[1, 2, 3, 4, 5].map(i => (
           <span key={i} style={{
@@ -127,7 +129,7 @@ export const ConfidenceDots = ({ games, showLabel, size = 'sm' }) => {
           }} />
         ))}
       </span>
-      {showLabel && <span className="t-xs muted">{tier.label}</span>}
+      {showLabel && <span className="t-xs muted">{t(tier.labelKey)}</span>}
     </span>
   )
 }
@@ -167,6 +169,7 @@ export function computeColorByCmc(cards) {
 }
 
 export const ManaCurveChart = ({ distribution, avgCmc, curveShape, warnings, landCount, nonlandCount, colorByCmc }) => {
+  const t = useT()
   if (!distribution || !distribution.length) return null
   const max = Math.max(...distribution, 1)
   const barMaxHeight = 80
@@ -216,8 +219,8 @@ export const ManaCurveChart = ({ distribution, avgCmc, curveShape, warnings, lan
       )}
       <div className="hr" style={{ margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        {avgCmc != null && <span className="t-xs">AVG CMC: <span className="punch">{avgCmc.toFixed(2)}</span></span>}
-        {curveShape && <span className="t-xs muted">{curveShape.toUpperCase()}</span>}
+        {avgCmc != null && <span className="t-xs">{t('common.avg_cmc')} <span className="punch">{avgCmc.toFixed(2)}</span></span>}
+        {curveShape && <span className="t-xs muted">{t(curveShape)}</span>}
         {landCount != null && <span className="t-xs muted">{landCount}L / {nonlandCount}NL</span>}
       </div>
       {warnings && warnings.length > 0 && (

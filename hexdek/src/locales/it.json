@@ -66,7 +66,17 @@
     "tya_sorcery": "STR",
     "tya_artifact": "ART",
     "tya_enchantment": "INC",
-    "tya_land": "TER"
+    "tya_land": "TER",
+    "avg_cmc": "CMC MEDIO:",
+    "conf_locked": "CONSOLIDATO",
+    "conf_high": "ALTA AFFIDABILITÀ",
+    "conf_converging": "IN CONVERGENZA",
+    "conf_warming": "RISCALDAMENTO",
+    "conf_provisional": "PROVVISORIO",
+    "conf_title": "{count} partite — {tier}",
+    "curve_low": "CURVA BASSA",
+    "curve_mid": "CURVA MEDIA",
+    "curve_high": "CURVA ALTA"
   },
   "deck": {
     "owner": "PROPRIETARIO",
@@ -113,7 +123,10 @@
       "commander": "COMANDANTI",
       "owner": "GIOCATORI",
       "card": "CARTE"
-    }
+    },
+    "kb_navigate": "NAVIGA",
+    "kb_open": "APRI",
+    "kb_close": "CHIUDI"
   },
   "ws": {
     "contacting": "CONNESSIONE AL SERVER...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTATO: {name}",
     "default_moxfield": "DECK MOXFIELD",
     "default_archidekt": "DECK ARCHIDEKT",
-    "default_new": "NUOVO DECK"
+    "default_new": "NUOVO DECK",
+    "help_moxfield_1": "> INCOLLA UN LINK PUBBLICO A UN MAZZO MOXFIELD. IL MAZZO VERRÀ SCARICATO E IMPORTATO AUTOMATICAMENTE.",
+    "help_moxfield_2": "> IL COMANDANTE E LA LISTA CARTE VENGONO ESTRATTI DALL’API DI MOXFIELD.",
+    "help_archidekt_1": "> INCOLLA UN LINK PUBBLICO A UN MAZZO ARCHIDEKT. IL MAZZO VERRÀ SCARICATO E IMPORTATO AUTOMATICAMENTE.",
+    "help_archidekt_2": "> COMANDANTE, MAINBOARD E MAYBEBOARD VENGONO CONSERVATI DALLE CATEGORIE DI ARCHIDEKT.",
+    "err_no_commander": "Nessun comandante designato",
+    "err_illegal_count": "{count}x — in Commander è consentita 1 sola copia"
   },
   "splash": {
     "tape_left": "HOME / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VITTORIA",
     "res_loss": "SCONFITTA",
     "res_draw": "PAREGGIO",
-    "vs_label": "contro"
+    "vs_label": "contro",
+    "untitled_deck": "MAZZO"
   }
 }

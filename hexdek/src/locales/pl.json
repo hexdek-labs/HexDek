@@ -66,7 +66,17 @@
     "tya_sorcery": "CZA",
     "tya_artifact": "ART",
     "tya_enchantment": "URO",
-    "tya_land": "ZIE"
+    "tya_land": "ZIE",
+    "avg_cmc": "ŚR. CMC:",
+    "conf_locked": "USTALONE",
+    "conf_high": "WYSOKA PEWNOŚĆ",
+    "conf_converging": "ZBIEGA SIĘ",
+    "conf_warming": "ROZGRZEWKA",
+    "conf_provisional": "WSTĘPNE",
+    "conf_title": "{count} gier — {tier}",
+    "curve_low": "NISKA KRZYWA",
+    "curve_mid": "ŚREDNIA KRZYWA",
+    "curve_high": "WYSOKA KRZYWA"
   },
   "deck": {
     "owner": "WŁAŚCICIEL",
@@ -113,7 +123,10 @@
       "commander": "DOWÓDCY",
       "owner": "GRACZE",
       "card": "KARTY"
-    }
+    },
+    "kb_navigate": "NAWIGACJA",
+    "kb_open": "OTWÓRZ",
+    "kb_close": "ZAMKNIJ"
   },
   "ws": {
     "contacting": "ŁĄCZENIE Z SERWEREM...",
@@ -202,7 +215,13 @@
     "toast_imported": "ZAIMPORTOWANO TALIĘ: {name}",
     "default_moxfield": "TALIA Z MOXFIELD",
     "default_archidekt": "TALIA Z ARCHIDEKT",
-    "default_new": "NOWA TALIA"
+    "default_new": "NOWA TALIA",
+    "help_moxfield_1": "> WKLEJ PUBLICZNY LINK DO TALII MOXFIELD. TALIA ZOSTANIE POBRANA I ZAIMPORTOWANA AUTOMATYCZNIE.",
+    "help_moxfield_2": "> DOWÓDCA I LISTA KART SĄ POBIERANE Z API MOXFIELD.",
+    "help_archidekt_1": "> WKLEJ PUBLICZNY LINK DO TALII ARCHIDEKT. TALIA ZOSTANIE POBRANA I ZAIMPORTOWANA AUTOMATYCZNIE.",
+    "help_archidekt_2": "> DOWÓDCA, TALIA GŁÓWNA I MAYBEBOARD SĄ ZACHOWYWANE Z KATEGORII ARCHIDEKT.",
+    "err_no_commander": "Nie wskazano dowódcy",
+    "err_illegal_count": "{count}x — w Commanderze dozwolona jest tylko 1 kopia"
   },
   "splash": {
     "tape_left": "START / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "WYGRANA",
     "res_loss": "PRZEGRANA",
     "res_draw": "REMIS",
-    "vs_label": "przeciw"
+    "vs_label": "przeciw",
+    "untitled_deck": "TALIA"
   }
 }

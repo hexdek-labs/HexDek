@@ -66,7 +66,17 @@
     "tya_sorcery": "ソー",
     "tya_artifact": "アー",
     "tya_enchantment": "エン",
-    "tya_land": "土地"
+    "tya_land": "土地",
+    "avg_cmc": "平均CMC:",
+    "conf_locked": "確定",
+    "conf_high": "信頼度 高",
+    "conf_converging": "収束中",
+    "conf_warming": "ウォームアップ中",
+    "conf_provisional": "暫定",
+    "conf_title": "{count} 戦 — {tier}",
+    "curve_low": "低マナカーブ",
+    "curve_mid": "中マナカーブ",
+    "curve_high": "高マナカーブ"
   },
   "deck": {
     "owner": "所有者",
@@ -113,7 +123,10 @@
       "commander": "統率者",
       "owner": "プレイヤー",
       "card": "カード"
-    }
+    },
+    "kb_navigate": "移動",
+    "kb_open": "開く",
+    "kb_close": "閉じる"
   },
   "ws": {
     "contacting": "サーバーに接続中...",
@@ -202,7 +215,13 @@
     "toast_imported": "デッキをインポートしました: {name}",
     "default_moxfield": "MOXFIELD のデッキ",
     "default_archidekt": "ARCHIDEKT のデッキ",
-    "default_new": "新しいデッキ"
+    "default_new": "新しいデッキ",
+    "help_moxfield_1": "> 公開されている Moxfield のデッキURLを貼り付けてください。デッキは自動的に取得・インポートされます。",
+    "help_moxfield_2": "> 統率者とカードリストは Moxfield API から取得されます。",
+    "help_archidekt_1": "> 公開されている Archidekt のデッキURLを貼り付けてください。デッキは自動的に取得・インポートされます。",
+    "help_archidekt_2": "> 統率者・メインボード・メイビーボードは Archidekt のカテゴリーから保持されます。",
+    "err_no_commander": "統率者が指定されていません",
+    "err_illegal_count": "{count}x — 統率者戦では1枚までしか入れられません"
   },
   "splash": {
     "tape_left": "ランディング / / 文書 HX-001",
@@ -953,6 +972,7 @@
     "res_win": "勝利",
     "res_loss": "敗北",
     "res_draw": "引き分け",
-    "vs_label": "対"
+    "vs_label": "対",
+    "untitled_deck": "デッキ"
   }
 }

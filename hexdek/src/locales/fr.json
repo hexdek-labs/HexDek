@@ -66,7 +66,17 @@
     "tya_sorcery": "RIT",
     "tya_artifact": "ART",
     "tya_enchantment": "ENC",
-    "tya_land": "TER"
+    "tya_land": "TER",
+    "avg_cmc": "CMC MOY. :",
+    "conf_locked": "VERROUILLÉ",
+    "conf_high": "CONFIANCE ÉLEVÉE",
+    "conf_converging": "CONVERGENCE",
+    "conf_warming": "MISE EN TRAIN",
+    "conf_provisional": "PROVISOIRE",
+    "conf_title": "{count} parties — {tier}",
+    "curve_low": "COURBE BASSE",
+    "curve_mid": "COURBE MOYENNE",
+    "curve_high": "COURBE HAUTE"
   },
   "deck": {
     "owner": "PROPRIÉTAIRE",
@@ -113,7 +123,10 @@
       "commander": "COMMANDANTS",
       "owner": "JOUEURS",
       "card": "CARTES"
-    }
+    },
+    "kb_navigate": "NAVIGUER",
+    "kb_open": "OUVRIR",
+    "kb_close": "FERMER"
   },
   "ws": {
     "contacting": "CONNEXION AU SERVEUR...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTÉ : {name}",
     "default_moxfield": "DECK MOXFIELD",
     "default_archidekt": "DECK ARCHIDEKT",
-    "default_new": "NOUVEAU DECK"
+    "default_new": "NOUVEAU DECK",
+    "help_moxfield_1": "> COLLE UN LIEN PUBLIC VERS UN DECK MOXFIELD. LE DECK SERA RÉCUPÉRÉ ET IMPORTÉ AUTOMATIQUEMENT.",
+    "help_moxfield_2": "> LE COMMANDANT ET LA LISTE DE CARTES SONT EXTRAITS DE L’API MOXFIELD.",
+    "help_archidekt_1": "> COLLE UN LIEN PUBLIC VERS UN DECK ARCHIDEKT. LE DECK SERA RÉCUPÉRÉ ET IMPORTÉ AUTOMATIQUEMENT.",
+    "help_archidekt_2": "> LE COMMANDANT, LE DECK PRINCIPAL ET LE MAYBEBOARD SONT CONSERVÉS DEPUIS LES CATÉGORIES ARCHIDEKT.",
+    "err_no_commander": "Aucun commandant désigné",
+    "err_illegal_count": "{count}x — une seule copie autorisée en Commander"
   },
   "splash": {
     "tape_left": "ACCUEIL / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VICTOIRE",
     "res_loss": "DÉFAITE",
     "res_draw": "ÉGALITÉ",
-    "vs_label": "contre"
+    "vs_label": "contre",
+    "untitled_deck": "DECK"
   }
 }

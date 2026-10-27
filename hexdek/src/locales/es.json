@@ -66,7 +66,17 @@
     "tya_sorcery": "CON",
     "tya_artifact": "ART",
     "tya_enchantment": "ENC",
-    "tya_land": "TIE"
+    "tya_land": "TIE",
+    "avg_cmc": "CMC MEDIO:",
+    "conf_locked": "CONSOLIDADO",
+    "conf_high": "ALTA CONFIANZA",
+    "conf_converging": "CONVERGIENDO",
+    "conf_warming": "CALENTANDO",
+    "conf_provisional": "PROVISIONAL",
+    "conf_title": "{count} partidas — {tier}",
+    "curve_low": "CURVA BAJA",
+    "curve_mid": "CURVA MEDIA",
+    "curve_high": "CURVA ALTA"
   },
   "deck": {
     "owner": "PROPIETARIO",
@@ -113,7 +123,10 @@
       "commander": "COMANDANTES",
       "owner": "JUGADORES",
       "card": "CARTAS"
-    }
+    },
+    "kb_navigate": "NAVEGAR",
+    "kb_open": "ABRIR",
+    "kb_close": "CERRAR"
   },
   "ws": {
     "contacting": "CONTACTANDO CON EL SERVIDOR...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTADO: {name}",
     "default_moxfield": "DECK DE MOXFIELD",
     "default_archidekt": "DECK DE ARCHIDEKT",
-    "default_new": "DECK NUEVO"
+    "default_new": "DECK NUEVO",
+    "help_moxfield_1": "> PEGA UN ENLACE PÚBLICO DE MAZO DE MOXFIELD. EL MAZO SE DESCARGARÁ E IMPORTARÁ AUTOMÁTICAMENTE.",
+    "help_moxfield_2": "> EL COMANDANTE Y LA LISTA DE CARTAS SE EXTRAEN DE LA API DE MOXFIELD.",
+    "help_archidekt_1": "> PEGA UN ENLACE PÚBLICO DE MAZO DE ARCHIDEKT. EL MAZO SE DESCARGARÁ E IMPORTARÁ AUTOMÁTICAMENTE.",
+    "help_archidekt_2": "> EL COMANDANTE, EL MAZO PRINCIPAL Y EL MAYBEBOARD SE CONSERVAN DESDE LAS CATEGORÍAS DE ARCHIDEKT.",
+    "err_no_commander": "No se ha designado comandante",
+    "err_illegal_count": "{count}x — solo se permite 1 copia en Commander"
   },
   "splash": {
     "tape_left": "INICIO / / DOC HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VICTORIA",
     "res_loss": "DERROTA",
     "res_draw": "EMPATE",
-    "vs_label": "contra"
+    "vs_label": "contra",
+    "untitled_deck": "MAZO"
   }
 }

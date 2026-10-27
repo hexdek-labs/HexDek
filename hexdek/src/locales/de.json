@@ -66,7 +66,17 @@
     "tya_sorcery": "HEX",
     "tya_artifact": "ART",
     "tya_enchantment": "VER",
-    "tya_land": "LND"
+    "tya_land": "LND",
+    "avg_cmc": "Ø CMC:",
+    "conf_locked": "GESICHERT",
+    "conf_high": "HOHE SICHERHEIT",
+    "conf_converging": "KONVERGIERT",
+    "conf_warming": "AUFWÄRMPHASE",
+    "conf_provisional": "VORLÄUFIG",
+    "conf_title": "{count} Spiele — {tier}",
+    "curve_low": "NIEDRIGE KURVE",
+    "curve_mid": "MITTLERE KURVE",
+    "curve_high": "HOHE KURVE"
   },
   "deck": {
     "owner": "BESITZER",
@@ -113,7 +123,10 @@
       "commander": "COMMANDER",
       "owner": "SPIELER",
       "card": "KARTEN"
-    }
+    },
+    "kb_navigate": "NAVIGIEREN",
+    "kb_open": "ÖFFNEN",
+    "kb_close": "SCHLIESSEN"
   },
   "ws": {
     "contacting": "VERBINDE MIT SERVER...",
@@ -202,7 +215,13 @@
     "toast_imported": "DECK IMPORTIERT: {name}",
     "default_moxfield": "MOXFIELD-DECK",
     "default_archidekt": "ARCHIDEKT-DECK",
-    "default_new": "NEUES DECK"
+    "default_new": "NEUES DECK",
+    "help_moxfield_1": "> FÜGE EINEN ÖFFENTLICHEN MOXFIELD-DECKLINK EIN. DAS DECK WIRD AUTOMATISCH GELADEN UND IMPORTIERT.",
+    "help_moxfield_2": "> COMMANDER UND KARTENLISTE WERDEN ÜBER DIE MOXFIELD-API AUSGELESEN.",
+    "help_archidekt_1": "> FÜGE EINEN ÖFFENTLICHEN ARCHIDEKT-DECKLINK EIN. DAS DECK WIRD AUTOMATISCH GELADEN UND IMPORTIERT.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD UND MAYBEBOARD BLEIBEN AUS DEN ARCHIDEKT-KATEGORIEN ERHALTEN.",
+    "err_no_commander": "Kein Commander festgelegt",
+    "err_illegal_count": "{count}x — in Commander ist nur 1 Exemplar erlaubt"
   },
   "splash": {
     "tape_left": "START / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "SIEG",
     "res_loss": "NIEDERLAGE",
     "res_draw": "UNENTSCHIEDEN",
-    "vs_label": "gegen"
+    "vs_label": "gegen",
+    "untitled_deck": "DECK"
   }
 }

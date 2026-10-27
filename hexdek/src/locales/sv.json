@@ -66,7 +66,17 @@
     "tya_sorcery": "BES",
     "tya_artifact": "ART",
     "tya_enchantment": "FÖR",
-    "tya_land": "LND"
+    "tya_land": "LND",
+    "avg_cmc": "GENOMSN. CMC:",
+    "conf_locked": "FASTSTÄLLT",
+    "conf_high": "HÖG SÄKERHET",
+    "conf_converging": "KONVERGERAR",
+    "conf_warming": "VÄRMER UPP",
+    "conf_provisional": "PRELIMINÄRT",
+    "conf_title": "{count} matcher — {tier}",
+    "curve_low": "LÅG KURVA",
+    "curve_mid": "MELLANKURVA",
+    "curve_high": "HÖG KURVA"
   },
   "deck": {
     "owner": "ÄGARE",
@@ -113,7 +123,10 @@
       "commander": "COMMANDERS",
       "owner": "SPELARE",
       "card": "KORT"
-    }
+    },
+    "kb_navigate": "NAVIGERA",
+    "kb_open": "ÖPPNA",
+    "kb_close": "STÄNG"
   },
   "ws": {
     "contacting": "KONTAKTAR SERVERN...",
@@ -202,7 +215,13 @@
     "toast_imported": "LEK IMPORTERAD: {name}",
     "default_moxfield": "MOXFIELD-LEK",
     "default_archidekt": "ARCHIDEKT-LEK",
-    "default_new": "NY LEK"
+    "default_new": "NY LEK",
+    "help_moxfield_1": "> KLISTRA IN EN OFFENTLIG MOXFIELD-DECKLÄNK. DECKET HÄMTAS OCH IMPORTERAS AUTOMATISKT.",
+    "help_moxfield_2": "> COMMANDER OCH KORTLISTA HÄMTAS FRÅN MOXFIELDS API.",
+    "help_archidekt_1": "> KLISTRA IN EN OFFENTLIG ARCHIDEKT-DECKLÄNK. DECKET HÄMTAS OCH IMPORTERAS AUTOMATISKT.",
+    "help_archidekt_2": "> COMMANDER, MAINBOARD OCH MAYBEBOARD BEVARAS FRÅN ARCHIDEKTS KATEGORIER.",
+    "err_no_commander": "Ingen commander angiven",
+    "err_illegal_count": "{count}x — endast 1 exemplar tillåts i Commander"
   },
   "splash": {
     "tape_left": "START / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "VINST",
     "res_loss": "FÖRLUST",
     "res_draw": "OAVGJORT",
-    "vs_label": "mot"
+    "vs_label": "mot",
+    "untitled_deck": "DECK"
   }
 }

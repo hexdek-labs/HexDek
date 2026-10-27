@@ -66,7 +66,17 @@
     "tya_sorcery": "IGÉ",
     "tya_artifact": "SZE",
     "tya_enchantment": "BŰB",
-    "tya_land": "FÖL"
+    "tya_land": "FÖL",
+    "avg_cmc": "ÁTL. CMC:",
+    "conf_locked": "RÖGZÍTVE",
+    "conf_high": "MAGAS BIZTONSÁG",
+    "conf_converging": "KÖZELÍT",
+    "conf_warming": "BEMELEGÍTÉS",
+    "conf_provisional": "ELŐZETES",
+    "conf_title": "{count} játék — {tier}",
+    "curve_low": "ALACSONY GÖRBE",
+    "curve_mid": "KÖZEPES GÖRBE",
+    "curve_high": "MAGAS GÖRBE"
   },
   "deck": {
     "owner": "TULAJDONOS",
@@ -113,7 +123,10 @@
       "commander": "PARANCSNOKOK",
       "owner": "JÁTÉKOSOK",
       "card": "LAPOK"
-    }
+    },
+    "kb_navigate": "LÉPKEDÉS",
+    "kb_open": "MEGNYITÁS",
+    "kb_close": "BEZÁRÁS"
   },
   "ws": {
     "contacting": "KAPCSOLÓDÁS A SZERVERHEZ...",
@@ -202,7 +215,13 @@
     "toast_imported": "PAKLI IMPORTÁLVA: {name}",
     "default_moxfield": "MOXFIELD-PAKLI",
     "default_archidekt": "ARCHIDEKT-PAKLI",
-    "default_new": "ÚJ PAKLI"
+    "default_new": "ÚJ PAKLI",
+    "help_moxfield_1": "> ILLESSZ BE EGY NYILVÁNOS MOXFIELD PAKLILINKET. A PAKLIT AUTOMATIKUSAN LETÖLTJÜK ÉS IMPORTÁLJUK.",
+    "help_moxfield_2": "> A COMMANDERT ÉS A KÁRTYALISTÁT A MOXFIELD API-BÓL OLVASSUK KI.",
+    "help_archidekt_1": "> ILLESSZ BE EGY NYILVÁNOS ARCHIDEKT PAKLILINKET. A PAKLIT AUTOMATIKUSAN LETÖLTJÜK ÉS IMPORTÁLJUK.",
+    "help_archidekt_2": "> A COMMANDER, A FŐPAKLI ÉS A MAYBEBOARD MEGMARAD AZ ARCHIDEKT KATEGÓRIÁIBÓL.",
+    "err_no_commander": "Nincs kijelölt commander",
+    "err_illegal_count": "{count}x — Commanderben csak 1 példány engedélyezett"
   },
   "splash": {
     "tape_left": "KEZDŐLAP / / DOK HX-001",
@@ -953,6 +972,7 @@
     "res_win": "GYŐZELEM",
     "res_loss": "VERESÉG",
     "res_draw": "DÖNTETLEN",
-    "vs_label": "ellen:"
+    "vs_label": "ellen:",
+    "untitled_deck": "PAKLI"
   }
 }
