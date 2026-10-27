@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useT } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { toast } from './Toast'
 import { trackEvent } from '../hooks/useAnalytics'
@@ -12,10 +13,10 @@ import './ImportModal.css'
 
 // ─── Constants ──────────────────────────────────────────────────
 const MODES = [
-  { id: 'paste', label: 'PASTE', sub: 'Paste a decklist from clipboard' },
-  { id: 'moxfield', label: 'MOXFIELD', sub: 'Import from Moxfield URL' },
-  { id: 'archidekt', label: 'ARCHIDEKT', sub: 'Import from Archidekt URL' },
-  { id: 'file', label: 'FILE', sub: 'Upload .txt / .dec / .mwDeck' },
+  { id: 'paste', label: 'import.mode.paste', sub: 'import.mode.paste_sub' },
+  { id: 'moxfield', label: 'import.mode.moxfield', sub: 'import.mode.moxfield_sub' },
+  { id: 'archidekt', label: 'import.mode.archidekt', sub: 'import.mode.archidekt_sub' },
+  { id: 'file', label: 'import.mode.file', sub: 'import.mode.file_sub' },
 ]
 
 const ACCEPTED_EXTENSIONS = ['.txt', '.dec', '.mwDeck']
@@ -137,16 +138,17 @@ function AnalysisProgress() {
     return () => clearInterval(t)
   }, [])
 
+  const t = useT()
   return (
     <div className="import-modal__progress">
       <div className="import-modal__progress-bar">
         <div className="import-modal__progress-fill" />
       </div>
       <div className="import-modal__progress-label">
-        ANALYZING DECK{'.'.repeat(dots)}
+        {t('import.progress')}{'.'.repeat(dots)}
       </div>
       <div className="import-modal__progress-sub">
-        FREYA IS EVALUATING SYNERGY, MANA CURVE, AND THREAT DENSITY
+        {t('import.progress_sub')}
       </div>
     </div>
   )
@@ -156,6 +158,7 @@ function AnalysisProgress() {
 export default function ImportModal({ onClose, onImported }) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const t = useT()
 
   // If not authenticated, show auth prompt over a teaser landing instead
   // of a centered modal floating in a black void. Gives anon visitors who
@@ -164,30 +167,30 @@ export default function ImportModal({ onClose, onImported }) {
     return (
       <div style={{ padding: '40px 20px', maxWidth: 920, margin: '0 auto' }}>
         <div className="t-xs muted" style={{ letterSpacing: '0.08em', marginBottom: 6 }}>
-          IMPORT / / DECK
+          {t('import.eyebrow')}
         </div>
         <h1 style={{
           fontSize: 48, fontWeight: 800, letterSpacing: '0.02em',
           margin: '0 0 18px', lineHeight: 1.05,
-        }}>PASTE.<br />ANALYZE.<br />RANK.</h1>
+        }}>{t('import.hero_1')}<br />{t('import.hero_2')}<br />{t('import.hero_3')}</h1>
         <div className="t-md muted" style={{ maxWidth: 540, lineHeight: 1.5, marginBottom: 28 }}>
-          Drop a Moxfield URL, paste a text list, or upload a .txt — HexDek's Freya engine returns an archetype, win lines, mana base grade, cut suggestions, and a bracket estimate in seconds. Then run a gauntlet to get a real HexELO rating.
+          {t('import.hero_blurb')}
         </div>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 12, marginBottom: 32,
         }}>
           {[
-            ['FREYA ANALYSIS', 'Archetype + roles + combos + cuts on every import.'],
-            ['HEXELO RATING', 'Run a 500-game gauntlet, see how your deck stacks up.'],
-            ['DECK ARCHIVE', 'Versioned. Iterate, save, compare across builds.'],
+            ['import.teaser.freya', 'import.teaser.freya_sub'],
+            ['import.teaser.elo', 'import.teaser.elo_sub'],
+            ['import.teaser.archive', 'import.teaser.archive_sub'],
           ].map(([h, b]) => (
             <div key={h} style={{
               padding: '14px 16px', background: 'var(--panel)',
               border: '1px solid var(--rule-2)',
             }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', marginBottom: 6 }}>{h}</div>
-              <div className="t-xs muted" style={{ lineHeight: 1.4 }}>{b}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', marginBottom: 6 }}>{t(h)}</div>
+              <div className="t-xs muted" style={{ lineHeight: 1.4 }}>{t(b)}</div>
             </div>
           ))}
         </div>
@@ -200,6 +203,7 @@ export default function ImportModal({ onClose, onImported }) {
 }
 
 function ImportModalInner({ onClose, onImported, navigate, user }) {
+  const t = useT()
   const [mode, setMode] = useState('paste')
   const [name, setName] = useState('')
   const [owner, setOwner] = useState(() => {
@@ -331,7 +335,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
 
     if (mode === 'moxfield') {
       if (!moxfieldUrl.trim() || !MOXFIELD_REGEX.test(moxfieldUrl.trim())) {
-        setError('ENTER A VALID MOXFIELD URL (https://www.moxfield.com/decks/...)')
+        setError(t('import.err_moxfield_url'))
         return
       }
       setPhase('analyzing')
@@ -347,7 +351,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
           moxfield_id: result.moxfield_id,
         })
         setPhase('done')
-        toast.success(`DECK IMPORTED: ${result.name || 'MOXFIELD DECK'}`)
+        toast.success(t('import.toast_imported', { name: result.name || t('import.default_moxfield') }))
         onImported?.()
         const target = `/decks/${encodeURIComponent(result.owner)}/${encodeURIComponent(result.id)}`
         setTimeout(() => {
@@ -356,14 +360,14 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
         }, 600)
       } catch (err) {
         setPhase('input')
-        setError(err.message || 'MOXFIELD IMPORT FAILED')
+        setError(err.message || t('import.err_moxfield_failed'))
       }
       return
     }
 
     if (mode === 'archidekt') {
       if (!archidektUrl.trim() || !ARCHIDEKT_REGEX.test(archidektUrl.trim())) {
-        setError('ENTER A VALID ARCHIDEKT URL (https://archidekt.com/decks/...)')
+        setError(t('import.err_archidekt_url'))
         return
       }
       setPhase('analyzing')
@@ -379,7 +383,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
           archidekt_id: result.archidekt_id,
         })
         setPhase('done')
-        toast.success(`DECK IMPORTED: ${result.name || 'ARCHIDEKT DECK'}`)
+        toast.success(t('import.toast_imported', { name: result.name || t('import.default_archidekt') }))
         onImported?.()
         const target = `/decks/${encodeURIComponent(result.owner)}/${encodeURIComponent(result.id)}`
         setTimeout(() => {
@@ -388,18 +392,18 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
         }, 600)
       } catch (err) {
         setPhase('input')
-        setError(err.message || 'ARCHIDEKT IMPORT FAILED')
+        setError(err.message || t('import.err_archidekt_failed'))
       }
       return
     }
 
     // Paste or file mode
     if (!deckList.trim()) {
-      setError('DECK LIST REQUIRED — PASTE OR UPLOAD A FILE')
+      setError(t('import.err_decklist_required'))
       return
     }
     if (cardCount < 5) {
-      setError(`ONLY ${cardCount} CARD${cardCount === 1 ? '' : 'S'} DETECTED — CHECK YOUR INPUT`)
+      setError(t(cardCount === 1 ? 'import.err_too_few_one' : 'import.err_too_few', { count: cardCount }))
       return
     }
 
@@ -428,7 +432,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
       const newID = result?.id
 
       setPhase('done')
-      toast.success(`DECK IMPORTED: ${result?.name || name || 'NEW DECK'}`)
+      toast.success(t('import.toast_imported', { name: result?.name || name || t('import.default_new') }))
       onImported?.()
       const newOwner = result?.owner || owner.trim() || 'imported'
       const target = newID
@@ -440,7 +444,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
       }, 600)
     } catch (err) {
       setPhase('input')
-      setError(err.message || 'IMPORT FAILED')
+      setError(err.message || t('import.err_import_failed'))
     }
   }
 
@@ -465,8 +469,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
       <div className="import-modal__panel" onMouseDown={e => e.stopPropagation()}>
         {/* Header */}
         <div className="import-modal__hd">
-          <span>DECK IMPORT / / UNIFIED</span>
-          <span className="import-modal__close" onClick={onClose}>ESC</span>
+          <span>{t('import.header')}</span>
+          <span className="import-modal__close" onClick={onClose}>{t('import.close')}</span>
         </div>
 
         {/* Mode tabs */}
@@ -479,8 +483,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               onClick={() => { setMode(m.id); setError(null) }}
               disabled={phase !== 'input'}
             >
-              <span className="import-modal__mode-label">{m.label}</span>
-              <span className="import-modal__mode-sub">{m.sub}</span>
+              <span className="import-modal__mode-label">{t(m.label)}</span>
+              <span className="import-modal__mode-sub">{t(m.sub)}</span>
             </button>
           ))}
         </div>
@@ -492,8 +496,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
         {phase === 'done' && (
           <div className="import-modal__done">
             <div className="import-modal__done-icon">&#x2713;</div>
-            <div className="import-modal__done-label">DECK IMPORTED SUCCESSFULLY</div>
-            <div className="import-modal__done-sub">REDIRECTING TO DECK ARCHIVE...</div>
+            <div className="import-modal__done-label">{t('import.done')}</div>
+            <div className="import-modal__done-sub">{t('import.done_sub')}</div>
           </div>
         )}
 
@@ -503,13 +507,13 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
             {/* Metadata row */}
             <div className="import-modal__meta">
               <div className="import-modal__field">
-                <label className="import-modal__label">DECK NAME</label>
+                <label className="import-modal__label">{t('import.label_name')}</label>
                 <input
                   type="text"
                   className="import-modal__input"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="TINYBONES, THE PICKPOCKET"
+                  placeholder={t('import.ph_name')}
                   style={collisionDecks.length > 0 ? { borderColor: 'var(--warn)' } : undefined}
                 />
                 {collisionDecks.length > 0 && (
@@ -522,31 +526,31 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                     fontSize: 10,
                     lineHeight: 1.4,
                   }}>
-                    <strong style={{ color: 'var(--warn)' }}>HEY — WE NOTICED</strong>
+                    <strong style={{ color: 'var(--warn)' }}>{t('import.collision_hd')}</strong>
                     <div style={{ marginTop: 3, color: 'var(--ink-2)' }}>
-                      You already have {collisionDecks.length === 1 ? 'a deck' : `${collisionDecks.length} decks`} with this exact name + commander. If this is a different build (storm vs. stax, etc.), rename it now to keep them distinct — otherwise it'll show up as a version variant.
+                      {t(collisionDecks.length === 1 ? 'import.collision_body_one' : 'import.collision_body', { count: collisionDecks.length })}
                     </div>
                   </div>
                 )}
               </div>
               <div className="import-modal__field">
-                <label className="import-modal__label">OWNER</label>
+                <label className="import-modal__label">{t('import.label_owner')}</label>
                 <input
                   type="text"
                   className="import-modal__input"
                   value={owner}
                   onChange={e => setOwner(e.target.value)}
-                  placeholder="IMPORTED"
+                  placeholder={t('import.ph_owner')}
                 />
               </div>
               <div className="import-modal__field">
-                <label className="import-modal__label">COMMANDER</label>
+                <label className="import-modal__label">{t('import.label_commander')}</label>
                 <input
                   type="text"
                   className="import-modal__input"
                   value={commander}
                   onChange={e => setCommander(e.target.value)}
-                  placeholder="TYPE THE COMMANDER — e.g. KING OF THE OATHBREAKERS"
+                  placeholder={t('import.ph_commander')}
                 />
                 <div
                   style={{
@@ -557,17 +561,17 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                   }}
                 >
                   {detectedCommander
-                    ? <>&gt; AUTO-DETECTED: <strong>{detectedCommander}</strong> — EDIT ABOVE TO OVERRIDE</>
-                    : <>&gt; NO COMMANDER DETECTED — ENTER IT HERE (NAME ONLY, NO QUANTITY)</>}
+                    ? <>&gt; {t('import.auto_detected')} <strong>{detectedCommander}</strong> {t('import.auto_detected_hint')}</>
+                    : <>&gt; {t('import.no_commander')}</>}
                 </div>
               </div>
               <div className="import-modal__field" style={{ gridColumn: '1 / -1' }}>
-                <label className="import-modal__label">TAGS</label>
+                <label className="import-modal__label">{t('import.label_tags')}</label>
                 <TagInput
                   value={tags}
                   onChange={setTags}
                   owner={owner.trim().toLowerCase()}
-                  placeholder="ADD TAG — e.g. cedh, budget, brew"
+                  placeholder={t('import.ph_tags')}
                 />
               </div>
             </div>
@@ -577,17 +581,17 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               {mode === 'paste' && (
                 <>
                   <div className="import-modal__body-hd">
-                    <span>DECK LIST</span>
+                    <span>{t('import.hd_decklist')}</span>
                     <span className="t-xs muted">
-                      {cardCount > 0 ? `${cardCount} CARDS` : 'AWAITING PASTE'}
-                      {validating && ' / VALIDATING...'}
+                      {cardCount > 0 ? t('import.card_count', { count: cardCount }) : t('import.awaiting_paste')}
+                      {validating && t('import.validating')}
                     </span>
                   </div>
                   <textarea
                     className="import-modal__textarea"
                     value={deckList}
                     onChange={e => setDeckList(e.target.value)}
-                    placeholder={"COMMANDER: Tinybones, the Pickpocket\n1 Swamp\n1 Dark Ritual\n1 Sol Ring\n1 Thoughtseize\n...\n\n(Supports MTGO, Arena, or plain card names)"}
+                    placeholder={t('import.ph_decklist')}
                     rows={14}
                     spellCheck={false}
                   />
@@ -597,7 +601,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               {mode === 'moxfield' && (
                 <>
                   <div className="import-modal__body-hd">
-                    <span>MOXFIELD URL</span>
+                    <span>{t('import.hd_moxfield')}</span>
                     <span className="t-xs muted">
                       {MOXFIELD_REGEX.test(moxfieldUrl.trim()) ? 'VALID URL' : 'PASTE URL'}
                     </span>
@@ -608,7 +612,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                       className="import-modal__input import-modal__input--lg"
                       value={moxfieldUrl}
                       onChange={e => setMoxfieldUrl(e.target.value)}
-                      placeholder="https://www.moxfield.com/decks/abc123..."
+                      placeholder={t('import.ph_moxfield')}
                     />
                     <div className="import-modal__moxfield-help">
                       &gt; PASTE A PUBLIC MOXFIELD DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
@@ -621,7 +625,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               {mode === 'archidekt' && (
                 <>
                   <div className="import-modal__body-hd">
-                    <span>ARCHIDEKT URL</span>
+                    <span>{t('import.hd_archidekt')}</span>
                     <span className="t-xs muted">
                       {ARCHIDEKT_REGEX.test(archidektUrl.trim()) ? 'VALID URL' : 'PASTE URL'}
                     </span>
@@ -632,7 +636,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                       className="import-modal__input import-modal__input--lg"
                       value={archidektUrl}
                       onChange={e => setArchidektUrl(e.target.value)}
-                      placeholder="https://archidekt.com/decks/123456..."
+                      placeholder={t('import.ph_archidekt')}
                     />
                     <div className="import-modal__moxfield-help">
                       &gt; PASTE A PUBLIC ARCHIDEKT DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
@@ -645,7 +649,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               {mode === 'file' && (
                 <>
                   <div className="import-modal__body-hd">
-                    <span>FILE UPLOAD</span>
+                    <span>{t('import.hd_file')}</span>
                     <span className="t-xs muted">
                       {fileName ? fileName.toUpperCase() : '.TXT / .DEC / .MWDECK'}
                     </span>
@@ -665,7 +669,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <span className="import-modal__file-icon">&#x2191;</span>
-                        <span>SELECT FILE</span>
+                        <span>{t('import.select_file')}</span>
                         <span className="import-modal__file-ext">.txt / .dec / .mwDeck</span>
                       </button>
                     )}
@@ -684,7 +688,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                           className="import-modal__file-change"
                           onClick={() => { setDeckList(''); setFileName(''); fileInputRef.current.value = '' }}
                         >
-                          CHANGE FILE
+                          {t('import.change_file')}
                         </button>
                       </div>
                     )}
@@ -698,7 +702,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
               <div className="import-modal__validation">
                 <div className="import-modal__validation-hd">
                   <span className="led led--warn" />
-                  <span>{validationErrors.length} ISSUE{validationErrors.length !== 1 ? 'S' : ''} DETECTED</span>
+                  <span>{t(validationErrors.length === 1 ? 'import.issues_one' : 'import.issues', { count: validationErrors.length })}</span>
                 </div>
                 <div className="import-modal__validation-list">
                   {validationErrors.slice(0, 8).map((err, i) => (
@@ -707,7 +711,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                         <>
                           <span className="import-modal__val-name">{err.name}</span>
                           <span className="import-modal__val-msg">
-                            {err.suggestion ? `DID YOU MEAN: ${err.suggestion}` : 'NOT FOUND IN CORPUS'}
+                            {err.suggestion ? t('import.did_you_mean', { name: err.suggestion }) : t('import.not_found')}
                           </span>
                         </>
                       )}
@@ -724,7 +728,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                   ))}
                   {validationErrors.length > 8 && (
                     <div className="import-modal__validation-more">
-                      +{validationErrors.length - 8} MORE
+                      {t('import.more', { count: validationErrors.length - 8 })}
                     </div>
                   )}
                 </div>
@@ -740,8 +744,8 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
 
             {/* Actions */}
             <ContextBox id="import.modal.submit">
-              Imports the deck into your archive and runs Freya analysis automatically — you'll land on the new deck's page when it's ready.
-              {mode === 'moxfield' ? ' Moxfield URL must point to a public deck.' : ''}
+              {t('import.submit_hint')}
+              {mode === 'moxfield' ? ' ' + t('import.submit_hint_moxfield') : ''}
             </ContextBox>
             <div className="import-modal__actions">
               <button
@@ -749,7 +753,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                 className="import-modal__btn import-modal__btn--ghost"
                 onClick={onClose}
               >
-                CANCEL
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -757,7 +761,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                 onClick={handleSubmit}
                 disabled={!isSubmittable}
               >
-                {mode === 'moxfield' ? 'IMPORT FROM MOXFIELD' : 'IMPORT DECK'}
+                {mode === 'moxfield' ? t('import.btn_moxfield') : t('import.btn_import')}
                 <span className="arr">&#x2197;</span>
               </button>
             </div>
