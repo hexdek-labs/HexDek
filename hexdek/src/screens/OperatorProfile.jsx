@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { countryFlagEmoji } from '../lib/flag'
 import ContextBox from '../components/ContextBox'
+import { useT, getLocale } from '../i18n'
+import { fill } from '../components/fill'
 
 // OperatorProfile — first-person profile page at /operator (alias /me),
 // only reachable when authenticated. Mirrors PublicProfile's structure
@@ -21,6 +23,18 @@ const RARITY_COLOR = {
   rare:     'var(--warn)',
   mythic:   'var(--danger)',
   secret:   'var(--accent)',
+}
+
+// The same five server values again, mapped to catalog PATHS rather than
+// words: this table is read at render from module scope, so a word here
+// would be fixed at load and stay in whatever language the page started
+// in. An unrecognised rarity falls through to the raw wire value.
+const RARITY_KEYS = {
+  common:   'achievements.rarity.common',
+  uncommon: 'achievements.rarity.uncommon',
+  rare:     'achievements.rarity.rare',
+  mythic:   'achievements.rarity.mythic',
+  secret:   'achievements.rarity.secret',
 }
 
 function fmtMemberSince(decks) {
@@ -54,10 +68,20 @@ function fmtTime(ts) {
 }
 
 function BadgeTile({ badge, earned, awardedAt }) {
+  const t = useT()
   const rarityColor = RARITY_COLOR[badge.rarity] || 'var(--ink-2)'
+  // Two keys rather than one with a conditional tail: the earned and locked
+  // tooltips are different sentences, and splicing a fragment onto the end
+  // of a translated string pins it to English word order. The badge name
+  // and description are server-authored and ride in as values.
+  const tip = earned
+    ? t('op.badge_tip_earned', {
+        name: badge.name, desc: badge.description, date: fmtTime(awardedAt),
+      })
+    : t('op.badge_tip_locked', { name: badge.name, desc: badge.description })
   return (
     <div
-      title={`${badge.name} — ${badge.description}${earned ? `\nEarned ${fmtTime(awardedAt)}` : ' (locked)'}`}
+      title={tip}
       style={{
         border: `1px solid ${earned ? rarityColor : 'var(--rule-2)'}`,
         background: 'var(--panel)',
@@ -83,13 +107,14 @@ function BadgeTile({ badge, earned, awardedAt }) {
         fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase',
         color: earned ? rarityColor : 'var(--ink-3)',
       }}>
-        {badge.rarity}
+        {RARITY_KEYS[badge.rarity] ? t(RARITY_KEYS[badge.rarity]) : badge.rarity}
       </span>
     </div>
   )
 }
 
 export default function OperatorProfile() {
+  const t = useT()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { elo } = useLiveSocket()
@@ -217,13 +242,19 @@ export default function OperatorProfile() {
   const country = deriveCountry(profile?.country)
   const flag = countryFlagEmoji(country)
   const memberSince = fmtMemberSince(decks)
-  const upperOwner = (owner || 'OPERATOR').toUpperCase()
+  const upperOwner = (owner || t('op.operator')).toUpperCase()
 
+  // locale is read here and carried in the deps because useT returns the
+  // MODULE-LEVEL translator — its identity never changes, so listing `t`
+  // alone would leave the tab title frozen at whatever language the page
+  // was mounted in. Two keys instead of a spliced ` · N ELO` tail.
+  const locale = getLocale()
   useEffect(() => {
-    if (!owner) { document.title = 'HEXDEK Operator'; return }
-    const rating = bestRating?.rating ? ` · ${Math.round(bestRating.rating)} ELO` : ''
-    document.title = `${upperOwner}${rating} — HEXDEK`
-  }, [owner, upperOwner, bestRating])
+    if (!owner) { document.title = t('op.doc_title_anon'); return }
+    document.title = bestRating?.rating
+      ? t('op.doc_title_elo', { name: upperOwner, elo: Math.round(bestRating.rating) })
+      : t('op.doc_title', { name: upperOwner })
+  }, [owner, upperOwner, bestRating, locale, t])
 
   const earnedById = useMemo(() => {
     const m = {}
@@ -237,9 +268,11 @@ export default function OperatorProfile() {
   if (!owner) {
     return (
       <>
-        <Tape left="OPERATOR / / NO OWNER" mid="SET A DISPLAY NAME" right="DOC HX-501" />
+        <Tape left={t('op.tape_no_owner')} mid={t('op.tape_set_name')} right="DOC HX-501" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; SET DISPLAY NAME OR HEXDEK_OWNER FIRST.</div>
+          {/* The env-var name rides in as a value so it is written once
+              here instead of 25 times across the catalogs. */}
+          <div className="t-md muted">{t('op.set_name_first', { env: 'HEXDEK_OWNER' })}</div>
         </div>
       </>
     )
@@ -248,14 +281,14 @@ export default function OperatorProfile() {
   return (
     <>
       <Tape
-        left={`OPERATOR / / ${upperOwner}${flag ? ' ' + flag : ''}`}
-        mid={achLoading || decksLoading ? 'LOADING' : 'PERSONAL RECORD'}
+        left={t('op.tape_left', { name: upperOwner }) + (flag ? ' ' + flag : '')}
+        mid={achLoading || decksLoading ? t('common.loading') : t('op.tape_mid')}
         right="DOC HX-501"
       />
 
       <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <ContextBox id="operator.intro">
-          Your operator profile — display name, country, decks, recent matches, friends, and achievements. Click a deck to open its archive; click a match row to open the game report (replay, turn-by-turn log).
+          {t('op.intro')}
         </ContextBox>
 
         {/* ID card */}
@@ -264,42 +297,42 @@ export default function OperatorProfile() {
           title={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {flag && (
-                <span title={country} aria-label={`Country: ${country}`} style={{ fontSize: 18, lineHeight: 1 }}>
+                <span title={country} aria-label={t('op.country_aria', { code: country })} style={{ fontSize: 18, lineHeight: 1 }}>
                   {flag}
                 </span>
               )}
-              OPERATOR ID
+              {t('op.id_title')}
             </span>
           }
           right={<Tag solid>{upperOwner}</Tag>}
         >
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
             <KV rows={[
-              ['DISPLAY NAME',
+              [t('op.kv_display_name'),
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {flag && <span style={{ fontSize: 14, lineHeight: 1 }}>{flag}</span>}
                   {upperOwner}
                 </span>,
               ],
-              ['EMAIL', user?.email || '—'],
-              ['COUNTRY', country || '—'],
-              ['MEMBER SINCE', memberSince, 'member_since'],
-              ['DECKS', String(decks.length)],
+              [t('op.kv_email'), user?.email || '—'],
+              [t('op.kv_country'), country || '—'],
+              [t('op.kv_member_since'), memberSince, 'member_since'],
+              [t('op.kv_decks'), String(decks.length)],
             ]} />
             <KV rows={[
-              ['TOTAL GAMES', aggregate.games > 0 ? String(aggregate.games) : '—', 'games'],
-              ['RECORD',
+              [t('op.kv_total_games'), aggregate.games > 0 ? String(aggregate.games) : '—', 'games'],
+              [t('op.kv_record'),
                 aggregate.games > 0
                   ? <span>
-                      <span style={{ color: 'var(--ok)' }}>{aggregate.wins}W</span>
+                      <span style={{ color: 'var(--ok)' }}>{t('op.wins_suffix', { count: aggregate.wins })}</span>
                       <span className="muted"> / </span>
-                      <span style={{ color: 'var(--danger)' }}>{aggregate.losses}L</span>
+                      <span style={{ color: 'var(--danger)' }}>{t('op.losses_suffix', { count: aggregate.losses })}</span>
                     </span>
                   : '—',
                 'record',
               ],
-              ['WIN RATE', aggregate.games > 0 ? `${aggregate.winRate.toFixed(1)}%` : '—', 'win_rate'],
-              ['BEST ELO',
+              [t('op.kv_win_rate'), aggregate.games > 0 ? `${aggregate.winRate.toFixed(1)}%` : '—', 'win_rate'],
+              [t('op.kv_best_elo'),
                 bestRating
                   ? <span>
                       <span style={{ fontWeight: 700 }}>{Math.round(bestRating.rating)}</span>
@@ -310,7 +343,7 @@ export default function OperatorProfile() {
                   : '—',
                 'best_elo',
               ],
-              ['FRIENDS', String(friends.length)],
+              [t('nav.friends'), String(friends.length)],
             ]} />
           </div>
         </Panel>
@@ -319,14 +352,22 @@ export default function OperatorProfile() {
         <CreditsPanel />
 
         {/* My Decks */}
-        <Panel code="OP.1" title="MY DECKS" right={<span className="t-xs muted">{decks.length} BUILDS</span>}>
+        {/* Plural chosen at the CALL SITE with two keys rather than hanging
+            an English S off the count. */}
+        <Panel code="OP.1" title={t('nav.my_decks')} right={
+          <span className="t-xs muted">
+            {decks.length === 1
+              ? t('op.builds_one', { count: decks.length })
+              : t('op.builds', { count: decks.length })}
+          </span>
+        }>
           {decksLoading ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; LOADING DECK COLLECTION<span className="blink">_</span>
+              {t('op.loading_decks')}<span className="blink">_</span>
             </div>
           ) : decks.length === 0 ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; NO DECKS YET. IMPORT ONE FROM THE DECKS PAGE.
+              {t('op.no_decks')}
             </div>
           ) : (
             <DeckShelf decks={decks.slice(0, 60)} eloByDeckId={eloByDeckId} navigate={navigate} />
@@ -335,14 +376,16 @@ export default function OperatorProfile() {
 
         {/* Match History + Friends side by side */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-          <Panel code="OP.2" title="MATCH HISTORY" right={<span className="t-xs muted">{myGames.length} RECENT</span>}>
+          <Panel code="OP.2" title={t('op.match_history')} right={
+            <span className="t-xs muted">{t('op.recent_count', { count: myGames.length })}</span>
+          }>
             {gamesLoading ? (
               <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-                &gt; LOADING<span className="blink">_</span>
+                {t('op.loading_line')}<span className="blink">_</span>
               </div>
             ) : myGames.length === 0 ? (
               <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-                &gt; NO GAMES RECORDED FOR THIS OPERATOR.
+                {t('op.no_games')}
               </div>
             ) : (
               <div>
@@ -356,11 +399,11 @@ export default function OperatorProfile() {
                   color: 'var(--ink-3)',
                   fontWeight: 700,
                 }}>
-                  <span>RESULT</span>
-                  <span>OPPONENT</span>
-                  <span style={{ textAlign: 'right' }}>TURNS</span>
-                  <span className="op-match-end" style={{ textAlign: 'right' }}>END</span>
-                  <span style={{ textAlign: 'right' }}>DATE</span>
+                  <span>{t('op.col_result')}</span>
+                  <span>{t('op.col_opponent')}</span>
+                  <span style={{ textAlign: 'right' }}>{t('op.col_turns')}</span>
+                  <span className="op-match-end" style={{ textAlign: 'right' }}>{t('op.col_end')}</span>
+                  <span style={{ textAlign: 'right' }}>{t('op.col_date')}</span>
                 </div>
                 {myGames.map((g) => {
                   const won = g.winner === g.my_seat
@@ -385,7 +428,7 @@ export default function OperatorProfile() {
                       }}
                     >
                       <Tag solid kind={won ? 'ok' : drew ? 'warn' : 'bad'}>
-                        {drew ? 'DRAW' : won ? 'WIN' : 'LOSS'}
+                        {drew ? t('op.res_draw') : won ? t('op.res_win') : t('op.res_loss')}
                       </Tag>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {opponents}
@@ -404,10 +447,10 @@ export default function OperatorProfile() {
             )}
           </Panel>
 
-          <Panel code="OP.3" title="FRIENDS" right={<span className="t-xs muted">{friends.length}</span>}>
+          <Panel code="OP.3" title={t('nav.friends')} right={<span className="t-xs muted">{friends.length}</span>}>
             {friends.length === 0 ? (
               <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-                &gt; NO FRIENDS ADDED YET.
+                {t('op.no_friends')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -445,40 +488,49 @@ export default function OperatorProfile() {
           {contribCredits && (contribCredits.credits_total > 0 || contribCredits.chunks_completed > 0) && (
             <Panel
               code="OP.5"
-              title="DISTRIBUTED COMPUTE"
+              title={t('op.compute_title')}
               right={contribCredits.frozen
-                ? <Tag solid kind="warn">FROZEN</Tag>
-                : <Tag solid kind="ok">{contribCredits.credits_total.toLocaleString()} CREDITS</Tag>}
+                ? <Tag solid kind="warn">{t('op.frozen_tag')}</Tag>
+                : <Tag solid kind="ok">{t('op.credits_tag', { count: contribCredits.credits_total.toLocaleString() })}</Tag>}
             >
+              {/* frozen_reason arrives already worded from the server, so it
+                  is echoed; only the client-side 'manual' default is ours. */}
               <KV rows={[
-                ['CREDITS', contribCredits.credits_total.toLocaleString()],
-                ['CHUNKS COMPLETED', contribCredits.chunks_completed.toLocaleString()],
-                ['CHUNKS REJECTED', contribCredits.chunks_rejected.toLocaleString()],
-                ['GAMES SIMULATED', contribCredits.games_simulated.toLocaleString()],
-                ...(contribCredits.frozen ? [['FROZEN', contribCredits.frozen_reason || 'manual']] : []),
+                [t('op.kv_credits'), contribCredits.credits_total.toLocaleString()],
+                [t('op.kv_chunks_done'), contribCredits.chunks_completed.toLocaleString()],
+                [t('op.kv_chunks_rejected'), contribCredits.chunks_rejected.toLocaleString()],
+                [t('op.kv_games_sim'), contribCredits.games_simulated.toLocaleString()],
+                ...(contribCredits.frozen ? [[t('op.kv_frozen'), contribCredits.frozen_reason || t('op.frozen_manual')]] : []),
               ]} />
               <div className="t-xs muted" style={{ marginTop: 8, lineHeight: 1.5 }}>
-                &gt; CONTRIBUTING VIA <span style={{ color: 'var(--ink)' }}>HEXDEK-CONTRIB</span> — game simulations run on your machine, validated server-side.
+                {/* The tool's name is a styled node, so fill() splits the
+                    translated sentence around it — concatenating would pin
+                    the name to the position English puts it in. */}
+                {fill(t('op.contrib_note'), {
+                  tool: <span style={{ color: 'var(--ink)' }}>HEXDEK-CONTRIB</span>,
+                })}
               </div>
             </Panel>
           )}
         </div>
 
         {/* Achievement showcase */}
-        <Panel code="OP.4" title="ACHIEVEMENTS" right={
+        <Panel code="OP.4" title={t('achievements.title')} right={
           <span className="t-xs muted">
             {achLoading
-              ? 'LOADING…'
-              : `${achievements?.badges?.length || 0} / ${catalog.length} EARNED`}
+              ? `${t('common.loading')}…`
+              : t('op.earned_count', {
+                  earned: achievements?.badges?.length || 0, total: catalog.length,
+                })}
           </span>
         }>
           {achLoading ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; LOADING<span className="blink">_</span>
+              {t('op.loading_line')}<span className="blink">_</span>
             </div>
           ) : catalog.length === 0 ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; NO ACHIEVEMENT CATALOG AVAILABLE.
+              {t('op.no_catalog')}
             </div>
           ) : (
             <div style={{
