@@ -1,72 +1,76 @@
 import { Panel, KV } from '../components/chrome'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
 
 export default function About() {
+  const t = useT()
   return (
     <div style={{ padding: '20px 30px', maxWidth: 800, margin: '0 auto' }}>
-      <Panel code="ABT.0" title="ABOUT HEXDEK">
+      <Panel code="ABT.0" title={t('abt.title')}>
         <div className="t-md" style={{ lineHeight: 1.7 }}>
-          <p>
-            HexDek is an open-source Magic: The Gathering Commander engine and analytics platform.
-            It simulates full 4-player Commander games with AI-driven decision making, tracks deck
-            performance via ELO and TrueSkill ratings, and surfaces deep analytics on card synergies,
-            matchups, and metagame trends.
-          </p>
-          <p style={{ marginTop: 12 }}>
-            The engine parses real MTG card text into an AST, implements the comprehensive rules
-            (priority, stack, combat, state-based actions, replacement effects, layers), and plays
-            complete games autonomously. Every game produces rich data that feeds back into the system.
-          </p>
+          <p>{t('abt.intro_1')}</p>
+          <p style={{ marginTop: 12 }}>{t('abt.intro_2')}</p>
         </div>
       </Panel>
 
-      <Panel code="ABT.1" title="PHILOSOPHY" style={{ marginTop: 16 }}>
+      {/* PHILOSOPHY reads the donations page's key: same word, same
+          register, already translated in all 25. A second key holding
+          the same sentence is how frg.p_value drifted into reading
+          half-English in 18 locales. */}
+      <Panel code="ABT.1" title={t('don.philosophy')} style={{ marginTop: 16 }}>
         <div className="t-md" style={{ lineHeight: 1.7 }}>
           <p>
-            <strong>No ads. No subscriptions. No paywalls.</strong>
+            <strong>{t('abt.phil_strong')}</strong>
           </p>
-          <p style={{ marginTop: 8 }}>
-            HexDek is built by players, for players. The project runs entirely on donations and
-            community contributions. We believe competitive MTG analytics should be accessible to
-            everyone — not locked behind a paywall.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            All engine code is open source under the MIT license. Run your own tournaments,
-            contribute card handlers, or just enjoy the data.
-          </p>
+          <p style={{ marginTop: 8 }}>{t('abt.phil_1')}</p>
+          <p style={{ marginTop: 8 }}>{t('abt.phil_2')}</p>
         </div>
       </Panel>
 
-      <Panel code="ABT.2" title="WHAT WE DO" style={{ marginTop: 16 }}>
+      {/* The tool names inside these values — YggdrasilHat, Heimdall,
+          Freya, Huginn, Muninn, Moxfield — ride through each locale
+          unchanged; the prose around them is what gets worded. DECKS is
+          nav.decks, the same word the sidebar already renders. */}
+      <Panel code="ABT.2" title={t('abt.t_what')} style={{ marginTop: 16 }}>
         <KV rows={[
-          ['ENGINE', 'Full MTG rules engine — priority, stack, combat, SBAs, layers, zones'],
-          ['AI', 'YggdrasilHat — 8-dimensional evaluator with political awareness'],
-          ['ANALYTICS', 'Heimdall post-game reports, Freya strategy analysis, Huginn emergent synergies'],
-          ['RATINGS', 'ELO + TrueSkill Bayesian ratings across thousands of simulated games'],
-          ['INTEGRITY', 'Muninn persistent telemetry — parser gaps, crashes, dead triggers tracked'],
-          ['DECKS', 'Import from Moxfield or paste a list — auto-parsed, auto-rated'],
+          [t('abt.k_engine'), t('abt.v_engine')],
+          [t('abt.k_ai'), t('abt.v_ai')],
+          [t('abt.k_analytics'), t('abt.v_analytics')],
+          [t('abt.k_ratings'), t('abt.v_ratings')],
+          [t('abt.k_integrity'), t('abt.v_integrity')],
+          [t('nav.decks'), t('abt.v_decks')],
         ]} />
       </Panel>
 
-      <Panel code="ABT.3" title="THE STACK" style={{ marginTop: 16 }}>
+      {/* Three values here stay English and have no key: 'React + Vite'
+          and the eight-name tool roster are proper nouns start to
+          finish, and MIT is an SPDX licence identifier, not a word.
+          k_ai_hats keeps HATS for the same reason — `hat` is the
+          engine's own name for an AI player. */}
+      <Panel code="ABT.3" title={t('abt.t_stack')} style={{ marginTop: 16 }}>
         <KV rows={[
-          ['ENGINE', 'Go (100K+ lines)'],
-          ['FRONTEND', 'React + Vite'],
-          ['AI HATS', 'Greedy, Poker, YggdrasilHat (unified political AI)'],
-          ['TOOLS', 'Thor, Odin, Loki, Heimdall, Freya, Valkyrie, Huginn, Muninn'],
-          ['DATA', 'JSON flat-file persistence (no external DB dependency)'],
-          ['LICENSE', 'MIT'],
+          [t('abt.k_engine'), t('abt.v_go')],
+          [t('abt.k_frontend'), 'React + Vite'],
+          [t('abt.k_ai_hats'), t('abt.v_hats')],
+          [t('abt.k_tools'), 'Thor, Odin, Loki, Heimdall, Freya, Valkyrie, Huginn, Muninn'],
+          [t('abt.k_data'), t('abt.v_data')],
+          [t('abt.k_license'), 'MIT'],
         ]} />
       </Panel>
 
-      <Panel code="ABT.4" title="CONTACT" style={{ marginTop: 16 }}>
+      <Panel code="ABT.4" title={t('abt.t_contact')} style={{ marginTop: 16 }}>
         <div className="t-md" style={{ lineHeight: 1.7 }}>
+          {/* The name of the control is nav.feedback — the key the footer
+              link itself renders — not a string of its own. This sentence
+              used to name a "Bug Report" button; the link it points at
+              reads BUG / SUGGESTION. Minting the name here would have
+              frozen that mismatch into 25 catalogs instead of one. */}
           <p>
-            Found a bug or have a suggestion? Use the <strong style={{ color: 'var(--danger)' }}>Bug Report</strong> button
-            in the footer below.
+            {fill(t('abt.contact_1'), {
+              button: <strong style={{ color: 'var(--danger)' }}>{t('nav.feedback')}</strong>,
+            })}
           </p>
-          <p style={{ marginTop: 8 }}>
-            Want to contribute? The project is on GitHub. Pull requests welcome.
-          </p>
+          <p style={{ marginTop: 8 }}>{t('abt.contact_2')}</p>
         </div>
       </Panel>
     </div>
