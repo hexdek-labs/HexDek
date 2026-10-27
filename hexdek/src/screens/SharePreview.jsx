@@ -6,6 +6,7 @@ import CardLink from '../components/CardLink'
 import { api, cardArtUrl, cardImageUrl } from '../services/api'
 import { useArtContrast } from '../hooks/useArtContrast'
 import { useLiveSocket } from '../hooks/useLiveSocket'
+import { useT } from '../i18n'
 
 // Compact thumbnail used in HOT CARDS — mirrors DeckArchive's CardThumb
 // without the cmc/score chips since the share preview only renders the
@@ -43,7 +44,7 @@ function deriveTheme(colorIdentity) {
   }
   const ids = colorIdentity.length ? colorIdentity : []
   if (ids.length === 0) {
-    return { wash: 'linear-gradient(135deg, rgba(28,29,22,0.9), rgba(20,21,15,0.9))', accent: '#8a9682', label: 'COLORLESS' }
+    return { wash: 'linear-gradient(135deg, rgba(28,29,22,0.9), rgba(20,21,15,0.9))', accent: '#8a9682', labelKey: 'shr.ci_colorless' }
   }
   let stops
   if (ids.length === 1) {
@@ -59,17 +60,29 @@ function deriveTheme(colorIdentity) {
   const accentColor = ids.find(c => accentPriority.includes(c))
     ? COLORS[accentPriority.find(c => ids.includes(c))].accent
     : '#8a9682'
+  // The 25 guild / shard / wedge names are proper names and stay as they
+  // are. The seven descriptive labels are catalog PATHS instead: this
+  // function is memoised at its call site, so a word returned from here
+  // would freeze in whatever language was active when the colour identity
+  // last changed. The render site does the wording.
   const COMBO_NAMES = {
-    W: 'MONO WHITE', U: 'MONO BLUE', B: 'MONO BLACK', R: 'MONO RED', G: 'MONO GREEN',
     WU: 'AZORIUS', UB: 'DIMIR', BR: 'RAKDOS', RG: 'GRUUL', GW: 'SELESNYA',
     WB: 'ORZHOV', UR: 'IZZET', BG: 'GOLGARI', RW: 'BOROS', UG: 'SIMIC',
     WUB: 'ESPER', UBR: 'GRIXIS', BRG: 'JUND', RGW: 'NAYA', GWU: 'BANT',
     WBG: 'ABZAN', URW: 'JESKAI', BGU: 'SULTAI', RWB: 'MARDU', GUR: 'TEMUR',
     WUBR: 'YORE-TILLER', WUBG: 'WITCH-MAW', WURG: 'INK-TREADER', WBRG: 'DUNE-BROOD', UBRG: 'GLINT-EYE',
-    WUBRG: 'FIVE-COLOR',
   }
-  const label = COMBO_NAMES[ids.join('')] || ids.join('')
-  return { wash: `linear-gradient(135deg, ${stops})`, accent: accentColor, label }
+  const COMBO_KEYS = {
+    W: 'shr.ci_mono_w', U: 'shr.ci_mono_u', B: 'shr.ci_mono_b',
+    R: 'shr.ci_mono_r', G: 'shr.ci_mono_g', WUBRG: 'shr.ci_five_color',
+  }
+  const joined = ids.join('')
+  return {
+    wash: `linear-gradient(135deg, ${stops})`,
+    accent: accentColor,
+    label: COMBO_NAMES[joined] || joined,
+    labelKey: COMBO_KEYS[joined] || null,
+  }
 }
 
 // SharePreview — link-preview-friendly version of the deck page. No nav,
@@ -83,6 +96,7 @@ export default function SharePreview() {
   // owner/id, but the rendered surface and the meta tags omit the owner.
   const [searchParams] = useSearchParams()
   const anonymous = isAnonymousShare(searchParams)
+  const t = useT()
   const [deck, setDeck] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [commanderCardStats, setCommanderCardStats] = useState(null)
@@ -145,12 +159,12 @@ export default function SharePreview() {
   )
 
   const slugToTitle = (slug, ownerSlug) => {
-    if (!slug) return 'DECK'
+    if (!slug) return t('shr.deck_fallback')
     let s = String(slug)
     s = s.replace(/_[A-Za-z0-9]{8,}$/, '')
     if (ownerSlug) s = s.replace(new RegExp(`_${ownerSlug.toLowerCase()}$`, 'i'), '')
     s = s.replace(/_b[0-5]$/i, '')
-    return s.replace(/_/g, ' ').toUpperCase() || 'DECK'
+    return s.replace(/_/g, ' ').toUpperCase() || t('shr.deck_fallback')
   }
   const deckName = deck?.custom_name || deck?.commander || slugToTitle(id, owner)
   const cards = deck?.cards || []
@@ -158,7 +172,11 @@ export default function SharePreview() {
   const wbsLabel = analysis?.bracket_label || ''
   const measuredBracket = analysis?.measured_bracket || null
   const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
+  // Freya's archetype arrives already worded, so it is echoed as it comes.
+  // The 'UNKNOWN' sentinel stays English because the og:/twitter: block
+  // below compares against it; only the on-screen tag is worded.
   const archetype = analysis?.archetype?.toUpperCase() || 'UNKNOWN'
+  const archetypeTag = archetype === 'UNKNOWN' ? t('shr.unknown') : archetype
 
   // colorIdentity walks every card scanning mana_cost regexes when the
   // analysis payload doesn't carry color_identity — on a 100-card deck
@@ -185,6 +203,9 @@ export default function SharePreview() {
   }, [analysis?.color_identity, deck?.commander_card, cards])
 
   const pageTheme = useMemo(() => deriveTheme(colorIdentity), [colorIdentity])
+  // Worded out here, not inside the memo: the colour label is the one
+  // string on this screen that a memo would hold across a switch.
+  const colorLabel = pageTheme.labelKey ? t(pageTheme.labelKey) : pageTheme.label
   const cmdrCardName = deck?.commander_card || cards.find(c => c.name?.startsWith('COMMANDER:'))?.name?.replace('COMMANDER:', '').trim()
   const cmdrImageUrl = cmdrCardName ? cardArtUrl(cmdrCardName) : null
   const cmdrFullUrl = cmdrCardName ? cardImageUrl(cmdrCardName) : null
@@ -200,6 +221,10 @@ export default function SharePreview() {
   // HTML so the Go /share/{owner}/{id} handler does the real work; this
   // keeps the meta accurate during SPA navigation and for the small set
   // of crawlers (LinkedIn, some Slackbot fallbacks) that do execute JS.
+  //
+  // The strings built below stay ENGLISH on purpose. They are crawler-
+  // facing and have to match what the Go handler emits for the same
+  // public URL, which has no viewer locale to follow.
   useEffect(() => {
     if (!deck) return
     const title = cmdrCardName && cmdrCardName.toUpperCase() !== deckName
@@ -274,7 +299,7 @@ export default function SharePreview() {
   if (loading) {
     return (
       <div style={{ padding: 36, textAlign: 'center' }}>
-        <div className="t-md muted">&gt; LOADING DECK PREVIEW<span className="blink">_</span></div>
+        <div className="t-md muted">{t('shr.loading')}<span className="blink">_</span></div>
       </div>
     )
   }
@@ -295,14 +320,14 @@ export default function SharePreview() {
 
       <Tape
         left={anonymous
-          ? `SHARE / / ANONYMOUS / / ${deckName}`
-          : `SHARE / / ${owner?.toUpperCase()} / / ${deckName}`}
+          ? t('shr.tape_anon', { name: deckName })
+          : t('shr.tape_owner', { owner: owner?.toUpperCase(), name: deckName })}
         mid={
           bracketDiverges
-            ? `Estimated Bracket B${measuredBracket} (Bracket B${wbs}) · ${pageTheme.label}`
+            ? t('shr.mid_diverges', { measured: measuredBracket, declared: wbs, color: colorLabel })
             : wbs
-              ? `Bracket B${wbs} · ${pageTheme.label}`
-              : `Bracket pending · ${pageTheme.label}`
+              ? t('shr.mid_bracket', { declared: wbs, color: colorLabel })
+              : t('shr.mid_pending', { color: colorLabel })
         }
         right="HEXDEK ↗"
       />
@@ -315,8 +340,8 @@ export default function SharePreview() {
           : undefined}
       >
         <div className="deck-hero__scrim" />
-        <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {pageTheme.label}</div>
-        <div className="deck-hero__corner deck-hero__corner--tr">{anonymous ? 'ANONYMOUS' : owner?.toUpperCase()} / / {id}</div>
+        <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {colorLabel}</div>
+        <div className="deck-hero__corner deck-hero__corner--tr">{anonymous ? t('shr.anonymous') : owner?.toUpperCase()} / / {id}</div>
         <div className="deck-hero__body">
           {cmdrFullUrl && (
             <div className="deck-hero__card">
@@ -330,9 +355,9 @@ export default function SharePreview() {
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="deck-hero__meta">
-              <Tag solid>{wbs ? `B${wbs}` : 'BRACKET PENDING'}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
-              {bracketDiverges && <Tag solid kind="warn">EST. B{measuredBracket}</Tag>}
-              <Tag>{archetype}</Tag>
+              <Tag solid>{wbs ? `B${wbs}` : t('shr.bracket_pending')}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
+              {bracketDiverges && <Tag solid kind="warn">{t('shr.est_bracket', { measured: measuredBracket })}</Tag>}
+              <Tag>{archetypeTag}</Tag>
               {colorIdentity.length > 0 && <Tag>{colorIdentity.join('')}</Tag>}
             </div>
             <div className="deck-hero__title-row">
@@ -352,61 +377,65 @@ export default function SharePreview() {
           </div>
           <div className="deck-vital-signs__lbl">HexELO</div>
           {deckElo?.games > 0 ? (
-            <div className="deck-vital-signs__sub">{deckElo.games.toLocaleString()} GAMES</div>
+            <div className="deck-vital-signs__sub">{t('shr.n_games', { count: deckElo.games.toLocaleString() })}</div>
           ) : (
-            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>NOT YET RANKED</div>
+            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>{t('shr.not_ranked')}</div>
           )}
         </div>
         <div className="deck-vital-signs__cell">
           <div className="deck-vital-signs__num">
             {wbs && wbs !== '?' ? `B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : '—'}
           </div>
-          <div className="deck-vital-signs__lbl">POWER LEVEL</div>
+          <div className="deck-vital-signs__lbl">{t('shr.power_level')}</div>
           {wbsLabel ? (
             <div className="deck-vital-signs__sub">{wbsLabel.toUpperCase()}</div>
           ) : (
-            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>PENDING ANALYSIS</div>
+            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>{t('shr.pending_analysis')}</div>
           )}
         </div>
         <div className="deck-vital-signs__cell">
           <div className="deck-vital-signs__num">
             {deckElo?.win_rate != null ? `${deckElo.win_rate}%` : '—'}
           </div>
-          <div className="deck-vital-signs__lbl">WIN RATE</div>
+          <div className="deck-vital-signs__lbl">{t('shr.win_rate')}</div>
           {deckElo?.wins != null && deckElo?.losses != null ? (
             <div className="deck-vital-signs__sub">
-              <span style={{ color: 'var(--ok)' }}>{deckElo.wins.toLocaleString()}W</span>
+              <span style={{ color: 'var(--ok)' }}>{t('shr.wins_suffix', { count: deckElo.wins.toLocaleString() })}</span>
               {' · '}
-              <span style={{ color: 'var(--danger)' }}>{deckElo.losses.toLocaleString()}L</span>
+              <span style={{ color: 'var(--danger)' }}>{t('shr.losses_suffix', { count: deckElo.losses.toLocaleString() })}</span>
             </div>
           ) : (
-            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>NO SAMPLE</div>
+            <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>{t('shr.no_sample')}</div>
           )}
         </div>
       </div>
 
       <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {ranked.length > 0 && (
-          <Panel code="04.HC" title={`HOT CARDS / / TOP ${ranked.length} BY WR CONTRIBUTION`}>
+          <Panel code="04.HC" title={t('shr.hot_title', { count: ranked.length })}>
             <div className="t-xs muted" style={{ marginBottom: 8 }}>
-              Cards in this deck pulling the most weight in {deck?.commander_card || 'commander'} games — sorted by win-rate lift over the 25% 4-player baseline, sample-size weighted (√games).
+              {t('shr.hot_note', { commander: deck?.commander_card || t('shr.hot_note_commander') })}
             </div>
             <div className="hot-cards-grid">
               {ranked.map((r, i) => (
                 <div key={i} className="hot-cards-tile">
                   <HotCardThumb name={r.name} />
                   <span className="hot-cards-chip hot-cards-chip--wr">{r.wr.toFixed(0)}%</span>
-                  <span className="hot-cards-chip hot-cards-chip--games">{r.games}g · +{(r.wr - baseline).toFixed(0)}</span>
+                  <span className="hot-cards-chip hot-cards-chip--games">{t('shr.games_short', { count: r.games })} · +{(r.wr - baseline).toFixed(0)}</span>
                 </div>
               ))}
             </div>
           </Panel>
         )}
 
+        {/* Plural picked at the CALL SITE with two keys, rather than
+            bolting an English 'ES' onto the count. */}
         {similarDecks && similarDecks.length > 0 && (
-          <Panel code="04.SD" title={`SIMILAR DECKS / / ${similarDecks.length} MATCH${similarDecks.length === 1 ? '' : 'ES'}`}>
+          <Panel code="04.SD" title={similarDecks.length === 1
+            ? t('shr.similar_title_one', { count: similarDecks.length })
+            : t('shr.similar_title_many', { count: similarDecks.length })}>
             <div className="t-xs muted" style={{ marginBottom: 8 }}>
-              Decks ranked by shared-card overlap with bonuses for matching commander, archetype, and bracket.
+              {t('shr.similar_note')}
             </div>
             <div className="similar-decks-grid">
               {similarDecks.map((d) => {
@@ -419,7 +448,7 @@ export default function SharePreview() {
                     key={`sd-${d.owner}/${d.id}`}
                     to={`/decks/${d.owner}/${d.id}`}
                     className="panel similar-decks-tile"
-                    title={`${showName} · ${d.owner} · ${d.shared_cards} shared`}
+                    title={t('shr.tile_title', { name: showName, owner: d.owner, count: d.shared_cards })}
                   >
                     <div
                       className={`similar-decks-tile__art ${cmdrArt ? '' : 'hatch'}`}
@@ -428,7 +457,7 @@ export default function SharePreview() {
                       {hexRating != null && (
                         <span className="similar-decks-tile__chip similar-decks-tile__chip--elo">{hexRating}</span>
                       )}
-                      <span className="similar-decks-tile__chip similar-decks-tile__chip--shared">{d.shared_cards} SHARED</span>
+                      <span className="similar-decks-tile__chip similar-decks-tile__chip--shared">{t('shr.n_shared', { count: d.shared_cards })}</span>
                     </div>
                     <div className="similar-decks-tile__body">
                       <div className="similar-decks-tile__name t-xs">{showName}</div>
@@ -448,7 +477,7 @@ export default function SharePreview() {
         {!anonymous && (
           <div style={{ padding: '8px 12px', textAlign: 'center' }}>
             <Link to={`/decks/${owner}/${id}`} className="t-xs muted" style={{ letterSpacing: '0.06em' }}>
-              VIEW FULL DECK PAGE ON HEXDEK ↗
+              {t('shr.view_full')}
             </Link>
           </div>
         )}
