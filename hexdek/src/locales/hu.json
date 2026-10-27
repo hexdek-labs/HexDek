@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ sor)",
     "v_hats": "Greedy, Poker, YggdrasilHat (egységesített politikai AI)",
     "v_data": "JSON lapos fájlos perzisztencia (külső DB nélkül)"
+  },
+  "cmp": {
+    "tape_left": "ÖSSZEHASONLÍTÁS / / {a} VS {b}",
+    "tape_counts": "{shared} KÖZÖS · {a}/{b} EGYEDI",
+    "side_a": "A PAKLI",
+    "side_b": "B PAKLI",
+    "deck_fallback": "PAKLI",
+    "swap_deck": "PAKLICSERE ↺",
+    "vs": "VS",
+    "swap_sides": "Oldalak felcserélése",
+    "metrics": "EGYMÁS ELLENI MUTATÓK",
+    "s_power": "ERŐ PERCENTILIS",
+    "s_avg_cmc": "ÁTLAGOS CMC",
+    "s_cheap_int": "OLCSÓ INTERAKCIÓ",
+    "s_card_count": "LAPSZÁM",
+    "s_mana_ratio": "MANAARÁNY",
+    "s_mana_curve": "MANAGÖRBE",
+    "only_a": "CSAK AZ A-BAN / / {count}",
+    "shared": "KÖZÖS / / {count}",
+    "only_b": "CSAK A B-BEN / / {count}",
+    "no_overlap": "— NINCS ÁTFEDÉS —",
+    "ctx_footer": "Visszavisz bármelyik pakli teljes archívumoldalára (elemzés, gauntlet, paklilista). Használd a {swap} gombot a fenti kiemelt lapon, és cserélj le egy oldalt anélkül, hogy elhagynád ezt az oldalt.",
+    "back_to": "VISSZA: {deck}",
+    "pick_title": "VÁLASSZ PAKLIT AZ ÖSSZEHASONLÍTÁSHOZ",
+    "pick_aria": "Válassz paklit az összehasonlításhoz",
+    "close_aria": "Választó bezárása",
+    "filter_ph": "PAKLIK SZŰRÉSE...",
+    "no_matches": "NINCS TALÁLAT"
   }
 }

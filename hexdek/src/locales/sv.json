@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ rader)",
     "v_hats": "Greedy, Poker, YggdrasilHat (enad politisk AI)",
     "v_data": "JSON-flatfilspersistens (inget externt DB-beroende)"
+  },
+  "cmp": {
+    "tape_left": "JÄMFÖR / / {a} VS {b}",
+    "tape_counts": "{shared} GEMENSAMMA · {a}/{b} UNIKA",
+    "side_a": "LEK A",
+    "side_b": "LEK B",
+    "deck_fallback": "LEK",
+    "swap_deck": "BYT LEK ↺",
+    "vs": "VS",
+    "swap_sides": "Byt sidor",
+    "metrics": "MÄTVÄRDEN HUVUD MOT HUVUD",
+    "s_power": "STYRKEPERCENTIL",
+    "s_avg_cmc": "GENOMSN. CMC",
+    "s_cheap_int": "BILLIG INTERAKTION",
+    "s_card_count": "ANTAL KORT",
+    "s_mana_ratio": "MANAFÖRHÅLLANDE",
+    "s_mana_curve": "MANAKURVA",
+    "only_a": "BARA I A / / {count}",
+    "shared": "GEMENSAMMA / / {count}",
+    "only_b": "BARA I B / / {count}",
+    "no_overlap": "— INGEN ÖVERLAPPNING —",
+    "ctx_footer": "Leder tillbaka till någon av lekarnas fullständiga arkivsida (analys, gauntlet, leklista). Använd {swap} på ett hjältekort ovan för att byta ut en sida utan att lämna den här sidan.",
+    "back_to": "TILLBAKA TILL {deck}",
+    "pick_title": "VÄLJ EN LEK ATT JÄMFÖRA",
+    "pick_aria": "Välj en lek att jämföra",
+    "close_aria": "Stäng väljaren",
+    "filter_ph": "FILTRERA LEKAR...",
+    "no_matches": "INGA TRÄFFAR"
   }
 }

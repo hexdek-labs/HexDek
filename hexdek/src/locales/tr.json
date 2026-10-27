@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ satır)",
     "v_hats": "Greedy, Poker, YggdrasilHat (birleşik politik AI)",
     "v_data": "JSON düz dosya kalıcılığı (dış DB bağımlılığı yok)"
+  },
+  "cmp": {
+    "tape_left": "KARŞILAŞTIR / / {a} VS {b}",
+    "tape_counts": "{shared} ORTAK · {a}/{b} ÖZGÜN",
+    "side_a": "DESTE A",
+    "side_b": "DESTE B",
+    "deck_fallback": "DESTE",
+    "swap_deck": "DESTEYİ DEĞİŞTİR ↺",
+    "vs": "VS",
+    "swap_sides": "Tarafları değiştir",
+    "metrics": "KAFA KAFAYA METRİKLER",
+    "s_power": "GÜÇ YÜZDELİĞİ",
+    "s_avg_cmc": "ORT. CMC",
+    "s_cheap_int": "UCUZ ETKİLEŞİM",
+    "s_card_count": "KART SAYISI",
+    "s_mana_ratio": "MANA ORANI",
+    "s_mana_curve": "MANA EĞRİSİ",
+    "only_a": "SADECE A’DA / / {count}",
+    "shared": "ORTAK / / {count}",
+    "only_b": "SADECE B’DE / / {count}",
+    "no_overlap": "— ÖRTÜŞME YOK —",
+    "ctx_footer": "İki desteden herhangi birinin tam arşiv sayfasına döner (analiz, gauntlet, deste listesi). Bu sayfadan ayrılmadan bir tarafı değiştirmek için yukarıdaki öne çıkan kartta {swap} kullan.",
+    "back_to": "{deck} SAYFASINA DÖN",
+    "pick_title": "KARŞILAŞTIRILACAK DESTEYİ SEÇ",
+    "pick_aria": "Karşılaştırılacak desteyi seç",
+    "close_aria": "Seçiciyi kapat",
+    "filter_ph": "DESTELERİ FİLTRELE...",
+    "no_matches": "SONUÇ YOK"
   }
 }

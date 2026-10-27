@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ Zeilen)",
     "v_hats": "Greedy, Poker, YggdrasilHat (vereinheitlichte politische KI)",
     "v_data": "JSON-Flatfile-Persistenz (keine externe DB-Abhängigkeit)"
+  },
+  "cmp": {
+    "tape_left": "VERGLEICH / / {a} VS {b}",
+    "tape_counts": "{shared} GEMEINSAM · {a}/{b} EXKLUSIV",
+    "side_a": "DECK A",
+    "side_b": "DECK B",
+    "deck_fallback": "DECK",
+    "swap_deck": "DECK TAUSCHEN ↺",
+    "vs": "VS",
+    "swap_sides": "Seiten tauschen",
+    "metrics": "DIREKTVERGLEICH",
+    "s_power": "STÄRKE-PERZENTIL",
+    "s_avg_cmc": "DURCHSCHN. CMC",
+    "s_cheap_int": "GÜNSTIGE INTERAKTION",
+    "s_card_count": "KARTENZAHL",
+    "s_mana_ratio": "MANAVERHÄLTNIS",
+    "s_mana_curve": "MANAKURVE",
+    "only_a": "NUR IN A / / {count}",
+    "shared": "GEMEINSAM / / {count}",
+    "only_b": "NUR IN B / / {count}",
+    "no_overlap": "— KEINE ÜBERSCHNEIDUNG —",
+    "ctx_footer": "Führt zurück zur vollständigen Archivseite eines der beiden Decks (Analyse, Gauntlet, Deckliste). Nutze {swap} auf einer Heldenkarte oben, um eine Seite zu ersetzen, ohne diese Seite zu verlassen.",
+    "back_to": "ZURÜCK ZU {deck}",
+    "pick_title": "DECK ZUM VERGLEICHEN WÄHLEN",
+    "pick_aria": "Deck zum Vergleichen wählen",
+    "close_aria": "Auswahl schließen",
+    "filter_ph": "DECKS FILTERN...",
+    "no_matches": "KEINE TREFFER"
   }
 }

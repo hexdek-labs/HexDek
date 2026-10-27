@@ -1504,5 +1504,33 @@
     "v_go": "Go (plus de 100K lignes)",
     "v_hats": "Greedy, Poker, YggdrasilHat (IA politique unifiée)",
     "v_data": "Persistance en fichiers plats JSON (sans dépendance à une BD externe)"
+  },
+  "cmp": {
+    "tape_left": "COMPARAISON / / {a} VS {b}",
+    "tape_counts": "{shared} EN COMMUN · {a}/{b} UNIQUES",
+    "side_a": "DECK A",
+    "side_b": "DECK B",
+    "deck_fallback": "DECK",
+    "swap_deck": "CHANGER DE DECK ↺",
+    "vs": "VS",
+    "swap_sides": "Inverser les côtés",
+    "metrics": "MÉTRIQUES EN FACE À FACE",
+    "s_power": "PERCENTILE DE PUISSANCE",
+    "s_avg_cmc": "CMC MOYEN",
+    "s_cheap_int": "INTERACTION PEU CHÈRE",
+    "s_card_count": "NOMBRE DE CARTES",
+    "s_mana_ratio": "RATIO DE MANA",
+    "s_mana_curve": "COURBE DE MANA",
+    "only_a": "UNIQUEMENT EN A / / {count}",
+    "shared": "EN COMMUN / / {count}",
+    "only_b": "UNIQUEMENT EN B / / {count}",
+    "no_overlap": "— AUCUN RECOUVREMENT —",
+    "ctx_footer": "Renvoie vers la page d'archive complète de l'un ou l'autre deck (analyse, gauntlet, liste). Utilisez {swap} sur une carte vedette ci-dessus pour remplacer un côté sans quitter cette page.",
+    "back_to": "RETOUR À {deck}",
+    "pick_title": "CHOISIR UN DECK À COMPARER",
+    "pick_aria": "Choisir un deck à comparer",
+    "close_aria": "Fermer le sélecteur",
+    "filter_ph": "FILTRER LES DECKS...",
+    "no_matches": "AUCUN RÉSULTAT"
   }
 }

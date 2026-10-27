@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ linii)",
     "v_hats": "Greedy, Poker, YggdrasilHat (ujednolicona polityczna AI)",
     "v_data": "Trwałość w płaskich plikach JSON (bez zewnętrznej DB)"
+  },
+  "cmp": {
+    "tape_left": "PORÓWNANIE / / {a} VS {b}",
+    "tape_counts": "{shared} WSPÓLNYCH · {a}/{b} UNIKALNYCH",
+    "side_a": "TALIA A",
+    "side_b": "TALIA B",
+    "deck_fallback": "TALIA",
+    "swap_deck": "ZMIEŃ TALIĘ ↺",
+    "vs": "VS",
+    "swap_sides": "Zamień strony",
+    "metrics": "METRYKI JEDEN NA JEDNEGO",
+    "s_power": "PERCENTYL SIŁY",
+    "s_avg_cmc": "ŚREDNI CMC",
+    "s_cheap_int": "TANIA INTERAKCJA",
+    "s_card_count": "LICZBA KART",
+    "s_mana_ratio": "PROPORCJE MANY",
+    "s_mana_curve": "KRZYWA MANY",
+    "only_a": "TYLKO W A / / {count}",
+    "shared": "WSPÓLNE / / {count}",
+    "only_b": "TYLKO W B / / {count}",
+    "no_overlap": "— BRAK CZĘŚCI WSPÓLNEJ —",
+    "ctx_footer": "Wraca na pełną stronę archiwum którejkolwiek z talii (analiza, gauntlet, lista kart). Użyj {swap} na karcie u góry, żeby wymienić jedną stronę bez opuszczania tej strony.",
+    "back_to": "POWRÓT DO {deck}",
+    "pick_title": "WYBIERZ TALIĘ DO PORÓWNANIA",
+    "pick_aria": "Wybierz talię do porównania",
+    "close_aria": "Zamknij wybór",
+    "filter_ph": "FILTRUJ TALIE...",
+    "no_matches": "BRAK WYNIKÓW"
   }
 }

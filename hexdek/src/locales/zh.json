@@ -1504,5 +1504,33 @@
     "v_go": "Go（10 万行以上）",
     "v_hats": "Greedy、Poker、YggdrasilHat（统一的政治 AI）",
     "v_data": "JSON 平文件持久化（不依赖外部数据库）"
+  },
+  "cmp": {
+    "tape_left": "对比 / / {a} VS {b}",
+    "tape_counts": "共有 {shared} · 独有 {a}/{b}",
+    "side_a": "套牌 A",
+    "side_b": "套牌 B",
+    "deck_fallback": "套牌",
+    "swap_deck": "更换套牌 ↺",
+    "vs": "VS",
+    "swap_sides": "左右互换",
+    "metrics": "正面交锋指标",
+    "s_power": "强度百分位",
+    "s_avg_cmc": "平均 CMC",
+    "s_cheap_int": "低费干扰",
+    "s_card_count": "卡牌数量",
+    "s_mana_ratio": "法术力比例",
+    "s_mana_curve": "法术力曲线",
+    "only_a": "仅 A 有 / / {count}",
+    "shared": "共有 / / {count}",
+    "only_b": "仅 B 有 / / {count}",
+    "no_overlap": "— 没有重合 —",
+    "ctx_footer": "可返回任一套牌的完整存档页（分析、车轮战、牌表）。点上方主卡上的 {swap} 就能只换一边，而不用离开本页。",
+    "back_to": "返回 {deck}",
+    "pick_title": "选择要对比的套牌",
+    "pick_aria": "选择要对比的套牌",
+    "close_aria": "关闭选择器",
+    "filter_ph": "筛选套牌...",
+    "no_matches": "没有匹配"
   }
 }

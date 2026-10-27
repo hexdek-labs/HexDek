@@ -1504,5 +1504,33 @@
     "v_go": "Go (10만 줄 이상)",
     "v_hats": "Greedy, Poker, YggdrasilHat (통합 정치 AI)",
     "v_data": "JSON 플랫 파일 영속화 (외부 DB 의존 없음)"
+  },
+  "cmp": {
+    "tape_left": "비교 / / {a} VS {b}",
+    "tape_counts": "공통 {shared}장 · 고유 {a}/{b}",
+    "side_a": "덱 A",
+    "side_b": "덱 B",
+    "deck_fallback": "덱",
+    "swap_deck": "덱 교체 ↺",
+    "vs": "VS",
+    "swap_sides": "좌우 바꾸기",
+    "metrics": "맞대결 지표",
+    "s_power": "파워 백분위",
+    "s_avg_cmc": "평균 CMC",
+    "s_cheap_int": "저렴한 견제",
+    "s_card_count": "카드 수",
+    "s_mana_ratio": "마나 비율",
+    "s_mana_curve": "마나 커브",
+    "only_a": "A에만 / / {count}",
+    "shared": "공통 / / {count}",
+    "only_b": "B에만 / / {count}",
+    "no_overlap": "— 겹치는 카드 없음 —",
+    "ctx_footer": "두 덱 중 어느 쪽의 전체 아카이브 페이지(분석, 건틀릿, 덱리스트)로든 돌아갑니다. 위 히어로 카드의 {swap}을 쓰면 이 페이지를 떠나지 않고 한쪽만 교체할 수 있습니다.",
+    "back_to": "{deck}(으)로 돌아가기",
+    "pick_title": "비교할 덱 선택",
+    "pick_aria": "비교할 덱 선택",
+    "close_aria": "선택창 닫기",
+    "filter_ph": "덱 필터...",
+    "no_matches": "일치 항목 없음"
   }
 }

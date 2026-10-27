@@ -1504,5 +1504,33 @@
     "v_go": "Go（10 万行以上）",
     "v_hats": "Greedy、Poker、YggdrasilHat（統合された政治的 AI）",
     "v_data": "JSON のフラットファイル永続化（外部 DB 依存なし）"
+  },
+  "cmp": {
+    "tape_left": "比較 / / {a} VS {b}",
+    "tape_counts": "共通 {shared} · 固有 {a}/{b}",
+    "side_a": "デッキ A",
+    "side_b": "デッキ B",
+    "deck_fallback": "デッキ",
+    "swap_deck": "デッキを入れ替え ↺",
+    "vs": "VS",
+    "swap_sides": "左右を入れ替え",
+    "metrics": "直接対決の指標",
+    "s_power": "パワー百分位",
+    "s_avg_cmc": "平均 CMC",
+    "s_cheap_int": "軽い妨害",
+    "s_card_count": "カード枚数",
+    "s_mana_ratio": "マナ比率",
+    "s_mana_curve": "マナカーブ",
+    "only_a": "A のみ / / {count}",
+    "shared": "共通 / / {count}",
+    "only_b": "B のみ / / {count}",
+    "no_overlap": "— 重複なし —",
+    "ctx_footer": "どちらのデッキのアーカイブページ（解析、ガントレット、デッキリスト）にも戻れます。上のヒーローカードの {swap} を使えば、このページを離れずに片方だけ差し替えられます。",
+    "back_to": "{deck} に戻る",
+    "pick_title": "比較するデッキを選択",
+    "pick_aria": "比較するデッキを選択",
+    "close_aria": "選択を閉じる",
+    "filter_ph": "デッキを絞り込み...",
+    "no_matches": "一致なし"
   }
 }

@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ řádků)",
     "v_hats": "Greedy, Poker, YggdrasilHat (jednotná politická AI)",
     "v_data": "Persistence v plochých JSON souborech (bez externí DB)"
+  },
+  "cmp": {
+    "tape_left": "SROVNÁNÍ / / {a} VS {b}",
+    "tape_counts": "{shared} SPOLEČNÝCH · {a}/{b} UNIKÁTNÍCH",
+    "side_a": "BALÍČEK A",
+    "side_b": "BALÍČEK B",
+    "deck_fallback": "BALÍČEK",
+    "swap_deck": "VYMĚNIT BALÍČEK ↺",
+    "vs": "VS",
+    "swap_sides": "Prohodit strany",
+    "metrics": "METRIKY Z OČÍ DO OČÍ",
+    "s_power": "PERCENTIL SÍLY",
+    "s_avg_cmc": "PRŮMĚRNÝ CMC",
+    "s_cheap_int": "LEVNÁ INTERAKCE",
+    "s_card_count": "POČET KARET",
+    "s_mana_ratio": "POMĚR MANY",
+    "s_mana_curve": "KŘIVKA MANY",
+    "only_a": "JEN V A / / {count}",
+    "shared": "SPOLEČNÉ / / {count}",
+    "only_b": "JEN V B / / {count}",
+    "no_overlap": "— ŽÁDNÝ PŘESAH —",
+    "ctx_footer": "Vrací se na plnou archivní stránku kteréhokoli balíčku (analýza, gauntlet, decklist). Klikni na {swap} u karty nahoře a vyměň jednu stranu, aniž bys opustil tuhle stránku.",
+    "back_to": "ZPĚT NA {deck}",
+    "pick_title": "VYBER BALÍČEK K SROVNÁNÍ",
+    "pick_aria": "Vyber balíček k srovnání",
+    "close_aria": "Zavřít výběr",
+    "filter_ph": "FILTROVAT BALÍČKY...",
+    "no_matches": "ŽÁDNÉ VÝSLEDKY"
   }
 }

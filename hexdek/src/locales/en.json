@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ lines)",
     "v_hats": "Greedy, Poker, YggdrasilHat (unified political AI)",
     "v_data": "JSON flat-file persistence (no external DB dependency)"
+  },
+  "cmp": {
+    "tape_left": "COMPARE / / {a} VS {b}",
+    "tape_counts": "{shared} SHARED · {a}/{b} UNIQUE",
+    "side_a": "DECK A",
+    "side_b": "DECK B",
+    "deck_fallback": "DECK",
+    "swap_deck": "SWAP DECK ↺",
+    "vs": "VS",
+    "swap_sides": "Swap sides",
+    "metrics": "HEAD-TO-HEAD METRICS",
+    "s_power": "POWER %ILE",
+    "s_avg_cmc": "AVG CMC",
+    "s_cheap_int": "CHEAP INTERACTION",
+    "s_card_count": "CARD COUNT",
+    "s_mana_ratio": "MANA RATIO",
+    "s_mana_curve": "MANA CURVE",
+    "only_a": "UNIQUE TO A / / {count}",
+    "shared": "SHARED / / {count}",
+    "only_b": "UNIQUE TO B / / {count}",
+    "no_overlap": "— NO OVERLAP —",
+    "ctx_footer": "Returns to either deck's full archive page (analysis, gauntlet, decklist). Use {swap} on a hero card above to replace one side without leaving this page.",
+    "back_to": "BACK TO {deck}",
+    "pick_title": "PICK DECK TO COMPARE",
+    "pick_aria": "Pick deck to compare",
+    "close_aria": "Close picker",
+    "filter_ph": "FILTER DECKS...",
+    "no_matches": "NO MATCHES"
   }
 }

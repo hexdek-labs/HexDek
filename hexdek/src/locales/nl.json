@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ regels)",
     "v_hats": "Greedy, Poker, YggdrasilHat (verenigde politieke AI)",
     "v_data": "JSON-flatfilepersistentie (geen externe DB-afhankelijkheid)"
+  },
+  "cmp": {
+    "tape_left": "VERGELIJKEN / / {a} VS {b}",
+    "tape_counts": "{shared} GEDEELD · {a}/{b} UNIEK",
+    "side_a": "DECK A",
+    "side_b": "DECK B",
+    "deck_fallback": "DECK",
+    "swap_deck": "DECK WISSELEN ↺",
+    "vs": "VS",
+    "swap_sides": "Kanten omwisselen",
+    "metrics": "HEAD-TO-HEAD-METRIEKEN",
+    "s_power": "KRACHTPERCENTIEL",
+    "s_avg_cmc": "GEM. CMC",
+    "s_cheap_int": "GOEDKOPE INTERACTIE",
+    "s_card_count": "AANTAL KAARTEN",
+    "s_mana_ratio": "MANAVERHOUDING",
+    "s_mana_curve": "MANACURVE",
+    "only_a": "ALLEEN IN A / / {count}",
+    "shared": "GEDEELD / / {count}",
+    "only_b": "ALLEEN IN B / / {count}",
+    "no_overlap": "— GEEN OVERLAP —",
+    "ctx_footer": "Gaat terug naar de volledige archiefpagina van een van beide decks (analyse, gauntlet, decklijst). Gebruik {swap} op een herokaart hierboven om één kant te vervangen zonder deze pagina te verlaten.",
+    "back_to": "TERUG NAAR {deck}",
+    "pick_title": "KIES EEN DECK OM TE VERGELIJKEN",
+    "pick_aria": "Kies een deck om te vergelijken",
+    "close_aria": "Kiezer sluiten",
+    "filter_ph": "DECKS FILTEREN...",
+    "no_matches": "GEEN RESULTATEN"
   }
 }

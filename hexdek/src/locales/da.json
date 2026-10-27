@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ linjer)",
     "v_hats": "Greedy, Poker, YggdrasilHat (samlet politisk AI)",
     "v_data": "JSON-fladfilspersistens (ingen ekstern DB-afhængighed)"
+  },
+  "cmp": {
+    "tape_left": "SAMMENLIGN / / {a} VS {b}",
+    "tape_counts": "{shared} FÆLLES · {a}/{b} UNIKKE",
+    "side_a": "DÆK A",
+    "side_b": "DÆK B",
+    "deck_fallback": "DÆK",
+    "swap_deck": "SKIFT DÆK ↺",
+    "vs": "VS",
+    "swap_sides": "Byt sider",
+    "metrics": "HOVED-TIL-HOVED-MÅLINGER",
+    "s_power": "STYRKEPERCENTIL",
+    "s_avg_cmc": "GNS. CMC",
+    "s_cheap_int": "BILLIG INTERAKTION",
+    "s_card_count": "KORTANTAL",
+    "s_mana_ratio": "MANAFORHOLD",
+    "s_mana_curve": "MANAKURVE",
+    "only_a": "KUN I A / / {count}",
+    "shared": "FÆLLES / / {count}",
+    "only_b": "KUN I B / / {count}",
+    "no_overlap": "— INGEN OVERLAP —",
+    "ctx_footer": "Fører tilbage til et af dækkenes fulde arkivside (analyse, gauntlet, dækliste). Brug {swap} på et herokort ovenfor for at erstatte den ene side uden at forlade denne side.",
+    "back_to": "TILBAGE TIL {deck}",
+    "pick_title": "VÆLG DÆK AT SAMMENLIGNE",
+    "pick_aria": "Vælg dæk at sammenligne",
+    "close_aria": "Luk vælgeren",
+    "filter_ph": "FILTRÉR DÆK...",
+    "no_matches": "INGEN TRÆFFERE"
   }
 }

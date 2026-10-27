@@ -1504,5 +1504,33 @@
     "v_go": "Go (más de 100K líneas)",
     "v_hats": "Greedy, Poker, YggdrasilHat (IA política unificada)",
     "v_data": "Persistencia en archivos planos JSON (sin dependencia de BD externa)"
+  },
+  "cmp": {
+    "tape_left": "COMPARAR / / {a} VS {b}",
+    "tape_counts": "{shared} COMPARTIDAS · {a}/{b} ÚNICAS",
+    "side_a": "MAZO A",
+    "side_b": "MAZO B",
+    "deck_fallback": "MAZO",
+    "swap_deck": "CAMBIAR MAZO ↺",
+    "vs": "VS",
+    "swap_sides": "Intercambiar lados",
+    "metrics": "MÉTRICAS MANO A MANO",
+    "s_power": "PERCENTIL DE PODER",
+    "s_avg_cmc": "CMC MEDIO",
+    "s_cheap_int": "INTERACCIÓN BARATA",
+    "s_card_count": "N.º DE CARTAS",
+    "s_mana_ratio": "PROPORCIÓN DE MANÁ",
+    "s_mana_curve": "CURVA DE MANÁ",
+    "only_a": "SOLO EN A / / {count}",
+    "shared": "COMPARTIDAS / / {count}",
+    "only_b": "SOLO EN B / / {count}",
+    "no_overlap": "— SIN COINCIDENCIAS —",
+    "ctx_footer": "Vuelve a la página de archivo completa de cualquiera de los dos mazos (análisis, gauntlet, lista). Usa {swap} en una carta destacada de arriba para reemplazar un lado sin salir de esta página.",
+    "back_to": "VOLVER A {deck}",
+    "pick_title": "ELIGE UN MAZO PARA COMPARAR",
+    "pick_aria": "Elige un mazo para comparar",
+    "close_aria": "Cerrar el selector",
+    "filter_ph": "FILTRAR MAZOS...",
+    "no_matches": "SIN RESULTADOS"
   }
 }

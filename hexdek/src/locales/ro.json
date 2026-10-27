@@ -1504,5 +1504,33 @@
     "v_go": "Go (peste 100K de linii)",
     "v_hats": "Greedy, Poker, YggdrasilHat (IA politică unificată)",
     "v_data": "Persistență în fișiere plate JSON (fără dependență de o BD externă)"
+  },
+  "cmp": {
+    "tape_left": "COMPARAȚIE / / {a} VS {b}",
+    "tape_counts": "{shared} COMUNE · {a}/{b} UNICE",
+    "side_a": "PACHETUL A",
+    "side_b": "PACHETUL B",
+    "deck_fallback": "PACHET",
+    "swap_deck": "SCHIMBĂ PACHETUL ↺",
+    "vs": "VS",
+    "swap_sides": "Inversează părțile",
+    "metrics": "METRICI CAP LA CAP",
+    "s_power": "PERCENTILA DE PUTERE",
+    "s_avg_cmc": "CMC MEDIU",
+    "s_cheap_int": "INTERACȚIUNE IEFTINĂ",
+    "s_card_count": "NUMĂR DE CĂRȚI",
+    "s_mana_ratio": "RAPORT DE MANA",
+    "s_mana_curve": "CURBA DE MANA",
+    "only_a": "DOAR ÎN A / / {count}",
+    "shared": "COMUNE / / {count}",
+    "only_b": "DOAR ÎN B / / {count}",
+    "no_overlap": "— NICIO SUPRAPUNERE —",
+    "ctx_footer": "Duce înapoi la pagina completă de arhivă a oricăruia dintre pachete (analiză, gauntlet, listă). Folosește {swap} pe o carte evidențiată mai sus pentru a înlocui o parte fără să părăsești pagina.",
+    "back_to": "ÎNAPOI LA {deck}",
+    "pick_title": "ALEGE UN PACHET DE COMPARAT",
+    "pick_aria": "Alege un pachet de comparat",
+    "close_aria": "Închide selectorul",
+    "filter_ph": "FILTREAZĂ PACHETELE...",
+    "no_matches": "NICIUN REZULTAT"
   }
 }

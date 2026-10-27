@@ -1504,5 +1504,33 @@
     "v_go": "Go (100K+ baris)",
     "v_hats": "Greedy, Poker, YggdrasilHat (AI politik terpadu)",
     "v_data": "Persistensi berkas datar JSON (tanpa ketergantungan DB eksternal)"
+  },
+  "cmp": {
+    "tape_left": "BANDINGKAN / / {a} VS {b}",
+    "tape_counts": "{shared} SAMA · {a}/{b} UNIK",
+    "side_a": "DEK A",
+    "side_b": "DEK B",
+    "deck_fallback": "DEK",
+    "swap_deck": "GANTI DEK ↺",
+    "vs": "VS",
+    "swap_sides": "Tukar sisi",
+    "metrics": "METRIK HEAD-TO-HEAD",
+    "s_power": "PERSENTIL KEKUATAN",
+    "s_avg_cmc": "CMC RATA-RATA",
+    "s_cheap_int": "INTERAKSI MURAH",
+    "s_card_count": "JUMLAH KARTU",
+    "s_mana_ratio": "RASIO MANA",
+    "s_mana_curve": "KURVA MANA",
+    "only_a": "HANYA DI A / / {count}",
+    "shared": "SAMA / / {count}",
+    "only_b": "HANYA DI B / / {count}",
+    "no_overlap": "— TIDAK ADA YANG SAMA —",
+    "ctx_footer": "Kembali ke halaman arsip lengkap salah satu dek (analisis, gauntlet, daftar kartu). Gunakan {swap} pada kartu hero di atas untuk mengganti satu sisi tanpa meninggalkan halaman ini.",
+    "back_to": "KEMBALI KE {deck}",
+    "pick_title": "PILIH DEK UNTUK DIBANDINGKAN",
+    "pick_aria": "Pilih dek untuk dibandingkan",
+    "close_aria": "Tutup pemilih",
+    "filter_ph": "FILTER DEK...",
+    "no_matches": "TIDAK ADA HASIL"
   }
 }

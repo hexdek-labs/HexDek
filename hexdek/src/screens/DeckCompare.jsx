@@ -5,6 +5,8 @@ import { api, cardArtUrl } from '../services/api'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useModalKeyboard } from '../hooks/useModalKeyboard'
 import ContextBox from '../components/ContextBox'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
 
 function normalizeCardName(name) {
   if (!name) return ''
@@ -78,6 +80,7 @@ function ManaCurveMini({ curve }) {
 }
 
 function CommanderHero({ owner, id, deck, analysis, side, onPickReplace }) {
+  const t = useT()
   // Strip bracket marker, owner slug, and trailing moxfield hash from the
   // id-based fallback so unparsed decks don't show titles like
   // "HERIGAST ERUPTING NULLKITE B2 LAODI Z8BQG8TF".
@@ -86,7 +89,7 @@ function CommanderHero({ owner, id, deck, analysis, side, onPickReplace }) {
     s = s.replace(/_[A-Za-z0-9]{8,}$/, '')
     if (ownerSlug) s = s.replace(new RegExp(`_${ownerSlug.toLowerCase()}$`, 'i'), '')
     s = s.replace(/_b[0-5]$/i, '')
-    return s.replace(/_/g, ' ').toUpperCase() || 'DECK'
+    return s.replace(/_/g, ' ').toUpperCase() || t('cmp.deck_fallback')
   }
   const cmdr = deck?.commander_card || deck?.commander || cleanIdTitle(id, owner)
   const art = cardArtUrl(cmdr)
@@ -95,7 +98,7 @@ function CommanderHero({ owner, id, deck, analysis, side, onPickReplace }) {
   return (
     <div className={`cmp-hero cmp-hero--${side}`}>
       <div className="cmp-hero__corner">
-        {side === 'L' ? 'DECK A' : 'DECK B'} / / {owner?.toUpperCase()} / / {id}
+        {side === 'L' ? t('cmp.side_a') : t('cmp.side_b')} / / {owner?.toUpperCase()} / / {id}
       </div>
       {art && <div className="cmp-hero__art" style={{ backgroundImage: `url(${art})` }} />}
       <div className="cmp-hero__scrim" />
@@ -106,7 +109,7 @@ function CommanderHero({ owner, id, deck, analysis, side, onPickReplace }) {
           <Tag>{archetype}</Tag>
         </div>
         {onPickReplace && (
-          <button className="cmp-hero__swap" type="button" onClick={onPickReplace}>SWAP DECK ↺</button>
+          <button className="cmp-hero__swap" type="button" onClick={onPickReplace}>{t('cmp.swap_deck')}</button>
         )}
       </div>
     </div>
@@ -114,6 +117,7 @@ function CommanderHero({ owner, id, deck, analysis, side, onPickReplace }) {
 }
 
 export default function DeckCompare() {
+  const t = useT()
   const { owner1, deck1, owner2, deck2 } = useParams()
   const navigate = useNavigate()
   const { elo } = useLiveSocket()
@@ -175,28 +179,35 @@ export default function DeckCompare() {
 
   const stats = [
     {
-      label: 'BRACKET',
+      id: 'bracket',
+      label: t('deck.bracket'),
       left: bundleA.analysis?.bracket || bundleA.deck?.bracket,
       right: bundleB.analysis?.bracket || bundleB.deck?.bracket,
       cmp: 'higher',
     },
-    { label: 'ARCHETYPE', left: bundleA.analysis?.archetype?.toUpperCase(), right: bundleB.analysis?.archetype?.toUpperCase(), cmp: null },
-    { label: 'ELO', left: eloA ? Math.round(eloA.rating) : null, right: eloB ? Math.round(eloB.rating) : null, cmp: 'higher' },
-    { label: 'WIN RATE', left: winRateA != null ? `${winRateA}%` : null, right: winRateB != null ? `${winRateB}%` : null, cmp: 'higher', leftN: winRateA, rightN: winRateB },
-    { label: 'KEEPABLE HANDS', left: bundleA.analysis?.keepable_hand_pct != null ? `${Math.round(bundleA.analysis.keepable_hand_pct)}%` : null, right: bundleB.analysis?.keepable_hand_pct != null ? `${Math.round(bundleB.analysis.keepable_hand_pct)}%` : null, cmp: 'higher', leftN: bundleA.analysis?.keepable_hand_pct, rightN: bundleB.analysis?.keepable_hand_pct },
-    { label: 'POWER %ILE', left: bundleA.analysis?.power_percentile, right: bundleB.analysis?.power_percentile, cmp: 'higher' },
-    { label: 'AVG CMC', left: bundleA.analysis?.mana_curve?.avg_cmc?.toFixed(2), right: bundleB.analysis?.mana_curve?.avg_cmc?.toFixed(2), cmp: 'lower', leftN: bundleA.analysis?.mana_curve?.avg_cmc, rightN: bundleB.analysis?.mana_curve?.avg_cmc },
-    { label: 'MANA BASE', left: bundleA.analysis?.mana_base_grade, right: bundleB.analysis?.mana_base_grade, cmp: null },
-    { label: 'CHEAP INTERACTION', left: bundleA.analysis?.cheap_interaction, right: bundleB.analysis?.cheap_interaction, cmp: 'higher' },
-    { label: 'CARD COUNT', left: bundleA.deck?.card_count, right: bundleB.deck?.card_count, cmp: null },
+    { id: 'archetype', label: t('deck.archetype'), left: bundleA.analysis?.archetype?.toUpperCase(), right: bundleB.analysis?.archetype?.toUpperCase(), cmp: null },
+    { id: 'elo', label: 'ELO', left: eloA ? Math.round(eloA.rating) : null, right: eloB ? Math.round(eloB.rating) : null, cmp: 'higher' },
+    { id: 'wr', label: t('deck.win_rate'), left: winRateA != null ? `${winRateA}%` : null, right: winRateB != null ? `${winRateB}%` : null, cmp: 'higher', leftN: winRateA, rightN: winRateB },
+    { id: 'keep', label: t('dka.sp_keepable'), left: bundleA.analysis?.keepable_hand_pct != null ? `${Math.round(bundleA.analysis.keepable_hand_pct)}%` : null, right: bundleB.analysis?.keepable_hand_pct != null ? `${Math.round(bundleB.analysis.keepable_hand_pct)}%` : null, cmp: 'higher', leftN: bundleA.analysis?.keepable_hand_pct, rightN: bundleB.analysis?.keepable_hand_pct },
+    { id: 'power', label: t('cmp.s_power'), left: bundleA.analysis?.power_percentile, right: bundleB.analysis?.power_percentile, cmp: 'higher' },
+    { id: 'cmc', label: t('cmp.s_avg_cmc'), left: bundleA.analysis?.mana_curve?.avg_cmc?.toFixed(2), right: bundleB.analysis?.mana_curve?.avg_cmc?.toFixed(2), cmp: 'lower', leftN: bundleA.analysis?.mana_curve?.avg_cmc, rightN: bundleB.analysis?.mana_curve?.avg_cmc },
+    { id: 'mana', label: t('dka.sp_mana_base'), left: bundleA.analysis?.mana_base_grade, right: bundleB.analysis?.mana_base_grade, cmp: null },
+    { id: 'cheap', label: t('cmp.s_cheap_int'), left: bundleA.analysis?.cheap_interaction, right: bundleB.analysis?.cheap_interaction, cmp: 'higher' },
+    { id: 'count', label: t('cmp.s_card_count'), left: bundleA.deck?.card_count, right: bundleB.deck?.card_count, cmp: null },
   ]
 
-  const tapeMid = (loadingA || loadingB) ? 'LOADING' : `${cardSets.shared.length} SHARED · ${cardSets.onlyA.length}/${cardSets.onlyB.length} UNIQUE`
+  const tapeMid = (loadingA || loadingB)
+    ? t('common.loading')
+    : t('cmp.tape_counts', {
+      shared: cardSets.shared.length,
+      a: cardSets.onlyA.length,
+      b: cardSets.onlyB.length,
+    })
 
   return (
     <>
       <Tape
-        left={`COMPARE / / ${(owner1 || '?').toUpperCase()} VS ${(owner2 || '?').toUpperCase()}`}
+        left={t('cmp.tape_left', { a: (owner1 || '?').toUpperCase(), b: (owner2 || '?').toUpperCase() })}
         mid={tapeMid}
         right="DOC HX-410"
       />
@@ -205,16 +216,16 @@ export default function DeckCompare() {
           <CommanderHero owner={owner1} id={deck1} deck={bundleA.deck} analysis={bundleA.analysis} side="L"
             onPickReplace={() => setPickerSide('A')} />
           <div className="cmp-vs">
-            <span>VS</span>
+            <span>{t('cmp.vs')}</span>
             <button type="button" className="cmp-vs__swap" onClick={() => navigate(`/compare/${owner2}/${deck2}/${owner1}/${deck1}`)}
-              title="Swap sides">↔</button>
+              title={t('cmp.swap_sides')}>↔</button>
           </div>
           <CommanderHero owner={owner2} id={deck2} deck={bundleB.deck} analysis={bundleB.analysis} side="R"
             onPickReplace={() => setPickerSide('B')} />
         </div>
 
         <div className="cmp-stats-panel">
-          <Panel code="CMP.STATS" title="HEAD-TO-HEAD METRICS">
+          <Panel code="CMP.STATS" title={t('cmp.metrics')}>
             <div className="cmp-stats">
               {stats.map(row => {
                 let leftWin = false, rightWin = false
@@ -226,25 +237,25 @@ export default function DeckCompare() {
                     else { leftWin = ln < rn; rightWin = rn < ln }
                   }
                 }
-                return <StatRow key={row.label} label={row.label} left={row.left} right={row.right} leftWin={leftWin} rightWin={rightWin} />
+                return <StatRow key={row.id} label={row.label} left={row.left} right={row.right} leftWin={leftWin} rightWin={rightWin} />
               })}
 
               <span className="cmp-stat__l"><ColorBars demand={bundleA.analysis?.color_demand} /></span>
-              <span className="cmp-stat__k">MANA RATIO</span>
+              <span className="cmp-stat__k">{t('cmp.s_mana_ratio')}</span>
               <span className="cmp-stat__r"><ColorBars demand={bundleB.analysis?.color_demand} /></span>
 
               <span className="cmp-stat__l"><ManaCurveMini curve={bundleA.analysis?.mana_curve} /></span>
-              <span className="cmp-stat__k">MANA CURVE</span>
+              <span className="cmp-stat__k">{t('cmp.s_mana_curve')}</span>
               <span className="cmp-stat__r"><ManaCurveMini curve={bundleB.analysis?.mana_curve} /></span>
             </div>
           </Panel>
         </div>
 
         <div className="cmp-cards">
-          <Panel code="CMP.A" title={`UNIQUE TO A / / ${cardSets.onlyA.length}`}>
+          <Panel code="CMP.A" title={t('cmp.only_a', { count: cardSets.onlyA.length })}>
             <div className="cmp-cardlist">
               {cardSets.onlyA.length === 0 ? (
-                <span className="t-xs muted">— NONE —</span>
+                <span className="t-xs muted">{t('rpt.none')}</span>
               ) : cardSets.onlyA.map(c => (
                 <div key={c.name} className="cmp-cardrow"
                   onClick={() => navigate(`/cards/${encodeURIComponent(c.name.split('//')[0].trim())}`)}>
@@ -255,10 +266,10 @@ export default function DeckCompare() {
             </div>
           </Panel>
 
-          <Panel code="CMP.X" title={`SHARED / / ${cardSets.shared.length}`}>
+          <Panel code="CMP.X" title={t('cmp.shared', { count: cardSets.shared.length })}>
             <div className="cmp-cardlist">
               {cardSets.shared.length === 0 ? (
-                <span className="t-xs muted">— NO OVERLAP —</span>
+                <span className="t-xs muted">{t('cmp.no_overlap')}</span>
               ) : cardSets.shared.map(({ a }) => (
                 <div key={a.name} className="cmp-cardrow cmp-cardrow--shared"
                   onClick={() => navigate(`/cards/${encodeURIComponent(a.name.split('//')[0].trim())}`)}>
@@ -269,10 +280,10 @@ export default function DeckCompare() {
             </div>
           </Panel>
 
-          <Panel code="CMP.B" title={`UNIQUE TO B / / ${cardSets.onlyB.length}`}>
+          <Panel code="CMP.B" title={t('cmp.only_b', { count: cardSets.onlyB.length })}>
             <div className="cmp-cardlist">
               {cardSets.onlyB.length === 0 ? (
-                <span className="t-xs muted">— NONE —</span>
+                <span className="t-xs muted">{t('rpt.none')}</span>
               ) : cardSets.onlyB.map(c => (
                 <div key={c.name} className="cmp-cardrow"
                   onClick={() => navigate(`/cards/${encodeURIComponent(c.name.split('//')[0].trim())}`)}>
@@ -285,11 +296,13 @@ export default function DeckCompare() {
         </div>
 
         <ContextBox id="deck.compare.footer" style={{ maxWidth: 720, margin: '0 auto' }}>
-          Returns to either deck's full archive page (analysis, gauntlet, decklist). Use <strong>SWAP DECK ↺</strong> on a hero card above to replace one side without leaving this page.
+          {fill(t('cmp.ctx_footer'), {
+            swap: <strong>{t('cmp.swap_deck')}</strong>,
+          })}
         </ContextBox>
         <div className="cmp-footer">
-          <Btn ghost arrow="←" onClick={() => navigate(`/decks/${owner1}/${deck1}`)}>BACK TO {owner1?.toUpperCase()}/{deck1}</Btn>
-          <Btn ghost arrow="←" onClick={() => navigate(`/decks/${owner2}/${deck2}`)}>BACK TO {owner2?.toUpperCase()}/{deck2}</Btn>
+          <Btn ghost arrow="←" onClick={() => navigate(`/decks/${owner1}/${deck1}`)}>{t('cmp.back_to', { deck: `${owner1?.toUpperCase()}/${deck1}` })}</Btn>
+          <Btn ghost arrow="←" onClick={() => navigate(`/decks/${owner2}/${deck2}`)}>{t('cmp.back_to', { deck: `${owner2?.toUpperCase()}/${deck2}` })}</Btn>
         </div>
       </div>
 
@@ -311,6 +324,7 @@ export default function DeckCompare() {
 }
 
 function DeckPicker({ excludeKey, onClose, onPick }) {
+  const t = useT()
   const panelRef = useModalKeyboard({ onClose })
   const [decks, setDecks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -335,28 +349,28 @@ function DeckPicker({ excludeKey, onClose, onPick }) {
         onMouseDown={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Pick deck to compare"
+        aria-label={t('cmp.pick_aria')}
       >
         <div className="cmp-picker__hd">
-          <span>PICK DECK TO COMPARE</span>
+          <span>{t('cmp.pick_title')}</span>
           <button
             type="button"
             className="cmp-picker__close"
             onClick={onClose}
-            aria-label="Close picker"
+            aria-label={t('cmp.close_aria')}
             style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}
-          >ESC</button>
+          >{t('dka.esc')}</button>
         </div>
         <input
           autoFocus
           className="cmp-picker__input"
-          placeholder="FILTER DECKS..."
+          placeholder={t('cmp.filter_ph')}
           value={filter}
           onChange={e => setFilter(e.target.value)}
         />
         <div className="cmp-picker__list">
-          {loading ? <div className="cmp-picker__note">LOADING...</div>
-            : filtered.length === 0 ? <div className="cmp-picker__note">NO MATCHES</div>
+          {loading ? <div className="cmp-picker__note">{t('dka.loading_ell')}</div>
+            : filtered.length === 0 ? <div className="cmp-picker__note">{t('cmp.no_matches')}</div>
             : filtered.map(d => (
               <button key={`${d.owner}/${d.id}`} type="button" className="cmp-picker__row" onClick={() => onPick(d)}>
                 <span className="cmp-picker__owner">{d.owner?.toUpperCase()}</span>

@@ -1504,5 +1504,33 @@
     "v_go": "Go (hơn 100K dòng)",
     "v_hats": "Greedy, Poker, YggdrasilHat (AI chính trị hợp nhất)",
     "v_data": "Lưu bền bằng tệp phẳng JSON (không phụ thuộc DB ngoài)"
+  },
+  "cmp": {
+    "tape_left": "SO SÁNH / / {a} VS {b}",
+    "tape_counts": "{shared} DÙNG CHUNG · {a}/{b} RIÊNG",
+    "side_a": "BỘ A",
+    "side_b": "BỘ B",
+    "deck_fallback": "BỘ BÀI",
+    "swap_deck": "ĐỔI BỘ BÀI ↺",
+    "vs": "VS",
+    "swap_sides": "Đổi bên",
+    "metrics": "CHỈ SỐ ĐỐI ĐẦU",
+    "s_power": "PHÂN VỊ SỨC MẠNH",
+    "s_avg_cmc": "CMC TRUNG BÌNH",
+    "s_cheap_int": "TƯƠNG TÁC GIÁ RẺ",
+    "s_card_count": "SỐ LÁ BÀI",
+    "s_mana_ratio": "TỶ LỆ MANA",
+    "s_mana_curve": "ĐƯỜNG CONG MANA",
+    "only_a": "CHỈ Ở A / / {count}",
+    "shared": "DÙNG CHUNG / / {count}",
+    "only_b": "CHỈ Ở B / / {count}",
+    "no_overlap": "— KHÔNG TRÙNG LÁ NÀO —",
+    "ctx_footer": "Quay lại trang lưu trữ đầy đủ của một trong hai bộ (phân tích, gauntlet, danh sách lá). Dùng {swap} trên lá bài nổi bật phía trên để thay một bên mà không phải rời trang này.",
+    "back_to": "VỀ {deck}",
+    "pick_title": "CHỌN BỘ BÀI ĐỂ SO SÁNH",
+    "pick_aria": "Chọn bộ bài để so sánh",
+    "close_aria": "Đóng bộ chọn",
+    "filter_ph": "LỌC BỘ BÀI...",
+    "no_matches": "KHÔNG CÓ KẾT QUẢ"
   }
 }
