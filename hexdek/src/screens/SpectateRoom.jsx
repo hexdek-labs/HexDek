@@ -7,6 +7,7 @@ import { findGameChangerInText } from '../data/gameChangers'
 import CardLink, { linkifyAction } from '../components/CardLink'
 import { narrate } from '../components/NarratorOverlay'
 import ArtAmbience from '../components/ArtAmbience'
+import { useT, getLocale } from '../i18n'
 
 const SPEED_MARKS = [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2]
 
@@ -16,10 +17,20 @@ const EVAL_GRID = [
   ['threat_exposure', 'commander_progress',  'graveyard_value'],
 ]
 
-const EVAL_LABELS = {
-  board_presence: 'Board', card_advantage: 'Cards', mana_advantage: 'Mana',
-  combo_proximity: 'Combo', score: 'Score', life_resource: 'Life',
-  threat_exposure: 'Threat', commander_progress: 'Cmdr', graveyard_value: 'Grave',
+// Catalog paths, not labels — the same nine the fishtank screen reads.
+// This table is consulted from module scope at render AND its result is
+// parked in state between a mousemove and the next paint, so a word here
+// would be fixed twice over: once at load, once at the pointer move.
+const EVAL_LABEL_KEYS = {
+  board_presence: 'spec.ev_board',
+  card_advantage: 'spec.ev_cards',
+  mana_advantage: 'spec.ev_mana',
+  combo_proximity: 'spec.ev_combo',
+  score: 'spec.ev_score',
+  life_resource: 'spec.ev_life',
+  threat_exposure: 'spec.ev_threat',
+  commander_progress: 'spec.ev_cmdr',
+  graveyard_value: 'spec.ev_grave',
 }
 
 const MAGMA = [
@@ -72,13 +83,19 @@ function drawEvalContour(canvas, ev, lost) {
   ctx.putImageData(img, 0, 0)
 }
 
-const typeTag = (p) => {
-  if (p.is_commander) return 'CMDR'
-  if (p.is_land) return 'LAND'
-  if (p.type === 'CREATURE') return 'CREA'
-  if (p.type === 'ARTIFACT') return 'ART'
-  if (p.type === 'ENCHANTMENT') return 'ENC'
-  if (p.type === 'PLANESWALKER') return 'PW'
+// Takes the translator as a PARAMETER: a module-level formatter that
+// reached for one of its own would word the plate once, at import. These
+// read CREA/LAND where common.tya_* reads CRE/LND for the same concepts —
+// changing what the tiles print is a UI decision, not an i18n one, so the
+// two sets stay separate and the duplication stays flagged.
+const typeTag = (t, p) => {
+  if (p.is_commander) return t('spec.tag_cmdr')
+  if (p.is_land) return t('spec.tag_land')
+  if (p.type === 'CREATURE') return t('spec.tag_crea')
+  if (p.type === 'ARTIFACT') return t('spec.tag_art')
+  if (p.type === 'ENCHANTMENT') return t('spec.tag_enc')
+  if (p.type === 'PLANESWALKER') return t('spec.tag_pw')
+  // An unrecognised type is echoed back from the server, not worded here.
   return p.type?.slice(0, 4)?.toUpperCase() || '???'
 }
 
@@ -122,9 +139,13 @@ const SEAT_COLORS = ['#6ee7b7', '#93c5fd', '#fca5a5', '#fcd34d']
 const ELIMINATION_KINDS = new Set([
   'elimination', 'sba_704_5a', 'sba_704_5b', 'sba_704_5c', 'sba_704_5d',
 ])
-const ELIMINATION_REASONS = {
-  sba_704_5a: 'LIFE <= 0', sba_704_5b: 'EMPTY LIBRARY',
-  sba_704_5c: '10+ POISON', sba_704_5d: '21+ COMMANDER DMG',
+// Paths again, for the same reason, and the same four the fishtank reads.
+// The catalog renders the life clause with a real ≤ rather than '<='.
+const ELIMINATION_REASON_KEYS = {
+  sba_704_5a: 'spec.elim_life',
+  sba_704_5b: 'spec.elim_library',
+  sba_704_5c: 'spec.elim_poison',
+  sba_704_5d: 'spec.elim_cmdr_dmg',
 }
 
 function linkifyNarrated(text, source, targets) {
@@ -148,6 +169,7 @@ function linkifyNarrated(text, source, targets) {
 }
 
 export default function SpectateRoom() {
+  const t = useT()
   const { roomId } = useParams()
   const navigate = useNavigate()
   const { game, elo, speed, viewers, roomInfo, status, sendSpeed } = useSpectateRoom(roomId)
@@ -158,11 +180,16 @@ export default function SpectateRoom() {
   const heatmapDrawnRef = useRef([])
   const [heatmapTip, setHeatmapTip] = useState(null)
 
+  // locale is read here and carried in the deps because useT returns the
+  // MODULE-LEVEL translator — its identity never changes, so listing `t`
+  // alone would leave the tab title frozen at whatever language the page
+  // was mounted in.
+  const locale = getLocale()
   useEffect(() => {
     document.title = roomInfo
-      ? `Spectating ${roomInfo.commander?.toUpperCase() || 'UNKNOWN'}`
-      : 'HEXDEK Spectate Room'
-  }, [roomInfo])
+      ? t('spec.sr_doc_title', { name: roomInfo.commander?.toUpperCase() || t('spec.seat_unknown') })
+      : t('spec.sr_doc_title_plain')
+  }, [roomInfo, locale, t])
 
   const handleHeatmapHover = useCallback((e, seatIdx) => {
     const canvas = heatmapRefs.current[seatIdx]
@@ -174,7 +201,10 @@ export default function SpectateRoom() {
     const ev = game?.seats?.[seatIdx]?.eval
     if (!ev) return
     const val = ev[key]
-    setHeatmapTip({ label: EVAL_LABELS[key], value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—', x: e.clientX, y: e.clientY })
+    // The KEY, not the word: this object lives in state from one mousemove
+    // until the next, which would otherwise freeze the label in whatever
+    // language was active when the pointer moved.
+    setHeatmapTip({ labelKey: EVAL_LABEL_KEYS[key], value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—', x: e.clientX, y: e.clientY })
   }, [game])
 
   const clearHeatmapTip = useCallback(() => setHeatmapTip(null), [])
@@ -208,7 +238,7 @@ export default function SpectateRoom() {
       'threat_exposure', 'commander_progress', 'graveyard_value',
     ]
     const DURATION = 500
-    const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+    const ease = x => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2)
     const EPS = 1e-3
     const equal = (a, b) => {
       if (a === b) return true; if (!a || !b) return false
@@ -239,13 +269,13 @@ export default function SpectateRoom() {
       const src = { ...drawn }
       const t0 = performance.now()
       const tick = (now) => {
-        const t = Math.min(1, (now - t0) / DURATION)
-        const k = ease(t)
+        const p = Math.min(1, (now - t0) / DURATION)
+        const k = ease(p)
         const interp = {}
         for (const key of HEATMAP_KEYS) interp[key] = (src[key] ?? 0) + ((targetEval[key] ?? 0) - (src[key] ?? 0)) * k
         drawEvalContour(canvas, interp, false)
         heatmapDrawnRef.current[i] = interp
-        if (t < 1) heatmapAnimsRef.current[i] = requestAnimationFrame(tick)
+        if (p < 1) heatmapAnimsRef.current[i] = requestAnimationFrame(tick)
         else { heatmapAnimsRef.current[i] = null; heatmapDrawnRef.current[i] = targetEval }
       }
       heatmapAnimsRef.current[i] = requestAnimationFrame(tick)
@@ -259,10 +289,10 @@ export default function SpectateRoom() {
   if (status === 'disconnected' && !game) {
     return (
       <>
-        <Tape left="SPECTATE ROOM" mid="CONNECTING" right={roomId || ''} />
+        <Tape left={t('spec.sr_tape_title')} mid={t('spec.sr_tape_connecting')} right={roomId || ''} />
         <div style={{ padding: 36, textAlign: 'center' }}>
           <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            &gt; CONNECTING TO SPECTATE ROOM<span className="blink">_</span>
+            {t('spec.sr_connecting')}<span className="blink">_</span>
           </div>
         </div>
       </>
@@ -272,9 +302,9 @@ export default function SpectateRoom() {
   if (!game) {
     return (
       <>
-        <Tape left="SPECTATE ROOM" mid="LOADING" right={roomId || ''} />
+        <Tape left={t('spec.sr_tape_title')} mid={t('spec.tape_loading')} right={roomId || ''} />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; WAITING FOR FIRST GAME<span className="blink">_</span></div>
+          <div className="t-md muted">{t('spec.sr_waiting_game')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -283,7 +313,8 @@ export default function SpectateRoom() {
   const seats = game.seats || []
   const log = game.log || []
   const numSeats = seats.length || 4
-  const rt = (t) => `R${Math.ceil(t / numSeats)}T${t}`
+  // Renamed from `t`, which now names the translator in this scope.
+  const rt = (turn) => `R${Math.ceil(turn / numSeats)}T${turn}`
 
   let activeGameChanger = null
   for (let i = log.length - 1; i >= 0; i--) {
@@ -300,7 +331,9 @@ export default function SpectateRoom() {
     }
   }
 
-  const targetCommander = roomInfo?.commander || seats[0]?.commander || 'UNKNOWN'
+  // The ELO lookup below keys on this value, so the absent case is empty
+  // rather than a fake name; the render site words it instead.
+  const targetCommander = roomInfo?.commander || seats[0]?.commander || ''
   const targetDeckKey = roomInfo?.deck_key || ''
   const [targetOwner, targetDeckId] = targetDeckKey.includes('/') ? targetDeckKey.split('/') : ['', '']
 
@@ -308,13 +341,16 @@ export default function SpectateRoom() {
     <>
       {heatmapTip && (
         <div className="heatmap-tooltip" style={{ left: heatmapTip.x + 12, top: heatmapTip.y - 8 }}>
-          {heatmapTip.label}: {heatmapTip.value}
+          {t(heatmapTip.labelKey)}: {heatmapTip.value}
         </div>
       )}
       <Tape
-        left="SPECTATE ROOM"
-        mid={game.finished ? 'GAME OVER' : 'LIVE'}
-        right={`GAME ${roomInfo?.game_number || game.game_id || '?'} / ${rt(game.turn)}`}
+        left={t('spec.sr_tape_title')}
+        mid={game.finished ? t('spec.tape_game_over') : t('spec.sr_tape_live')}
+        right={t('spec.sr_tape_right', {
+          game: roomInfo?.game_number || game.game_id || '?',
+          turn: rt(game.turn),
+        })}
       />
 
       {/* Room indicator bar */}
@@ -324,13 +360,13 @@ export default function SpectateRoom() {
         flexWrap: 'wrap', gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Tag solid kind="ok">SPECTATING</Tag>
+          <Tag solid kind="ok">{t('spec.sr_spectating')}</Tag>
           <span
             className="t-md"
             style={{ fontWeight: 700, cursor: targetOwner ? 'pointer' : 'default', textDecoration: targetOwner ? 'underline' : 'none', textDecorationColor: 'var(--rule-2)' }}
             onClick={() => targetOwner && targetDeckId && navigate(`/decks/${targetOwner}/${targetDeckId}`)}
           >
-            {targetCommander.toUpperCase()}
+            {targetCommander ? targetCommander.toUpperCase() : t('spec.seat_unknown')}
           </span>
           {(() => {
             const e = eloByCommander[targetCommander] || {}
@@ -339,8 +375,14 @@ export default function SpectateRoom() {
           })()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="t-xs muted">{viewers} VIEWER{viewers !== 1 ? 'S' : ''}</span>
-          <span className="t-xs muted">GAME #{roomInfo?.game_number || '?'}</span>
+          {/* Plural chosen at the CALL SITE with two keys rather than
+              hanging an English S off the count. */}
+          <span className="t-xs muted">
+            {viewers === 1
+              ? t('spec.sr_viewers_one', { count: viewers })
+              : t('spec.sr_viewers', { count: viewers })}
+          </span>
+          <span className="t-xs muted">{t('spec.sr_game_num', { n: roomInfo?.game_number || '?' })}</span>
           <span className={`led led--on ${status === 'live' && !game.finished ? 'blink' : ''}`} />
         </div>
       </div>
@@ -368,8 +410,8 @@ export default function SpectateRoom() {
                 }}>
                   <div className="seat-hd">
                     <span className="seat-name">
-                      {isTarget && <span style={{ color: 'var(--accent)', fontSize: 9, marginRight: 4 }}>TARGET</span>}
-                      {s.commander?.toUpperCase() || 'UNKNOWN'}
+                      {isTarget && <span style={{ color: 'var(--accent)', fontSize: 9, marginRight: 4 }}>{t('spec.sr_target')}</span>}
+                      {s.commander?.toUpperCase() || t('spec.seat_unknown')}
                       {isActive && <span style={{ color: 'var(--warn)' }}> ●</span>}
                       {isWinner && <span style={{ color: 'var(--ok)' }}> ★</span>}
                       {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }}> ✕</span>}
@@ -411,7 +453,7 @@ export default function SpectateRoom() {
                               opacity: p.tapped ? 0.4 : 1, transform: p.tapped ? 'rotate(6deg)' : 'none',
                               backgroundImage: p.name ? `url(${cardArtUrl(p.name)})` : undefined,
                             }}>
-                            <span className="perm-tag">{typeTag(p)}{p.count > 1 ? `×${p.count}` : ''}</span>
+                            <span className="perm-tag">{typeTag(t, p)}{p.count > 1 ? `×${p.count}` : ''}</span>
                             {permStat(p) && <span className="perm-stat">{permStat(p)}</span>}
                           </div>
                         ))
@@ -430,17 +472,17 @@ export default function SpectateRoom() {
                       H{s.hand_size}{' '}
                       <span
                         className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
-                        title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
+                        title={s.library_size <= 3 ? t('spec.mill_danger') : s.library_size <= 7 ? t('spec.low_library') : t('spec.cards_left', { count: s.library_size })}
                       >L{s.library_size}</span>{' '}
                       G{s.gy_size} B{perms.length}
                       {s.mana_pool > 0 && (
                         <>
                           {' '}
-                          <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
+                          <span className="mana-pip" title={t('spec.floating_mana', { count: s.mana_pool })}>◊{s.mana_pool}</span>
                         </>
                       )}
                     </span>
-                    {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
+                    {isActive && <span style={{ color: 'var(--ok)' }}>● {t('spec.pri')}</span>}
                   </div>
                 </div>
               )
@@ -456,11 +498,19 @@ export default function SpectateRoom() {
             {game.finished ? (
               <>
                 <span className="turn-bar-left">
-                  GAME OVER — {game.end_reason?.replace(/_/g, ' ')?.toUpperCase()} — WINNER: {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : 'DRAW'}
+                  {/* end_reason is backend-worded, so it rides in as a value
+                      and is echoed. The winner name is guarded because an
+                      interpolated undefined would print the word. */}
+                  {t('spec.sr_game_over_line', {
+                    reason: game.end_reason?.replace(/_/g, ' ')?.toUpperCase() || '',
+                    winner: game.winner >= 0
+                      ? (seats[game.winner]?.commander?.toUpperCase() || t('spec.seat_unknown'))
+                      : t('spec.sr_draw'),
+                  })}
                 </span>
                 <span className="turn-bar-right" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span>{rt(game.turn)}</span>
-                  {game.game_id != null && <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>VIEW REPORT</Btn>}
+                  {game.game_id != null && <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>{t('spec.view_report')}</Btn>}
                 </span>
               </>
             ) : (
@@ -469,7 +519,7 @@ export default function SpectateRoom() {
                   {rt(game.turn)} · {(game.phase || '').toUpperCase()}{game.step ? ` / ${game.step.toUpperCase()}` : ''} · {seats[game.active_seat]?.commander?.toUpperCase()}
                 </span>
                 <span className="turn-bar-right" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span>{seats.reduce((a, s) => a + (s.battlefield?.length || 0), 0)} PERMS</span>
+                  <span>{t('spec.sr_perms', { count: seats.reduce((a, s) => a + (s.battlefield?.length || 0), 0) })}</span>
                 </span>
               </>
             )}
@@ -478,11 +528,11 @@ export default function SpectateRoom() {
 
         <div className="spectator-lower">
           <div className="spectator-lower-main">
-            <Panel code="SR.LOG" title="LIVE ACTION LOG" right={<span className="t-xs muted">{log.length} EVT</span>}>
+            <Panel code="SR.LOG" title={t('spec.log_title')} right={<span className="t-xs muted">{t('spec.evt_count', { count: log.length })}</span>}>
               <div ref={logContainerRef} onScroll={(e) => { userScrolledRef.current = e.target.scrollTop >= 30 }}
                 style={{ maxHeight: 480, overflow: 'auto', fontSize: 11, lineHeight: 1.6 }}>
                 {log.length === 0 ? (
-                  <div className="t-xs muted-2">— WAITING FOR EVENTS —</div>
+                  <div className="t-xs muted-2">{t('spec.waiting_events')}</div>
                 ) : (() => {
                   const currentRound = Math.ceil(game.turn / numSeats)
                   const reversed = [...log].reverse().slice(0, 100)
@@ -491,7 +541,7 @@ export default function SpectateRoom() {
                     const entryRound = Math.ceil(entry.turn / numSeats)
                     const isOldRound = entryRound < currentRound
                     const isElim = ELIMINATION_KINDS.has(entry.kind)
-                    const elimReason = ELIMINATION_REASONS[entry.kind]
+                    const elimReason = ELIMINATION_REASON_KEYS[entry.kind] ? t(ELIMINATION_REASON_KEYS[entry.kind]) : undefined
                     const gc = findGameChangerInText(entry.action)
                     const narrated2 = narrate(entry, seats)
                     const seatColor = SEAT_COLORS[entry.seat] || 'var(--ink-2)'
@@ -545,7 +595,7 @@ export default function SpectateRoom() {
           </div>
 
           <div className="spectator-lower-side">
-            <Panel code="SR.SPD" title="SPEED CONTROL">
+            <Panel code="SR.SPD" title={t('spec.speed_control')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {(() => {
                   const idx = SPEED_MARKS.indexOf(speed) >= 0 ? SPEED_MARKS.indexOf(speed) : 5
@@ -568,9 +618,9 @@ export default function SpectateRoom() {
               </div>
             </Panel>
 
-            <Panel code="SR.ELO" title="LIVE ELO" right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
+            <Panel code="SR.ELO" title={t('spec.live_elo')} right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
               <div style={{ minHeight: 140 }}>
-                {elo.length === 0 ? <div className="t-xs muted">NO ELO DATA YET</div> : (
+                {elo.length === 0 ? <div className="t-xs muted">{t('spec.no_elo')}</div> : (
                   elo.slice(0, 8).map((r) => (
                     <div key={r.deck_id || r.commander} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => {
                       if (r.owner && r.deck_id) navigate(`/decks/${r.owner}/${r.deck_id}`)
@@ -593,15 +643,16 @@ export default function SpectateRoom() {
               </div>
             </Panel>
 
-            <Panel code="SR.R" title="ROOM INFO">
+            <Panel code="SR.R" title={t('spec.sr_room_info')}>
               <KV rows={[
-                ['ROOM', roomId || '—'],
-                ['DECK', targetDeckKey || '—'],
-                ['VIEWERS', `${viewers}`],
-                ['STATUS', status?.toUpperCase() || 'UNKNOWN'],
+                [t('spec.sr_kv_room'), roomId || '—'],
+                [t('spec.sr_kv_deck'), targetDeckKey || '—'],
+                [t('spec.sr_kv_viewers'), `${viewers}`],
+                // The status itself arrives from the socket already worded.
+                [t('spec.kv_status'), status?.toUpperCase() || t('spec.sr_unknown')],
               ]} />
               <div style={{ marginTop: 12 }}>
-                <Btn ghost arrow="←" onClick={() => navigate('/spectate')}>BACK TO FISHTANK</Btn>
+                <Btn ghost arrow="←" onClick={() => navigate('/spectate')}>{t('spec.sr_back')}</Btn>
               </div>
             </Panel>
           </div>
