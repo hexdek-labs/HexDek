@@ -5,6 +5,7 @@ import ManaCost from '../components/ManaCost'
 import { API_BASE, cardArtUrl, cardImageUrl } from '../services/api'
 import { useArtContrast } from '../hooks/useArtContrast'
 import { useLiveSocket } from '../hooks/useLiveSocket'
+import { useT } from '../i18n'
 
 // CardPage — /cards/:cardName
 //
@@ -42,21 +43,52 @@ const ROLE_KIND = {
   value: 'ok',
 }
 
-function readableRole(r) {
-  return (r || '').replace(/_/g, ' ').toUpperCase()
+// Freya's role identifiers as they arrive on the wire, mapped to catalog
+// PATHS rather than words: this table is read at render from module scope,
+// so a word here would be fixed at load. An unknown role falls through to
+// the old prettifier rather than rendering blank.
+const ROLE_KEYS = {
+  removal: 'crd.role_removal',
+  counterspell: 'crd.role_counterspell',
+  ramp: 'crd.role_ramp',
+  draw: 'crd.role_draw',
+  tutor: 'crd.role_tutor',
+  finisher: 'crd.role_finisher',
+  combo_piece: 'crd.role_combo_piece',
+  protection: 'crd.role_protection',
+  recursion: 'crd.role_recursion',
+  threat: 'crd.role_threat',
+  utility: 'crd.role_utility',
+  value: 'crd.role_value',
 }
 
-function priceFromScryfall(s) {
+// Scryfall's four commander-legality values, same shape as ROLE_KEYS.
+const LEGALITY_KEYS = {
+  legal: 'crd.leg_legal',
+  not_legal: 'crd.leg_not_legal',
+  banned: 'crd.leg_banned',
+  restricted: 'crd.leg_restricted',
+}
+
+function readableRole(r, t) {
+  const key = ROLE_KEYS[r]
+  return key ? t(key) : (r || '').replace(/_/g, ' ').toUpperCase()
+}
+
+// Module-level formatter: takes the translator as a PARAMETER so the (FOIL)
+// suffix is worded by the caller's live locale rather than frozen at load.
+function priceFromScryfall(s, t) {
   const usd = s?.prices?.usd
   if (usd != null && usd !== '') return `$${usd}`
   const usdFoil = s?.prices?.usd_foil
-  if (usdFoil != null && usdFoil !== '') return `$${usdFoil} (FOIL)`
+  if (usdFoil != null && usdFoil !== '') return t('crd.foil_price', { price: `$${usdFoil}` })
   return '—'
 }
 
 export default function CardPage() {
   const { cardName: rawName } = useParams()
   const navigate = useNavigate()
+  const t = useT()
   const cardName = useMemo(() => decodeURIComponent(rawName || ''), [rawName])
 
   // Local API response (CardDetail). null = no data yet or 404.
@@ -144,9 +176,9 @@ export default function CardPage() {
   if (!cardName) {
     return (
       <>
-        <Tape left="CARD" mid="MISSING NAME" right="DOC HX-700" />
+        <Tape left={t('crd.tape_card')} mid={t('crd.tape_missing')} right="DOC HX-700" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; NO CARD NAME IN URL.</div>
+          <div className="t-md muted">{t('crd.no_name')}</div>
         </div>
       </>
     )
@@ -184,7 +216,7 @@ export default function CardPage() {
   const setCode = (detail?.set || scry?.set || '').toUpperCase()
   const setName = scry?.set_name || setCode || '—'
   const cmc = detail?.cmc != null ? detail.cmc : (scry?.cmc != null ? scry.cmc : null)
-  const price = priceFromScryfall(scry) // local API doesn't carry price; only present on Scryfall fallback.
+  const price = priceFromScryfall(scry, t) // local API doesn't carry price; only present on Scryfall fallback.
 
   // Cross-reference local decks (containing the card) with live ELO data
   // to derive per-deck win rates and the WITH/WITHOUT comparison. Done as
@@ -239,11 +271,14 @@ export default function CardPage() {
   const heroArt = cardArtUrl(cardName)
   const heroImage = cardImageUrl(cardName)
   const heroContrast = useArtContrast(heroArt)
+  // Worded here in the render body rather than parked in state by the
+  // fetch: a label stored at fetch time keeps the language it was fetched
+  // in. SCRYFALL is the site's own name and stays as it is.
   const sourceLabel = source === 'local'
-    ? 'LOCAL CORPUS'
+    ? t('crd.src_local')
     : source === 'scryfall'
       ? 'SCRYFALL'
-      : error ? 'UNAVAILABLE' : 'LOADING'
+      : error ? t('crd.src_unavailable') : t('crd.src_loading')
 
   return (
     <div className="card-page">
@@ -257,8 +292,8 @@ export default function CardPage() {
       )}
 
       <Tape
-        left={`CARD / / ${upperName}`}
-        mid={loading ? 'LOADING' : (error ? 'UNAVAILABLE' : sourceLabel)}
+        left={t('crd.tape_left', { name: upperName })}
+        mid={loading ? t('crd.src_loading') : (error ? t('crd.src_unavailable') : sourceLabel)}
         right="DOC HX-700"
       />
 
@@ -272,7 +307,7 @@ export default function CardPage() {
         }}
       >
         <div className="card-page-hero-scrim" />
-        <div className="card-page-hero-corner card-page-hero-corner--tl">04.HERO / / {setCode || 'UNKNOWN'}</div>
+        <div className="card-page-hero-corner card-page-hero-corner--tl">04.HERO / / {setCode || t('crd.unknown')}</div>
         <div className="card-page-hero-corner card-page-hero-corner--tr">{upperName}</div>
         <div className="card-page-hero-body">
           {heroImage && (
@@ -305,41 +340,45 @@ export default function CardPage() {
 
       <div className="card-page-layout">
         <div className="card-page-sidebar">
-          <Panel code="07.A" title="CARD SPECS" solid>
+          <Panel code="07.A" title={t('crd.specs')} solid>
             <KV rows={[
-              ['NAME', upperName],
-              ['TYPE', typeLine],
-              ['MANA', manaCost ? <ManaCost cost={manaCost} size={16} /> : '—'],
+              [t('crd.kv_name'), upperName],
+              [t('crd.kv_type'), typeLine],
+              [t('crd.kv_mana'), manaCost ? <ManaCost cost={manaCost} size={16} /> : '—'],
               ['CMC', cmc != null ? `${cmc}` : '—'],
-              ['SET', setCode || '—'],
-              ...(source === 'scryfall' ? [['PRICE (USD)', price]] : []),
+              [t('crd.kv_set'), setCode || '—'],
+              ...(source === 'scryfall' ? [[t('crd.kv_price'), price]] : []),
               ...(scry?.legalities?.commander ? [[
-                'LEGAL COMMANDER',
+                t('crd.kv_legal_commander'),
                 <span style={{ color: scry.legalities.commander === 'legal' ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>
-                  {scry.legalities.commander.toUpperCase()}
+                  {LEGALITY_KEYS[scry.legalities.commander]
+                    ? t(LEGALITY_KEYS[scry.legalities.commander])
+                    : scry.legalities.commander.toUpperCase()}
                 </span>,
               ]] : []),
-              ['SOURCE', sourceLabel],
+              [t('crd.kv_source'), sourceLabel],
             ]} />
             {scry?.scryfall_uri && (
               <>
                 <div className="hr" style={{ margin: '10px 0' }} />
                 <a href={scry.scryfall_uri} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                  <Btn ghost arrow="↗">VIEW ON SCRYFALL</Btn>
+                  <Btn ghost arrow="↗">{t('crd.view_scryfall')}</Btn>
                 </a>
               </>
             )}
           </Panel>
 
           {roles.length > 0 && (
-            <Panel code="07.R" title={`FREYA ROLES / / ${roles.length}`}>
+            <Panel code="07.R" title={t('crd.roles_title', { count: roles.length })}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {roles.map(r => (
-                  <Tag key={r} kind={ROLE_KIND[r]} solid>{readableRole(r)}</Tag>
+                  <Tag key={r} kind={ROLE_KIND[r]} solid>{readableRole(r, t)}</Tag>
                 ))}
               </div>
               <div className="t-xs muted" style={{ marginTop: 6 }}>
-                ROLES SOURCED FROM EACH USING DECK'S STRATEGY.JSON.
+                {/* The filename rides in as a value so it is written once
+                    here rather than 25 times across the catalogs. */}
+                {t('crd.roles_note', { file: 'STRATEGY.JSON' })}
               </div>
             </Panel>
           )}
@@ -347,20 +386,20 @@ export default function CardPage() {
 
         <div className="card-page-main">
           {/* Oracle text */}
-          <Panel code="07.B" title="ORACLE TEXT" right={
-            <span className="t-xs muted">{loading ? 'LOADING' : (error ? 'OFFLINE' : sourceLabel)}</span>
+          <Panel code="07.B" title={t('crd.oracle_title')} right={
+            <span className="t-xs muted">{loading ? t('crd.src_loading') : (error ? t('crd.offline') : sourceLabel)}</span>
           }>
             {loading ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; FETCHING CARD RECORD<span className="blink">_</span>
+                {t('crd.fetching_card')}<span className="blink">_</span>
               </div>
             ) : error ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; CARD DATA UNAVAILABLE — TRY AGAIN LATER.
+                {t('crd.card_unavailable')}
               </div>
             ) : (
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55, fontSize: 12 }}>
-                {oracle || <span className="muted">&gt; NO ORACLE TEXT.</span>}
+                {oracle || <span className="muted">{t('crd.no_oracle')}</span>}
               </div>
             )}
           </Panel>
@@ -371,21 +410,21 @@ export default function CardPage() {
               case instead of a misleading 0% bar. */}
           <Panel
             code="07.W"
-            title="ENGINE STATS / / WIN RATE"
+            title={t('crd.engine_title')}
             right={stats?.games_played > 0 ? <Tag solid kind={stats.win_rate >= 0.5 ? 'ok' : null}>{(stats.win_rate * 100).toFixed(1)}% WR</Tag> : null}
           >
             {stats == null ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; FETCHING ENGINE STATS<span className="blink">_</span>
+                {t('crd.fetching_stats')}<span className="blink">_</span>
               </div>
             ) : (stats.games_played || 0) === 0 ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; NOT ENOUGH GAME DATA YET.
+                {t('crd.no_game_data')}
               </div>
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 56px', alignItems: 'center', gap: 8 }}>
-                  <span className="t-xs muted">WIN RATE</span>
+                  <span className="t-xs muted">{t('crd.win_rate')}</span>
                   <Bar value={stats.win_rate * 100} lg />
                   <span className="t-md text-right" style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                     {(stats.win_rate * 100).toFixed(1)}%
@@ -393,39 +432,39 @@ export default function CardPage() {
                 </div>
                 <div className="hr" style={{ margin: '12px 0' }} />
                 <KV rows={[
-                  ['GAMES PLAYED', `${stats.games_played.toLocaleString()}`],
-                  ['WINS', <span style={{ color: 'var(--ok)' }}>{(stats.wins || 0).toLocaleString()}</span>],
-                  ['LOSSES', <span style={{ color: 'var(--danger)' }}>{(stats.losses || 0).toLocaleString()}</span>],
-                  ...(stats.avg_turn_played > 0 ? [['AVG TURN PLAYED', stats.avg_turn_played.toFixed(1)]] : []),
+                  [t('crd.kv_games_played'), `${stats.games_played.toLocaleString()}`],
+                  [t('crd.kv_wins'), <span style={{ color: 'var(--ok)' }}>{(stats.wins || 0).toLocaleString()}</span>],
+                  [t('crd.kv_losses'), <span style={{ color: 'var(--danger)' }}>{(stats.losses || 0).toLocaleString()}</span>],
+                  ...(stats.avg_turn_played > 0 ? [[t('crd.kv_avg_turn'), stats.avg_turn_played.toFixed(1)]] : []),
                 ]} />
 
                 {withVsWithout && (withVsWithout.withWR != null || withVsWithout.woWR != null) && (
                   <>
                     <div className="hr" style={{ margin: '12px 0' }} />
-                    <div className="t-xs muted" style={{ marginBottom: 6 }}>DECK WIN-RATE COMPARISON (LIVE ELO)</div>
+                    <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('crd.wr_comparison')}</div>
                     {withVsWithout.withWR != null && (
                       <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 90px', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span className="t-xs">DECKS WITH</span>
+                        <span className="t-xs">{t('crd.decks_with')}</span>
                         <Bar value={withVsWithout.withWR} />
                         <span className="t-xs text-right" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ok)' }}>
-                          {withVsWithout.withWR.toFixed(1)}% · {withVsWithout.withGames.toLocaleString()}G
+                          {withVsWithout.withWR.toFixed(1)}% · {t('crd.games_suffix', { count: withVsWithout.withGames.toLocaleString() })}
                         </span>
                       </div>
                     )}
                     {withVsWithout.woWR != null && (
                       <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 90px', alignItems: 'center', gap: 8 }}>
-                        <span className="t-xs">DECKS WITHOUT</span>
+                        <span className="t-xs">{t('crd.decks_without')}</span>
                         <Bar value={withVsWithout.woWR} />
                         <span className="t-xs text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          {withVsWithout.woWR.toFixed(1)}% · {withVsWithout.woGames.toLocaleString()}G
+                          {withVsWithout.woWR.toFixed(1)}% · {t('crd.games_suffix', { count: withVsWithout.woGames.toLocaleString() })}
                         </span>
                       </div>
                     )}
                     {withVsWithout.withWR != null && withVsWithout.woWR != null && (
                       <div className="t-xs muted" style={{ marginTop: 6 }}>
-                        DELTA{' '}
+                        {t('crd.delta')}{' '}
                         <span style={{ color: withVsWithout.withWR > withVsWithout.woWR ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>
-                          {withVsWithout.withWR > withVsWithout.woWR ? '+' : ''}{(withVsWithout.withWR - withVsWithout.woWR).toFixed(1)}PP
+                          {t('crd.pp_suffix', { value: `${withVsWithout.withWR > withVsWithout.woWR ? '+' : ''}${(withVsWithout.withWR - withVsWithout.woWR).toFixed(1)}` })}
                         </span>
                       </div>
                     )}
@@ -440,21 +479,21 @@ export default function CardPage() {
           {perfStats && (perfStats.games_played > 0 || perfStats.decks_using > 0) && (
             <Panel
               code="07.P"
-              title="PERFORMANCE / / CROSS-COMMANDER"
-              right={perfStats.decks_using > 0 ? <Tag solid>{perfStats.decks_using} DECKS</Tag> : null}
+              title={t('crd.perf_title')}
+              right={perfStats.decks_using > 0 ? <Tag solid>{t('crd.n_decks', { count: perfStats.decks_using })}</Tag> : null}
             >
               {/* Inclusion rate */}
               {perfStats.total_decks > 0 && (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 80px', alignItems: 'center', gap: 8 }}>
-                    <span className="t-xs muted">INCLUSION</span>
+                    <span className="t-xs muted">{t('crd.inclusion')}</span>
                     <Bar value={perfStats.inclusion_rate * 100} />
                     <span className="t-xs text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {perfStats.decks_using} / {perfStats.total_decks}
                     </span>
                   </div>
                   <div className="t-xs muted" style={{ marginTop: 4 }}>
-                    APPEARS IN {(perfStats.inclusion_rate * 100).toFixed(1)}% OF TRACKED DECKS
+                    {t('crd.appears_in', { pct: (perfStats.inclusion_rate * 100).toFixed(1) })}
                   </div>
                   <div className="hr" style={{ margin: '12px 0' }} />
                 </>
@@ -463,14 +502,14 @@ export default function CardPage() {
               {/* Top commanders using this card */}
               {perfStats.top_commanders && perfStats.top_commanders.length > 0 && (
                 <>
-                  <div className="t-xs muted" style={{ marginBottom: 6 }}>TOP COMMANDERS USING THIS CARD</div>
+                  <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('crd.top_commanders')}</div>
                   <div style={{
                     display: 'grid', gridTemplateColumns: '24px 1fr 60px 60px',
                     gap: 4, padding: '4px 0', borderBottom: '1px solid var(--rule-2)', marginBottom: 4,
                   }}>
                     <span className="t-xs muted">#</span>
-                    <span className="t-xs muted">COMMANDER</span>
-                    <span className="t-xs muted text-right">GAMES</span>
+                    <span className="t-xs muted">{t('crd.col_commander')}</span>
+                    <span className="t-xs muted text-right">{t('crd.col_games')}</span>
                     <span className="t-xs muted text-right">WR%</span>
                   </div>
                   {perfStats.top_commanders.slice(0, 5).map((c, i) => (
@@ -500,7 +539,7 @@ export default function CardPage() {
               {/* Bracket distribution */}
               {perfStats.bracket_distribution && perfStats.bracket_distribution.length > 0 && (
                 <>
-                  <div className="t-xs muted" style={{ marginBottom: 6 }}>BRACKET DISTRIBUTION</div>
+                  <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('crd.bracket_dist')}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 60, padding: '0 4px' }}>
                     {perfStats.bracket_distribution.map(b => {
                       const maxCount = Math.max(...perfStats.bracket_distribution.map(x => x.count))
@@ -528,7 +567,7 @@ export default function CardPage() {
           {decksWithElo.length > 0 && (
             <Panel
               code="07.T"
-              title={`TOP DECKS / / ${decksWithElo.length} RANKED`}
+              title={t('crd.top_decks_title', { count: decksWithElo.length })}
               right={<Tag solid>{decksWithElo.length}</Tag>}
             >
               <div style={{
@@ -536,9 +575,9 @@ export default function CardPage() {
                 gap: 6, padding: '4px 0', borderBottom: '1px solid var(--rule-2)', marginBottom: 4,
               }}>
                 <span className="t-xs muted">#</span>
-                <span className="t-xs muted">DECK</span>
+                <span className="t-xs muted">{t('crd.col_deck')}</span>
                 <span className="t-xs muted text-right">ELO</span>
-                <span className="t-xs muted text-right">REC</span>
+                <span className="t-xs muted text-right">{t('crd.col_rec')}</span>
                 <span className="t-xs muted text-right">WR%</span>
               </div>
               {decksWithElo.slice(0, 5).map((d, i) => (
@@ -570,7 +609,7 @@ export default function CardPage() {
               ))}
               {decksWithElo.length > 5 && (
                 <div className="t-xs muted" style={{ textAlign: 'center', marginTop: 8 }}>
-                  &gt; {decksWithElo.length - 5} MORE — SEE USED IN BELOW
+                  {t('crd.more_see_used_in', { count: decksWithElo.length - 5 })}
                 </div>
               )}
             </Panel>
@@ -582,16 +621,16 @@ export default function CardPage() {
               card isn't in our oracle corpus. */}
           <Panel
             code="07.C"
-            title={`USED IN / / ${loading ? '…' : localDecks.length} DECKS`}
+            title={t('crd.used_in_title', { count: loading ? '…' : localDecks.length })}
             right={<Tag solid kind={localDecks.length > 0 ? 'ok' : null}>{localDecks.length}</Tag>}
           >
             {loading ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; SEARCHING DECK INDEX<span className="blink">_</span>
+                {t('crd.searching_index')}<span className="blink">_</span>
               </div>
             ) : localDecks.length === 0 ? (
               <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-                &gt; NO INDEXED DECKS INCLUDE THIS CARD YET.
+                {t('crd.no_indexed_decks')}
               </div>
             ) : (
               <div style={{
@@ -607,7 +646,7 @@ export default function CardPage() {
                       key={`${d.owner}/${d.id}`}
                       to={`/decks/${d.owner}/${d.id}`}
                       className="card-page-deck-tile"
-                      title={`${d.commander || d.name || d.id} (${d.owner})${d.role ? ' · ' + readableRole(d.role) : ''}`}
+                      title={`${d.commander || d.name || d.id} (${d.owner})${d.role ? ' · ' + readableRole(d.role, t) : ''}`}
                     >
                       <div
                         className="card-page-deck-art"
@@ -620,7 +659,7 @@ export default function CardPage() {
                         <div className="card-page-deck-owner">
                           {(d.owner || '').toUpperCase()}
                           {d.role && (
-                            <span style={{ marginLeft: 4, color: 'var(--ink-3)' }}>· {readableRole(d.role)}</span>
+                            <span style={{ marginLeft: 4, color: 'var(--ink-3)' }}>· {readableRole(d.role, t)}</span>
                           )}
                         </div>
                       </div>
@@ -631,7 +670,7 @@ export default function CardPage() {
             )}
             {localDecks.length > 60 && (
               <div className="t-xs muted" style={{ textAlign: 'center', marginTop: 8 }}>
-                &gt; SHOWING 60 / {localDecks.length}
+                {t('crd.showing_n', { shown: 60, total: localDecks.length })}
               </div>
             )}
           </Panel>
