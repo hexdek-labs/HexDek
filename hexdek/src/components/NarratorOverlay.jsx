@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { findGameChangerInText } from '../data/gameChangers'
+import { useT } from '../i18n'
 
-// NarratorOverlay — plain-English commentary strip.
+// NarratorOverlay — plain-language commentary strip.
 //
 // Reads the engine's per-game log array (each entry has turn, seat,
 // action, detail, kind) and renders the last 10 narrated events as a
 // semi-transparent bar pinned to the bottom of the spectator view.
 // This is the foundation for Twitch / OBS overlay integration: the
-// generated sentences are stable, plain English (no ALL-CAPS terminal
+// generated sentences are stable full sentences (no ALL-CAPS terminal
 // styling on the prose itself, so streams can pipe them through TTS
 // or chat without further processing).
 //
@@ -28,10 +29,24 @@ const TONE = {
   event:     'narrator-row--event',
 }
 
-function playerLabel(seat, seats) {
+// Catalog PATHS, not English. A verb cannot ride into a sentence as an
+// interpolated value and still inflect — and in several locales the case of
+// the object depends on which verb governs it — so each removal verb gets its
+// own full-sentence key.
+const REMOVAL_KEYS = {
+  DESTROYS:   'nar.destroys',
+  EXILES:     'nar.exiles',
+  SACRIFICES: 'nar.sacrifices',
+}
+
+// Returns the vars fragment naming the acting seat: a commander NAME when we
+// have one (card names stay English in all 25 locales) or the bare seat index,
+// which narratedText turns into "Player N" at the render site. narrate() is a
+// pure function with no translator, so it cannot word that fallback itself.
+function actorVars(seat, seats) {
   const s = seats?.[seat]
-  if (s?.commander) return s.commander.split('//')[0].trim()
-  return `Player ${seat + 1}`
+  if (s?.commander) return { actor: s.commander.split('//')[0].trim() }
+  return { actorSeat: seat }
 }
 
 // Strip the "<COMMANDER> " prefix the backend prepends to most action
@@ -46,12 +61,24 @@ function stripActor(action, actor) {
   return action
 }
 
-// narrate transforms one LogEntry into { text, tone } for display.
+// narrate transforms one LogEntry into { key, vars, tone } — a catalog PATH
+// plus its interpolation values, never a worded sentence. Three reasons it has
+// to be a key: this is an exported pure function shared with Spectator and
+// SpectateRoom and has no access to a translator; the consumer below holds the
+// result in a useMemo keyed on [log, seats], so a worded sentence would freeze
+// at the last log update and never re-word on a locale switch; and the whole
+// sentence has to live in one catalog value because word order is part of the
+// translation — ja/ko/tr are SOV and ar is VSO, so "{actor} casts {name}" is
+// not a shape every locale can reuse.
+//
+// Counts never take an English plural "s": the call site picks between a
+// singular key and a plural one, matching the app's 40 existing *_one pairs.
+//
 // Returns null when the entry doesn't surface in the narrator (turn
 // markers, internal events, etc.) so the consumer can skip it.
 function narrate(entry, seats) {
   if (!entry || !entry.action) return null
-  const actor = playerLabel(entry.seat, seats)
+  const a = actorVars(entry.seat, seats)
   const actorRaw = seats?.[entry.seat]?.commander?.split('//')[0].trim() || ''
   const tail = stripActor(entry.action, actorRaw)
   const lower = tail.toLowerCase()
@@ -64,7 +91,8 @@ function narrate(entry, seats) {
   const gc = findGameChangerInText(entry.action)
   if (gc) {
     return {
-      text: `GAME CHANGER · ${gc.toUpperCase()} hits the battlefield (${actor}).`,
+      key: 'nar.gc_etb',
+      vars: { ...a, name: gc.toUpperCase() },
       tone: 'changer',
     }
   }
@@ -78,149 +106,194 @@ function narrate(entry, seats) {
       if (m) {
         const n = parseInt(m[1], 10)
         const target = lower.includes('→') ? lower.split('→')[1].trim() : null
+        if (target) {
+          return {
+            key: n === 1 ? 'nar.attack_t_one' : 'nar.attack_t',
+            vars: { ...a, n, target: target.replace(/\.$/, '') },
+            tone: 'combat',
+          }
+        }
         return {
-          text: target
-            ? `${actor} attacks ${target.replace(/\.$/, '')} with ${n} creature${n === 1 ? '' : 's'}.`
-            : `${actor} attacks with ${n} creature${n === 1 ? '' : 's'}.`,
+          key: n === 1 ? 'nar.attack_one' : 'nar.attack',
+          vars: { ...a, n },
           tone: 'combat',
         }
       }
-      return { text: `${actor} ${tail.toLowerCase()}`, tone: 'combat' }
+      // No shape we recognise: echo the backend's own words behind the actor.
+      return { key: 'nar.raw', vars: { ...a, text: tail.toLowerCase() }, tone: 'combat' }
     }
     case 'cast': {
       const m = tail.match(/^CASTS (.+)$/i)
-      if (m) return { text: `${actor} casts ${titleCase(m[1])}.`, tone: 'cast' }
-      if (source) return { text: `${actor} casts ${titleCase(source)}.`, tone: 'cast' }
-      return { text: `${actor} casts a spell.`, tone: 'cast' }
+      if (m) return { key: 'nar.casts', vars: { ...a, name: titleCase(m[1]) }, tone: 'cast' }
+      if (source) return { key: 'nar.casts', vars: { ...a, name: titleCase(source) }, tone: 'cast' }
+      return { key: 'nar.casts_spell', vars: a, tone: 'cast' }
     }
     case 'land': {
       const m = tail.match(/^PLAYS LAND: (.+)$/i)
-      if (m) return { text: `${actor} plays ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.plays', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'enter_battlefield':
     case 'etb': {
       const m = tail.match(/(?:→ ETB|ETB|ENTERS):? *(.+)$/i)
-      const name = m ? titleCase(m[1]) : detail || 'a permanent'
-      return { text: `${name} enters under ${actor}.`, tone: 'event' }
+      const name = m ? titleCase(m[1]) : detail
+      // nameKey, not the English words: narratedText reads it at the render
+      // site. detail is a server-worded value, so it is echoed when present.
+      return {
+        key: 'nar.enters',
+        vars: name ? { ...a, name } : { ...a, nameKey: 'nar.a_permanent' },
+        tone: 'event',
+      }
     }
     case 'elimination':
     case 'player_lost': {
       // detail often carries the reason ("commander damage", "lethal", …).
-      const reason = detail ? ` (${detail})` : ''
-      return { text: `${actor} eliminated${reason}.`, tone: 'elim' }
+      if (detail) return { key: 'nar.elim_reason', vars: { ...a, reason: detail }, tone: 'elim' }
+      return { key: 'nar.elim', vars: a, tone: 'elim' }
     }
     case 'damage': {
       const m = tail.match(/DEALS (\d+) DAMAGE TO (.+)$/i)
-      if (m) return {
-        text: `${actor} deals ${m[1]} damage to ${titleCase(m[2])}${detail ? ` (${detail})` : ''}.`,
-        tone: 'event',
+      if (m) {
+        const vars = { ...a, n: m[1], target: titleCase(m[2]) }
+        if (detail) return { key: 'nar.damage_detail', vars: { ...vars, detail }, tone: 'event' }
+        return { key: 'nar.damage', vars, tone: 'event' }
       }
       return null
     }
     case 'counter': {
       const m = tail.match(/^COUNTERS (.+)$/i)
-      if (m) return { text: `${actor} counters ${titleCase(m[1])}.`, tone: 'cast' }
+      if (m) return { key: 'nar.counters', vars: { ...a, name: titleCase(m[1]) }, tone: 'cast' }
       return null
     }
     case 'removal': {
       const m = tail.match(/^(DESTROYS|EXILES|SACRIFICES) (.+)$/i)
       if (m) {
-        const verb = m[1].toLowerCase().replace(/s$/, 'es').replace(/ses$/, 'ces')
-        return { text: `${actor} ${m[1].toLowerCase()} ${titleCase(m[2])}.`, tone: 'event' }
+        const key = REMOVAL_KEYS[m[1].toUpperCase()]
+        if (!key) return null
+        return { key, vars: { ...a, name: titleCase(m[2]) }, tone: 'event' }
       }
       return null
     }
     case 'token': {
       const m = tail.match(/^CREATES TOKEN: (.+)$/i)
-      if (m) return { text: `${actor} creates a ${titleCase(m[1])} token.`, tone: 'event' }
+      if (m) return { key: 'nar.token', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'reanimate': {
       const m = tail.match(/^REANIMATES (.+)$/i)
-      if (m) return { text: `${actor} reanimates ${titleCase(m[1])}.`, tone: 'changer' }
+      if (m) return { key: 'nar.reanimates', vars: { ...a, name: titleCase(m[1]) }, tone: 'changer' }
       return null
     }
     case 'extra_turn':
-      return { text: `${actor} takes an extra turn.`, tone: 'changer' }
+      return { key: 'nar.extra_turn', vars: a, tone: 'changer' }
     case 'mill': {
       const m = tail.match(/MILLS (\d+) CARDS?/i)
-      if (m) return { text: `${actor} mills ${m[1]} card${m[1] === '1' ? '' : 's'}.`, tone: 'event' }
+      if (m) return {
+        key: m[1] === '1' ? 'nar.mills_one' : 'nar.mills',
+        vars: { ...a, n: m[1] },
+        tone: 'event',
+      }
       return null
     }
     case 'draw': {
       const m = tail.match(/DRAWS? (\d+) CARDS?/i) || tail.match(/DRAWS? A CARD/i)
       if (m) {
         const n = m[1] ? parseInt(m[1], 10) : 1
-        return { text: `${actor} draws ${n} card${n === 1 ? '' : 's'}.`, tone: 'event' }
+        return {
+          key: n === 1 ? 'nar.draws_one' : 'nar.draws',
+          vars: { ...a, n },
+          tone: 'event',
+        }
       }
       return null
     }
     case 'discard': {
       const m = tail.match(/DISCARDS? (.+)$/i)
-      if (m) return { text: `${actor} discards ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.discards', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'scry': {
       const m = tail.match(/SCRIES? (\d+)/i)
-      if (m) return { text: `${actor} scries ${m[1]}.`, tone: 'event' }
+      if (m) return { key: 'nar.scries', vars: { ...a, n: m[1] }, tone: 'event' }
       return null
     }
     case 'surveil': {
       const m = tail.match(/SURVEILS? (\d+)/i)
-      if (m) return { text: `${actor} surveils ${m[1]}.`, tone: 'event' }
+      if (m) return { key: 'nar.surveils', vars: { ...a, n: m[1] }, tone: 'event' }
       return null
     }
     case 'untap': {
       const m = tail.match(/UNTAPS? (\d+) PERMANENTS?/i)
-      if (m) return { text: `${actor} untaps ${m[1]} permanents.`, tone: 'event' }
+      if (m) return {
+        key: m[1] === '1' ? 'nar.untaps_n_one' : 'nar.untaps_n',
+        vars: { ...a, n: m[1] },
+        tone: 'event',
+      }
       const m2 = tail.match(/UNTAPS? (.+)$/i)
-      if (m2) return { text: `${actor} untaps ${titleCase(m2[1])}.`, tone: 'event' }
+      if (m2) return { key: 'nar.untaps', vars: { ...a, name: titleCase(m2[1]) }, tone: 'event' }
       return null
     }
     case 'tap': {
       const m = tail.match(/TAPS? (\d+) PERMANENTS?/i)
-      if (m) return { text: `${actor} taps ${m[1]} permanents.`, tone: 'event' }
+      if (m) return {
+        key: m[1] === '1' ? 'nar.taps_n_one' : 'nar.taps_n',
+        vars: { ...a, n: m[1] },
+        tone: 'event',
+      }
       const m2 = tail.match(/TAPS? (.+)$/i)
-      if (m2) return { text: `${actor} taps ${titleCase(m2[1])}.`, tone: 'event' }
+      if (m2) return { key: 'nar.taps', vars: { ...a, name: titleCase(m2[1]) }, tone: 'event' }
       return null
     }
     case 'bounce': {
       const m = tail.match(/(?:BOUNCES?|RETURNS?) (.+?)(?:\s+TO HAND)?$/i)
-      if (m) return { text: `${actor} bounces ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.bounces', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'equip': {
       const m = tail.match(/EQUIPS? (.+)$/i)
-      if (m) return { text: `${actor} equips ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.equips', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'shuffle':
-      return { text: `${actor} shuffles.`, tone: 'event' }
+      return { key: 'nar.shuffles', vars: a, tone: 'event' }
     case 'monarch':
-      return { text: `${actor} becomes the monarch.`, tone: 'changer' }
+      return { key: 'nar.monarch', vars: a, tone: 'changer' }
     case 'life': {
       const mg = tail.match(/GAINS? (\d+) LIFE/i)
-      if (mg) return { text: `${actor} gains ${mg[1]} life.`, tone: 'event' }
+      if (mg) return { key: 'nar.gains_life', vars: { ...a, n: mg[1] }, tone: 'event' }
       const ml = tail.match(/(?:LOSES?|PAYS?) (\d+) LIFE/i)
-      if (ml) return { text: `${actor} loses ${ml[1]} life.`, tone: 'event' }
+      if (ml) return { key: 'nar.loses_life', vars: { ...a, n: ml[1] }, tone: 'event' }
       return null
     }
     case 'trigger': {
       const m = tail.match(/TRIGGERS? (.+)$/i)
-      if (m) return { text: `${actor} triggers ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.triggers', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'activate': {
       const m = tail.match(/ACTIVATES? (.+)$/i)
-      if (m) return { text: `${actor} activates ${titleCase(m[1])}.`, tone: 'event' }
+      if (m) return { key: 'nar.activates', vars: { ...a, name: titleCase(m[1]) }, tone: 'event' }
       return null
     }
     case 'search':
-      return { text: `${actor} searches their library.`, tone: 'event' }
+      return { key: 'nar.searches', vars: a, tone: 'event' }
     default:
       return null
   }
+}
+
+// Words one narrate() result. It lives beside narrate so that all three
+// consumers — this component, Spectator and SpectateRoom — share one wording
+// site, and so the two deferred fallbacks above are resolved in exactly one
+// place. Returns a plain string, which is what linkifyNarrated() needs: it
+// string-searches the sentence for the card name and splits around it, and
+// card names stay English in all 25 locales, so that still lands.
+function narratedText(n, t) {
+  if (!n) return ''
+  const v = { ...n.vars }
+  if (v.actor == null) v.actor = t('nar.player_n', { n: v.actorSeat + 1 })
+  if (v.name == null && v.nameKey) v.name = t(v.nameKey)
+  return t(n.key, v)
 }
 
 function titleCase(s) {
@@ -228,9 +301,13 @@ function titleCase(s) {
   return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
 }
 
-export { narrate }
+export { narrate, narratedText }
 
 export default function NarratorOverlay({ log, seats }) {
+  const t = useT()
+  // The memo below holds catalog KEYS, so it is locale-independent and needs
+  // no locale dep: the wording happens in the render body, which useT() re-runs
+  // on a locale change. This is the one shape where getLocale() is NOT needed.
   const lines = useMemo(() => {
     if (!Array.isArray(log) || log.length === 0) return []
     const out = []
@@ -239,7 +316,9 @@ export default function NarratorOverlay({ log, seats }) {
     for (let i = log.length - 1; i >= 0 && out.length < MAX_EVENTS; i--) {
       const n = narrate(log[i], seats)
       if (!n) continue
-      out.push({ ...n, turn: log[i].turn, key: `${i}-${log[i].kind}` })
+      // rowKey, not key: narrate()'s own `key` field is the catalog path.
+      // This one is the React list identity and stays locale-independent.
+      out.push({ ...n, turn: log[i].turn, rowKey: `${i}-${log[i].kind}` })
     }
     return out.reverse() // oldest first so newest is at the bottom (most-visible) edge
   }, [log, seats])
@@ -249,17 +328,17 @@ export default function NarratorOverlay({ log, seats }) {
   return (
     <div className="narrator-overlay" role="log" aria-live="polite" aria-atomic="false">
       <div className="narrator-overlay-hd">
-        <span>NARRATOR / / LIVE COMMENTARY</span>
+        <span>{t('nar.hd')}</span>
         <span className="narrator-overlay-count">{lines.length} / {MAX_EVENTS}</span>
       </div>
       <div className="narrator-overlay-rows">
         {lines.map((l, idx) => (
           <div
-            key={l.key}
+            key={l.rowKey}
             className={`narrator-row ${TONE[l.tone] || ''}${idx === lines.length - 1 ? ' narrator-row--latest' : ''}`}
           >
             <span className="narrator-row-turn">T{l.turn}</span>
-            <span className="narrator-row-text">{l.text}</span>
+            <span className="narrator-row-text">{narratedText(l, t)}</span>
           </div>
         ))}
       </div>

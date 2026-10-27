@@ -5,7 +5,7 @@ import { cardArtUrl, api } from '../services/api'
 import { useSpectateRoom } from '../hooks/useSpectateRoom'
 import { findGameChangerInText } from '../data/gameChangers'
 import CardLink, { linkifyAction } from '../components/CardLink'
-import { narrate } from '../components/NarratorOverlay'
+import { narrate, narratedText } from '../components/NarratorOverlay'
 import ArtAmbience from '../components/ArtAmbience'
 import { useT, getLocale } from '../i18n'
 
@@ -567,7 +567,7 @@ export default function SpectateRoom() {
                               <span style={{ color: narrated2.tone === 'combat' || narrated2.tone === 'elim' ? 'var(--danger)' : narrated2.tone === 'changer' ? 'var(--warn)' : 'var(--ink)', letterSpacing: '0.01em' }}>
                                 {gc && <span className="gc-pill" title="Game Changer">★ GC</span>}
                                 {entry.count > 1 && <span style={{ background: 'var(--ink-3)', color: 'var(--bg)', borderRadius: 3, padding: '0 4px', fontSize: 9, marginRight: 4, fontWeight: 700 }}>×{entry.count}</span>}
-                                {linkifyNarrated(narrated2.text, entry.source, entry.targets)}
+                                {linkifyNarrated(narratedText(narrated2, t), entry.source, entry.targets)}
                               </span>
                             ) : isElim ? (
                               <span style={{ color: 'var(--danger)', letterSpacing: '0.04em', fontWeight: 700, fontSize: 12 }}>

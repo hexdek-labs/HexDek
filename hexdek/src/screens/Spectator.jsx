@@ -6,7 +6,7 @@ import { cardArtUrl, API_BASE } from '../services/api'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { findGameChangerInText } from '../data/gameChangers'
 import CardLink, { linkifyAction } from '../components/CardLink'
-import { narrate } from '../components/NarratorOverlay'
+import { narrate, narratedText } from '../components/NarratorOverlay'
 import ContextBox from '../components/ContextBox'
 import ArtAmbience from '../components/ArtAmbience'
 import {
@@ -1282,7 +1282,7 @@ export default function Spectator() {
                               }}>
                                 {gc && <span className="gc-pill" title="Game Changer">★ GC</span>}
                                 {entry.count > 1 && <span style={{ background: 'var(--ink-3)', color: 'var(--bg)', borderRadius: 3, padding: '0 4px', fontSize: 9, marginRight: 4, fontWeight: 700 }}>×{entry.count}</span>}
-                                {linkifyNarrated(narrated.text, entry.source, entry.targets)}
+                                {linkifyNarrated(narratedText(narrated, t), entry.source, entry.targets)}
                                 <ActionExplainBadge explanation={explanation} />
                               </span>
                             ) : isElim ? (
