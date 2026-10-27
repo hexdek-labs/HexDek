@@ -1532,5 +1532,17 @@
     "close_aria": "Auswahl schließen",
     "filter_ph": "DECKS FILTERN...",
     "no_matches": "KEINE TREFFER"
+  },
+  "ovl": {
+    "waiting_game": "WARTE AUF SPIEL #{id}",
+    "ph_curtain_winner": "VORHANG · SIEGER STEHT FEST",
+    "ph_curtain_draw": "VORHANG · REMIS",
+    "ph_climax_elim": "HÖHEPUNKT · ELIMINIERUNG",
+    "ph_climax_1v1": "HÖHEPUNKT · 1V1-ENDSPIEL",
+    "ph_climax_lethal": "HÖHEPUNKT · TÖDLICHER BEREICH",
+    "ph_climax_combo": "HÖHEPUNKT · COMBO-AUFBAU",
+    "ph_midgame_board": "MITTELSPIEL · SPIELFELDAUFBAU",
+    "ph_opening_ramp": "ERÖFFNUNG · RAMP-PHASE",
+    "ph_opening_mull": "ERÖFFNUNG · MULLIGAN"
   }
 }

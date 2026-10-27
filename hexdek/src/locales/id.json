@@ -1532,5 +1532,17 @@
     "close_aria": "Tutup pemilih",
     "filter_ph": "FILTER DEK...",
     "no_matches": "TIDAK ADA HASIL"
+  },
+  "ovl": {
+    "waiting_game": "MENUNGGU GAME #{id}",
+    "ph_curtain_winner": "PENUTUP · PEMENANG DITETAPKAN",
+    "ph_curtain_draw": "PENUTUP · SERI",
+    "ph_climax_elim": "KLIMAKS · PENYINGKIRAN",
+    "ph_climax_1v1": "KLIMAKS · BABAK AKHIR 1V1",
+    "ph_climax_lethal": "KLIMAKS · JANGKAUAN MEMATIKAN",
+    "ph_climax_combo": "KLIMAKS · MERANGKAI KOMBO",
+    "ph_midgame_board": "PERTENGAHAN · PENGEMBANGAN MEDAN PERANG",
+    "ph_opening_ramp": "PEMBUKAAN · FASE RAMP",
+    "ph_opening_mull": "PEMBUKAAN · MULLIGAN"
   }
 }

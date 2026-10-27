@@ -1532,5 +1532,17 @@
     "close_aria": "Închide selectorul",
     "filter_ph": "FILTREAZĂ PACHETELE...",
     "no_matches": "NICIUN REZULTAT"
+  },
+  "ovl": {
+    "waiting_game": "SE AȘTEAPTĂ JOCUL #{id}",
+    "ph_curtain_winner": "CORTINA · CÂȘTIGĂTOR STABILIT",
+    "ph_curtain_draw": "CORTINA · EGALITATE",
+    "ph_climax_elim": "CLIMAX · ELIMINARE",
+    "ph_climax_1v1": "CLIMAX · FINAL 1V1",
+    "ph_climax_lethal": "CLIMAX · INTERVAL LETAL",
+    "ph_climax_combo": "CLIMAX · ASAMBLARE COMBO",
+    "ph_midgame_board": "JOC MIJLOCIU · DEZVOLTAREA CÂMPULUI",
+    "ph_opening_ramp": "DESCHIDERE · FAZA DE RAMP",
+    "ph_opening_mull": "DESCHIDERE · MULLIGAN"
   }
 }

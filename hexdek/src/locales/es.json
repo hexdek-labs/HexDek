@@ -1532,5 +1532,17 @@
     "close_aria": "Cerrar el selector",
     "filter_ph": "FILTRAR MAZOS...",
     "no_matches": "SIN RESULTADOS"
+  },
+  "ovl": {
+    "waiting_game": "ESPERANDO LA PARTIDA #{id}",
+    "ph_curtain_winner": "TELÓN · GANADOR DECIDIDO",
+    "ph_curtain_draw": "TELÓN · EMPATE",
+    "ph_climax_elim": "CLÍMAX · ELIMINACIÓN",
+    "ph_climax_1v1": "CLÍMAX · FINAL 1V1",
+    "ph_climax_lethal": "CLÍMAX · RANGO LETAL",
+    "ph_climax_combo": "CLÍMAX · MONTANDO EL COMBO",
+    "ph_midgame_board": "MEDIO JUEGO · DESARROLLO DEL CAMPO",
+    "ph_opening_ramp": "APERTURA · FASE DE RAMPA",
+    "ph_opening_mull": "APERTURA · MULLIGAN"
   }
 }

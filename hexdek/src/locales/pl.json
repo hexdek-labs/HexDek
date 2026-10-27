@@ -1532,5 +1532,17 @@
     "close_aria": "Zamknij wybór",
     "filter_ph": "FILTRUJ TALIE...",
     "no_matches": "BRAK WYNIKÓW"
+  },
+  "ovl": {
+    "waiting_game": "OCZEKIWANIE NA GRĘ #{id}",
+    "ph_curtain_winner": "KURTYNA · ZWYCIĘZCA WYŁONIONY",
+    "ph_curtain_draw": "KURTYNA · REMIS",
+    "ph_climax_elim": "KULMINACJA · ELIMINACJA",
+    "ph_climax_1v1": "KULMINACJA · KOŃCÓWKA 1V1",
+    "ph_climax_lethal": "KULMINACJA · ZASIĘG ŚMIERTELNY",
+    "ph_climax_combo": "KULMINACJA · SKŁADANIE KOMBA",
+    "ph_midgame_board": "ŚRODEK GRY · ROZWÓJ POLA BITWY",
+    "ph_opening_ramp": "OTWARCIE · FAZA RAMPU",
+    "ph_opening_mull": "OTWARCIE · MULLIGAN"
   }
 }

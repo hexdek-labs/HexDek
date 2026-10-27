@@ -1532,5 +1532,17 @@
     "close_aria": "Stäng väljaren",
     "filter_ph": "FILTRERA LEKAR...",
     "no_matches": "INGA TRÄFFAR"
+  },
+  "ovl": {
+    "waiting_game": "VÄNTAR PÅ SPEL #{id}",
+    "ph_curtain_winner": "RIDÅ · VINNARE UTSEDD",
+    "ph_curtain_draw": "RIDÅ · OAVGJORT",
+    "ph_climax_elim": "KLIMAX · UTSLAGNING",
+    "ph_climax_1v1": "KLIMAX · 1V1-SLUTSPEL",
+    "ph_climax_lethal": "KLIMAX · DÖDLIGT INTERVALL",
+    "ph_climax_combo": "KLIMAX · COMBO BYGGS",
+    "ph_midgame_board": "MITTSPEL · UPPBYGGNAD AV SPELPLAN",
+    "ph_opening_ramp": "ÖPPNING · RAMP-FAS",
+    "ph_opening_mull": "ÖPPNING · MULLIGAN"
   }
 }

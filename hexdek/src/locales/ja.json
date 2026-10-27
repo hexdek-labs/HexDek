@@ -1532,5 +1532,17 @@
     "close_aria": "選択を閉じる",
     "filter_ph": "デッキを絞り込み...",
     "no_matches": "一致なし"
+  },
+  "ovl": {
+    "waiting_game": "ゲーム #{id} を待機中",
+    "ph_curtain_winner": "終幕 · 勝者決定",
+    "ph_curtain_draw": "終幕 · 引き分け",
+    "ph_climax_elim": "クライマックス · 敗退",
+    "ph_climax_1v1": "クライマックス · 1V1 終盤",
+    "ph_climax_lethal": "クライマックス · 致死圏内",
+    "ph_climax_combo": "クライマックス · コンボ成立",
+    "ph_midgame_board": "中盤 · 戦場の構築",
+    "ph_opening_ramp": "序盤 · マナ加速フェイズ",
+    "ph_opening_mull": "序盤 · マリガン"
   }
 }

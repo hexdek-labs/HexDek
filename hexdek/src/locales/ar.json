@@ -1532,5 +1532,17 @@
     "close_aria": "إغلاق المنتقي",
     "filter_ph": "تصفية الديكات...",
     "no_matches": "لا نتائج"
+  },
+  "ovl": {
+    "waiting_game": "في انتظار اللعبة #{id}",
+    "ph_curtain_winner": "الختام · تحديد الفائز",
+    "ph_curtain_draw": "الختام · تعادل",
+    "ph_climax_elim": "الذروة · استبعاد",
+    "ph_climax_1v1": "الذروة · مواجهة فردية 1V1",
+    "ph_climax_lethal": "الذروة · نطاق قاتل",
+    "ph_climax_combo": "الذروة · تجميع الكومبو",
+    "ph_midgame_board": "منتصف اللعبة · تطوير ساحة المعركة",
+    "ph_opening_ramp": "الافتتاح · مرحلة تسريع المانا",
+    "ph_opening_mull": "الافتتاح · مالغان"
   }
 }

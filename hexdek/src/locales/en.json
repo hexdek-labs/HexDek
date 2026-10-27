@@ -1532,5 +1532,17 @@
     "close_aria": "Close picker",
     "filter_ph": "FILTER DECKS...",
     "no_matches": "NO MATCHES"
+  },
+  "ovl": {
+    "waiting_game": "WAITING FOR GAME #{id}",
+    "ph_curtain_winner": "CURTAIN · WINNER DECLARED",
+    "ph_curtain_draw": "CURTAIN · DRAW",
+    "ph_climax_elim": "CLIMAX · ELIMINATION",
+    "ph_climax_1v1": "CLIMAX · 1V1 ENDGAME",
+    "ph_climax_lethal": "CLIMAX · LETHAL RANGE",
+    "ph_climax_combo": "CLIMAX · COMBO ASSEMBLY",
+    "ph_midgame_board": "MIDGAME · BOARD DEVELOPMENT",
+    "ph_opening_ramp": "OPENING · RAMP PHASE",
+    "ph_opening_mull": "OPENING · MULLIGAN"
   }
 }

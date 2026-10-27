@@ -1532,5 +1532,17 @@
     "close_aria": "Zavřít výběr",
     "filter_ph": "FILTROVAT BALÍČKY...",
     "no_matches": "ŽÁDNÉ VÝSLEDKY"
+  },
+  "ovl": {
+    "waiting_game": "ČEKÁ SE NA HRU #{id}",
+    "ph_curtain_winner": "OPONA · VÍTĚZ URČEN",
+    "ph_curtain_draw": "OPONA · REMÍZA",
+    "ph_climax_elim": "VRCHOL · VYŘAZENÍ",
+    "ph_climax_1v1": "VRCHOL · KONCOVKA 1V1",
+    "ph_climax_lethal": "VRCHOL · SMRTELNÉ PÁSMO",
+    "ph_climax_combo": "VRCHOL · SKLÁDÁNÍ KOMBA",
+    "ph_midgame_board": "STŘEDNÍ HRA · ROZVOJ BOJIŠTĚ",
+    "ph_opening_ramp": "ZAHÁJENÍ · FÁZE RAMPU",
+    "ph_opening_mull": "ZAHÁJENÍ · MULLIGAN"
   }
 }

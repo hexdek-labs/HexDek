@@ -1532,5 +1532,17 @@
     "close_aria": "Fermer le sélecteur",
     "filter_ph": "FILTRER LES DECKS...",
     "no_matches": "AUCUN RÉSULTAT"
+  },
+  "ovl": {
+    "waiting_game": "EN ATTENTE DE LA PARTIE #{id}",
+    "ph_curtain_winner": "RIDEAU · VAINQUEUR DÉSIGNÉ",
+    "ph_curtain_draw": "RIDEAU · ÉGALITÉ",
+    "ph_climax_elim": "CLIMAX · ÉLIMINATION",
+    "ph_climax_1v1": "CLIMAX · FINALE 1V1",
+    "ph_climax_lethal": "CLIMAX · PORTÉE LÉTALE",
+    "ph_climax_combo": "CLIMAX · ASSEMBLAGE DU COMBO",
+    "ph_midgame_board": "MILIEU DE PARTIE · DÉVELOPPEMENT DU CHAMP",
+    "ph_opening_ramp": "OUVERTURE · PHASE DE RAMPE",
+    "ph_opening_mull": "OUVERTURE · MULLIGAN"
   }
 }

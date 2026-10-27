@@ -1532,5 +1532,17 @@
     "close_aria": "Kiezer sluiten",
     "filter_ph": "DECKS FILTEREN...",
     "no_matches": "GEEN RESULTATEN"
+  },
+  "ovl": {
+    "waiting_game": "WACHTEN OP SPEL #{id}",
+    "ph_curtain_winner": "DOEK · WINNAAR BEKEND",
+    "ph_curtain_draw": "DOEK · GELIJK",
+    "ph_climax_elim": "CLIMAX · UITSCHAKELING",
+    "ph_climax_1v1": "CLIMAX · 1V1-EINDSPEL",
+    "ph_climax_lethal": "CLIMAX · DODELIJK BEREIK",
+    "ph_climax_combo": "CLIMAX · COMBO IN OPBOUW",
+    "ph_midgame_board": "MIDDENSPEL · OPBOUW SLAGVELD",
+    "ph_opening_ramp": "OPENING · RAMP-FASE",
+    "ph_opening_mull": "OPENING · MULLIGAN"
   }
 }

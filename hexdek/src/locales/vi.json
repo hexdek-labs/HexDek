@@ -1532,5 +1532,17 @@
     "close_aria": "Đóng bộ chọn",
     "filter_ph": "LỌC BỘ BÀI...",
     "no_matches": "KHÔNG CÓ KẾT QUẢ"
+  },
+  "ovl": {
+    "waiting_game": "ĐANG CHỜ GAME #{id}",
+    "ph_curtain_winner": "HẠ MÀN · ĐÃ CÓ NGƯỜI THẮNG",
+    "ph_curtain_draw": "HẠ MÀN · HÒA",
+    "ph_climax_elim": "CAO TRÀO · LOẠI BỎ",
+    "ph_climax_1v1": "CAO TRÀO · CHUNG KẾT 1V1",
+    "ph_climax_lethal": "CAO TRÀO · TẦM CHÍ MẠNG",
+    "ph_climax_combo": "CAO TRÀO · LẮP GHÉP COMBO",
+    "ph_midgame_board": "GIỮA GAME · PHÁT TRIỂN CHIẾN TRƯỜNG",
+    "ph_opening_ramp": "MỞ ĐẦU · GIAI ĐOẠN TĂNG MANA",
+    "ph_opening_mull": "MỞ ĐẦU · MULLIGAN"
   }
 }

@@ -1532,5 +1532,17 @@
     "close_aria": "Chiudi il selettore",
     "filter_ph": "FILTRA I DECK...",
     "no_matches": "NESSUN RISULTATO"
+  },
+  "ovl": {
+    "waiting_game": "IN ATTESA DELLA PARTITA #{id}",
+    "ph_curtain_winner": "SIPARIO · VINCITORE DECRETATO",
+    "ph_curtain_draw": "SIPARIO · PARITÀ",
+    "ph_climax_elim": "CLIMAX · ELIMINAZIONE",
+    "ph_climax_1v1": "CLIMAX · FINALE 1V1",
+    "ph_climax_lethal": "CLIMAX · PORTATA LETALE",
+    "ph_climax_combo": "CLIMAX · ASSEMBLAGGIO COMBO",
+    "ph_midgame_board": "MEDIOGIOCO · SVILUPPO DEL CAMPO",
+    "ph_opening_ramp": "APERTURA · FASE DI RAMPA",
+    "ph_opening_mull": "APERTURA · MULLIGAN"
   }
 }

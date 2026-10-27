@@ -1532,5 +1532,17 @@
     "close_aria": "선택창 닫기",
     "filter_ph": "덱 필터...",
     "no_matches": "일치 항목 없음"
+  },
+  "ovl": {
+    "waiting_game": "게임 #{id} 대기 중",
+    "ph_curtain_winner": "막 · 승자 확정",
+    "ph_curtain_draw": "막 · 무승부",
+    "ph_climax_elim": "클라이맥스 · 탈락",
+    "ph_climax_1v1": "클라이맥스 · 1V1 종반",
+    "ph_climax_lethal": "클라이맥스 · 치명적 범위",
+    "ph_climax_combo": "클라이맥스 · 콤보 조립",
+    "ph_midgame_board": "중반 · 전장 전개",
+    "ph_opening_ramp": "오픈 · 마나 가속 단계",
+    "ph_opening_mull": "오픈 · 멀리건"
   }
 }

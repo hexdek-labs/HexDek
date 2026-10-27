@@ -1532,5 +1532,17 @@
     "close_aria": "Luk vælgeren",
     "filter_ph": "FILTRÉR DÆK...",
     "no_matches": "INGEN TRÆFFERE"
+  },
+  "ovl": {
+    "waiting_game": "VENTER PÅ SPIL #{id}",
+    "ph_curtain_winner": "TÆPPEFALD · VINDER FUNDET",
+    "ph_curtain_draw": "TÆPPEFALD · UAFGJORT",
+    "ph_climax_elim": "KLIMAKS · ELIMINERING",
+    "ph_climax_1v1": "KLIMAKS · 1V1-SLUTSPIL",
+    "ph_climax_lethal": "KLIMAKS · DØDELIGT OMRÅDE",
+    "ph_climax_combo": "KLIMAKS · COMBO SAMLES",
+    "ph_midgame_board": "MIDTSPIL · UDVIKLING AF SLAGMARK",
+    "ph_opening_ramp": "ÅBNING · RAMP-FASE",
+    "ph_opening_mull": "ÅBNING · MULLIGAN"
   }
 }

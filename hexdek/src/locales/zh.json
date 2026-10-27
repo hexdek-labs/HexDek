@@ -1532,5 +1532,17 @@
     "close_aria": "关闭选择器",
     "filter_ph": "筛选套牌...",
     "no_matches": "没有匹配"
+  },
+  "ovl": {
+    "waiting_game": "等待对局 #{id}",
+    "ph_curtain_winner": "落幕 · 胜者已定",
+    "ph_curtain_draw": "落幕 · 平局",
+    "ph_climax_elim": "高潮 · 淘汰",
+    "ph_climax_1v1": "高潮 · 1V1 终局",
+    "ph_climax_lethal": "高潮 · 致命范围",
+    "ph_climax_combo": "高潮 · 连击组装",
+    "ph_midgame_board": "中局 · 战场发展",
+    "ph_opening_ramp": "开局 · 加速阶段",
+    "ph_opening_mull": "开局 · 调度"
   }
 }

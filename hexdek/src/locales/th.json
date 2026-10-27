@@ -1532,5 +1532,17 @@
     "close_aria": "ปิดตัวเลือก",
     "filter_ph": "กรองเด็ค...",
     "no_matches": "ไม่มีรายการที่ตรงกัน"
+  },
+  "ovl": {
+    "waiting_game": "รอเกม #{id}",
+    "ph_curtain_winner": "ม่านปิด · ได้ผู้ชนะแล้ว",
+    "ph_curtain_draw": "ม่านปิด · เสมอ",
+    "ph_climax_elim": "ไคลแม็กซ์ · การตกรอบ",
+    "ph_climax_1v1": "ไคลแม็กซ์ · ช่วงท้าย 1V1",
+    "ph_climax_lethal": "ไคลแม็กซ์ · ระยะสังหาร",
+    "ph_climax_combo": "ไคลแม็กซ์ · ประกอบคอมโบ",
+    "ph_midgame_board": "ช่วงกลาง · พัฒนาสนามรบ",
+    "ph_opening_ramp": "ช่วงเปิด · เฟสเร่งมานา",
+    "ph_opening_mull": "ช่วงเปิด · มัลลิแกน"
   }
 }

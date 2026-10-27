@@ -1532,5 +1532,17 @@
     "close_aria": "चयनकर्ता बंद करें",
     "filter_ph": "डेक फ़िल्टर करें...",
     "no_matches": "कोई मेल नहीं"
+  },
+  "ovl": {
+    "waiting_game": "गेम #{id} की प्रतीक्षा",
+    "ph_curtain_winner": "पटाक्षेप · विजेता घोषित",
+    "ph_curtain_draw": "पटाक्षेप · ड्रॉ",
+    "ph_climax_elim": "चरम · बाहर होना",
+    "ph_climax_1v1": "चरम · 1V1 अंतिम चरण",
+    "ph_climax_lethal": "चरम · घातक सीमा",
+    "ph_climax_combo": "चरम · कॉम्बो जुड़ाव",
+    "ph_midgame_board": "मध्य खेल · युद्धक्षेत्र विकास",
+    "ph_opening_ramp": "शुरुआत · रैंप चरण",
+    "ph_opening_mull": "शुरुआत · मुलिगन"
   }
 }

@@ -1532,5 +1532,17 @@
     "close_aria": "Fechar o seletor",
     "filter_ph": "FILTRAR DECKS...",
     "no_matches": "NENHUM RESULTADO"
+  },
+  "ovl": {
+    "waiting_game": "AGUARDANDO O JOGO #{id}",
+    "ph_curtain_winner": "CORTINA · VENCEDOR DEFINIDO",
+    "ph_curtain_draw": "CORTINA · EMPATE",
+    "ph_climax_elim": "CLÍMAX · ELIMINAÇÃO",
+    "ph_climax_1v1": "CLÍMAX · FINAL 1V1",
+    "ph_climax_lethal": "CLÍMAX · ALCANCE LETAL",
+    "ph_climax_combo": "CLÍMAX · MONTANDO O COMBO",
+    "ph_midgame_board": "MEIO-JOGO · DESENVOLVIMENTO DO CAMPO",
+    "ph_opening_ramp": "ABERTURA · FASE DE RAMPA",
+    "ph_opening_mull": "ABERTURA · MULLIGAN"
   }
 }

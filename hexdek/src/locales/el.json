@@ -1532,5 +1532,17 @@
     "close_aria": "Κλείσιμο επιλογής",
     "filter_ph": "ΦΙΛΤΡΑΡΙΣΜΑ ΤΡΑΠΟΥΛΩΝ...",
     "no_matches": "ΚΑΜΙΑ ΑΝΤΙΣΤΟΙΧΙΑ"
+  },
+  "ovl": {
+    "waiting_game": "ΑΝΑΜΟΝΗ ΓΙΑ ΠΑΙΧΝΙΔΙ #{id}",
+    "ph_curtain_winner": "ΑΥΛΑΙΑ · ΑΝΑΔΕΙΧΘΗΚΕ ΝΙΚΗΤΗΣ",
+    "ph_curtain_draw": "ΑΥΛΑΙΑ · ΙΣΟΠΑΛΙΑ",
+    "ph_climax_elim": "ΚΟΡΥΦΩΣΗ · ΑΠΟΚΛΕΙΣΜΟΣ",
+    "ph_climax_1v1": "ΚΟΡΥΦΩΣΗ · ΤΕΛΙΚΟ 1V1",
+    "ph_climax_lethal": "ΚΟΡΥΦΩΣΗ · ΘΑΝΑΣΙΜΟ ΕΥΡΟΣ",
+    "ph_climax_combo": "ΚΟΡΥΦΩΣΗ · ΣΥΝΑΡΜΟΛΟΓΗΣΗ ΚΟΜΠΟ",
+    "ph_midgame_board": "ΜΕΣΟ ΠΑΙΧΝΙΔΙ · ΑΝΑΠΤΥΞΗ ΠΕΔΙΟΥ",
+    "ph_opening_ramp": "ΑΝΟΙΓΜΑ · ΦΑΣΗ RAMP",
+    "ph_opening_mull": "ΑΝΟΙΓΜΑ · MULLIGAN"
   }
 }

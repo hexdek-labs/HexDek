@@ -1532,5 +1532,17 @@
     "close_aria": "Seçiciyi kapat",
     "filter_ph": "DESTELERİ FİLTRELE...",
     "no_matches": "SONUÇ YOK"
+  },
+  "ovl": {
+    "waiting_game": "#{id} NUMARALI OYUN BEKLENİYOR",
+    "ph_curtain_winner": "PERDE · KAZANAN BELLİ",
+    "ph_curtain_draw": "PERDE · BERABERE",
+    "ph_climax_elim": "ZİRVE · ELENME",
+    "ph_climax_1v1": "ZİRVE · 1V1 FİNALİ",
+    "ph_climax_lethal": "ZİRVE · ÖLÜMCÜL ARALIK",
+    "ph_climax_combo": "ZİRVE · KOMBO KURULUYOR",
+    "ph_midgame_board": "ORTA OYUN · SAVAŞ ALANI GELİŞİMİ",
+    "ph_opening_ramp": "AÇILIŞ · MANA HIZLANDIRMA AŞAMASI",
+    "ph_opening_mull": "AÇILIŞ · MULLIGAN"
   }
 }

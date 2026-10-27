@@ -1532,5 +1532,17 @@
     "close_aria": "Választó bezárása",
     "filter_ph": "PAKLIK SZŰRÉSE...",
     "no_matches": "NINCS TALÁLAT"
+  },
+  "ovl": {
+    "waiting_game": "VÁRAKOZÁS A #{id} JÁTÉKRA",
+    "ph_curtain_winner": "FÜGGÖNY · GYŐZTES KIHIRDETVE",
+    "ph_curtain_draw": "FÜGGÖNY · DÖNTETLEN",
+    "ph_climax_elim": "TETŐPONT · KIESÉS",
+    "ph_climax_1v1": "TETŐPONT · 1V1 VÉGJÁTÉK",
+    "ph_climax_lethal": "TETŐPONT · HALÁLOS TARTOMÁNY",
+    "ph_climax_combo": "TETŐPONT · KOMBÓ ÖSSZEÁLLÍTÁSA",
+    "ph_midgame_board": "KÖZÉPJÁTÉK · CSATATÉR FEJLESZTÉSE",
+    "ph_opening_ramp": "MEGNYITÁS · RAMP FÁZIS",
+    "ph_opening_mull": "MEGNYITÁS · MULLIGAN"
   }
 }

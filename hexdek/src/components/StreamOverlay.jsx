@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
 
 // StreamOverlay — transparent OBS-friendly HUD for /stream/:gameId
 // (also reachable at /obs/:gameId for streamer convenience).
@@ -27,8 +28,12 @@ import { cardArtUrl } from '../services/api'
 //                             on top (camera focus). Ignored when
 //                             ?order is also set.
 
-const SHORT_NAME = (commander) => {
-  if (!commander) return 'UNKNOWN'
+// Module-level formatter, so `t` arrives as a PARAMETER rather than being
+// read from module scope: anything worded at module load freezes there and
+// never re-words on a locale change. The non-fallback return is a CARD
+// NAME, which stays English in all 25.
+const SHORT_NAME = (commander, t) => {
+  if (!commander) return t('spec.seat_unknown')
   const trimmed = commander.split(',')[0].split('//')[0].trim()
   return trimmed.toUpperCase()
 }
@@ -48,13 +53,22 @@ const SHORT_NAME = (commander) => {
 //   - turn ≥ 1                                   → OPENING · RAMP PHASE
 //   - everything else                            → OPENING · MULLIGAN
 //
-// Returns { act, label } or null when there's no game to caption.
+// Returns { act, labelKey } or null when there's no game to caption.
+//
+// labelKey is a CATALOG PATH, not a sentence. Two reasons it has to be:
+// this is an exported pure function with no access to a translator, and
+// the caller holds the result in a useMemo keyed on [game, phaseEnabled]
+// — a worded label would be stuck at the last game update and would not
+// re-word when the viewer switched locale. A key in the memo is
+// locale-independent, so the wording happens at the render site.
+//
+// `act` STAYS ENGLISH: it is the lookup key into PHASE_ACCENT, not prose.
 export function deriveStreamPhase(game) {
   if (!game) return null
   if (game.finished) {
     return {
       act: 'CURTAIN',
-      label: game.winner >= 0 ? 'CURTAIN · WINNER DECLARED' : 'CURTAIN · DRAW',
+      labelKey: game.winner >= 0 ? 'ovl.ph_curtain_winner' : 'ovl.ph_curtain_draw',
     }
   }
   const turn = game.turn ?? 0
@@ -68,17 +82,17 @@ export function deriveStreamPhase(game) {
     e && (e.kind === 'elimination' || e.kind === 'player_lost')
   )
   if (recentElim) {
-    return { act: 'CLIMAX', label: 'CLIMAX · ELIMINATION' }
+    return { act: 'CLIMAX', labelKey: 'ovl.ph_climax_elim' }
   }
   if (totalSeats >= 3 && aliveCount === 2) {
-    return { act: 'CLIMAX', label: 'CLIMAX · 1V1 ENDGAME' }
+    return { act: 'CLIMAX', labelKey: 'ovl.ph_climax_1v1' }
   }
 
   const minLife = aliveCount > 0
     ? Math.min(...alive.map(s => (typeof s.life === 'number' ? s.life : 40)))
     : 40
   if (minLife <= 8) {
-    return { act: 'CLIMAX', label: 'CLIMAX · LETHAL RANGE' }
+    return { act: 'CLIMAX', labelKey: 'ovl.ph_climax_lethal' }
   }
 
   // Board complexity proxy — sum across living seats. Either large
@@ -93,15 +107,15 @@ export function deriveStreamPhase(game) {
   }, 0)
 
   if (turn >= 9 || bf >= 25 || gy >= 35) {
-    return { act: 'CLIMAX', label: 'CLIMAX · COMBO ASSEMBLY' }
+    return { act: 'CLIMAX', labelKey: 'ovl.ph_climax_combo' }
   }
   if (turn >= 5) {
-    return { act: 'MIDGAME', label: 'MIDGAME · BOARD DEVELOPMENT' }
+    return { act: 'MIDGAME', labelKey: 'ovl.ph_midgame_board' }
   }
   if (turn >= 1) {
-    return { act: 'OPENING', label: 'OPENING · RAMP PHASE' }
+    return { act: 'OPENING', labelKey: 'ovl.ph_opening_ramp' }
   }
-  return { act: 'OPENING', label: 'OPENING · MULLIGAN' }
+  return { act: 'OPENING', labelKey: 'ovl.ph_opening_mull' }
 }
 
 // parseSeatOrder turns the ?order / ?focus URL params into a permutation
@@ -159,6 +173,7 @@ function useTransparentRoot() {
 }
 
 function SeatTile({ seat, idx, isActive, isWinner, isLost }) {
+  const t = useT()
   const art = cardArtUrl(seat.commander)
   const accent = isWinner ? 'var(--ok)' : isActive ? 'var(--warn)' : isLost ? 'var(--danger)' : 'rgba(255,255,255,0.45)'
   return (
@@ -191,16 +206,16 @@ function SeatTile({ seat, idx, isActive, isWinner, isLost }) {
           color: '#f4f0e6',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           textShadow: '0 1px 2px rgba(0,0,0,0.85)',
-        }}>{SHORT_NAME(seat.commander)}</div>
+        }}>{SHORT_NAME(seat.commander, t)}</div>
         <div style={{
           fontSize: 9, letterSpacing: '0.08em',
           color: 'rgba(255,255,255,0.55)',
           textTransform: 'uppercase',
         }}>
           SEAT.{String(idx + 1).padStart(2, '0')}
-          {isActive && <span style={{ color: 'var(--warn)', marginLeft: 6 }}>● ACTIVE</span>}
-          {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>★ WIN</span>}
-          {isLost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>✕ ELIM</span>}
+          {isActive && <span style={{ color: 'var(--warn)', marginLeft: 6 }}>● {t('common.active')}</span>}
+          {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>★ {t('dash.result_win')}</span>}
+          {isLost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>✕ {t('spec.gb_elim')}</span>}
         </div>
       </div>
       <div style={{
@@ -264,6 +279,7 @@ function Ticker({ entries }) {
 }
 
 export default function StreamOverlay() {
+  const t = useT()
   useTransparentRoot()
   const { gameId } = useParams()
   const [searchParams] = useSearchParams()
@@ -307,7 +323,7 @@ export default function StreamOverlay() {
   if (status === 'disconnected' || !game) {
     return (
       <div style={overlayShellStyle}>
-        <StatusPill label="OFFLINE" tone="danger" />
+        <StatusPill label={t('spec.tape_offline')} tone="danger" />
       </div>
     )
   }
@@ -315,13 +331,13 @@ export default function StreamOverlay() {
   if (mismatch) {
     return (
       <div style={overlayShellStyle}>
-        <StatusPill label={`WAITING FOR GAME #${gameId}`} tone="muted" />
+        <StatusPill label={t('ovl.waiting_game', { id: gameId })} tone="muted" />
       </div>
     )
   }
 
   const activeName = activeSeat >= 0 && seats[activeSeat]
-    ? SHORT_NAME(seats[activeSeat].commander)
+    ? SHORT_NAME(seats[activeSeat].commander, t)
     : '—'
   const activeArt = activeSeat >= 0 && seats[activeSeat]?.commander
     ? cardArtUrl(seats[activeSeat].commander)
@@ -346,7 +362,7 @@ export default function StreamOverlay() {
               fontSize: 9, letterSpacing: '0.14em',
               color: 'rgba(255,255,255,0.55)',
               textTransform: 'uppercase',
-            }}>TURN</div>
+            }}>{t('adm.th_turn')}</div>
             <div style={{
               fontSize: 24, fontWeight: 900, lineHeight: 1,
               color: '#f4f0e6',
@@ -373,7 +389,7 @@ export default function StreamOverlay() {
               fontSize: 9, letterSpacing: '0.14em',
               color: 'rgba(255,255,255,0.55)',
               textTransform: 'uppercase',
-            }}>ACTIVE</div>
+            }}>{t('common.active')}</div>
             <div style={{
               fontSize: 13, fontWeight: 800,
               color: 'var(--warn)',
@@ -385,7 +401,12 @@ export default function StreamOverlay() {
             }}>{activeName}</div>
           </div>
         </div>
-        {finished && <StatusPill label={winner >= 0 ? `WINNER · ${SHORT_NAME(seats[winner]?.commander)}` : 'DRAW'} tone="ok" />}
+        {finished && <StatusPill
+          label={winner >= 0
+            ? t('rpt.winner_is', { name: SHORT_NAME(seats[winner]?.commander, t) })
+            : t('spec.sr_draw')}
+          tone="ok"
+        />}
       </div>
 
       {/* Top-center: three-act narrative caption strip */}
@@ -403,7 +424,7 @@ export default function StreamOverlay() {
           maxWidth: '60%',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {phase.label}
+          {t(phase.labelKey)}
         </div>
       )}
 
