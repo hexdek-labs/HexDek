@@ -4,6 +4,7 @@ import { Panel, Bar, Tag, Btn, Tape } from '../components/chrome'
 import { cardArtUrl } from '../services/api'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import CardLink, { linkifyAction } from '../components/CardLink'
+import { useT } from '../i18n'
 
 const LOG_COLORS = {
   cast: 'var(--ok)',
@@ -25,13 +26,21 @@ const LOG_COLORS = {
   mill: 'var(--ink-2)',
 }
 
-const permLabel = (p) => {
-  if (p.is_commander) return 'CMDR'
-  if (p.is_land) return 'LAND'
-  if (p.type === 'CREATURE') return p.name?.split(' ')[0]?.slice(0, 6)?.toUpperCase() || 'CREA'
-  if (p.type === 'ARTIFACT') return 'ARTI'
-  if (p.type === 'ENCHANTMENT') return 'ENC'
-  if (p.type === 'PLANESWALKER') return 'PW'
+// Takes the translator as a PARAMETER: a module-level formatter that
+// reached for one of its own would word every tile once, at import.
+// Five of these six plates are the same keys the fishtank's typeTag
+// reads. The sixth is not: this screen prints ARTI where that one prints
+// ART, one character apart and almost certainly an accident — but what a
+// tile prints is a UI decision, so it gets its own key (whose every
+// non-English value is tag_art's) rather than a silent unification.
+// An unrecognised type is derived from the card's own name, not worded.
+const permLabel = (t, p) => {
+  if (p.is_commander) return t('spec.tag_cmdr')
+  if (p.is_land) return t('spec.tag_land')
+  if (p.type === 'CREATURE') return p.name?.split(' ')[0]?.slice(0, 6)?.toUpperCase() || t('spec.tag_crea')
+  if (p.type === 'ARTIFACT') return t('spec.tag_arti')
+  if (p.type === 'ENCHANTMENT') return t('spec.tag_enc')
+  if (p.type === 'PLANESWALKER') return t('spec.tag_pw')
   return p.name?.split(' ')[0]?.slice(0, 5)?.toUpperCase() || '???'
 }
 
@@ -43,6 +52,7 @@ const Stat = ({ k, v }) => (
 )
 
 const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right }) => {
+  const t = useT()
   const perms = seat.battlefield || []
   const cmdrArt = cardArtUrl(seat.commander)
   const borderColor = isWinner ? 'var(--ok)' : isActive ? 'var(--warn)' : 'var(--rule-2)'
@@ -51,14 +61,14 @@ const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right })
     <div className="panel" style={{ padding: 0, borderColor }}>
       <div className="panel-hd" style={{ borderColor }}>
         <span>
-          SEAT.{String(seatIdx + 1).padStart(2, '0')} / / {seat.commander?.toUpperCase() || 'UNKNOWN'}
-          {isActive && <span style={{ color: 'var(--warn)', marginLeft: 6 }}>● ACTIVE</span>}
-          {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>★ WINNER</span>}
-          {seat.lost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>✕ ELIM</span>}
-          {isYou && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>● YOU</span>}
+          SEAT.{String(seatIdx + 1).padStart(2, '0')} / / {seat.commander?.toUpperCase() || t('spec.seat_unknown')}
+          {isActive && <span style={{ color: 'var(--warn)', marginLeft: 6 }}>● {t('common.active')}</span>}
+          {isWinner && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>★ {t('common.winner')}</span>}
+          {seat.lost && !isWinner && <span style={{ color: 'var(--danger)', marginLeft: 6 }}>✕ {t('spec.gb_elim')}</span>}
+          {isYou && <span style={{ color: 'var(--ok)', marginLeft: 6 }}>● {t('spec.gb_you')}</span>}
         </span>
         <span style={{ display: 'flex', gap: 8 }}>
-          <span>♥ {seat.life}</span><span>✋ {seat.hand_size}</span><span>LIB {seat.library_size}</span>
+          <span>♥ {seat.life}</span><span>✋ {seat.hand_size}</span><span>{t('spec.gb_lib')} {seat.library_size}</span>
         </span>
       </div>
       <div style={{ display: 'flex' }}>
@@ -74,7 +84,7 @@ const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right })
         )}
         <div style={{ padding: 8, display: 'flex', gap: 4, flexWrap: 'wrap', minHeight: compact ? 48 : 60, flex: 1, justifyContent: right ? 'flex-end' : 'flex-start' }}>
           {perms.length === 0 ? (
-            <span className="t-xs muted-2">— NO PERMANENTS —</span>
+            <span className="t-xs muted-2">{t('spec.gb_no_perms')}</span>
           ) : (
             perms.slice(0, compact ? 8 : 14).map((p, j) => (
               <div
@@ -103,7 +113,7 @@ const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right })
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}>
-                  {permLabel(p)}
+                  {permLabel(t, p)}
                 </span>
               </div>
             ))
@@ -114,8 +124,8 @@ const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right })
         </div>
       </div>
       <div style={{ borderTop: '1px solid var(--rule-2)', padding: '4px 10px', display: 'flex', justifyContent: 'space-between' }}>
-        <span className="t-xs muted">GY {seat.gy_size} · BF {perms.length}</span>
-        {isActive && <span className="t-xs" style={{ color: 'var(--ok)' }}>● PRIORITY</span>}
+        <span className="t-xs muted">{t('spec.gb_gy_bf', { gy: seat.gy_size, bf: perms.length })}</span>
+        {isActive && <span className="t-xs" style={{ color: 'var(--ok)' }}>● {t('spec.gb_priority')}</span>}
       </div>
     </div>
   )
@@ -123,24 +133,28 @@ const SeatPanel = ({ seat, seatIdx, isActive, isWinner, isYou, compact, right })
 
 export default function GameBoard() {
   const navigate = useNavigate()
+  const t = useT()
   const { game, elo: eloArr, status } = useLiveSocket()
   const elo = eloArr || []
-  const error = status === 'disconnected' ? 'WebSocket disconnected' : null
+  // A FLAG, not a sentence: this used to hold the English text itself and
+  // render it directly, which froze the line at whatever the socket last
+  // reported. The render site words it now.
+  const disconnected = status === 'disconnected'
   const logEndRef = useRef(null)
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [game?.log?.length])
 
-  if (error && !game) {
+  if (disconnected && !game) {
     return (
       <>
-        <Tape left="BOARD STATE" mid="OFFLINE" right="" />
+        <Tape left={t('spec.gb_tape_title')} mid={t('spec.tape_offline')} right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
           <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            &gt; SHOWMATCH ENGINE OFFLINE<br />
-            &gt; START SERVER WITH AST CORPUS TO ENABLE BOARD VIEW<br />
-            &gt; {error}<span className="blink">_</span>
+            {t('spec.offline_1')}<br />
+            {t('spec.gb_offline_2')}<br />
+            &gt; {t('spec.err_disconnected')}<span className="blink">_</span>
           </div>
         </div>
       </>
@@ -150,9 +164,10 @@ export default function GameBoard() {
   if (!game || game.status === 'starting') {
     return (
       <>
-        <Tape left="BOARD STATE" mid="LOADING" right="" />
+        <Tape left={t('spec.gb_tape_title')} mid={t('spec.tape_loading')} right="" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; {game?.message || 'LOADING GAME STATE'}<span className="blink">_</span></div>
+          {/* A server-sent message is echoed; only the fallback is ours. */}
+          <div className="t-md muted">&gt; {game?.message || t('spec.gb_loading_state')}<span className="blink">_</span></div>
         </div>
       </>
     )
@@ -174,8 +189,8 @@ export default function GameBoard() {
   return (
     <>
       <Tape
-        left={`BOARD STATE / / GAME ${game.game_id}`}
-        mid={game.finished ? 'GAME OVER' : 'LIVE'}
+        left={t('spec.gb_tape_game', { game: game.game_id })}
+        mid={game.finished ? t('spec.tape_game_over') : t('spec.sr_tape_live')}
         right={`T${game.turn} / / ${(game.phase || '').toUpperCase()}`}
       />
 
@@ -204,33 +219,34 @@ export default function GameBoard() {
 
             {/* Stack / Phase info */}
             <div className="panel" style={{ padding: 0 }}>
-              <div className="panel-hd"><span>STACK</span><span>{game.finished ? 'END' : '00'}</span></div>
+              <div className="panel-hd"><span>{t('spec.gb_stack')}</span><span>{game.finished ? t('spec.gb_stack_end') : '00'}</span></div>
               <div style={{ padding: '24px 12px', textAlign: 'center' }}>
                 {game.finished ? (
                   <>
-                    <div className="t-xs" style={{ color: 'var(--ok)' }}>[GAME OVER]</div>
+                    <div className="t-xs" style={{ color: 'var(--ok)' }}>[{t('spec.tape_game_over')}]</div>
                     <div className="hr" style={{ margin: '8px 0' }} />
-                    <div className="t-xs muted">WINNER</div>
+                    <div className="t-xs muted">{t('common.winner')}</div>
                     <div className="t-md" style={{ fontWeight: 700, color: 'var(--ok)' }}>
-                      {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : 'DRAW'}
+                      {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : t('spec.sr_draw')}
                     </div>
                     <div className="hr" style={{ margin: '8px 0' }} />
-                    <div className="t-xs muted">REASON</div>
+                    {/* end_reason is backend-worded, so it is echoed. */}
+                    <div className="t-xs muted">{t('spec.gb_reason')}</div>
                     <div className="t-md" style={{ fontWeight: 700 }}>{(game.end_reason || '').replace(/_/g, ' ').toUpperCase()}</div>
                     {game.game_id != null && (
                       <div style={{ marginTop: 12 }}>
-                        <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>VIEW REPORT</Btn>
+                        <Btn sm ghost arrow="↗" onClick={() => navigate(`/report/${game.game_id}`)}>{t('spec.view_report')}</Btn>
                       </div>
                     )}
                   </>
                 ) : (
                   <>
-                    <div className="t-xs muted-2">— EMPTY —</div>
+                    <div className="t-xs muted-2">{t('spec.gb_empty')}</div>
                     <div className="hr" style={{ margin: '12px 0' }} />
-                    <div className="t-xs muted">PHASE</div>
+                    <div className="t-xs muted">{t('spec.kv_phase')}</div>
                     <div className="t-md" style={{ fontWeight: 700 }}>{(game.phase || '').toUpperCase()} / / T{game.turn}</div>
                     <div className="hr" style={{ margin: '12px 0' }} />
-                    <div className="t-xs muted">PRIORITY</div>
+                    <div className="t-xs muted">{t('spec.gb_priority')}</div>
                     <div className="t-md" style={{ fontWeight: 700 }}>SEAT.{String(activeSeat + 1).padStart(2, '0')}</div>
                   </>
                 )}
@@ -250,10 +266,10 @@ export default function GameBoard() {
 
         {/* Side panel — game log + ELO */}
         <div style={{ borderLeft: '1px solid var(--rule-2)', padding: 14, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Panel code="LOG" title={`GAME LOG / / T1—T${game.turn}`} right={<span className="t-xs muted">{log.length} EVT</span>}>
+          <Panel code="LOG" title={t('spec.gb_log_title', { turn: game.turn })} right={<span className="t-xs muted">{t('spec.evt_count', { count: log.length })}</span>}>
             <div style={{ maxHeight: 280, overflow: 'auto', fontSize: 11, lineHeight: 1.6 }}>
               {log.length === 0 ? (
-                <div className="t-xs muted-2">— WAITING FOR EVENTS —</div>
+                <div className="t-xs muted-2">{t('spec.waiting_events')}</div>
               ) : (
                 log.map((entry, i) => (
                   <div
@@ -288,9 +304,9 @@ export default function GameBoard() {
             </div>
           </Panel>
 
-          <Panel code="ELO" title="LIVE ELO" right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
+          <Panel code="ELO" title={t('spec.live_elo')} right={<span className={`led led--on ${!game.finished ? 'blink' : ''}`} />}>
             {elo.length === 0 ? (
-              <div className="t-xs muted">NO ELO DATA YET</div>
+              <div className="t-xs muted">{t('spec.no_elo')}</div>
             ) : (
               elo.slice(0, 6).map((r, i) => (
                 <div key={i} style={{ marginBottom: 8 }}>
@@ -306,14 +322,14 @@ export default function GameBoard() {
             )}
           </Panel>
 
-          <Panel code="ASS" title="THREAT ASSESSMENT">
+          <Panel code="ASS" title={t('spec.gb_threat')}>
             {seats.length === 0 ? (
-              <div className="t-xs muted">NO SEATS</div>
+              <div className="t-xs muted">{t('spec.gb_no_seats')}</div>
             ) : (
               seats.filter((s, i) => i > 0 && !s.lost).map((s, i) => {
                 const threat = Math.max(0, Math.min(100, 50 + (s.battlefield?.length || 0) * 5 - (40 - s.life)))
                 const kind = threat > 60 ? 'bad' : threat > 35 ? 'warn' : 'ok'
-                const label = threat > 60 ? 'HIGH' : threat > 35 ? 'MID' : 'LOW'
+                const label = threat > 60 ? t('spec.scale_high') : threat > 35 ? t('spec.gb_scale_mid') : t('spec.scale_low')
                 return (
                   <div key={i} style={{ marginBottom: 8 }}>
                     <div className="flex justify-between" style={{ marginBottom: 3 }}>
