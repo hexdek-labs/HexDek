@@ -1604,12 +1604,25 @@
     "awaiting_elo": "في انتظار بيانات ELO",
     "shame_tape_left": "جدار العار / {bracket} / أدنى {count}",
     "shame_tape_mid": "سجل ELO السلبي",
-    "rec_w": "{n} ف",
-    "rec_l": "{n} خ",
     "tier_uninstall": "احذف اللعبة",
     "tier_packitup": "اجمع أدواتك",
     "tier_cooked": "انتهى أمرك",
     "tier_downbad": "في القاع",
     "tier_mid": "متوسط الحال"
+  },
+  "pp": {
+    "profile": "الملف الشخصي",
+    "missing_owner": "المالك مفقود",
+    "no_owner_url": "> لم يُحدَّد أي مالك في الرابط.",
+    "tape_left": "الملف الشخصي / / {name}",
+    "tape_mid": "سجل عام",
+    "player_record": "سجل اللاعب",
+    "kv_opponents": "الخصوم الذين واجهتهم",
+    "current_streak": "السلسلة الحالية:",
+    "best_streak": "أفضل سلسلة:",
+    "loading_achievements": "> جارٍ تحميل الإنجازات",
+    "no_public_decks": "> لا توجد ديكات عامة لهذا المالك.",
+    "owner_decks": "ديكات {name}",
+    "showing_n": "> يُعرض {shown} من {total}"
   }
 }

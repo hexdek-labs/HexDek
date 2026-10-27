@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ELO VERİSİ BEKLENİYOR",
     "shame_tape_left": "UTANÇ DUVARI / {bracket} / EN ALTTAKİ {count}",
     "shame_tape_mid": "NEGATİF ELO KAYDI",
-    "rec_w": "{n}G",
-    "rec_l": "{n}M",
     "tier_uninstall": "KALDIR GİTSİN",
     "tier_packitup": "TOPLA GİT",
     "tier_cooked": "YANDI",
     "tier_downbad": "DİBE VURDU",
     "tier_mid": "VASAT"
+  },
+  "pp": {
+    "profile": "PROFİL",
+    "missing_owner": "SAHİP YOK",
+    "no_owner_url": "> URL ADRESİNDE SAHİP BELİRTİLMEDİ.",
+    "tape_left": "PROFİL / / {name}",
+    "tape_mid": "GENEL SİCİL",
+    "player_record": "OYUNCU SİCİLİ",
+    "kv_opponents": "KARŞILAŞILAN RAKİPLER",
+    "current_streak": "MEVCUT SERİ:",
+    "best_streak": "EN İYİ SERİ:",
+    "loading_achievements": "> BAŞARIMLAR YÜKLENİYOR",
+    "no_public_decks": "> BU SAHİBE AİT GENEL DESTE YOK.",
+    "owner_decks": "{name} DESTELERİ",
+    "showing_n": "> {total} İÇİNDEN {shown} GÖSTERİLİYOR"
   }
 }

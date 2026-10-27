@@ -5,6 +5,7 @@ import DeckShelf from '../components/DeckShelf'
 import { api } from '../services/api'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { countryFlagEmoji } from '../lib/flag'
+import { useT } from '../i18n'
 
 // PublicProfile — read-only player page at /profile/:owner.
 // Aggregates data from three sources:
@@ -25,6 +26,24 @@ const RARITY_COLOR = {
   secret:   'var(--accent)',
 }
 
+// Catalog PATHS, mirroring RARITY_COLOR above. badge.rarity is a WIRE
+// value, and t() returns the raw key when a path is missing, so an
+// unrecognised rarity would otherwise render the literal string
+// "achievements.rarity.legendary" on screen. Unknown values fall back to
+// the server's own word instead.
+const RARITY_KEY = {
+  common:   'achievements.rarity.common',
+  uncommon: 'achievements.rarity.uncommon',
+  rare:     'achievements.rarity.rare',
+  mythic:   'achievements.rarity.mythic',
+  secret:   'achievements.rarity.secret',
+}
+
+// Mirrors decks.slice(0, SHELF_LIMIT) below. The count used to be written
+// twice -- once in the slice and once in the "SHOWING 60 /" line -- which
+// is a label that silently lies the moment the slice changes.
+const SHELF_LIMIT = 60
+
 function fmtMemberSince(decks) {
   let earliest = null
   for (const d of decks || []) {
@@ -36,12 +55,24 @@ function fmtMemberSince(decks) {
 }
 
 function BadgeTile({ badge, earned, awardedAt }) {
+  const t = useT()
   const rarityColor = RARITY_COLOR[badge.rarity] || 'var(--ink-2)'
   const opacity = earned ? 1 : 0.32
   const filter = earned ? 'none' : 'grayscale(1)'
+  // op.badge_tip_earned is '{name} — {desc}\nEarned {date}' and
+  // op.badge_tip_locked is '{name} — {desc} (locked)' — byte-for-byte the
+  // two branches this nested template was building. The sibling screen
+  // already owned both; name and desc are server values, echoed.
+  const tip = earned
+    ? t('op.badge_tip_earned', {
+        name: badge.name,
+        desc: badge.description,
+        date: new Date(awardedAt).toISOString().slice(0, 10),
+      })
+    : t('op.badge_tip_locked', { name: badge.name, desc: badge.description })
   return (
     <div
-      title={`${badge.name} — ${badge.description}${earned ? `\nEarned ${new Date(awardedAt).toISOString().slice(0, 10)}` : ' (locked)'}`}
+      title={tip}
       style={{
         border: `1px solid ${earned ? rarityColor : 'var(--rule-2)'}`,
         background: 'var(--panel)',
@@ -65,13 +96,14 @@ function BadgeTile({ badge, earned, awardedAt }) {
         fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase',
         color: earned ? rarityColor : 'var(--ink-3)',
       }}>
-        {badge.rarity}
+        {RARITY_KEY[badge.rarity] ? t(RARITY_KEY[badge.rarity]) : badge.rarity}
       </span>
     </div>
   )
 }
 
 export default function PublicProfile() {
+  const t = useT()
   const { owner } = useParams()
   const navigate = useNavigate()
   const { elo } = useLiveSocket()
@@ -168,9 +200,9 @@ export default function PublicProfile() {
   if (!owner) {
     return (
       <>
-        <Tape left="PROFILE" mid="MISSING OWNER" right="DOC HX-500" />
+        <Tape left={t('pp.profile')} mid={t('pp.missing_owner')} right="DOC HX-500" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; NO OWNER SPECIFIED IN URL.</div>
+          <div className="t-md muted">{t('pp.no_owner_url')}</div>
         </div>
       </>
     )
@@ -189,8 +221,8 @@ export default function PublicProfile() {
   return (
     <>
       <Tape
-        left={`PROFILE / / ${upperOwner}${flag ? ' ' + flag : ''}`}
-        mid={achLoading || decksLoading ? 'LOADING' : 'PUBLIC RECORD'}
+        left={t('pp.tape_left', { name: `${upperOwner}${flag ? ' ' + flag : ''}` })}
+        mid={achLoading || decksLoading ? t('common.loading') : t('pp.tape_mid')}
         right="DOC HX-500"
       />
 
@@ -205,44 +237,44 @@ export default function PublicProfile() {
                 <span
                   className="player-flag"
                   title={profile?.country}
-                  aria-label={`Country: ${profile?.country || 'unknown'}`}
+                  aria-label={t('op.country_aria', { code: profile?.country })}
                   style={{ fontSize: 18, lineHeight: 1 }}
                 >
                   {flag}
                 </span>
               )}
-              PLAYER RECORD
+              {t('pp.player_record')}
             </span>
           }
           right={<Tag solid>{upperOwner}</Tag>}
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
             <KV rows={[
-              ['DISPLAY NAME',
+              [t('op.kv_display_name'),
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {flag && <span style={{ fontSize: 14, lineHeight: 1 }}>{flag}</span>}
                   {upperOwner}
                 </span>,
               ],
-              ['COUNTRY', profile?.country || '—'],
-              ['MEMBER SINCE', memberSince, 'member_since'],
-              ['DECKS', String(decks.length)],
-              ['OPPONENTS FACED', String(achievements?.opponents_faced ?? '—')],
+              [t('op.kv_country'), profile?.country || '—'],
+              [t('op.kv_member_since'), memberSince, 'member_since'],
+              [t('op.kv_decks'), String(decks.length)],
+              [t('pp.kv_opponents'), String(achievements?.opponents_faced ?? '—')],
             ]} />
             <KV rows={[
-              ['TOTAL GAMES', aggregate.games > 0 ? String(aggregate.games) : '—', 'games'],
-              ['RECORD',
+              [t('op.kv_total_games'), aggregate.games > 0 ? String(aggregate.games) : '—', 'games'],
+              [t('op.kv_record'),
                 aggregate.games > 0
                   ? <span>
-                      <span style={{ color: 'var(--ok)' }}>{aggregate.wins}W</span>
+                      <span style={{ color: 'var(--ok)' }}>{t('op.wins_suffix', { count: aggregate.wins })}</span>
                       <span className="muted"> / </span>
-                      <span style={{ color: 'var(--danger)' }}>{aggregate.losses}L</span>
+                      <span style={{ color: 'var(--danger)' }}>{t('op.losses_suffix', { count: aggregate.losses })}</span>
                     </span>
                   : '—',
                 'record',
               ],
-              ['WIN RATE', aggregate.games > 0 ? `${aggregate.winRate.toFixed(1)}%` : '—', 'win_rate'],
-              ['BEST ELO',
+              [t('op.kv_win_rate'), aggregate.games > 0 ? `${aggregate.winRate.toFixed(1)}%` : '—', 'win_rate'],
+              [t('op.kv_best_elo'),
                 bestRating
                   ? <span>
                       <span style={{ fontWeight: 700 }}>{Math.round(bestRating.rating)}</span>
@@ -257,28 +289,28 @@ export default function PublicProfile() {
           </div>
           {(achievements?.current_win_streak > 0 || achievements?.max_win_streak > 0) && (
             <div style={{ marginTop: 10, display: 'flex', gap: 14, fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-2)', textTransform: 'uppercase' }}>
-              <span>CURRENT STREAK: <span style={{ color: 'var(--ok)', fontWeight: 700 }}>{achievements?.current_win_streak || 0}W</span></span>
+              <span>{t('pp.current_streak')} <span style={{ color: 'var(--ok)', fontWeight: 700 }}>{t('op.wins_suffix', { count: achievements?.current_win_streak || 0 })}</span></span>
               <span className="muted-2">·</span>
-              <span>BEST STREAK: <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{achievements?.max_win_streak || 0}W</span></span>
+              <span>{t('pp.best_streak')} <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{t('op.wins_suffix', { count: achievements?.max_win_streak || 0 })}</span></span>
             </div>
           )}
         </Panel>
 
         {/* Achievement badges */}
-        <Panel code="USR.1" title="ACHIEVEMENTS" right={
+        <Panel code="USR.1" title={t('achievements.title')} right={
           <span className="t-xs muted">
             {achLoading
-              ? 'LOADING…'
-              : `${achievements?.badges?.length || 0} / ${catalog.length} EARNED`}
+              ? t('dka.loading_ell')
+              : t('op.earned_count', { earned: achievements?.badges?.length || 0, total: catalog.length })}
           </span>
         }>
           {achLoading ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; LOADING ACHIEVEMENTS<span className="blink">_</span>
+              {t('pp.loading_achievements')}<span className="blink">_</span>
             </div>
           ) : catalog.length === 0 ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; NO ACHIEVEMENT CATALOG AVAILABLE.
+              {t('op.no_catalog')}
             </div>
           ) : (
             <div style={{
@@ -302,27 +334,29 @@ export default function PublicProfile() {
         </Panel>
 
         {/* Deck collection */}
-        <Panel code="USR.2" title={`${upperOwner}'S DECKS`} right={
-          <span className="t-xs muted">{decks.length} BUILDS</span>
+        <Panel code="USR.2" title={t('pp.owner_decks', { name: upperOwner })} right={
+          <span className="t-xs muted">
+            {t(decks.length === 1 ? 'op.builds_one' : 'op.builds', { count: decks.length })}
+          </span>
         }>
           {decksLoading ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; LOADING DECK COLLECTION<span className="blink">_</span>
+              {t('op.loading_decks')}<span className="blink">_</span>
             </div>
           ) : decks.length === 0 ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; NO PUBLIC DECKS UNDER THIS OWNER.
+              {t('pp.no_public_decks')}
             </div>
           ) : (
             <DeckShelf
-              decks={decks.slice(0, 60)}
+              decks={decks.slice(0, SHELF_LIMIT)}
               eloByDeckId={eloByDeckId}
               navigate={navigate}
             />
           )}
-          {decks.length > 60 && (
+          {decks.length > SHELF_LIMIT && (
             <div className="t-xs muted" style={{ textAlign: 'center', marginTop: 10 }}>
-              &gt; SHOWING 60 / {decks.length}
+              {t('pp.showing_n', { shown: SHELF_LIMIT, total: decks.length })}
             </div>
           )}
         </Panel>

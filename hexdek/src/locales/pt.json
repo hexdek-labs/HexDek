@@ -1604,12 +1604,25 @@
     "awaiting_elo": "AGUARDANDO DADOS DE ELO",
     "shame_tape_left": "MURO DA VERGONHA / {bracket} / ÚLTIMOS {count}",
     "shame_tape_mid": "REGISTRO DE ELO NEGATIVO",
-    "rec_w": "{n}V",
-    "rec_l": "{n}D",
     "tier_uninstall": "DESINSTALA",
     "tier_packitup": "ARRUMA E VAI",
     "tier_cooked": "FRITO",
     "tier_downbad": "NO FUNDO DO POÇO",
     "tier_mid": "MEDÍOCRE"
+  },
+  "pp": {
+    "profile": "PERFIL",
+    "missing_owner": "DONO AUSENTE",
+    "no_owner_url": "> NENHUM DONO ESPECIFICADO NA URL.",
+    "tape_left": "PERFIL / / {name}",
+    "tape_mid": "REGISTRO PÚBLICO",
+    "player_record": "REGISTRO DO JOGADOR",
+    "kv_opponents": "ADVERSÁRIOS ENFRENTADOS",
+    "current_streak": "SEQUÊNCIA ATUAL:",
+    "best_streak": "MELHOR SEQUÊNCIA:",
+    "loading_achievements": "> CARREGANDO CONQUISTAS",
+    "no_public_decks": "> NENHUM DECK PÚBLICO DESTE DONO.",
+    "owner_decks": "DECKS DE {name}",
+    "showing_n": "> MOSTRANDO {shown} / {total}"
   }
 }

@@ -1604,12 +1604,25 @@
     "awaiting_elo": "WARTE AUF ELO-DATEN",
     "shame_tape_left": "WAND DER SCHANDE / {bracket} / LETZTE {count}",
     "shame_tape_mid": "REGISTER NEGATIVER ELO",
-    "rec_w": "{n}S",
-    "rec_l": "{n}N",
     "tier_uninstall": "DEINSTALLIEREN",
     "tier_packitup": "PACK EIN",
     "tier_cooked": "ERLEDIGT",
     "tier_downbad": "TIEF GESUNKEN",
     "tier_mid": "MITTELMASS"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "BESITZER FEHLT",
+    "no_owner_url": "> KEIN BESITZER IN DER URL ANGEGEBEN.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "ÖFFENTLICHE BILANZ",
+    "player_record": "SPIELERBILANZ",
+    "kv_opponents": "GETROFFENE GEGNER",
+    "current_streak": "AKTUELLE SERIE:",
+    "best_streak": "BESTE SERIE:",
+    "loading_achievements": "> LADE ERFOLGE",
+    "no_public_decks": "> KEINE ÖFFENTLICHEN DECKS BEI DIESEM BESITZER.",
+    "owner_decks": "DECKS VON {name}",
+    "showing_n": "> ZEIGE {shown} / {total}"
   }
 }

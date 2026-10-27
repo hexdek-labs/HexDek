@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ELO-ADATOKRA VÁRVA",
     "shame_tape_left": "SZÉGYENFAL / {bracket} / UTOLSÓ {count}",
     "shame_tape_mid": "NEGATÍV ELO NYILVÁNTARTÁS",
-    "rec_w": "{n}GY",
-    "rec_l": "{n}V",
     "tier_uninstall": "TÖRÖLD LE",
     "tier_packitup": "PAKOLJ ÖSSZE",
     "tier_cooked": "MEGFŐTT",
     "tier_downbad": "A MÉLYPONTON",
     "tier_mid": "ÁTLAGOS"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "HIÁNYZÓ TULAJDONOS",
+    "no_owner_url": "> AZ URL NEM TARTALMAZ TULAJDONOST.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "NYILVÁNOS MÉRLEG",
+    "player_record": "JÁTÉKOS MÉRLEGE",
+    "kv_opponents": "LEGYŐZENDŐ ELLENFELEK",
+    "current_streak": "JELENLEGI SOROZAT:",
+    "best_streak": "LEGJOBB SOROZAT:",
+    "loading_achievements": "> EREDMÉNYEK BETÖLTÉSE",
+    "no_public_decks": "> EHHEZ A TULAJDONOSHOZ NINCS NYILVÁNOS PAKLI.",
+    "owner_decks": "{name} PAKLIJAI",
+    "showing_n": "> MEGJELENÍTVE {shown} / {total}"
   }
 }

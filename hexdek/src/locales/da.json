@@ -1604,12 +1604,25 @@
     "awaiting_elo": "AFVENTER ELO-DATA",
     "shame_tape_left": "SKAMMENS VÆG / {bracket} / NEDERSTE {count}",
     "shame_tape_mid": "REGISTER OVER NEGATIV ELO",
-    "rec_w": "{n}S",
-    "rec_l": "{n}N",
     "tier_uninstall": "AFINSTALLER",
     "tier_packitup": "PAK SAMMEN",
     "tier_cooked": "KOGT",
     "tier_downbad": "PÅ BUNDEN",
     "tier_mid": "MIDDELMÅDIG"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "MANGLENDE EJER",
+    "no_owner_url": "> INGEN EJER ANGIVET I URL.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "OFFENTLIG REKORD",
+    "player_record": "SPILLERREKORD",
+    "kv_opponents": "MØDTE MODSTANDERE",
+    "current_streak": "NUVÆRENDE STRIBE:",
+    "best_streak": "BEDSTE STRIBE:",
+    "loading_achievements": "> INDLÆSER PRÆSTATIONER",
+    "no_public_decks": "> INGEN OFFENTLIGE DÆK UNDER DENNE EJER.",
+    "owner_decks": "{name}S DECKS",
+    "showing_n": "> VISER {shown} / {total}"
   }
 }

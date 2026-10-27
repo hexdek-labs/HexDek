@@ -1604,12 +1604,25 @@
     "awaiting_elo": "VÄNTAR PÅ ELO-DATA",
     "shame_tape_left": "SKAMMENS VÄGG / {bracket} / NEDERSTA {count}",
     "shame_tape_mid": "REGISTER ÖVER NEGATIV ELO",
-    "rec_w": "{n}V",
-    "rec_l": "{n}F",
     "tier_uninstall": "AVINSTALLERA",
     "tier_packitup": "PACKA IHOP",
     "tier_cooked": "KOKT",
     "tier_downbad": "PÅ DJUPET",
     "tier_mid": "MEDELMÅTTA"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "ÄGARE SAKNAS",
+    "no_owner_url": "> INGEN ÄGARE ANGIVEN I URL:EN.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "OFFENTLIGT REKORD",
+    "player_record": "SPELARREKORD",
+    "kv_opponents": "MÖTTA MOTSTÅNDARE",
+    "current_streak": "NUVARANDE SVIT:",
+    "best_streak": "BÄSTA SVIT:",
+    "loading_achievements": "> LADDAR PRESTATIONER",
+    "no_public_decks": "> INGA OFFENTLIGA LEKAR FÖR DENNA ÄGARE.",
+    "owner_decks": "{name}S LEKAR",
+    "showing_n": "> VISAR {shown} / {total}"
   }
 }

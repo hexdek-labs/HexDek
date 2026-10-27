@@ -1604,12 +1604,25 @@
     "awaiting_elo": "MENUNGGU DATA ELO",
     "shame_tape_left": "DINDING MEMALUKAN / {bracket} / {count} TERBAWAH",
     "shame_tape_mid": "REGISTER ELO NEGATIF",
-    "rec_w": "{n}M",
-    "rec_l": "{n}K",
     "tier_uninstall": "UNINSTALL AJA",
     "tier_packitup": "BERES-BERES",
     "tier_cooked": "MATANG",
     "tier_downbad": "DI DASAR",
     "tier_mid": "BIASA AJA"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "PEMILIK TIDAK ADA",
+    "no_owner_url": "> TIDAK ADA PEMILIK YANG DITENTUKAN DI URL.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "CATATAN PUBLIK",
+    "player_record": "CATATAN PEMAIN",
+    "kv_opponents": "LAWAN YANG DIHADAPI",
+    "current_streak": "RENTETAN SAAT INI:",
+    "best_streak": "RENTETAN TERBAIK:",
+    "loading_achievements": "> MEMUAT PENCAPAIAN",
+    "no_public_decks": "> TIDAK ADA DEK PUBLIK DARI PEMILIK INI.",
+    "owner_decks": "DEK MILIK {name}",
+    "showing_n": "> MENAMPILKAN {shown} / {total}"
   }
 }

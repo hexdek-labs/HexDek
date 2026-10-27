@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ОЖИДАНИЕ ДАННЫХ ELO",
     "shame_tape_left": "СТЕНА ПОЗОРА / {bracket} / ПОСЛЕДНИЕ {count}",
     "shame_tape_mid": "РЕЕСТР ОТРИЦАТЕЛЬНОГО ELO",
-    "rec_w": "{n}П",
-    "rec_l": "{n}Пр",
     "tier_uninstall": "УДАЛИ ИГРУ",
     "tier_packitup": "СОБИРАЙСЯ",
     "tier_cooked": "ГОТОВ",
     "tier_downbad": "НА ДНЕ",
     "tier_mid": "СРЕДНЯЧОК"
+  },
+  "pp": {
+    "profile": "ПРОФИЛЬ",
+    "missing_owner": "ВЛАДЕЛЕЦ НЕ УКАЗАН",
+    "no_owner_url": "> В АДРЕСЕ НЕ УКАЗАН ВЛАДЕЛЕЦ.",
+    "tape_left": "ПРОФИЛЬ / / {name}",
+    "tape_mid": "ПУБЛИЧНЫЙ РЕКОРД",
+    "player_record": "РЕКОРД ИГРОКА",
+    "kv_opponents": "ВСТРЕЧЕННЫЕ СОПЕРНИКИ",
+    "current_streak": "ТЕКУЩАЯ СЕРИЯ:",
+    "best_streak": "ЛУЧШАЯ СЕРИЯ:",
+    "loading_achievements": "> ЗАГРУЗКА ДОСТИЖЕНИЙ",
+    "no_public_decks": "> У ЭТОГО ВЛАДЕЛЬЦА НЕТ ПУБЛИЧНЫХ КОЛОД.",
+    "owner_decks": "КОЛОДЫ: {name}",
+    "showing_n": "> ПОКАЗАНО {shown} ИЗ {total}"
   }
 }

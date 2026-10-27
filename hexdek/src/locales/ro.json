@@ -1604,12 +1604,25 @@
     "awaiting_elo": "SE AȘTEAPTĂ DATELE ELO",
     "shame_tape_left": "PERETELE RUȘINII / {bracket} / ULTIMELE {count}",
     "shame_tape_mid": "REGISTRU ELO NEGATIV",
-    "rec_w": "{n}V",
-    "rec_l": "{n}Î",
     "tier_uninstall": "DEZINSTALEAZĂ",
     "tier_packitup": "STRÂNGE TOT",
     "tier_cooked": "TERMINAT",
     "tier_downbad": "LA FUND",
     "tier_mid": "MEDIOCRU"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "PROPRIETAR LIPSĂ",
+    "no_owner_url": "> NICIUN PROPRIETAR SPECIFICAT ÎN URL.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "PALMARES PUBLIC",
+    "player_record": "PALMARESUL JUCĂTORULUI",
+    "kv_opponents": "ADVERSARI ÎNTÂLNIȚI",
+    "current_streak": "SERIE ACTUALĂ:",
+    "best_streak": "CEA MAI BUNĂ SERIE:",
+    "loading_achievements": "> SE ÎNCARCĂ REALIZĂRILE",
+    "no_public_decks": "> NICIUN PACHET PUBLIC PENTRU ACEST PROPRIETAR.",
+    "owner_decks": "PACHETELE LUI {name}",
+    "showing_n": "> SE AFIȘEAZĂ {shown} / {total}"
   }
 }

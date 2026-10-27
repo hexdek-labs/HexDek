@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ELO डेटा की प्रतीक्षा",
     "shame_tape_left": "शर्म की दीवार / {bracket} / निचले {count}",
     "shame_tape_mid": "ऋणात्मक ELO रजिस्टर",
-    "rec_w": "{n}जी",
-    "rec_l": "{n}एच",
     "tier_uninstall": "अनइंस्टॉल करो",
     "tier_packitup": "बोरिया बिस्तर बांधो",
     "tier_cooked": "खत्म",
     "tier_downbad": "बहुत बुरा हाल",
     "tier_mid": "औसत"
+  },
+  "pp": {
+    "profile": "प्रोफ़ाइल",
+    "missing_owner": "स्वामी अनुपस्थित",
+    "no_owner_url": "> URL में कोई स्वामी निर्दिष्ट नहीं है।",
+    "tape_left": "प्रोफ़ाइल / / {name}",
+    "tape_mid": "सार्वजनिक रिकॉर्ड",
+    "player_record": "खिलाड़ी रिकॉर्ड",
+    "kv_opponents": "सामना किए गए प्रतिद्वंद्वी",
+    "current_streak": "वर्तमान श्रृंखला:",
+    "best_streak": "सर्वश्रेष्ठ श्रृंखला:",
+    "loading_achievements": "> उपलब्धियाँ लोड हो रही हैं",
+    "no_public_decks": "> इस स्वामी के कोई सार्वजनिक डेक नहीं हैं।",
+    "owner_decks": "{name} के डेक",
+    "showing_n": "> {total} में से {shown} दिखाए जा रहे हैं"
   }
 }

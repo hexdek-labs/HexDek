@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ESPERANDO DATOS DE ELO",
     "shame_tape_left": "MURO DE LA VERGÜENZA / {bracket} / ÚLTIMOS {count}",
     "shame_tape_mid": "REGISTRO DE ELO NEGATIVO",
-    "rec_w": "{n}V",
-    "rec_l": "{n}D",
     "tier_uninstall": "DESINSTALA",
     "tier_packitup": "RECOGE Y VETE",
     "tier_cooked": "FRITO",
     "tier_downbad": "EN LAS ÚLTIMAS",
     "tier_mid": "DEL MONTÓN"
+  },
+  "pp": {
+    "profile": "PERFIL",
+    "missing_owner": "FALTA PROPIETARIO",
+    "no_owner_url": "> NO SE ESPECIFICÓ NINGÚN PROPIETARIO EN LA URL.",
+    "tape_left": "PERFIL / / {name}",
+    "tape_mid": "REGISTRO PÚBLICO",
+    "player_record": "REGISTRO DEL JUGADOR",
+    "kv_opponents": "RIVALES ENFRENTADOS",
+    "current_streak": "RACHA ACTUAL:",
+    "best_streak": "MEJOR RACHA:",
+    "loading_achievements": "> CARGANDO LOGROS",
+    "no_public_decks": "> NO HAY MAZOS PÚBLICOS DE ESTE PROPIETARIO.",
+    "owner_decks": "MAZOS DE {name}",
+    "showing_n": "> MOSTRANDO {shown} / {total}"
   }
 }

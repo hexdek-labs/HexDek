@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ОЧІКУВАННЯ ДАНИХ ELO",
     "shame_tape_left": "СТІНА СОРОМУ / {bracket} / ОСТАННІ {count}",
     "shame_tape_mid": "РЕЄСТР ВІД’ЄМНОГО ELO",
-    "rec_w": "{n}П",
-    "rec_l": "{n}Пр",
     "tier_uninstall": "ВИДАЛИ ГРУ",
     "tier_packitup": "ЗБИРАЙСЯ",
     "tier_cooked": "ГОТОВИЙ",
     "tier_downbad": "НА ДНІ",
     "tier_mid": "СЕРЕДНЯЧОК"
+  },
+  "pp": {
+    "profile": "ПРОФІЛЬ",
+    "missing_owner": "ВЛАСНИКА НЕ ВКАЗАНО",
+    "no_owner_url": "> В АДРЕСІ НЕ ВКАЗАНО ВЛАСНИКА.",
+    "tape_left": "ПРОФІЛЬ / / {name}",
+    "tape_mid": "ПУБЛІЧНИЙ РЕКОРД",
+    "player_record": "РЕКОРД ГРАВЦЯ",
+    "kv_opponents": "ЗУСТРІНУТІ СУПЕРНИКИ",
+    "current_streak": "ПОТОЧНА СЕРІЯ:",
+    "best_streak": "НАЙКРАЩА СЕРІЯ:",
+    "loading_achievements": "> ЗАВАНТАЖЕННЯ ДОСЯГНЕНЬ",
+    "no_public_decks": "> У ЦЬОГО ВЛАСНИКА НЕМА ПУБЛІЧНИХ КОЛОД.",
+    "owner_decks": "КОЛОДИ: {name}",
+    "showing_n": "> ПОКАЗАНО {shown} З {total}"
   }
 }

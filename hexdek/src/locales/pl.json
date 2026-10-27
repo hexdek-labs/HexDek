@@ -1604,12 +1604,25 @@
     "awaiting_elo": "OCZEKIWANIE NA DANE ELO",
     "shame_tape_left": "ŚCIANA WSTYDU / {bracket} / OSTATNIE {count}",
     "shame_tape_mid": "REJESTR UJEMNEGO ELO",
-    "rec_w": "{n}Z",
-    "rec_l": "{n}P",
     "tier_uninstall": "ODINSTALUJ",
     "tier_packitup": "ZWIJAJ SIĘ",
     "tier_cooked": "UGOTOWANY",
     "tier_downbad": "NA DNIE",
     "tier_mid": "ŚREDNIAK"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "BRAK WŁAŚCICIELA",
+    "no_owner_url": "> W ADRESIE URL NIE OKREŚLONO WŁAŚCICIELA.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "REKORD PUBLICZNY",
+    "player_record": "REKORD GRACZA",
+    "kv_opponents": "NAPOTKANI PRZECIWNICY",
+    "current_streak": "OBECNA SERIA:",
+    "best_streak": "NAJLEPSZA SERIA:",
+    "loading_achievements": "> WCZYTYWANIE OSIĄGNIĘĆ",
+    "no_public_decks": "> TEN WŁAŚCICIEL NIE MA PUBLICZNYCH TALII.",
+    "owner_decks": "TALIE GRACZA {name}",
+    "showing_n": "> WYŚWIETLONO {shown} / {total}"
   }
 }

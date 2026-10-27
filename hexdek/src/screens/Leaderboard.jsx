@@ -98,19 +98,24 @@ function DeltaDisplay({ delta }) {
   )
 }
 
-// The W and L are real strings, not glyphs, and this app already translates
-// them: dash.kpi_games_sub carries a settled pair per locale (cs V/P, de S/N,
-// ja 勝/敗, ru П/Пр). Each side is a FRAGMENT rather than a bare letter so a
-// locale can put its word in front of the number -- th reads 'ชนะ {n}'.
-// Two separate keys because the two halves render in different colours, so a
-// single composed value could not be reused.
+// The W and L are real strings, not glyphs: the catalogs carry a settled
+// per-locale pair (cs V/P, de S/N, ja 勝/敗, ru П/Пр) and th puts its word
+// in FRONT of the number, which is why each side is a whole fragment rather
+// than a bare letter, and why there are two keys -- the halves render in
+// different colours, so no single composed value is reusable.
+//
+// These were briefly lb.rec_w/lb.rec_l, which duplicated the pre-existing
+// op.wins_suffix/op.losses_suffix: 22 of 25 values were byte-identical and
+// in the other 3 the op pair is better (ar full words over single letters,
+// hi जीत/हार over a transliteration of the Latin letters G and H, tr G/K).
+// Repointed and the duplicates deleted.
 function RecordDisplay({ wins, losses }) {
   const t = useT()
   return (
     <span>
-      <span style={{ color: 'var(--ok)' }}>{t('lb.rec_w', { n: wins.toLocaleString() })}</span>
+      <span style={{ color: 'var(--ok)' }}>{t('op.wins_suffix', { count: wins.toLocaleString() })}</span>
       <span className="muted-2"> - </span>
-      <span style={{ color: 'var(--danger)' }}>{t('lb.rec_l', { n: losses.toLocaleString() })}</span>
+      <span style={{ color: 'var(--danger)' }}>{t('op.losses_suffix', { count: losses.toLocaleString() })}</span>
     </span>
   )
 }

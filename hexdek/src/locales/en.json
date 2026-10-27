@@ -1604,12 +1604,25 @@
     "awaiting_elo": "AWAITING ELO DATA",
     "shame_tape_left": "WALL OF SHAME / {bracket} / BOTTOM {count}",
     "shame_tape_mid": "NEGATIVE ELO REGISTRY",
-    "rec_w": "{n}W",
-    "rec_l": "{n}L",
     "tier_uninstall": "UNINSTALL",
     "tier_packitup": "PACK IT UP",
     "tier_cooked": "COOKED",
     "tier_downbad": "DOWN BAD",
     "tier_mid": "MID"
+  },
+  "pp": {
+    "profile": "PROFILE",
+    "missing_owner": "MISSING OWNER",
+    "no_owner_url": "> NO OWNER SPECIFIED IN URL.",
+    "tape_left": "PROFILE / / {name}",
+    "tape_mid": "PUBLIC RECORD",
+    "player_record": "PLAYER RECORD",
+    "kv_opponents": "OPPONENTS FACED",
+    "current_streak": "CURRENT STREAK:",
+    "best_streak": "BEST STREAK:",
+    "loading_achievements": "> LOADING ACHIEVEMENTS",
+    "no_public_decks": "> NO PUBLIC DECKS UNDER THIS OWNER.",
+    "owner_decks": "{name}'S DECKS",
+    "showing_n": "> SHOWING {shown} / {total}"
   }
 }

@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ĐANG CHỜ DỮ LIỆU ELO",
     "shame_tape_left": "BỨC TƯỜNG NHỤC NHÃ / {bracket} / {count} CUỐI BẢNG",
     "shame_tape_mid": "DANH SÁCH ELO ÂM",
-    "rec_w": "{n}T",
-    "rec_l": "{n}B",
     "tier_uninstall": "XOÁ GAME ĐI",
     "tier_packitup": "DỌN HÀNG ĐI",
     "tier_cooked": "TOANG",
     "tier_downbad": "ĐÁY VỰC",
     "tier_mid": "THƯỜNG THÔI"
+  },
+  "pp": {
+    "profile": "HỒ SƠ",
+    "missing_owner": "THIẾU CHỦ SỞ HỮU",
+    "no_owner_url": "> KHÔNG CÓ CHỦ SỞ HỮU TRONG URL.",
+    "tape_left": "HỒ SƠ / / {name}",
+    "tape_mid": "THÀNH TÍCH CÔNG KHAI",
+    "player_record": "THÀNH TÍCH NGƯỜI CHƠI",
+    "kv_opponents": "ĐỐI THỦ ĐÃ GẶP",
+    "current_streak": "CHUỖI HIỆN TẠI:",
+    "best_streak": "CHUỖI TỐT NHẤT:",
+    "loading_achievements": "> ĐANG TẢI THÀNH TỰU",
+    "no_public_decks": "> CHỦ SỞ HỮU NÀY KHÔNG CÓ BỘ THẺ CÔNG KHAI.",
+    "owner_decks": "BỘ THẺ CỦA {name}",
+    "showing_n": "> HIỂN THỊ {shown} / {total}"
   }
 }

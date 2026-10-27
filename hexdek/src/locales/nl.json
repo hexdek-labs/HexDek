@@ -1604,12 +1604,25 @@
     "awaiting_elo": "WACHTEN OP ELO-DATA",
     "shame_tape_left": "MUUR VAN SCHAAMTE / {bracket} / LAATSTE {count}",
     "shame_tape_mid": "REGISTER NEGATIEVE ELO",
-    "rec_w": "{n}W",
-    "rec_l": "{n}V",
     "tier_uninstall": "VERWIJDEREN",
     "tier_packitup": "OPRUIMEN",
     "tier_cooked": "GAAR",
     "tier_downbad": "DIEP GEZONKEN",
     "tier_mid": "MIDDELMATIG"
+  },
+  "pp": {
+    "profile": "PROFIEL",
+    "missing_owner": "EIGENAAR ONTBREEKT",
+    "no_owner_url": "> GEEN EIGENAAR OPGEGEVEN IN DE URL.",
+    "tape_left": "PROFIEL / / {name}",
+    "tape_mid": "OPENBAAR RECORD",
+    "player_record": "SPELERSRECORD",
+    "kv_opponents": "TEGENSTANDERS ONTMOET",
+    "current_streak": "HUIDIGE REEKS:",
+    "best_streak": "BESTE REEKS:",
+    "loading_achievements": "> PRESTATIES LADEN",
+    "no_public_decks": "> GEEN OPENBARE DECKS BIJ DEZE EIGENAAR.",
+    "owner_decks": "DECKS VAN {name}",
+    "showing_n": "> {shown} / {total} WEERGEGEVEN"
   }
 }

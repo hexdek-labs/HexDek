@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ELO 데이터 대기 중",
     "shame_tape_left": "수치의 벽 / {bracket} / 최하위 {count}",
     "shame_tape_mid": "마이너스 ELO 명부",
-    "rec_w": "{n}승",
-    "rec_l": "{n}패",
     "tier_uninstall": "게임 삭제해라",
     "tier_packitup": "짐 싸라",
     "tier_cooked": "망했다",
     "tier_downbad": "바닥이다",
     "tier_mid": "평범"
+  },
+  "pp": {
+    "profile": "프로필",
+    "missing_owner": "소유자 없음",
+    "no_owner_url": "> URL에 소유자가 지정되지 않았습니다.",
+    "tape_left": "프로필 / / {name}",
+    "tape_mid": "공개 기록",
+    "player_record": "플레이어 기록",
+    "kv_opponents": "상대한 플레이어",
+    "current_streak": "현재 연승:",
+    "best_streak": "최고 연승:",
+    "loading_achievements": "> 업적 불러오는 중",
+    "no_public_decks": "> 이 소유자의 공개 덱이 없습니다.",
+    "owner_decks": "{name}의 덱",
+    "showing_n": "> {total}개 중 {shown}개 표시"
   }
 }

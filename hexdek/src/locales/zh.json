@@ -1604,12 +1604,25 @@
     "awaiting_elo": "等待 ELO 数据",
     "shame_tape_left": "耻辱墙 / {bracket} / 末 {count} 名",
     "shame_tape_mid": "负 ELO 登记簿",
-    "rec_w": "{n}胜",
-    "rec_l": "{n}负",
     "tier_uninstall": "卸载吧",
     "tier_packitup": "收摊吧",
     "tier_cooked": "凉了",
     "tier_downbad": "跌到谷底",
     "tier_mid": "平庸"
+  },
+  "pp": {
+    "profile": "个人资料",
+    "missing_owner": "缺少拥有者",
+    "no_owner_url": "> URL 中未指定拥有者。",
+    "tape_left": "个人资料 / / {name}",
+    "tape_mid": "公开战绩",
+    "player_record": "玩家战绩",
+    "kv_opponents": "交手过的对手",
+    "current_streak": "当前连胜：",
+    "best_streak": "最佳连胜：",
+    "loading_achievements": "> 正在加载成就",
+    "no_public_decks": "> 该拥有者没有公开套牌。",
+    "owner_decks": "{name} 的套牌",
+    "showing_n": "> 显示 {total} 中的 {shown}"
   }
 }

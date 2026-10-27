@@ -1604,12 +1604,25 @@
     "awaiting_elo": "รอข้อมูล ELO",
     "shame_tape_left": "กำแพงอัปยศ / {bracket} / ท้ายสุด {count}",
     "shame_tape_mid": "ทะเบียน ELO ติดลบ",
-    "rec_w": "ชนะ {n}",
-    "rec_l": "แพ้ {n}",
     "tier_uninstall": "ถอนการติดตั้งเถอะ",
     "tier_packitup": "เก็บของกลับบ้าน",
     "tier_cooked": "จบเห่",
     "tier_downbad": "ตกต่ำ",
     "tier_mid": "กลางๆ"
+  },
+  "pp": {
+    "profile": "โปรไฟล์",
+    "missing_owner": "ไม่มีเจ้าของ",
+    "no_owner_url": "> ไม่ได้ระบุเจ้าของใน URL",
+    "tape_left": "โปรไฟล์ / / {name}",
+    "tape_mid": "สถิติสาธารณะ",
+    "player_record": "สถิติผู้เล่น",
+    "kv_opponents": "คู่แข่งที่เจอ",
+    "current_streak": "สตรีคปัจจุบัน:",
+    "best_streak": "สตรีคสูงสุด:",
+    "loading_achievements": "> กำลังโหลดความสำเร็จ",
+    "no_public_decks": "> ไม่มีเด็คสาธารณะของเจ้าของนี้",
+    "owner_decks": "เด็คของ {name}",
+    "showing_n": "> แสดง {shown} จาก {total}"
   }
 }

@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ΑΝΑΜΟΝΗ ΔΕΔΟΜΕΝΩΝ ELO",
     "shame_tape_left": "ΤΟΙΧΟΣ ΤΗΣ ΝΤΡΟΠΗΣ / {bracket} / ΤΕΛΕΥΤΑΙΕΣ {count}",
     "shame_tape_mid": "ΜΗΤΡΩΟ ΑΡΝΗΤΙΚΟΥ ELO",
-    "rec_w": "{n}Ν",
-    "rec_l": "{n}Η",
     "tier_uninstall": "ΑΠΕΓΚΑΤΑΣΤΗΣΕ ΤΟ",
     "tier_packitup": "ΜΑΖΕΨΕ ΤΑ",
     "tier_cooked": "ΨΗΜΕΝΟΣ",
     "tier_downbad": "ΣΤΟΝ ΠΑΤΟ",
     "tier_mid": "ΜΕΤΡΙΟΣ"
+  },
+  "pp": {
+    "profile": "ΠΡΟΦΙΛ",
+    "missing_owner": "ΛΕΙΠΕΙ ΚΑΤΟΧΟΣ",
+    "no_owner_url": "> ΔΕΝ ΟΡΙΣΤΗΚΕ ΚΑΤΟΧΟΣ ΣΤΟ URL.",
+    "tape_left": "ΠΡΟΦΙΛ / / {name}",
+    "tape_mid": "ΔΗΜΟΣΙΟ ΜΗΤΡΩΟ",
+    "player_record": "ΜΗΤΡΩΟ ΠΑΙΚΤΗ",
+    "kv_opponents": "ΑΝΤΙΠΑΛΟΙ ΠΟΥ ΑΝΤΙΜΕΤΩΠΙΣΕ",
+    "current_streak": "ΤΡΕΧΟΥΣΑ ΣΕΡΙ:",
+    "best_streak": "ΚΑΛΥΤΕΡΗ ΣΕΡΙ:",
+    "loading_achievements": "> ΦΟΡΤΩΣΗ ΕΠΙΤΕΥΓΜΑΤΩΝ",
+    "no_public_decks": "> ΔΕΝ ΥΠΑΡΧΟΥΝ ΔΗΜΟΣΙΕΣ ΤΡΑΠΟΥΛΕΣ ΓΙΑ ΑΥΤΟΝ ΤΟΝ ΚΑΤΟΧΟ.",
+    "owner_decks": "ΤΡΑΠΟΥΛΕΣ ΤΟΥ {name}",
+    "showing_n": "> ΕΜΦΑΝΙΖΟΝΤΑΙ {shown} / {total}"
   }
 }

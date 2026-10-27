@@ -1604,12 +1604,25 @@
     "awaiting_elo": "IN ATTESA DEI DATI ELO",
     "shame_tape_left": "MURO DELLA VERGOGNA / {bracket} / ULTIMI {count}",
     "shame_tape_mid": "REGISTRO ELO NEGATIVI",
-    "rec_w": "{n}V",
-    "rec_l": "{n}S",
     "tier_uninstall": "DISINSTALLA",
     "tier_packitup": "METTI VIA TUTTO",
     "tier_cooked": "FRITTO",
     "tier_downbad": "A TERRA",
     "tier_mid": "MEDIOCRE"
+  },
+  "pp": {
+    "profile": "PROFILO",
+    "missing_owner": "PROPRIETARIO MANCANTE",
+    "no_owner_url": "> NESSUN PROPRIETARIO SPECIFICATO NELL'URL.",
+    "tape_left": "PROFILO / / {name}",
+    "tape_mid": "RECORD PUBBLICO",
+    "player_record": "RECORD DEL GIOCATORE",
+    "kv_opponents": "AVVERSARI AFFRONTATI",
+    "current_streak": "SERIE ATTUALE:",
+    "best_streak": "SERIE MIGLIORE:",
+    "loading_achievements": "> CARICAMENTO OBIETTIVI",
+    "no_public_decks": "> NESSUN MAZZO PUBBLICO PER QUESTO PROPRIETARIO.",
+    "owner_decks": "MAZZI DI {name}",
+    "showing_n": "> VISUALIZZATI {shown} / {total}"
   }
 }

@@ -1604,12 +1604,25 @@
     "awaiting_elo": "ČEKÁ SE NA DATA ELO",
     "shame_tape_left": "ZEĎ HANBY / {bracket} / NEJHORŠÍCH {count}",
     "shame_tape_mid": "REGISTR NEGATIVNÍHO ELO",
-    "rec_w": "{n}V",
-    "rec_l": "{n}P",
     "tier_uninstall": "ODINSTALUJ",
     "tier_packitup": "SBAL SI TO",
     "tier_cooked": "UVAŘENO",
     "tier_downbad": "NA DNĚ",
     "tier_mid": "PRŮMĚR"
+  },
+  "pp": {
+    "profile": "PROFIL",
+    "missing_owner": "CHYBÍ VLASTNÍK",
+    "no_owner_url": "> V ADRESE NENÍ URČEN ŽÁDNÝ VLASTNÍK.",
+    "tape_left": "PROFIL / / {name}",
+    "tape_mid": "VEŘEJNÝ ZÁZNAM",
+    "player_record": "ZÁZNAM HRÁČE",
+    "kv_opponents": "POTKANÍ PROTIVNÍCI",
+    "current_streak": "AKTUÁLNÍ SÉRIE:",
+    "best_streak": "NEJLEPŠÍ SÉRIE:",
+    "loading_achievements": "> NAČÍTÁNÍ ÚSPĚCHŮ",
+    "no_public_decks": "> TENTO VLASTNÍK NEMÁ ŽÁDNÉ VEŘEJNÉ BALÍČKY.",
+    "owner_decks": "BALÍČKY HRÁČE {name}",
+    "showing_n": "> ZOBRAZENO {shown} / {total}"
   }
 }
