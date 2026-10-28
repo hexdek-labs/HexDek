@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINK MISLUKT IN ANDER TABBLAD. PROBEER HET OPNIEUW.",
     "err_invalid_email": "ONGELDIG E-MAILFORMAAT.",
-    "err_unreachable": "AUTHENTICATIEDIENST NIET BEREIKBAAR. PROBEER HET OPNIEUW."
+    "err_unreachable": "AUTHENTICATIEDIENST NIET BEREIKBAAR. PROBEER HET OPNIEUW.",
+    "action_continue": "doorgaan",
+    "action_import_deck": "deck importeren",
+    "aria_continue": "Aanmelden om door te gaan",
+    "aria_import_deck": "Aanmelden om een deck te importeren",
+    "prompt_hd": "AANMELDEN / / {action}",
+    "prompt_aria_close": "Aanmelden sluiten",
+    "prompt_pitch": "> MELD JE AAN OM DECKS TE UPLOADEN, STATISTIEKEN TE VOLGEN EN MEER.",
+    "btn_email": "AANMELDEN MET E-MAIL",
+    "btn_discord": "AANMELDEN MET DISCORD",
+    "discord_tip": "DISCORD-aanmelding komt binnenkort — gebruik tot dan e-mail",
+    "soon": "BINNENKORT",
+    "prompt_note": "> GEEN WACHTWOORD. GEEN SPAM. ÉÉN KLIK NAAR JE ARCHIEF."
   }
 }

@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} 分钟",
     "err_link_failed": "链接在另一个标签页中失败。请重试。",
     "err_invalid_email": "邮箱格式无效。",
-    "err_unreachable": "无法连接身份验证服务。请重试。"
+    "err_unreachable": "无法连接身份验证服务。请重试。",
+    "action_continue": "继续",
+    "action_import_deck": "导入套牌",
+    "aria_continue": "登录以继续",
+    "aria_import_deck": "登录以导入套牌",
+    "prompt_hd": "登录 / / {action}",
+    "prompt_aria_close": "关闭登录",
+    "prompt_pitch": "> 登录即可上传套牌、追踪战绩等。",
+    "btn_email": "使用邮箱登录",
+    "btn_discord": "使用 DISCORD 登录",
+    "discord_tip": "DISCORD 登录即将推出 — 目前请使用邮箱",
+    "soon": "即将",
+    "prompt_note": "> 无需密码。没有垃圾邮件。一键进入你的档案。"
   }
 }

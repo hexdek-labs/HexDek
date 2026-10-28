@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} PERC",
     "err_link_failed": "A LINK EGY MÁSIK LAPON HIBÁRA FUTOTT. PRÓBÁLD ÚJRA.",
     "err_invalid_email": "ÉRVÉNYTELEN E-MAIL FORMÁTUM.",
-    "err_unreachable": "A HITELESÍTŐ SZOLGÁLTATÁS NEM ÉRHETŐ EL. PRÓBÁLD ÚJRA."
+    "err_unreachable": "A HITELESÍTŐ SZOLGÁLTATÁS NEM ÉRHETŐ EL. PRÓBÁLD ÚJRA.",
+    "action_continue": "folytatás",
+    "action_import_deck": "pakli importálása",
+    "aria_continue": "Bejelentkezés a folytatáshoz",
+    "aria_import_deck": "Bejelentkezés pakli importálásához",
+    "prompt_hd": "BEJELENTKEZÉS / / {action}",
+    "prompt_aria_close": "Bejelentkezés bezárása",
+    "prompt_pitch": "> JELENTKEZZ BE PAKLIK FELTÖLTÉSÉHEZ, STATISZTIKÁK KÖVETÉSÉHEZ ÉS TÖBBHÖZ.",
+    "btn_email": "BEJELENTKEZÉS E-MAILLEL",
+    "btn_discord": "BEJELENTKEZÉS DISCORDDAL",
+    "discord_tip": "A DISCORD-bejelentkezés hamarosan jön — addig használd az e-mailt",
+    "soon": "HAMAROSAN",
+    "prompt_note": "> NINCS JELSZÓ. NINCS SPAM. EGY KATTINTÁS AZ ARCHÍVUMODHOZ."
   }
 }

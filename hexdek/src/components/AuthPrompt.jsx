@@ -1,6 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import { Btn } from './chrome'
 import { useModalKeyboard } from '../hooks/useModalKeyboard'
+import { useT } from '../i18n'
+
+// `action` is an action ID, NOT an English phrase. It used to be prose
+// ('import deck') interpolated into both an aria-label and a panel header, so
+// the phrase could never be translated from in here and no caller could
+// supply a localized one.
+//
+// Each action carries TWO paths rather than one, because the aria-label is a
+// WHOLE SENTENCE per action and not a template: German's `um ... zu` clause
+// puts *zu* immediately before a clause-final verb ('um ein Deck ZU
+// IMPORTIEREN'), so an interpolated verb phrase cannot be made grammatical by
+// any wording of the template. The short label is interpolated only into the
+// header, where a noun-ish fragment is safe.
+const ACTIONS = {
+  continue:    { labelKey: 'auth.action_continue',    ariaKey: 'auth.aria_continue' },
+  import_deck: { labelKey: 'auth.action_import_deck', ariaKey: 'auth.aria_import_deck' },
+}
+const actionPaths = (id) => ACTIONS[id] || ACTIONS.continue
 
 // AuthPrompt — contextual sign-in modal triggered when an anon user
 // reaches for an auth-gated action (upload, import, save, etc.).
@@ -26,6 +44,7 @@ export default function AuthPrompt({ onClose, action = 'continue', inline = fals
 }
 
 function AuthPromptOverlay({ action, goLogin, onClose }) {
+  const t = useT()
   const panelRef = useModalKeyboard({ onClose })
   return (
     <div style={{
@@ -38,7 +57,7 @@ function AuthPromptOverlay({ action, goLogin, onClose }) {
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={`Sign in to ${action}`}
+        aria-label={t(actionPaths(action).ariaKey)}
         style={{ maxWidth: 440, width: '100%' }}
       >
         <AuthPromptBody action={action} goLogin={goLogin} onClose={onClose} showCancel />
@@ -48,22 +67,27 @@ function AuthPromptOverlay({ action, goLogin, onClose }) {
 }
 
 function AuthPromptBody({ action, goLogin, onClose, showCancel = true }) {
+  const t = useT()
   return (
     <>
       <div className="panel-hd">
-        <span>SIGN IN / / {action.toUpperCase()}</span>
+        {/* No .toUpperCase() here: `.panel-hd` already carries
+            `text-transform: uppercase` in index.css, so the JS call added
+            nothing — while a locale-blind JS uppercase mangles Turkish
+            dotted/dotless i and CSS text-transform does not. */}
+        <span>{t('auth.prompt_hd', { action: t(actionPaths(action).labelKey) })}</span>
         {showCancel && (
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close sign-in"
+            aria-label={t('auth.prompt_aria_close')}
             style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}
           >X</button>
         )}
       </div>
       <div className="panel-bd" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 22 }}>
         <div className="t-md" style={{ lineHeight: 1.6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          &gt; SIGN IN TO UPLOAD DECKS, TRACK STATS, AND MORE.
+          {t('auth.prompt_pitch')}
         </div>
 
         <button
@@ -79,14 +103,14 @@ function AuthPromptBody({ action, goLogin, onClose, showCancel = true }) {
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>✉</span>
-            <span>SIGN IN WITH EMAIL</span>
+            <span>{t('auth.btn_email')}</span>
           </span>
           <span>↗</span>
         </button>
 
         <button
           disabled
-          title="Discord OAuth coming soon — use email for now"
+          title={t('auth.discord_tip')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             gap: 12, padding: '12px 16px',
@@ -99,18 +123,18 @@ function AuthPromptBody({ action, goLogin, onClose, showCancel = true }) {
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <DiscordGlyph />
-            <span>SIGN IN WITH DISCORD</span>
+            <span>{t('auth.btn_discord')}</span>
           </span>
-          <span className="t-xs muted-2" style={{ letterSpacing: '0.1em' }}>SOON</span>
+          <span className="t-xs muted-2" style={{ letterSpacing: '0.1em' }}>{t('auth.soon')}</span>
         </button>
 
         <div className="t-xs muted-2" style={{ lineHeight: 1.5 }}>
-          &gt; NO PASSWORD. NO SPAM. ONE CLICK TO YOUR ARCHIVE.
+          {t('auth.prompt_note')}
         </div>
 
         {showCancel && (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <Btn sm ghost onClick={onClose}>CANCEL</Btn>
+            <Btn sm ghost onClick={onClose}>{t('common.cancel')}</Btn>
           </div>
         )}
       </div>

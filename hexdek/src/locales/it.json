@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINK FALLITO IN UN ALTRA SCHEDA. RIPROVA.",
     "err_invalid_email": "FORMATO EMAIL NON VALIDO.",
-    "err_unreachable": "SERVIZIO DI AUTENTICAZIONE NON RAGGIUNGIBILE. RIPROVA."
+    "err_unreachable": "SERVIZIO DI AUTENTICAZIONE NON RAGGIUNGIBILE. RIPROVA.",
+    "action_continue": "continua",
+    "action_import_deck": "importa mazzo",
+    "aria_continue": "Accedi per continuare",
+    "aria_import_deck": "Accedi per importare un mazzo",
+    "prompt_hd": "ACCEDI / / {action}",
+    "prompt_aria_close": "Chiudi accesso",
+    "prompt_pitch": "> ACCEDI PER CARICARE MAZZI, SEGUIRE LE STATISTICHE E ALTRO.",
+    "btn_email": "ACCEDI CON EMAIL",
+    "btn_discord": "ACCEDI CON DISCORD",
+    "discord_tip": "L’accesso con DISCORD arriva presto — per ora usa l’email",
+    "soon": "PRESTO",
+    "prompt_note": "> NESSUNA PASSWORD. NESSUNO SPAM. UN CLIC VERSO IL TUO ARCHIVIO."
   }
 }

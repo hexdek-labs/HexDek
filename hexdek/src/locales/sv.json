@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LÄNKEN MISSLYCKADES I EN ANNAN FLIK. FÖRSÖK IGEN.",
     "err_invalid_email": "OGILTIGT E-POSTFORMAT.",
-    "err_unreachable": "AUTENTISERINGSTJÄNSTEN GÅR INTE ATT NÅ. FÖRSÖK IGEN."
+    "err_unreachable": "AUTENTISERINGSTJÄNSTEN GÅR INTE ATT NÅ. FÖRSÖK IGEN.",
+    "action_continue": "fortsätt",
+    "action_import_deck": "importera lek",
+    "aria_continue": "Logga in för att fortsätta",
+    "aria_import_deck": "Logga in för att importera en lek",
+    "prompt_hd": "LOGGA IN / / {action}",
+    "prompt_aria_close": "Stäng inloggningen",
+    "prompt_pitch": "> LOGGA IN FÖR ATT LADDA UPP LEKAR, FÖLJA STATISTIK OCH MER.",
+    "btn_email": "LOGGA IN MED E-POST",
+    "btn_discord": "LOGGA IN MED DISCORD",
+    "discord_tip": "DISCORD-inloggning kommer snart — använd e-post tills dess",
+    "soon": "SNART",
+    "prompt_note": "> INGET LÖSENORD. INGEN SPAM. ETT KLICK TILL DITT ARKIV."
   }
 }

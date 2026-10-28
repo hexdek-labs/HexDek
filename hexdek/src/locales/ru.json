@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} МИН",
     "err_link_failed": "ССЫЛКА НЕ СРАБОТАЛА В ДРУГОЙ ВКЛАДКЕ. ПОПРОБУЙ СНОВА.",
     "err_invalid_email": "НЕВЕРНЫЙ ФОРМАТ EMAIL.",
-    "err_unreachable": "СЕРВИС АУТЕНТИФИКАЦИИ НЕДОСТУПЕН. ПОПРОБУЙ СНОВА."
+    "err_unreachable": "СЕРВИС АУТЕНТИФИКАЦИИ НЕДОСТУПЕН. ПОПРОБУЙ СНОВА.",
+    "action_continue": "продолжить",
+    "action_import_deck": "импорт колоды",
+    "aria_continue": "Войдите, чтобы продолжить",
+    "aria_import_deck": "Войдите, чтобы импортировать колоду",
+    "prompt_hd": "ВХОД / / {action}",
+    "prompt_aria_close": "Закрыть вход",
+    "prompt_pitch": "> ВОЙДИ, ЧТОБЫ ЗАГРУЖАТЬ КОЛОДЫ, ВЕСТИ СТАТИСТИКУ И БОЛЬШЕ.",
+    "btn_email": "ВОЙТИ ПО EMAIL",
+    "btn_discord": "ВОЙТИ ЧЕРЕЗ DISCORD",
+    "discord_tip": "Вход через DISCORD скоро — пока используй email",
+    "soon": "СКОРО",
+    "prompt_note": "> БЕЗ ПАРОЛЯ. БЕЗ СПАМА. ОДИН КЛИК ДО ТВОЕГО АРХИВА."
   }
 }

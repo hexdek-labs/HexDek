@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} PHÚT",
     "err_link_failed": "LIÊN KẾT THẤT BẠI Ở TAB KHÁC. THỬ LẠI.",
     "err_invalid_email": "ĐỊNH DẠNG EMAIL KHÔNG HỢP LỆ.",
-    "err_unreachable": "KHÔNG KẾT NỐI ĐƯỢC DỊCH VỤ XÁC THỰC. THỬ LẠI."
+    "err_unreachable": "KHÔNG KẾT NỐI ĐƯỢC DỊCH VỤ XÁC THỰC. THỬ LẠI.",
+    "action_continue": "tiếp tục",
+    "action_import_deck": "nhập bộ bài",
+    "aria_continue": "Đăng nhập để tiếp tục",
+    "aria_import_deck": "Đăng nhập để nhập bộ bài",
+    "prompt_hd": "ĐĂNG NHẬP / / {action}",
+    "prompt_aria_close": "Đóng đăng nhập",
+    "prompt_pitch": "> ĐĂNG NHẬP ĐỂ TẢI BỘ BÀI LÊN, THEO DÕI THỐNG KÊ VÀ HƠN NỮA.",
+    "btn_email": "ĐĂNG NHẬP BẰNG EMAIL",
+    "btn_discord": "ĐĂNG NHẬP BẰNG DISCORD",
+    "discord_tip": "Đăng nhập bằng DISCORD sắp có — hãy dùng email trước",
+    "soon": "SẮP CÓ",
+    "prompt_note": "> KHÔNG MẬT KHẨU. KHÔNG SPAM. MỘT CÚ NHẤP TỚI KHO CỦA BẠN."
   }
 }

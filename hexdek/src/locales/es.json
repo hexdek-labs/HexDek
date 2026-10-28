@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "EL ENLACE FALLÓ EN OTRA PESTAÑA. INTÉNTALO DE NUEVO.",
     "err_invalid_email": "FORMATO DE CORREO NO VÁLIDO.",
-    "err_unreachable": "SERVICIO DE AUTENTICACIÓN INACCESIBLE. INTÉNTALO DE NUEVO."
+    "err_unreachable": "SERVICIO DE AUTENTICACIÓN INACCESIBLE. INTÉNTALO DE NUEVO.",
+    "action_continue": "continuar",
+    "action_import_deck": "importar mazo",
+    "aria_continue": "Inicia sesión para continuar",
+    "aria_import_deck": "Inicia sesión para importar un mazo",
+    "prompt_hd": "INICIAR SESIÓN / / {action}",
+    "prompt_aria_close": "Cerrar inicio de sesión",
+    "prompt_pitch": "> INICIA SESIÓN PARA SUBIR MAZOS, SEGUIR ESTADÍSTICAS Y MÁS.",
+    "btn_email": "INICIAR SESIÓN CON CORREO",
+    "btn_discord": "INICIAR SESIÓN CON DISCORD",
+    "discord_tip": "El inicio de sesión con DISCORD llegará pronto — usa el correo por ahora",
+    "soon": "PRONTO",
+    "prompt_note": "> SIN CONTRASEÑA. SIN SPAM. UN CLIC HASTA TU ARCHIVO."
   }
 }

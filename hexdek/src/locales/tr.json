@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} DK",
     "err_link_failed": "BAĞLANTI DİĞER SEKMEDE BAŞARISIZ OLDU. TEKRAR DENE.",
     "err_invalid_email": "GEÇERSİZ E-POSTA BİÇİMİ.",
-    "err_unreachable": "KİMLİK DOĞRULAMA SERVİSİNE ULAŞILAMIYOR. TEKRAR DENE."
+    "err_unreachable": "KİMLİK DOĞRULAMA SERVİSİNE ULAŞILAMIYOR. TEKRAR DENE.",
+    "action_continue": "devam et",
+    "action_import_deck": "deste içe aktar",
+    "aria_continue": "Devam etmek için giriş yap",
+    "aria_import_deck": "Deste içe aktarmak için giriş yap",
+    "prompt_hd": "GİRİŞ / / {action}",
+    "prompt_aria_close": "Girişi kapat",
+    "prompt_pitch": "> DESTE YÜKLEMEK, İSTATİSTİK TAKİP ETMEK VE DAHASI İÇİN GİRİŞ YAP.",
+    "btn_email": "E-POSTA İLE GİRİŞ YAP",
+    "btn_discord": "DISCORD İLE GİRİŞ YAP",
+    "discord_tip": "DISCORD ile giriş yakında — şimdilik e-posta kullan",
+    "soon": "YAKINDA",
+    "prompt_note": "> ŞİFRE YOK. SPAM YOK. ARŞİVİNE TEK TIK."
   }
 }

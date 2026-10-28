@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINK FAILED IN OTHER TAB. TRY AGAIN.",
     "err_invalid_email": "INVALID EMAIL FORMAT.",
-    "err_unreachable": "AUTH SERVICE UNREACHABLE. TRY AGAIN."
+    "err_unreachable": "AUTH SERVICE UNREACHABLE. TRY AGAIN.",
+    "action_continue": "continue",
+    "action_import_deck": "import deck",
+    "aria_continue": "Sign in to continue",
+    "aria_import_deck": "Sign in to import deck",
+    "prompt_hd": "SIGN IN / / {action}",
+    "prompt_aria_close": "Close sign-in",
+    "prompt_pitch": "> SIGN IN TO UPLOAD DECKS, TRACK STATS, AND MORE.",
+    "btn_email": "SIGN IN WITH EMAIL",
+    "btn_discord": "SIGN IN WITH DISCORD",
+    "discord_tip": "Discord OAuth coming soon — use email for now",
+    "soon": "SOON",
+    "prompt_note": "> NO PASSWORD. NO SPAM. ONE CLICK TO YOUR ARCHIVE."
   }
 }

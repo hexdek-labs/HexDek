@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "ÉCHEC DU LIEN DANS UN AUTRE ONGLET. RÉESSAIE.",
     "err_invalid_email": "FORMAT D’E-MAIL INVALIDE.",
-    "err_unreachable": "SERVICE D’AUTHENTIFICATION INJOIGNABLE. RÉESSAIE."
+    "err_unreachable": "SERVICE D’AUTHENTIFICATION INJOIGNABLE. RÉESSAIE.",
+    "action_continue": "continuer",
+    "action_import_deck": "importer un deck",
+    "aria_continue": "Se connecter pour continuer",
+    "aria_import_deck": "Se connecter pour importer un deck",
+    "prompt_hd": "CONNEXION / / {action}",
+    "prompt_aria_close": "Fermer la connexion",
+    "prompt_pitch": "> CONNECTE-TOI POUR ENVOYER DES DECKS, SUIVRE TES STATS ET PLUS ENCORE.",
+    "btn_email": "SE CONNECTER PAR E-MAIL",
+    "btn_discord": "SE CONNECTER AVEC DISCORD",
+    "discord_tip": "La connexion DISCORD arrive bientôt — utilise l’e-mail en attendant",
+    "soon": "BIENTÔT",
+    "prompt_note": "> AUCUN MOT DE PASSE. AUCUN SPAM. UN CLIC VERS TON ARCHIVE."
   }
 }

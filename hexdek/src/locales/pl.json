@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINK NIE ZADZIAŁAŁ W INNEJ KARCIE. SPRÓBUJ PONOWNIE.",
     "err_invalid_email": "NIEPRAWIDŁOWY FORMAT E-MAILA.",
-    "err_unreachable": "USŁUGA UWIERZYTELNIANIA NIEDOSTĘPNA. SPRÓBUJ PONOWNIE."
+    "err_unreachable": "USŁUGA UWIERZYTELNIANIA NIEDOSTĘPNA. SPRÓBUJ PONOWNIE.",
+    "action_continue": "kontynuuj",
+    "action_import_deck": "import talii",
+    "aria_continue": "Zaloguj się, aby kontynuować",
+    "aria_import_deck": "Zaloguj się, aby zaimportować talię",
+    "prompt_hd": "ZALOGUJ SIĘ / / {action}",
+    "prompt_aria_close": "Zamknij logowanie",
+    "prompt_pitch": "> ZALOGUJ SIĘ, ABY WGRYWAĆ TALIE, ŚLEDZIĆ STATYSTYKI I WIĘCEJ.",
+    "btn_email": "ZALOGUJ SIĘ E-MAILEM",
+    "btn_discord": "ZALOGUJ SIĘ PRZEZ DISCORD",
+    "discord_tip": "Logowanie przez DISCORD wkrótce — na razie użyj e-maila",
+    "soon": "WKRÓTCE",
+    "prompt_note": "> BEZ HASŁA. BEZ SPAMU. JEDNO KLIKNIĘCIE DO TWOJEGO ARCHIWUM."
   }
 }

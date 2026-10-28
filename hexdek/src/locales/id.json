@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MNT",
     "err_link_failed": "TAUTAN GAGAL DI TAB LAIN. COBA LAGI.",
     "err_invalid_email": "FORMAT EMAIL TIDAK VALID.",
-    "err_unreachable": "LAYANAN OTENTIKASI TIDAK TERJANGKAU. COBA LAGI."
+    "err_unreachable": "LAYANAN OTENTIKASI TIDAK TERJANGKAU. COBA LAGI.",
+    "action_continue": "lanjutkan",
+    "action_import_deck": "impor dek",
+    "aria_continue": "Masuk untuk melanjutkan",
+    "aria_import_deck": "Masuk untuk mengimpor dek",
+    "prompt_hd": "MASUK / / {action}",
+    "prompt_aria_close": "Tutup halaman masuk",
+    "prompt_pitch": "> MASUK UNTUK MENGUNGGAH DEK, MELACAK STATISTIK, DAN LAINNYA.",
+    "btn_email": "MASUK DENGAN EMAIL",
+    "btn_discord": "MASUK DENGAN DISCORD",
+    "discord_tip": "Masuk dengan DISCORD segera hadir — gunakan email dulu",
+    "soon": "SEGERA",
+    "prompt_note": "> TANPA SANDI. TANPA SPAM. SATU KLIK KE ARSIPMU."
   }
 }

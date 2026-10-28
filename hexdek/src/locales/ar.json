@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} دقيقة",
     "err_link_failed": "فشل الرابط في تبويب آخر. حاول مرة أخرى.",
     "err_invalid_email": "صيغة البريد غير صحيحة.",
-    "err_unreachable": "خدمة المصادقة غير متاحة. حاول مرة أخرى."
+    "err_unreachable": "خدمة المصادقة غير متاحة. حاول مرة أخرى.",
+    "action_continue": "المتابعة",
+    "action_import_deck": "استيراد ديك",
+    "aria_continue": "سجّل الدخول للمتابعة",
+    "aria_import_deck": "سجّل الدخول لاستيراد ديك",
+    "prompt_hd": "تسجيل الدخول / / {action}",
+    "prompt_aria_close": "إغلاق تسجيل الدخول",
+    "prompt_pitch": "> سجّل الدخول لتحميل الديكات وتتبّع الإحصاءات وأكثر.",
+    "btn_email": "تسجيل الدخول بالبريد",
+    "btn_discord": "تسجيل الدخول عبر DISCORD",
+    "discord_tip": "مصادقة DISCORD قادمة قريباً — استخدم البريد الآن",
+    "soon": "قريباً",
+    "prompt_note": "> لا كلمة مرور. لا رسائل مزعجة. نقرة واحدة إلى أرشيفك."
   }
 }

@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINKET FEJLEDE I EN ANDEN FANE. PRØV IGEN.",
     "err_invalid_email": "UGYLDIGT E-MAILFORMAT.",
-    "err_unreachable": "GODKENDELSESTJENESTEN KAN IKKE NÅS. PRØV IGEN."
+    "err_unreachable": "GODKENDELSESTJENESTEN KAN IKKE NÅS. PRØV IGEN.",
+    "action_continue": "fortsæt",
+    "action_import_deck": "importér deck",
+    "aria_continue": "Log ind for at fortsætte",
+    "aria_import_deck": "Log ind for at importere et deck",
+    "prompt_hd": "LOG IND / / {action}",
+    "prompt_aria_close": "Luk login",
+    "prompt_pitch": "> LOG IND FOR AT UPLOADE DECKS, FØLGE STATISTIK OG MERE.",
+    "btn_email": "LOG IND MED E-MAIL",
+    "btn_discord": "LOG IND MED DISCORD",
+    "discord_tip": "DISCORD-login kommer snart — brug e-mail indtil da",
+    "soon": "SNART",
+    "prompt_note": "> INGEN ADGANGSKODE. INGEN SPAM. ÉT KLIK TIL DIT ARKIV."
   }
 }

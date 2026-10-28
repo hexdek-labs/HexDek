@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} ХВ",
     "err_link_failed": "ПОСИЛАННЯ НЕ СПРАЦЮВАЛО В ІНШІЙ ВКЛАДЦІ. СПРОБУЙ ЩЕ РАЗ.",
     "err_invalid_email": "НЕПРАВИЛЬНИЙ ФОРМАТ EMAIL.",
-    "err_unreachable": "СЕРВІС АВТЕНТИФІКАЦІЇ НЕДОСТУПНИЙ. СПРОБУЙ ЩЕ РАЗ."
+    "err_unreachable": "СЕРВІС АВТЕНТИФІКАЦІЇ НЕДОСТУПНИЙ. СПРОБУЙ ЩЕ РАЗ.",
+    "action_continue": "продовжити",
+    "action_import_deck": "імпорт колоди",
+    "aria_continue": "Увійди, щоб продовжити",
+    "aria_import_deck": "Увійди, щоб імпортувати колоду",
+    "prompt_hd": "ВХІД / / {action}",
+    "prompt_aria_close": "Закрити вхід",
+    "prompt_pitch": "> УВІЙДИ, ЩОБ ЗАВАНТАЖУВАТИ КОЛОДИ, ВЕСТИ СТАТИСТИКУ І БІЛЬШЕ.",
+    "btn_email": "УВІЙТИ ЧЕРЕЗ EMAIL",
+    "btn_discord": "УВІЙТИ ЧЕРЕЗ DISCORD",
+    "discord_tip": "Вхід через DISCORD скоро — поки використовуй email",
+    "soon": "СКОРО",
+    "prompt_note": "> БЕЗ ПАРОЛЯ. БЕЗ СПАМУ. ОДИН КЛІК ДО ТВОГО АРХІВУ."
   }
 }

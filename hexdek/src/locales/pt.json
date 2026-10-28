@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "O LINK FALHOU EM OUTRA ABA. TENTE DE NOVO.",
     "err_invalid_email": "FORMATO DE E-MAIL INVÁLIDO.",
-    "err_unreachable": "SERVIÇO DE AUTENTICAÇÃO INACESSÍVEL. TENTE DE NOVO."
+    "err_unreachable": "SERVIÇO DE AUTENTICAÇÃO INACESSÍVEL. TENTE DE NOVO.",
+    "action_continue": "continuar",
+    "action_import_deck": "importar deck",
+    "aria_continue": "Entre para continuar",
+    "aria_import_deck": "Entre para importar um deck",
+    "prompt_hd": "ENTRAR / / {action}",
+    "prompt_aria_close": "Fechar login",
+    "prompt_pitch": "> ENTRE PARA ENVIAR DECKS, ACOMPANHAR ESTATÍSTICAS E MAIS.",
+    "btn_email": "ENTRAR COM E-MAIL",
+    "btn_discord": "ENTRAR COM DISCORD",
+    "discord_tip": "O login com DISCORD chega em breve — use o e-mail por enquanto",
+    "soon": "EM BREVE",
+    "prompt_note": "> SEM SENHA. SEM SPAM. UM CLIQUE ATÉ SEU ARQUIVO."
   }
 }

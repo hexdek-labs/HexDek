@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINK IM ANDEREN TAB FEHLGESCHLAGEN. VERSUCHE ES ERNEUT.",
     "err_invalid_email": "UNGÜLTIGES E-MAIL-FORMAT.",
-    "err_unreachable": "AUTH-DIENST NICHT ERREICHBAR. VERSUCHE ES ERNEUT."
+    "err_unreachable": "AUTH-DIENST NICHT ERREICHBAR. VERSUCHE ES ERNEUT.",
+    "action_continue": "fortfahren",
+    "action_import_deck": "Deck importieren",
+    "aria_continue": "Anmelden, um fortzufahren",
+    "aria_import_deck": "Anmelden, um ein Deck zu importieren",
+    "prompt_hd": "ANMELDEN / / {action}",
+    "prompt_aria_close": "Anmeldung schließen",
+    "prompt_pitch": "> MELDE DICH AN, UM DECKS HOCHZULADEN, STATISTIKEN ZU VERFOLGEN UND MEHR.",
+    "btn_email": "MIT E-MAIL ANMELDEN",
+    "btn_discord": "MIT DISCORD ANMELDEN",
+    "discord_tip": "DISCORD-Anmeldung kommt bald — nutze bis dahin E-Mail",
+    "soon": "BALD",
+    "prompt_note": "> KEIN PASSWORT. KEIN SPAM. EIN KLICK ZU DEINEM ARCHIV."
   }
 }

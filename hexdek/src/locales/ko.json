@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes}분",
     "err_link_failed": "다른 탭에서 링크가 실패했습니다. 다시 시도하세요.",
     "err_invalid_email": "이메일 형식이 올바르지 않습니다.",
-    "err_unreachable": "인증 서비스에 연결할 수 없습니다. 다시 시도하세요."
+    "err_unreachable": "인증 서비스에 연결할 수 없습니다. 다시 시도하세요.",
+    "action_continue": "계속하기",
+    "action_import_deck": "덱 가져오기",
+    "aria_continue": "계속하려면 로그인",
+    "aria_import_deck": "덱을 가져오려면 로그인",
+    "prompt_hd": "로그인 / / {action}",
+    "prompt_aria_close": "로그인 닫기",
+    "prompt_pitch": "> 로그인하면 덱 업로드, 전적 추적 등을 사용할 수 있습니다.",
+    "btn_email": "이메일로 로그인",
+    "btn_discord": "DISCORD로 로그인",
+    "discord_tip": "DISCORD 로그인은 곧 지원됩니다 — 지금은 이메일을 사용하세요",
+    "soon": "곧",
+    "prompt_note": "> 비밀번호 없음. 스팸 없음. 한 번의 클릭으로 내 아카이브로."
   }
 }

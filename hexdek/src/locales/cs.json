@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "ODKAZ SELHAL V JINÉ KARTĚ. ZKUS TO ZNOVU.",
     "err_invalid_email": "NEPLATNÝ FORMÁT E-MAILU.",
-    "err_unreachable": "SLUŽBA OVĚŘENÍ NEDOSTUPNÁ. ZKUS TO ZNOVU."
+    "err_unreachable": "SLUŽBA OVĚŘENÍ NEDOSTUPNÁ. ZKUS TO ZNOVU.",
+    "action_continue": "pokračování",
+    "action_import_deck": "import balíčku",
+    "aria_continue": "Přihlásit se a pokračovat",
+    "aria_import_deck": "Přihlásit se a importovat balíček",
+    "prompt_hd": "PŘIHLÁŠENÍ / / {action}",
+    "prompt_aria_close": "Zavřít přihlášení",
+    "prompt_pitch": "> PŘIHLAS SE A NAHRÁVEJ BALÍČKY, SLEDUJ STATISTIKY A DALŠÍ.",
+    "btn_email": "PŘIHLÁSIT SE E-MAILEM",
+    "btn_discord": "PŘIHLÁSIT SE PŘES DISCORD",
+    "discord_tip": "Přihlášení přes DISCORD se připravuje — zatím použij e-mail",
+    "soon": "BRZY",
+    "prompt_note": "> ŽÁDNÉ HESLO. ŽÁDNÝ SPAM. JEDNO KLIKNUTÍ DO TVÉHO ARCHIVU."
   }
 }

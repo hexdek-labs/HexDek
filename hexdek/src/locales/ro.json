@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} MIN",
     "err_link_failed": "LINKUL A EȘUAT ÎN ALT TAB. ÎNCEARCĂ DIN NOU.",
     "err_invalid_email": "FORMAT DE E-MAIL INVALID.",
-    "err_unreachable": "SERVICIUL DE AUTENTIFICARE NU RĂSPUNDE. ÎNCEARCĂ DIN NOU."
+    "err_unreachable": "SERVICIUL DE AUTENTIFICARE NU RĂSPUNDE. ÎNCEARCĂ DIN NOU.",
+    "action_continue": "continuă",
+    "action_import_deck": "importă pachet",
+    "aria_continue": "Autentifică-te pentru a continua",
+    "aria_import_deck": "Autentifică-te pentru a importa un pachet",
+    "prompt_hd": "AUTENTIFICARE / / {action}",
+    "prompt_aria_close": "Închide autentificarea",
+    "prompt_pitch": "> AUTENTIFICĂ-TE PENTRU A ÎNCĂRCA PACHETE, A URMĂRI STATISTICI ȘI MAI MULT.",
+    "btn_email": "AUTENTIFICARE CU E-MAIL",
+    "btn_discord": "AUTENTIFICARE CU DISCORD",
+    "discord_tip": "Autentificarea cu DISCORD vine curând — folosește e-mailul deocamdată",
+    "soon": "CURÂND",
+    "prompt_note": "> FĂRĂ PAROLĂ. FĂRĂ SPAM. UN CLIC PÂNĂ LA ARHIVA TA."
   }
 }

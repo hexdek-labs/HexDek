@@ -194,7 +194,7 @@ export default function ImportModal({ onClose, onImported }) {
             </div>
           ))}
         </div>
-        <AuthPrompt onClose={onClose} action="import deck" inline />
+        <AuthPrompt onClose={onClose} action="import_deck" inline />
       </div>
     )
   }

@@ -1782,6 +1782,18 @@
     "kv_expires_value": "{minutes} 分",
     "err_link_failed": "別のタブでリンクが失敗しました。もう一度お試しください。",
     "err_invalid_email": "メールアドレスの形式が正しくありません。",
-    "err_unreachable": "認証サービスに接続できません。もう一度お試しください。"
+    "err_unreachable": "認証サービスに接続できません。もう一度お試しください。",
+    "action_continue": "続ける",
+    "action_import_deck": "デッキをインポート",
+    "aria_continue": "続けるにはサインイン",
+    "aria_import_deck": "デッキをインポートするにはサインイン",
+    "prompt_hd": "サインイン / / {action}",
+    "prompt_aria_close": "サインインを閉じる",
+    "prompt_pitch": "> サインインするとデッキのアップロード、戦績の記録などが使えます。",
+    "btn_email": "メールでサインイン",
+    "btn_discord": "DISCORD でサインイン",
+    "discord_tip": "DISCORD サインインは近日対応 — 今はメールをご利用ください",
+    "soon": "近日",
+    "prompt_note": "> パスワード不要。スパムなし。ワンクリックであなたのアーカイブへ。"
   }
 }
