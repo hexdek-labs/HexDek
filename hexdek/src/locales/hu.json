@@ -1183,7 +1183,10 @@
     "ft_battlefield": "CS{count}",
     "ft_hand_title_one": "{count} lap a kézben",
     "ft_hand_title": "{count} lap a kézben",
-    "game_over_line": "JÁTÉK VÉGE — {reason} — GYŐZTES: {who}"
+    "game_over_line": "JÁTÉK VÉGE — {reason} — GYŐZTES: {who}",
+    "aria_heatmap": "{name} értékelési hőtérképe",
+    "aria_battlefield_one": "{name} csatatere ({count} maradandó)",
+    "aria_battlefield": "{name} csatatere ({count} maradandó)"
   },
   "tlm": {
     "status": "ÁLLAPOT",

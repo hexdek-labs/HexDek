@@ -1183,7 +1183,10 @@
     "ft_battlefield": "สน{count}",
     "ft_hand_title_one": "การ์ดในมือ {count} ใบ",
     "ft_hand_title": "การ์ดในมือ {count} ใบ",
-    "game_over_line": "จบเกม — {reason} — ผู้ชนะ: {who}"
+    "game_over_line": "จบเกม — {reason} — ผู้ชนะ: {who}",
+    "aria_heatmap": "แผนที่ประเมินของ {name}",
+    "aria_battlefield_one": "สนามรบของ {name} (ถาวร {count} ใบ)",
+    "aria_battlefield": "สนามรบของ {name} (ถาวร {count} ใบ)"
   },
   "tlm": {
     "status": "สถานะ",

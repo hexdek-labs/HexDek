@@ -1183,7 +1183,10 @@
     "ft_battlefield": "전{count}",
     "ft_hand_title_one": "손에 카드 {count}장",
     "ft_hand_title": "손에 카드 {count}장",
-    "game_over_line": "게임 종료 — {reason} — 승자: {who}"
+    "game_over_line": "게임 종료 — {reason} — 승자: {who}",
+    "aria_heatmap": "{name} 평가 히트맵",
+    "aria_battlefield_one": "{name}의 전장 (지속물 {count}개)",
+    "aria_battlefield": "{name}의 전장 (지속물 {count}개)"
   },
   "tlm": {
     "status": "상태",

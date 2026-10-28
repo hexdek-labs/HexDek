@@ -1183,7 +1183,10 @@
     "ft_battlefield": "CB{count}",
     "ft_hand_title_one": "{count} carte en main",
     "ft_hand_title": "{count} cartes en main",
-    "game_over_line": "PARTIE TERMINÉE — {reason} — VAINQUEUR : {who}"
+    "game_over_line": "PARTIE TERMINÉE — {reason} — VAINQUEUR : {who}",
+    "aria_heatmap": "Carte d’évaluation de {name}",
+    "aria_battlefield_one": "Champ de bataille de {name} ({count} permanent)",
+    "aria_battlefield": "Champ de bataille de {name} ({count} permanents)"
   },
   "tlm": {
     "status": "STATUT",

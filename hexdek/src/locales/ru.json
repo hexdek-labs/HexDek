@@ -1183,7 +1183,10 @@
     "ft_battlefield": "П{count}",
     "ft_hand_title_one": "{count} карта в руке",
     "ft_hand_title": "{count} карт в руке",
-    "game_over_line": "ИГРА ЗАВЕРШЕНА — {reason} — ПОБЕДИТЕЛЬ: {who}"
+    "game_over_line": "ИГРА ЗАВЕРШЕНА — {reason} — ПОБЕДИТЕЛЬ: {who}",
+    "aria_heatmap": "Карта оценки {name}",
+    "aria_battlefield_one": "Поле битвы {name} ({count} постоянный объект)",
+    "aria_battlefield": "Поле битвы {name} ({count} постоянных объектов)"
   },
   "tlm": {
     "status": "СТАТУС",

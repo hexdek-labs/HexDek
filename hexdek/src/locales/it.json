@@ -1183,7 +1183,10 @@
     "ft_battlefield": "CB{count}",
     "ft_hand_title_one": "{count} carta in mano",
     "ft_hand_title": "{count} carte in mano",
-    "game_over_line": "PARTITA FINITA — {reason} — VINCITORE: {who}"
+    "game_over_line": "PARTITA FINITA — {reason} — VINCITORE: {who}",
+    "aria_heatmap": "Mappa di valutazione di {name}",
+    "aria_battlefield_one": "Campo di battaglia di {name} ({count} permanente)",
+    "aria_battlefield": "Campo di battaglia di {name} ({count} permanenti)"
   },
   "tlm": {
     "status": "STATO",

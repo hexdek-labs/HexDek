@@ -1183,7 +1183,10 @@
     "ft_battlefield": "S{count}",
     "ft_hand_title_one": "{count} Karte auf der Hand",
     "ft_hand_title": "{count} Karten auf der Hand",
-    "game_over_line": "SPIEL VORBEI — {reason} — SIEGER: {who}"
+    "game_over_line": "SPIEL VORBEI — {reason} — SIEGER: {who}",
+    "aria_heatmap": "Bewertungskarte von {name}",
+    "aria_battlefield_one": "Spielfeld von {name} ({count} bleibende Karte)",
+    "aria_battlefield": "Spielfeld von {name} ({count} bleibende Karten)"
   },
   "tlm": {
     "status": "STATUS",

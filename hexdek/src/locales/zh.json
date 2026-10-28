@@ -1183,7 +1183,10 @@
     "ft_battlefield": "战{count}",
     "ft_hand_title_one": "手牌 {count} 张",
     "ft_hand_title": "手牌 {count} 张",
-    "game_over_line": "对局结束 — {reason} — 胜者: {who}"
+    "game_over_line": "对局结束 — {reason} — 胜者: {who}",
+    "aria_heatmap": "{name} 的评估热图",
+    "aria_battlefield_one": "{name} 的战场（{count} 个永久物）",
+    "aria_battlefield": "{name} 的战场（{count} 个永久物）"
   },
   "tlm": {
     "status": "状态",

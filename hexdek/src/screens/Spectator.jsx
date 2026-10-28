@@ -1021,7 +1021,7 @@ export default function Spectator() {
                         width={80}
                         height={80}
                         role="img"
-                        aria-label={`${s.commander || 'Seat'} evaluation heatmap`}
+                        aria-label={t('spec.aria_heatmap', { name: s.commander || t('spec.unknown_commander') })}
                         onMouseMove={e => handleHeatmapHover(e, i)}
                         onMouseLeave={clearHeatmapTip}
                       />
@@ -1029,7 +1029,9 @@ export default function Spectator() {
                     <div
                       className="seat-perms"
                       role="list"
-                      aria-label={`${s.commander || 'Seat'} battlefield (${perms.length} permanents)`}
+                      aria-label={perms.length === 1
+                        ? t('spec.aria_battlefield_one', { name: s.commander || t('spec.unknown_commander'), count: perms.length })
+                        : t('spec.aria_battlefield', { name: s.commander || t('spec.unknown_commander'), count: perms.length })}
                     >
                       {perms.length === 0 ? (
                         <span className="t-xs muted-2">—</span>
@@ -1493,7 +1495,9 @@ export default function Spectator() {
                         </span>
                       </div>
                       {r.owner && (
-                        <div className="t-xs muted-2" style={{ fontSize: 9, marginTop: 1 }}>{r.owner?.toUpperCase()} / {r.wins}W-{r.losses}L</div>
+                        <div className="t-xs muted-2" style={{ fontSize: 9, marginTop: 1 }}>
+                          {r.owner?.toUpperCase()} / {t('op.wins_suffix', { count: r.wins })} - {t('op.losses_suffix', { count: r.losses })}
+                        </div>
                       )}
                       <div style={{ transition: 'width 0.3s ease' }}>
                         <Bar value={Math.max(0, ((r.hex_rating || r.rating || 1500) - 1300) / 4)} />
@@ -1540,7 +1544,7 @@ export default function Spectator() {
                           {(g.winner_name || g.commanders?.[g.winner] || '???').split('//')[0].trim().toUpperCase()}
                         </div>
                         <div className="t-xs muted-2" style={{ fontSize: 8 }}>
-                          {g.turns}T · {g.end_reason?.replace(/_/g, ' ')?.toUpperCase() || t('spec.seat_unknown')}
+                          {g.turns === 1 ? t('gs.turns_one', { count: g.turns }) : t('gs.turns', { count: g.turns })} · {g.end_reason?.replace(/_/g, ' ')?.toUpperCase() || t('spec.seat_unknown')}
                         </div>
                       </div>
                       <span

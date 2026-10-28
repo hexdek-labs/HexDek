@@ -1183,7 +1183,10 @@
     "ft_battlefield": "戦{count}",
     "ft_hand_title_one": "手札 {count} 枚",
     "ft_hand_title": "手札 {count} 枚",
-    "game_over_line": "ゲーム終了 — {reason} — 勝者: {who}"
+    "game_over_line": "ゲーム終了 — {reason} — 勝者: {who}",
+    "aria_heatmap": "{name} の評価ヒートマップ",
+    "aria_battlefield_one": "{name} の戦場（パーマネント {count} 個）",
+    "aria_battlefield": "{name} の戦場（パーマネント {count} 個）"
   },
   "tlm": {
     "status": "ステータス",

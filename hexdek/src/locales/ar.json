@@ -1183,7 +1183,10 @@
     "ft_battlefield": "سا{count}",
     "ft_hand_title_one": "{count} بطاقة في اليد",
     "ft_hand_title": "{count} بطاقة في اليد",
-    "game_over_line": "انتهت المباراة — {reason} — الفائز: {who}"
+    "game_over_line": "انتهت المباراة — {reason} — الفائز: {who}",
+    "aria_heatmap": "خريطة تقييم {name}",
+    "aria_battlefield_one": "ساحة معركة {name} ({count} دائم)",
+    "aria_battlefield": "ساحة معركة {name} ({count} دائم)"
   },
   "tlm": {
     "status": "الحالة",

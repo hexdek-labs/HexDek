@@ -1183,7 +1183,10 @@
     "ft_battlefield": "S{count}",
     "ft_hand_title_one": "{count} kort på handen",
     "ft_hand_title": "{count} kort på handen",
-    "game_over_line": "SPELET ÄR SLUT — {reason} — VINNARE: {who}"
+    "game_over_line": "SPELET ÄR SLUT — {reason} — VINNARE: {who}",
+    "aria_heatmap": "{name} utvärderingskarta",
+    "aria_battlefield_one": "{name} spelplan ({count} permanent)",
+    "aria_battlefield": "{name} spelplan ({count} permanenter)"
   },
   "tlm": {
     "status": "STATUS",

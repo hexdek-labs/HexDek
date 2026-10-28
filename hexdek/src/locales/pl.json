@@ -1183,7 +1183,10 @@
     "ft_battlefield": "P{count}",
     "ft_hand_title_one": "{count} karta w ręce",
     "ft_hand_title": "{count} kart w ręce",
-    "game_over_line": "KONIEC GRY — {reason} — ZWYCIĘZCA: {who}"
+    "game_over_line": "KONIEC GRY — {reason} — ZWYCIĘZCA: {who}",
+    "aria_heatmap": "Mapa oceny {name}",
+    "aria_battlefield_one": "Pole bitwy {name} ({count} trwały)",
+    "aria_battlefield": "Pole bitwy {name} ({count} trwałych)"
   },
   "tlm": {
     "status": "STATUS",

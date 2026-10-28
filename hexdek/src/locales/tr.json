@@ -1183,7 +1183,10 @@
     "ft_battlefield": "S{count}",
     "ft_hand_title_one": "elde {count} kart",
     "ft_hand_title": "elde {count} kart",
-    "game_over_line": "OYUN BİTTİ — {reason} — KAZANAN: {who}"
+    "game_over_line": "OYUN BİTTİ — {reason} — KAZANAN: {who}",
+    "aria_heatmap": "{name} değerlendirme ısı haritası",
+    "aria_battlefield_one": "{name} savaş alanı ({count} kalıcı)",
+    "aria_battlefield": "{name} savaş alanı ({count} kalıcı)"
   },
   "tlm": {
     "status": "DURUM",

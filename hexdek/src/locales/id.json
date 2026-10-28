@@ -1183,7 +1183,10 @@
     "ft_battlefield": "M{count}",
     "ft_hand_title_one": "{count} kartu di tangan",
     "ft_hand_title": "{count} kartu di tangan",
-    "game_over_line": "PERTANDINGAN SELESAI — {reason} — PEMENANG: {who}"
+    "game_over_line": "PERTANDINGAN SELESAI — {reason} — PEMENANG: {who}",
+    "aria_heatmap": "Peta evaluasi {name}",
+    "aria_battlefield_one": "Medan perang {name} ({count} permanen)",
+    "aria_battlefield": "Medan perang {name} ({count} permanen)"
   },
   "tlm": {
     "status": "STATUS",

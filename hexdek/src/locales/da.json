@@ -1183,7 +1183,10 @@
     "ft_battlefield": "S{count}",
     "ft_hand_title_one": "{count} kort på hånden",
     "ft_hand_title": "{count} kort på hånden",
-    "game_over_line": "SPILLET ER SLUT — {reason} — VINDER: {who}"
+    "game_over_line": "SPILLET ER SLUT — {reason} — VINDER: {who}",
+    "aria_heatmap": "{name} evalueringskort",
+    "aria_battlefield_one": "{name} slagmark ({count} permanent)",
+    "aria_battlefield": "{name} slagmark ({count} permanenter)"
   },
   "tlm": {
     "status": "STATUS",

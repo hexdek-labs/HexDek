@@ -1183,7 +1183,10 @@
     "ft_battlefield": "S{count}",
     "ft_hand_title_one": "{count} kaart in de hand",
     "ft_hand_title": "{count} kaarten in de hand",
-    "game_over_line": "PARTIJ VOORBIJ — {reason} — WINNAAR: {who}"
+    "game_over_line": "PARTIJ VOORBIJ — {reason} — WINNAAR: {who}",
+    "aria_heatmap": "Evaluatiekaart van {name}",
+    "aria_battlefield_one": "Slagveld van {name} ({count} blijvende kaart)",
+    "aria_battlefield": "Slagveld van {name} ({count} blijvende kaarten)"
   },
   "tlm": {
     "status": "STATUS",

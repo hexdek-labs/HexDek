@@ -1183,7 +1183,10 @@
     "ft_battlefield": "C{count}",
     "ft_hand_title_one": "{count} thẻ trên tay",
     "ft_hand_title": "{count} thẻ trên tay",
-    "game_over_line": "VÁN ĐẤU KẾT THÚC — {reason} — NGƯỜI THẮNG: {who}"
+    "game_over_line": "VÁN ĐẤU KẾT THÚC — {reason} — NGƯỜI THẮNG: {who}",
+    "aria_heatmap": "Bản đồ đánh giá của {name}",
+    "aria_battlefield_one": "Chiến trường của {name} ({count} thường trú)",
+    "aria_battlefield": "Chiến trường của {name} ({count} thường trú)"
   },
   "tlm": {
     "status": "TRẠNG THÁI",

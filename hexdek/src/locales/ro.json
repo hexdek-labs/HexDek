@@ -1183,7 +1183,10 @@
     "ft_battlefield": "CL{count}",
     "ft_hand_title_one": "{count} carte în mână",
     "ft_hand_title": "{count} cărți în mână",
-    "game_over_line": "PARTIDĂ ÎNCHEIATĂ — {reason} — CÂȘTIGĂTOR: {who}"
+    "game_over_line": "PARTIDĂ ÎNCHEIATĂ — {reason} — CÂȘTIGĂTOR: {who}",
+    "aria_heatmap": "Harta de evaluare a {name}",
+    "aria_battlefield_one": "Câmpul de luptă al {name} ({count} permanent)",
+    "aria_battlefield": "Câmpul de luptă al {name} ({count} permanente)"
   },
   "tlm": {
     "status": "STARE",

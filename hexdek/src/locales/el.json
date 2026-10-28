@@ -1183,7 +1183,10 @@
     "ft_battlefield": "Π{count}",
     "ft_hand_title_one": "{count} κάρτα στο χέρι",
     "ft_hand_title": "{count} κάρτες στο χέρι",
-    "game_over_line": "ΤΕΛΟΣ ΠΑΙΧΝΙΔΙΟΥ — {reason} — ΝΙΚΗΤΗΣ: {who}"
+    "game_over_line": "ΤΕΛΟΣ ΠΑΙΧΝΙΔΙΟΥ — {reason} — ΝΙΚΗΤΗΣ: {who}",
+    "aria_heatmap": "Χάρτης αξιολόγησης {name}",
+    "aria_battlefield_one": "Πεδίο μάχης {name} ({count} μόνιμο)",
+    "aria_battlefield": "Πεδίο μάχης {name} ({count} μόνιμα)"
   },
   "tlm": {
     "status": "ΚΑΤΑΣΤΑΣΗ",

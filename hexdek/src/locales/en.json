@@ -1183,7 +1183,10 @@
     "ft_battlefield": "B{count}",
     "ft_hand_title_one": "{count} card in hand",
     "ft_hand_title": "{count} cards in hand",
-    "game_over_line": "GAME OVER — {reason} — WINNER: {who}"
+    "game_over_line": "GAME OVER — {reason} — WINNER: {who}",
+    "aria_heatmap": "{name} evaluation heatmap",
+    "aria_battlefield_one": "{name} battlefield ({count} permanent)",
+    "aria_battlefield": "{name} battlefield ({count} permanents)"
   },
   "tlm": {
     "status": "STATUS",

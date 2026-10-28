@@ -1183,7 +1183,10 @@
     "ft_battlefield": "यु{count}",
     "ft_hand_title_one": "हाथ में {count} कार्ड",
     "ft_hand_title": "हाथ में {count} कार्ड",
-    "game_over_line": "खेल समाप्त — {reason} — विजेता: {who}"
+    "game_over_line": "खेल समाप्त — {reason} — विजेता: {who}",
+    "aria_heatmap": "{name} मूल्यांकन हीटमैप",
+    "aria_battlefield_one": "{name} का युद्धक्षेत्र ({count} स्थायी)",
+    "aria_battlefield": "{name} का युद्धक्षेत्र ({count} स्थायी)"
   },
   "tlm": {
     "status": "स्थिति",

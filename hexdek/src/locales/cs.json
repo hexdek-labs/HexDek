@@ -1183,7 +1183,10 @@
     "ft_battlefield": "B{count}",
     "ft_hand_title_one": "{count} karta v ruce",
     "ft_hand_title": "{count} karet v ruce",
-    "game_over_line": "KONEC HRY — {reason} — VÍTĚZ: {who}"
+    "game_over_line": "KONEC HRY — {reason} — VÍTĚZ: {who}",
+    "aria_heatmap": "Mapa hodnocení {name}",
+    "aria_battlefield_one": "Bojiště {name} ({count} permanent)",
+    "aria_battlefield": "Bojiště {name} ({count} permanentů)"
   },
   "tlm": {
     "status": "STAV",
