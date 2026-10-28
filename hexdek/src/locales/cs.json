@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTOVAT PDF",
     "export_tip": "Stáhni samostatné PDF tohoto přehledu",
     "kind_commander_first_cast": "PRVNÍ SESLÁNÍ VELITELE",
-    "kind_game_end": "KONEC PARTIE"
+    "kind_game_end": "KONEC PARTIE",
+    "sa_tape_left": "MINULÉ SOUHRNY",
+    "sa_rows": "{count} ŘÁDKŮ",
+    "sa_tag_rich": "JEN BOHATÉ HRY",
+    "sa_filters": "FILTRY",
+    "sa_from": "OD",
+    "sa_until": "DO",
+    "sa_ph_winner": "část jména vítěze",
+    "sa_apply": "POUŽÍT",
+    "sa_offset": "ODSAZENÍ {count}",
+    "sa_prev": "PŘEDCHOZÍ",
+    "sa_next": "DALŠÍ",
+    "sa_col_finished": "DOKONČENO",
+    "sa_col_commanders": "VELITELÉ",
+    "sa_empty": "Žádné uložené souhrny neodpovídají aktuálním filtrům. Jakmile hry poběží se zapnutým živým zapisovačem snapshotů, objeví se tady."
   },
   "rpl": {
     "bk_combat": "Boj",

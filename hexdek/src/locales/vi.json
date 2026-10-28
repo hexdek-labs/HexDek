@@ -528,7 +528,21 @@
     "export_pdf": "XUẤT PDF",
     "export_tip": "Tải một tệp PDF độc lập của bản tóm tắt này",
     "kind_commander_first_cast": "LẦN TUNG CHỈ HUY ĐẦU TIÊN",
-    "kind_game_end": "KẾT THÚC TRẬN"
+    "kind_game_end": "KẾT THÚC TRẬN",
+    "sa_tape_left": "CÁC BẢN TÓM TẮT TRƯỚC",
+    "sa_rows": "{count} DÒNG",
+    "sa_tag_rich": "CHỈ TRẬN ĐẦY DỮ LIỆU",
+    "sa_filters": "BỘ LỌC",
+    "sa_from": "TỪ",
+    "sa_until": "ĐẾN",
+    "sa_ph_winner": "một phần tên người thắng",
+    "sa_apply": "ÁP DỤNG",
+    "sa_offset": "ĐỘ LỆCH {count}",
+    "sa_prev": "TRƯỚC",
+    "sa_next": "SAU",
+    "sa_col_finished": "KẾT THÚC",
+    "sa_col_commanders": "CHỈ HUY",
+    "sa_empty": "Không có bản tóm tắt đã lưu nào khớp với bộ lọc hiện tại. Khi các trận chạy với trình ghi snapshot trực tiếp được bật, chúng sẽ xuất hiện ở đây."
   },
   "rpl": {
     "bk_combat": "Chiến đấu",

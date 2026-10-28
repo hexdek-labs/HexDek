@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTAR PDF",
     "export_tip": "Descarga un PDF autónomo de este resumen",
     "kind_commander_first_cast": "PRIMER LANZAMIENTO DEL COMANDANTE",
-    "kind_game_end": "FIN DE LA PARTIDA"
+    "kind_game_end": "FIN DE LA PARTIDA",
+    "sa_tape_left": "RESÚMENES ANTERIORES",
+    "sa_rows": "{count} FILAS",
+    "sa_tag_rich": "SOLO PARTIDAS RICAS",
+    "sa_filters": "FILTROS",
+    "sa_from": "DESDE",
+    "sa_until": "HASTA",
+    "sa_ph_winner": "parte del nombre del ganador",
+    "sa_apply": "APLICAR",
+    "sa_offset": "DESPLAZAMIENTO {count}",
+    "sa_prev": "ANTERIOR",
+    "sa_next": "SIGUIENTE",
+    "sa_col_finished": "FINALIZADA",
+    "sa_col_commanders": "COMANDANTES",
+    "sa_empty": "Ningún resumen guardado coincide con los filtros actuales. Cuando se jueguen partidas con el escritor de instantáneas en vivo activado, aparecerán aquí."
   },
   "rpl": {
     "bk_combat": "Combate",

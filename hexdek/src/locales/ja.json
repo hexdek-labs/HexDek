@@ -528,7 +528,21 @@
     "export_pdf": "PDF をエクスポート",
     "export_tip": "この要約を単体の PDF としてダウンロード",
     "kind_commander_first_cast": "統率者の初回キャスト",
-    "kind_game_end": "ゲーム終了"
+    "kind_game_end": "ゲーム終了",
+    "sa_tape_left": "過去のサマリー",
+    "sa_rows": "{count} 行",
+    "sa_tag_rich": "リッチなゲームのみ",
+    "sa_filters": "フィルター",
+    "sa_from": "開始",
+    "sa_until": "終了",
+    "sa_ph_winner": "勝者名の一部",
+    "sa_apply": "適用",
+    "sa_offset": "オフセット {count}",
+    "sa_prev": "前へ",
+    "sa_next": "次へ",
+    "sa_col_finished": "終了時刻",
+    "sa_col_commanders": "統率者",
+    "sa_empty": "現在のフィルターに一致する保存済みサマリーはありません。ライブスナップショットライターを有効にしてゲームを実行すると、ここに表示されます。"
   },
   "rpl": {
     "bk_combat": "戦闘",

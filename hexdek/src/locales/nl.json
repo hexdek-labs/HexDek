@@ -528,7 +528,21 @@
     "export_pdf": "PDF EXPORTEREN",
     "export_tip": "Download een zelfstandige PDF van dit overzicht",
     "kind_commander_first_cast": "EERSTE COMMANDER-CAST",
-    "kind_game_end": "EINDE PARTIJ"
+    "kind_game_end": "EINDE PARTIJ",
+    "sa_tape_left": "EERDERE SAMENVATTINGEN",
+    "sa_rows": "{count} RIJEN",
+    "sa_tag_rich": "ALLEEN RIJKE PARTIJEN",
+    "sa_filters": "FILTERS",
+    "sa_from": "VAN",
+    "sa_until": "TOT",
+    "sa_ph_winner": "deel van winnaarsnaam",
+    "sa_apply": "TOEPASSEN",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "VORIGE",
+    "sa_next": "VOLGENDE",
+    "sa_col_finished": "BEËINDIGD",
+    "sa_col_commanders": "COMMANDERS",
+    "sa_empty": "Geen opgeslagen samenvattingen passen bij de huidige filters. Zodra partijen draaien met de live snapshot-writer aan, verschijnen ze hier."
   },
   "rpl": {
     "bk_combat": "Gevecht",

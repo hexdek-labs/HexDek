@@ -528,7 +528,21 @@
     "export_pdf": "ΕΞΑΓΩΓΗ PDF",
     "export_tip": "Κατεβάστε ένα αυτόνομο PDF αυτής της σύνοψης",
     "kind_commander_first_cast": "ΠΡΩΤΟ ΞΟΡΚΙΣΜΑ ΔΙΟΙΚΗΤΗ",
-    "kind_game_end": "ΤΕΛΟΣ ΠΑΙΧΝΙΔΙΟΥ"
+    "kind_game_end": "ΤΕΛΟΣ ΠΑΙΧΝΙΔΙΟΥ",
+    "sa_tape_left": "ΠΑΛΙΕΣ ΣΥΝΟΨΕΙΣ",
+    "sa_rows": "{count} ΓΡΑΜΜΕΣ",
+    "sa_tag_rich": "ΜΟΝΟ ΠΛΟΥΣΙΑ ΠΑΙΧΝΙΔΙΑ",
+    "sa_filters": "ΦΙΛΤΡΑ",
+    "sa_from": "ΑΠΟ",
+    "sa_until": "ΕΩΣ",
+    "sa_ph_winner": "τμήμα ονόματος νικητή",
+    "sa_apply": "ΕΦΑΡΜΟΓΗ",
+    "sa_offset": "ΜΕΤΑΘΕΣΗ {count}",
+    "sa_prev": "ΠΡΟΗΓΟΥΜΕΝΟ",
+    "sa_next": "ΕΠΟΜΕΝΟ",
+    "sa_col_finished": "ΟΛΟΚΛΗΡΩΘΗΚΕ",
+    "sa_col_commanders": "COMMANDERS",
+    "sa_empty": "Καμία αποθηκευμένη σύνοψη δεν ταιριάζει με τα τρέχοντα φίλτρα. Μόλις τρέξουν παιχνίδια με ενεργό τον ζωντανό εγγραφέα snapshot, θα εμφανιστούν εδώ."
   },
   "rpl": {
     "bk_combat": "Μάχη",

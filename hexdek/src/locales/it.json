@@ -528,7 +528,21 @@
     "export_pdf": "ESPORTA PDF",
     "export_tip": "Scarica un PDF autonomo di questo riepilogo",
     "kind_commander_first_cast": "PRIMO LANCIO DEL COMANDANTE",
-    "kind_game_end": "FINE PARTITA"
+    "kind_game_end": "FINE PARTITA",
+    "sa_tape_left": "RIEPILOGHI PRECEDENTI",
+    "sa_rows": "{count} RIGHE",
+    "sa_tag_rich": "SOLO PARTITE RICCHE",
+    "sa_filters": "FILTRI",
+    "sa_from": "DAL",
+    "sa_until": "AL",
+    "sa_ph_winner": "parte del nome del vincitore",
+    "sa_apply": "APPLICA",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "PRECEDENTE",
+    "sa_next": "SUCCESSIVO",
+    "sa_col_finished": "TERMINATA",
+    "sa_col_commanders": "COMANDANTI",
+    "sa_empty": "Nessun riepilogo salvato corrisponde ai filtri attuali. Appena le partite gireranno con lo scrittore di snapshot live attivo, compariranno qui."
   },
   "rpl": {
     "bk_combat": "Combattimento",

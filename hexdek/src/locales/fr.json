@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTER EN PDF",
     "export_tip": "Téléchargez un PDF autonome de ce résumé",
     "kind_commander_first_cast": "PREMIER LANCEMENT DU COMMANDANT",
-    "kind_game_end": "FIN DE PARTIE"
+    "kind_game_end": "FIN DE PARTIE",
+    "sa_tape_left": "RÉSUMÉS PASSÉS",
+    "sa_rows": "{count} LIGNES",
+    "sa_tag_rich": "PARTIES RICHES SEULEMENT",
+    "sa_filters": "FILTRES",
+    "sa_from": "DU",
+    "sa_until": "AU",
+    "sa_ph_winner": "partie du nom du vainqueur",
+    "sa_apply": "APPLIQUER",
+    "sa_offset": "DÉCALAGE {count}",
+    "sa_prev": "PRÉCÉDENT",
+    "sa_next": "SUIVANT",
+    "sa_col_finished": "TERMINÉE",
+    "sa_col_commanders": "COMMANDANTS",
+    "sa_empty": "Aucun résumé enregistré ne correspond aux filtres actuels. Dès que des parties tourneront avec l’écrivain d’instantanés en direct activé, elles apparaîtront ici."
   },
   "rpl": {
     "bk_combat": "Combat",

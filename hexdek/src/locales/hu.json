@@ -528,7 +528,21 @@
     "export_pdf": "PDF EXPORTÁLÁSA",
     "export_tip": "Töltsd le ennek az összefoglalónak önálló PDF-jét",
     "kind_commander_first_cast": "ELSŐ HADVEZÉR-KIJÁTSZÁS",
-    "kind_game_end": "JÁTSZMA VÉGE"
+    "kind_game_end": "JÁTSZMA VÉGE",
+    "sa_tape_left": "KORÁBBI ÖSSZEFOGLALÓK",
+    "sa_rows": "{count} SOR",
+    "sa_tag_rich": "CSAK GAZDAG JÁTSZMÁK",
+    "sa_filters": "SZŰRŐK",
+    "sa_from": "ETTŐL",
+    "sa_until": "EDDIG",
+    "sa_ph_winner": "a győztes nevének része",
+    "sa_apply": "ALKALMAZ",
+    "sa_offset": "ELTOLÁS {count}",
+    "sa_prev": "ELŐZŐ",
+    "sa_next": "KÖVETKEZŐ",
+    "sa_col_finished": "BEFEJEZVE",
+    "sa_col_commanders": "COMMANDEREK",
+    "sa_empty": "Egyetlen mentett összefoglaló sem felel meg a jelenlegi szűrőknek. Amint a játszmák bekapcsolt élő snapshot-íróval futnak, itt megjelennek."
   },
   "rpl": {
     "bk_combat": "Harc",

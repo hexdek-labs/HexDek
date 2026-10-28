@@ -528,7 +528,21 @@
     "export_pdf": "PDF EXPORTIEREN",
     "export_tip": "Lade ein eigenständiges PDF dieser Übersicht herunter",
     "kind_commander_first_cast": "ERSTER COMMANDER-WURF",
-    "kind_game_end": "PARTIEENDE"
+    "kind_game_end": "PARTIEENDE",
+    "sa_tape_left": "FRÜHERE ZUSAMMENFASSUNGEN",
+    "sa_rows": "{count} ZEILEN",
+    "sa_tag_rich": "NUR REICHE PARTIEN",
+    "sa_filters": "FILTER",
+    "sa_from": "VON",
+    "sa_until": "BIS",
+    "sa_ph_winner": "Teil des Siegernamens",
+    "sa_apply": "ANWENDEN",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "ZURÜCK",
+    "sa_next": "WEITER",
+    "sa_col_finished": "BEENDET",
+    "sa_col_commanders": "COMMANDER",
+    "sa_empty": "Keine gespeicherten Zusammenfassungen passen zu den aktuellen Filtern. Sobald Partien mit aktiviertem Live-Snapshot-Writer laufen, erscheinen sie hier."
   },
   "rpl": {
     "bk_combat": "Kampf",

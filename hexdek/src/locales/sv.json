@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTERA PDF",
     "export_tip": "Ladda ner en fristående PDF av den här sammanfattningen",
     "kind_commander_first_cast": "FÖRSTA COMMANDER-SPELET",
-    "kind_game_end": "PARTIETS SLUT"
+    "kind_game_end": "PARTIETS SLUT",
+    "sa_tape_left": "TIDIGARE SAMMANFATTNINGAR",
+    "sa_rows": "{count} RADER",
+    "sa_tag_rich": "ENDAST RIKA PARTIER",
+    "sa_filters": "FILTER",
+    "sa_from": "FRÅN",
+    "sa_until": "TILL",
+    "sa_ph_winner": "del av vinnarnamn",
+    "sa_apply": "TILLÄMPA",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "FÖREGÅENDE",
+    "sa_next": "NÄSTA",
+    "sa_col_finished": "AVSLUTAD",
+    "sa_col_commanders": "COMMANDERS",
+    "sa_empty": "Inga sparade sammanfattningar matchar de nuvarande filtren. Så snart partier körs med live-snapshot-skrivaren påslagen visas de här."
   },
   "rpl": {
     "bk_combat": "Strid",

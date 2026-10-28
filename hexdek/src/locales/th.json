@@ -528,7 +528,21 @@
     "export_pdf": "ส่งออก PDF",
     "export_tip": "ดาวน์โหลด PDF ของสรุปนี้แบบครบในไฟล์เดียว",
     "kind_commander_first_cast": "การร่ายคอมมานเดอร์ครั้งแรก",
-    "kind_game_end": "จบเกม"
+    "kind_game_end": "จบเกม",
+    "sa_tape_left": "สรุปที่ผ่านมา",
+    "sa_rows": "{count} แถว",
+    "sa_tag_rich": "เฉพาะเกมข้อมูลครบ",
+    "sa_filters": "ตัวกรอง",
+    "sa_from": "จาก",
+    "sa_until": "ถึง",
+    "sa_ph_winner": "ส่วนของชื่อผู้ชนะ",
+    "sa_apply": "ใช้",
+    "sa_offset": "ออฟเซ็ต {count}",
+    "sa_prev": "ก่อนหน้า",
+    "sa_next": "ถัดไป",
+    "sa_col_finished": "จบเมื่อ",
+    "sa_col_commanders": "คอมมานเดอร์",
+    "sa_empty": "ไม่มีสรุปที่บันทึกไว้ตรงกับตัวกรองปัจจุบัน เมื่อเกมทำงานโดยเปิดตัวเขียนสแนปช็อตแบบสด รายการจะปรากฏที่นี่"
   },
   "rpl": {
     "bk_combat": "การต่อสู้",

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, Tag, Tape, Btn } from '../components/chrome'
 import { api } from '../services/api'
+import { useT } from '../i18n'
 
 // SummaryArchive lists every game with a persisted observation
 // snapshot (the read-side of #180's persistence pipeline). Four
@@ -27,11 +28,12 @@ const formatFinished = (epoch) => {
   }
 }
 
-const formatSeat = (seat) => (seat < 0 ? 'DRAW' : `SEAT ${seat}`)
+const formatSeat = (seat, t) => (seat < 0 ? t('gs.draw') : t('gs.seat', { n: seat }))
 
 const PAGE_SIZE = 25
 
 export default function SummaryArchive() {
+  const t = useT()
   const navigate = useNavigate()
   const [filters, setFilters] = useState({
     sinceIso: '',
@@ -95,15 +97,15 @@ export default function SummaryArchive() {
   return (
     <div className="container summary-archive" style={{ padding: 24, display: 'grid', gap: 16 }}>
       <Tape
-        left="PAST SUMMARIES"
-        mid={loading ? 'LOADING' : `${rows.length} ROWS`}
-        right={<Tag kind="good" solid>RICH GAMES ONLY</Tag>}
+        left={t('gs.sa_tape_left')}
+        mid={loading ? t('common.loading') : t('gs.sa_rows', { count: rows.length })}
+        right={<Tag kind="good" solid>{t('gs.sa_tag_rich')}</Tag>}
       />
 
-      <Panel title="FILTERS" code="SA.F" data-testid="summary-archive-filters">
+      <Panel title={t('gs.sa_filters')} code="SA.F" data-testid="summary-archive-filters">
         <form onSubmit={applyFilters} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'end' }}>
           <label style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            FROM
+            {t('gs.sa_from')}
             <input
               type="date"
               value={filters.sinceIso}
@@ -113,7 +115,7 @@ export default function SummaryArchive() {
             />
           </label>
           <label style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            UNTIL
+            {t('gs.sa_until')}
             <input
               type="date"
               value={filters.untilIso}
@@ -123,7 +125,7 @@ export default function SummaryArchive() {
             />
           </label>
           <label style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            COMMANDER
+            {t('common.commander')}
             <input
               type="text"
               placeholder="Atraxa, Krenko, ..."
@@ -134,7 +136,7 @@ export default function SummaryArchive() {
             />
           </label>
           <label style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            DECK
+            {t('crd.col_deck')}
             <input
               type="text"
               placeholder="owner/slug"
@@ -145,10 +147,10 @@ export default function SummaryArchive() {
             />
           </label>
           <label style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            WINNER
+            {t('common.winner')}
             <input
               type="text"
-              placeholder="winner name substring"
+              placeholder={t('gs.sa_ph_winner')}
               value={filters.winner}
               onChange={(e) => setFilters((f) => ({ ...f, winner: e.target.value }))}
               style={inputStyle}
@@ -156,38 +158,40 @@ export default function SummaryArchive() {
             />
           </label>
           <div style={{ display: 'inline-flex', gap: 6 }}>
-            <Btn sm solid arrow={null} onClick={applyFilters} data-testid="filter-apply">APPLY</Btn>
-            <Btn sm ghost arrow={null} onClick={clearFilters} data-testid="filter-clear">CLEAR</Btn>
+            <Btn sm solid arrow={null} onClick={applyFilters} data-testid="filter-apply">{t('gs.sa_apply')}</Btn>
+            <Btn sm ghost arrow={null} onClick={clearFilters} data-testid="filter-clear">{t('dka.clear')}</Btn>
           </div>
         </form>
       </Panel>
 
-      <Panel title="GAMES" code="SA.L" right={
+      <Panel title={t('rpt.games')} code="SA.L" right={
         <span className="muted-2 t-xs">
-          {offset > 0 && <Btn sm ghost arrow={null} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))} data-testid="prev-page">◀ PREV</Btn>}
+          {offset > 0 && <Btn sm ghost arrow={null} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))} data-testid="prev-page">◀ {t('gs.sa_prev')}</Btn>}
           {' '}
-          OFFSET {offset}
+          {t('gs.sa_offset', { count: offset })}
           {' '}
-          {rows.length === PAGE_SIZE && <Btn sm ghost arrow={null} onClick={() => setOffset((o) => o + PAGE_SIZE)} data-testid="next-page">NEXT ▶</Btn>}
+          {rows.length === PAGE_SIZE && <Btn sm ghost arrow={null} onClick={() => setOffset((o) => o + PAGE_SIZE)} data-testid="next-page">{t('gs.sa_next')} ▶</Btn>}
         </span>
       }>
         {error && <p style={{ color: 'var(--err)' }}>{error}</p>}
         {!error && !loading && rows.length === 0 && (
+          /* The live snapshot writer landed in PR #186; the read side is
+             #180's pipeline and the row target is #189. Those references
+             belong here, not in a string shown to the public. */
           <p className="muted" data-testid="summary-archive-empty">
-            No persisted summaries match the current filters. Once games run with the
-            live snapshot writer enabled (PR #186), they'll appear here.
+            {t('gs.sa_empty')}
           </p>
         )}
         {rows.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} data-testid="summary-archive-table">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}>
-                <th style={{ padding: '4px 6px' }}>GAME</th>
-                <th style={{ padding: '4px 6px' }}>FINISHED</th>
+                <th style={{ padding: '4px 6px' }}>{t('dka.col_game')}</th>
+                <th style={{ padding: '4px 6px' }}>{t('gs.sa_col_finished')}</th>
                 <th style={{ padding: '4px 6px' }}>T</th>
-                <th style={{ padding: '4px 6px' }}>WINNER</th>
-                <th style={{ padding: '4px 6px' }}>COMMANDERS</th>
-                <th style={{ padding: '4px 6px' }}>END</th>
+                <th style={{ padding: '4px 6px' }}>{t('common.winner')}</th>
+                <th style={{ padding: '4px 6px' }}>{t('gs.sa_col_commanders')}</th>
+                <th style={{ padding: '4px 6px' }}>{t('op.col_end')}</th>
               </tr>
             </thead>
             <tbody>
@@ -202,7 +206,7 @@ export default function SummaryArchive() {
                   <td style={{ padding: '4px 6px' }}>{formatFinished(r.finished_at)}</td>
                   <td style={{ padding: '4px 6px' }}>{r.turns}</td>
                   <td style={{ padding: '4px 6px' }}>
-                    {r.winner_name} <span className="muted-2">({formatSeat(r.winner)})</span>
+                    {r.winner_name} <span className="muted-2">({formatSeat(r.winner, t)})</span>
                   </td>
                   <td style={{ padding: '4px 6px' }}>
                     {(r.commanders || []).join(' · ')}

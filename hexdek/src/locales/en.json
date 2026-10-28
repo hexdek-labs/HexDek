@@ -528,7 +528,21 @@
     "export_pdf": "EXPORT PDF",
     "export_tip": "Download a self-contained PDF of this summary",
     "kind_commander_first_cast": "COMMANDER FIRST CAST",
-    "kind_game_end": "GAME END"
+    "kind_game_end": "GAME END",
+    "sa_tape_left": "PAST SUMMARIES",
+    "sa_rows": "{count} ROWS",
+    "sa_tag_rich": "RICH GAMES ONLY",
+    "sa_filters": "FILTERS",
+    "sa_from": "FROM",
+    "sa_until": "UNTIL",
+    "sa_ph_winner": "winner name substring",
+    "sa_apply": "APPLY",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "PREV",
+    "sa_next": "NEXT",
+    "sa_col_finished": "FINISHED",
+    "sa_col_commanders": "COMMANDERS",
+    "sa_empty": "No persisted summaries match the current filters. Once games run with the live snapshot writer enabled, they'll appear here."
   },
   "rpl": {
     "bk_combat": "Combat",

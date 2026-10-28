@@ -528,7 +528,21 @@
     "export_pdf": "PDF OLARAK AKTAR",
     "export_tip": "Bu özetin bağımsız bir PDF'ini indir",
     "kind_commander_first_cast": "İLK KOMUTAN OYNAYIŞI",
-    "kind_game_end": "MAÇ SONU"
+    "kind_game_end": "MAÇ SONU",
+    "sa_tape_left": "GEÇMİŞ ÖZETLER",
+    "sa_rows": "{count} SATIR",
+    "sa_tag_rich": "YALNIZCA ZENGİN OYUNLAR",
+    "sa_filters": "FİLTRELER",
+    "sa_from": "BAŞLANGIÇ",
+    "sa_until": "BİTİŞ",
+    "sa_ph_winner": "kazanan adının bir parçası",
+    "sa_apply": "UYGULA",
+    "sa_offset": "OFSET {count}",
+    "sa_prev": "ÖNCEKİ",
+    "sa_next": "SONRAKİ",
+    "sa_col_finished": "BİTTİ",
+    "sa_col_commanders": "KOMUTANLAR",
+    "sa_empty": "Mevcut filtrelerle eşleşen kayıtlı özet yok. Oyunlar canlı anlık görüntü yazıcısı açıkken çalıştığında burada görünecekler."
   },
   "rpl": {
     "bk_combat": "Savaş",

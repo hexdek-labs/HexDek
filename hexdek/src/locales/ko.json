@@ -528,7 +528,21 @@
     "export_pdf": "PDF 내보내기",
     "export_tip": "이 요약을 단독 PDF로 내려받기",
     "kind_commander_first_cast": "사령관 첫 발동",
-    "kind_game_end": "게임 종료"
+    "kind_game_end": "게임 종료",
+    "sa_tape_left": "지난 요약",
+    "sa_rows": "{count}행",
+    "sa_tag_rich": "리치 게임만",
+    "sa_filters": "필터",
+    "sa_from": "시작",
+    "sa_until": "종료",
+    "sa_ph_winner": "승자 이름의 일부",
+    "sa_apply": "적용",
+    "sa_offset": "오프셋 {count}",
+    "sa_prev": "이전",
+    "sa_next": "다음",
+    "sa_col_finished": "종료 시각",
+    "sa_col_commanders": "커맨더",
+    "sa_empty": "현재 필터와 일치하는 저장된 요약이 없습니다. 라이브 스냅샷 라이터를 켠 상태로 게임을 실행하면 여기에 표시됩니다."
   },
   "rpl": {
     "bk_combat": "전투",

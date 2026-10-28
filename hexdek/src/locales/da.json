@@ -528,7 +528,21 @@
     "export_pdf": "EKSPORTÉR PDF",
     "export_tip": "Hent en selvstændig PDF af denne opsummering",
     "kind_commander_first_cast": "FØRSTE COMMANDER-SPIL",
-    "kind_game_end": "PARTIETS SLUTNING"
+    "kind_game_end": "PARTIETS SLUTNING",
+    "sa_tape_left": "TIDLIGERE OPSUMMERINGER",
+    "sa_rows": "{count} RÆKKER",
+    "sa_tag_rich": "KUN RIGE PARTIER",
+    "sa_filters": "FILTRE",
+    "sa_from": "FRA",
+    "sa_until": "TIL",
+    "sa_ph_winner": "del af vindernavn",
+    "sa_apply": "ANVEND",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "FORRIGE",
+    "sa_next": "NÆSTE",
+    "sa_col_finished": "AFSLUTTET",
+    "sa_col_commanders": "COMMANDERS",
+    "sa_empty": "Ingen gemte opsummeringer matcher de nuværende filtre. Når partier kører med den live snapshot-writer slået til, vises de her."
   },
   "rpl": {
     "bk_combat": "Kamp",

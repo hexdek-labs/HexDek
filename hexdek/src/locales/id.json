@@ -528,7 +528,21 @@
     "export_pdf": "EKSPOR PDF",
     "export_tip": "Unduh PDF mandiri dari ringkasan ini",
     "kind_commander_first_cast": "CAST COMMANDER PERTAMA",
-    "kind_game_end": "AKHIR PERTANDINGAN"
+    "kind_game_end": "AKHIR PERTANDINGAN",
+    "sa_tape_left": "RINGKASAN TERDAHULU",
+    "sa_rows": "{count} BARIS",
+    "sa_tag_rich": "HANYA PERMAINAN KAYA",
+    "sa_filters": "FILTER",
+    "sa_from": "DARI",
+    "sa_until": "SAMPAI",
+    "sa_ph_winner": "potongan nama pemenang",
+    "sa_apply": "TERAPKAN",
+    "sa_offset": "OFFSET {count}",
+    "sa_prev": "SEBELUMNYA",
+    "sa_next": "BERIKUTNYA",
+    "sa_col_finished": "SELESAI",
+    "sa_col_commanders": "COMMANDER",
+    "sa_empty": "Tidak ada ringkasan tersimpan yang cocok dengan filter saat ini. Begitu permainan berjalan dengan penulis snapshot langsung aktif, mereka akan muncul di sini."
   },
   "rpl": {
     "bk_combat": "Pertempuran",

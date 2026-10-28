@@ -528,7 +528,21 @@
     "export_pdf": "تصدير PDF",
     "export_tip": "نزّل ملف PDF مستقلًا لهذا الملخص",
     "kind_commander_first_cast": "أول لعب للقائد",
-    "kind_game_end": "نهاية المباراة"
+    "kind_game_end": "نهاية المباراة",
+    "sa_tape_left": "الملخّصات السابقة",
+    "sa_rows": "{count} صف",
+    "sa_tag_rich": "المباريات الغنية فقط",
+    "sa_filters": "المرشّحات",
+    "sa_from": "من",
+    "sa_until": "إلى",
+    "sa_ph_winner": "جزء من اسم الفائز",
+    "sa_apply": "تطبيق",
+    "sa_offset": "الإزاحة {count}",
+    "sa_prev": "السابق",
+    "sa_next": "التالي",
+    "sa_col_finished": "انتهت",
+    "sa_col_commanders": "القادة",
+    "sa_empty": "لا توجد ملخّصات محفوظة تطابق المرشّحات الحالية. بمجرد تشغيل مباريات مع مُسجّل اللقطات المباشر، ستظهر هنا."
   },
   "rpl": {
     "bk_combat": "قتال",

@@ -528,7 +528,21 @@
     "export_pdf": "导出 PDF",
     "export_tip": "下载这份总结的独立 PDF",
     "kind_commander_first_cast": "指挥官首次施放",
-    "kind_game_end": "对局结束"
+    "kind_game_end": "对局结束",
+    "sa_tape_left": "历史总结",
+    "sa_rows": "{count} 行",
+    "sa_tag_rich": "仅完整数据对局",
+    "sa_filters": "筛选",
+    "sa_from": "起始",
+    "sa_until": "截至",
+    "sa_ph_winner": "获胜者名称片段",
+    "sa_apply": "应用",
+    "sa_offset": "偏移 {count}",
+    "sa_prev": "上一页",
+    "sa_next": "下一页",
+    "sa_col_finished": "结束时间",
+    "sa_col_commanders": "指挥官",
+    "sa_empty": "没有已保存的总结匹配当前筛选条件。当对局在启用实时快照写入器的情况下运行后，它们会出现在这里。"
   },
   "rpl": {
     "bk_combat": "战斗",

@@ -528,7 +528,21 @@
     "export_pdf": "EKSPORTUJ PDF",
     "export_tip": "Pobierz samodzielny PDF tego podsumowania",
     "kind_commander_first_cast": "PIERWSZE ZAGRANIE DOWÓDCY",
-    "kind_game_end": "KONIEC PARTII"
+    "kind_game_end": "KONIEC PARTII",
+    "sa_tape_left": "POPRZEDNIE PODSUMOWANIA",
+    "sa_rows": "{count} WIERSZY",
+    "sa_tag_rich": "TYLKO BOGATE GRY",
+    "sa_filters": "FILTRY",
+    "sa_from": "OD",
+    "sa_until": "DO",
+    "sa_ph_winner": "fragment nazwy zwycięzcy",
+    "sa_apply": "ZASTOSUJ",
+    "sa_offset": "PRZESUNIĘCIE {count}",
+    "sa_prev": "POPRZEDNIA",
+    "sa_next": "NASTĘPNA",
+    "sa_col_finished": "ZAKOŃCZONA",
+    "sa_col_commanders": "DOWÓDCY",
+    "sa_empty": "Żadne zapisane podsumowanie nie pasuje do obecnych filtrów. Gdy gry zaczną działać z włączonym zapisem migawek na żywo, pojawią się tutaj."
   },
   "rpl": {
     "bk_combat": "Walka",

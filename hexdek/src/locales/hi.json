@@ -528,7 +528,21 @@
     "export_pdf": "PDF निर्यात करें",
     "export_tip": "इस सारांश की स्वतंत्र PDF डाउनलोड करें",
     "kind_commander_first_cast": "कमांडर का पहला कास्ट",
-    "kind_game_end": "खेल समाप्त"
+    "kind_game_end": "खेल समाप्त",
+    "sa_tape_left": "पिछले सारांश",
+    "sa_rows": "{count} पंक्तियाँ",
+    "sa_tag_rich": "केवल समृद्ध गेम",
+    "sa_filters": "फ़िल्टर",
+    "sa_from": "से",
+    "sa_until": "तक",
+    "sa_ph_winner": "विजेता नाम का अंश",
+    "sa_apply": "लागू करें",
+    "sa_offset": "ऑफ़सेट {count}",
+    "sa_prev": "पिछला",
+    "sa_next": "अगला",
+    "sa_col_finished": "समाप्त",
+    "sa_col_commanders": "कमांडर",
+    "sa_empty": "वर्तमान फ़िल्टर से कोई सहेजा गया सारांश मेल नहीं खाता। जब लाइव स्नैपशॉट राइटर सक्षम करके गेम चलेंगे, वे यहाँ दिखेंगे।"
   },
   "rpl": {
     "bk_combat": "युद्ध",

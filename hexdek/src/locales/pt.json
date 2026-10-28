@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTAR PDF",
     "export_tip": "Baixe um PDF independente deste resumo",
     "kind_commander_first_cast": "PRIMEIRA CONJURAÇÃO DO COMANDANTE",
-    "kind_game_end": "FIM DA PARTIDA"
+    "kind_game_end": "FIM DA PARTIDA",
+    "sa_tape_left": "RESUMOS ANTERIORES",
+    "sa_rows": "{count} LINHAS",
+    "sa_tag_rich": "APENAS PARTIDAS RICAS",
+    "sa_filters": "FILTROS",
+    "sa_from": "DE",
+    "sa_until": "ATÉ",
+    "sa_ph_winner": "parte do nome do vencedor",
+    "sa_apply": "APLICAR",
+    "sa_offset": "DESLOCAMENTO {count}",
+    "sa_prev": "ANTERIOR",
+    "sa_next": "PRÓXIMA",
+    "sa_col_finished": "FINALIZADA",
+    "sa_col_commanders": "COMANDANTES",
+    "sa_empty": "Nenhum resumo salvo corresponde aos filtros atuais. Quando as partidas rodarem com o gravador de snapshots ao vivo ativado, elas aparecerão aqui."
   },
   "rpl": {
     "bk_combat": "Combate",

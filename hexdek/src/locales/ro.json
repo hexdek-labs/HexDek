@@ -528,7 +528,21 @@
     "export_pdf": "EXPORTĂ PDF",
     "export_tip": "Descarcă un PDF independent al acestui rezumat",
     "kind_commander_first_cast": "PRIMA INVOCARE A COMANDANTULUI",
-    "kind_game_end": "FINAL DE PARTIDĂ"
+    "kind_game_end": "FINAL DE PARTIDĂ",
+    "sa_tape_left": "REZUMATE ANTERIOARE",
+    "sa_rows": "{count} RÂNDURI",
+    "sa_tag_rich": "DOAR JOCURI BOGATE",
+    "sa_filters": "FILTRE",
+    "sa_from": "DE LA",
+    "sa_until": "PÂNĂ LA",
+    "sa_ph_winner": "parte din numele câștigătorului",
+    "sa_apply": "APLICĂ",
+    "sa_offset": "DECALAJ {count}",
+    "sa_prev": "ANTERIOR",
+    "sa_next": "URMĂTOR",
+    "sa_col_finished": "ÎNCHEIAT",
+    "sa_col_commanders": "COMANDANȚI",
+    "sa_empty": "Niciun rezumat salvat nu corespunde filtrelor actuale. Odată ce jocurile rulează cu scriitorul de instantanee live activat, vor apărea aici."
   },
   "rpl": {
     "bk_combat": "Luptă",
