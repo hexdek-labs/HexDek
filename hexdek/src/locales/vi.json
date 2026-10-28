@@ -1853,5 +1853,21 @@
     "fetching": "> ĐANG TẢI CÁC VÁN GẦN ĐÂY",
     "empty": "> CHƯA GHI NHẬN VÁN NÀO — ĐỘNG CƠ ĐẤU THỬ ĐANG OFFLINE.",
     "footer": "+ + + LÕI HEXDEK ĐÃ SẴN SÀNG · GIẤY PHÉP MIT · MÃ NGUỒN MỞ + + +"
+  },
+  "usr": {
+    "title": "HỒ SƠ NGƯỜI DÙNG",
+    "kv_auth_email": "EMAIL ĐĂNG NHẬP",
+    "not_signed_in": "— chưa đăng nhập —",
+    "kv_uid": "ID NGƯỜI DÙNG",
+    "st_authenticated": "ĐÃ XÁC THỰC",
+    "hd_prefs": "TÙY CHỌN HIỂN THỊ",
+    "display_name_ph": "Cách bạn muốn hiển thị trong phòng chờ và báo cáo",
+    "display_name_hint": "Hiển thị trong chat người xem, phòng chờ nhóm và báo cáo ván đấu.",
+    "kv_owner_name": "TÊN CHỦ SỞ HỮU",
+    "owner_name_ph": "ví dụ josh, kylie, blake...",
+    "owner_name_hint": "Quyết định bộ bài nào xuất hiện trong “{mydecks}”. Phải khớp tên thư mục trong {path}.",
+    "btn_save": "LƯU TÙY CHỌN",
+    "sync_synced": "Tùy chọn được đồng bộ với tài khoản của bạn — có sẵn trên mọi thiết bị bạn đăng nhập.",
+    "sync_local": "Tùy chọn chỉ được lưu cục bộ (đăng nhập để đồng bộ giữa các thiết bị)."
   }
 }

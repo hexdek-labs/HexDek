@@ -1853,5 +1853,21 @@
     "fetching": "> RECUPERO DELLE PARTITE RECENTI",
     "empty": "> NESSUNA PARTITA REGISTRATA ANCORA — MOTORE DEGLI SCONTRI OFFLINE.",
     "footer": "+ + + NUCLEO HEXDEK PRONTO · LICENZA MIT · OPEN SOURCE + + +"
+  },
+  "usr": {
+    "title": "PROFILO UTENTE",
+    "kv_auth_email": "E-MAIL DI ACCESSO",
+    "not_signed_in": "— non hai effettuato l’accesso —",
+    "kv_uid": "ID UTENTE",
+    "st_authenticated": "AUTENTICATO",
+    "hd_prefs": "PREFERENZE DI VISUALIZZAZIONE",
+    "display_name_ph": "Come vuoi apparire nelle lobby e nei report",
+    "display_name_hint": "Mostrato nelle chat da spettatore, nelle lobby di gruppo e nei report delle partite.",
+    "kv_owner_name": "NOME PROPRIETARIO",
+    "owner_name_ph": "es. josh, kylie, blake...",
+    "owner_name_hint": "Determina quali deck appaiono sotto «{mydecks}». Deve corrispondere al nome della cartella in {path}.",
+    "btn_save": "SALVA PREFERENZE",
+    "sync_synced": "Le preferenze si sincronizzano con il tuo account — disponibili su ogni dispositivo da cui accedi.",
+    "sync_local": "Preferenze salvate solo localmente (accedi per sincronizzare tra dispositivi)."
   }
 }

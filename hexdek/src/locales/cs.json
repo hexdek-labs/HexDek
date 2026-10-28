@@ -1853,5 +1853,21 @@
     "fetching": "> NAČÍTÁNÍ NEDÁVNÝCH HER",
     "empty": "> ZATÍM NEBYLY ZAZNAMENÁNY ŽÁDNÉ HRY — ENGINE STŘETNUTÍ JE OFFLINE.",
     "footer": "+ + + JÁDRO HEXDEK PŘIPRAVENO · LICENCE MIT · OTEVŘENÝ ZDROJ + + +"
+  },
+  "usr": {
+    "title": "UŽIVATELSKÝ PROFIL",
+    "kv_auth_email": "E-MAIL PRO PŘIHLÁŠENÍ",
+    "not_signed_in": "— nepřihlášen —",
+    "kv_uid": "ID UŽIVATELE",
+    "st_authenticated": "PŘIHLÁŠEN",
+    "hd_prefs": "NASTAVENÍ ZOBRAZENÍ",
+    "display_name_ph": "Jak se má zobrazovat tvé jméno v lobby a reportech",
+    "display_name_hint": "Zobrazuje se ve chatech u sledování, v lobby skupin a v reportech her.",
+    "kv_owner_name": "JMÉNO VLASTNÍKA",
+    "owner_name_ph": "např. josh, kylie, blake...",
+    "owner_name_hint": "Určuje, které balíčky se objeví pod „{mydecks}“. Musí odpovídat názvu složky v {path}.",
+    "btn_save": "ULOŽIT NASTAVENÍ",
+    "sync_synced": "Nastavení se synchronizuje s tvým účtem — je dostupné na každém zařízení, kde se přihlásíš.",
+    "sync_local": "Nastavení je uloženo jen lokálně (přihlas se pro synchronizaci mezi zařízeními)."
   }
 }

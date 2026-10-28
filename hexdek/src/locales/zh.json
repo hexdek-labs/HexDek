@@ -1853,5 +1853,21 @@
     "fetching": "> 正在获取最近对局",
     "empty": "> 暂无对局记录 — 表演赛引擎离线。",
     "footer": "+ + + HEXDEK 核心就绪 · MIT 许可 · 开源 + + +"
+  },
+  "usr": {
+    "title": "用户资料",
+    "kv_auth_email": "登录邮箱",
+    "not_signed_in": "— 未登录 —",
+    "kv_uid": "用户 ID",
+    "st_authenticated": "已认证",
+    "hd_prefs": "显示偏好",
+    "display_name_ph": "你希望在房间和报告中显示的名称",
+    "display_name_hint": "显示在观战聊天、组队房间和对局报告中。",
+    "kv_owner_name": "拥有者名称",
+    "owner_name_ph": "例如 josh、kylie、blake...",
+    "owner_name_hint": "决定哪些套牌出现在“{mydecks}”下。必须与 {path} 中的文件夹名一致。",
+    "btn_save": "保存偏好",
+    "sync_synced": "偏好会同步到你的账户 — 在你登录的每台设备上都可用。",
+    "sync_local": "偏好仅保存在本地（登录后可在多设备间同步）。"
   }
 }

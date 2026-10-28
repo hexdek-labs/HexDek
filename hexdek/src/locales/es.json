@@ -1853,5 +1853,21 @@
     "fetching": "> OBTENIENDO PARTIDAS RECIENTES",
     "empty": "> AÚN NO HAY PARTIDAS REGISTRADAS — MOTOR DE COMBATES DESCONECTADO.",
     "footer": "+ + + NÚCLEO HEXDEK LISTO · LICENCIA MIT · CÓDIGO ABIERTO + + +"
+  },
+  "usr": {
+    "title": "PERFIL DE USUARIO",
+    "kv_auth_email": "CORREO DE ACCESO",
+    "not_signed_in": "— sin sesión iniciada —",
+    "kv_uid": "ID DE USUARIO",
+    "st_authenticated": "AUTENTICADO",
+    "hd_prefs": "PREFERENCIAS DE VISUALIZACIÓN",
+    "display_name_ph": "Cómo quieres aparecer en salas e informes",
+    "display_name_hint": "Se muestra en los chats de espectador, las salas de grupo y los informes de partida.",
+    "kv_owner_name": "NOMBRE DE PROPIETARIO",
+    "owner_name_ph": "p. ej. josh, kylie, blake...",
+    "owner_name_hint": "Controla qué decks aparecen en «{mydecks}». Debe coincidir con el nombre de la carpeta en {path}.",
+    "btn_save": "GUARDAR PREFERENCIAS",
+    "sync_synced": "Las preferencias se sincronizan con tu cuenta — disponibles en todos los dispositivos donde inicies sesión.",
+    "sync_local": "Preferencias guardadas solo localmente (inicia sesión para sincronizar entre dispositivos)."
   }
 }

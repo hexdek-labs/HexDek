@@ -1853,5 +1853,21 @@
     "fetching": "> SE PRELUAU MECIURILE RECENTE",
     "empty": "> NICIUN MECI ÎNREGISTRAT ÎNCĂ — MOTORUL DE CONFRUNTĂRI ESTE OFFLINE.",
     "footer": "+ + + NUCLEUL HEXDEK ESTE GATA · LICENȚĂ MIT · SURSĂ DESCHISĂ + + +"
+  },
+  "usr": {
+    "title": "PROFIL UTILIZATOR",
+    "kv_auth_email": "E-MAIL DE AUTENTIFICARE",
+    "not_signed_in": "— neautentificat —",
+    "kv_uid": "ID UTILIZATOR",
+    "st_authenticated": "AUTENTIFICAT",
+    "hd_prefs": "PREFERINȚE DE AFIȘARE",
+    "display_name_ph": "Cum vrei să apari în lobby-uri și rapoarte",
+    "display_name_hint": "Afișat în chaturile de spectator, în lobby-urile de grup și în rapoartele de joc.",
+    "kv_owner_name": "NUMELE PROPRIETARULUI",
+    "owner_name_ph": "ex. josh, kylie, blake...",
+    "owner_name_hint": "Stabilește ce pachete apar sub „{mydecks}”. Trebuie să corespundă numelui folderului din {path}.",
+    "btn_save": "SALVEAZĂ PREFERINȚELE",
+    "sync_synced": "Preferințele se sincronizează cu contul tău — disponibile pe orice dispozitiv de pe care te autentifici.",
+    "sync_local": "Preferințe salvate doar local (autentifică-te pentru sincronizare între dispozitive)."
   }
 }

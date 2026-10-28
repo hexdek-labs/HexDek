@@ -1853,5 +1853,21 @@
     "fetching": "> 最近の対戦を取得中",
     "empty": "> まだ対戦記録がありません — ショーマッチエンジンはオフラインです。",
     "footer": "+ + + HEXDEK コア稼働可能 · MIT ライセンス · オープンソース + + +"
+  },
+  "usr": {
+    "title": "ユーザープロフィール",
+    "kv_auth_email": "ログイン用メール",
+    "not_signed_in": "— サインインしていません —",
+    "kv_uid": "ユーザー ID",
+    "st_authenticated": "認証済み",
+    "hd_prefs": "表示設定",
+    "display_name_ph": "ロビーやレポートでの表示名",
+    "display_name_hint": "観戦チャット、パーティーロビー、ゲームレポートに表示されます。",
+    "kv_owner_name": "オーナー名",
+    "owner_name_ph": "例: josh, kylie, blake...",
+    "owner_name_hint": "「{mydecks}」に表示されるデッキを決めます。{path} のフォルダ名と一致させてください。",
+    "btn_save": "設定を保存",
+    "sync_synced": "設定はアカウントに同期され、サインインしたすべての端末で利用できます。",
+    "sync_local": "設定はこの端末にのみ保存されています（端末間で同期するにはサインインしてください）。"
   }
 }

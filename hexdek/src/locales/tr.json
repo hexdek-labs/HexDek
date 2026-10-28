@@ -1853,5 +1853,21 @@
     "fetching": "> SON MAÇLAR GETİRİLİYOR",
     "empty": "> HENÜZ KAYITLI MAÇ YOK — GÖSTERİ MAÇI MOTORU ÇEVRİMDIŞI.",
     "footer": "+ + + HEXDEK ÇEKİRDEĞİ HAZIR · MIT LİSANSLI · AÇIK KAYNAK + + +"
+  },
+  "usr": {
+    "title": "KULLANICI PROFİLİ",
+    "kv_auth_email": "GİRİŞ E-POSTASI",
+    "not_signed_in": "— giriş yapılmadı —",
+    "kv_uid": "KULLANICI KİMLİĞİ",
+    "st_authenticated": "KİMLİĞİ DOĞRULANDI",
+    "hd_prefs": "GÖRÜNÜM TERCİHLERİ",
+    "display_name_ph": "Lobilerde ve raporlarda nasıl görünmek istiyorsun",
+    "display_name_hint": "İzleyici sohbetlerinde, parti lobilerinde ve maç raporlarında gösterilir.",
+    "kv_owner_name": "SAHİP ADI",
+    "owner_name_ph": "örn. josh, kylie, blake...",
+    "owner_name_hint": "“{mydecks}” altında hangi destelerin görüneceğini belirler. {path} içindeki klasör adıyla eşleşmeli.",
+    "btn_save": "TERCİHLERİ KAYDET",
+    "sync_synced": "Tercihler hesabınla eşitlenir — giriş yaptığın her cihazda kullanılabilir.",
+    "sync_local": "Tercihler yalnızca yerel olarak kaydedildi (cihazlar arası eşitleme için giriş yap)."
   }
 }

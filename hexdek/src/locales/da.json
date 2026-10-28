@@ -1853,5 +1853,21 @@
     "fetching": "> HENTER SENESTE SPIL",
     "empty": "> INGEN SPIL REGISTRERET ENDNU — SHOWMATCH-MOTOREN ER OFFLINE.",
     "footer": "+ + + HEXDEK-KERNE KLAR · MIT-LICENSERET · OPEN SOURCE + + +"
+  },
+  "usr": {
+    "title": "BRUGERPROFIL",
+    "kv_auth_email": "LOGIN-E-MAIL",
+    "not_signed_in": "— ikke logget ind —",
+    "kv_uid": "BRUGER-ID",
+    "st_authenticated": "LOGGET IND",
+    "hd_prefs": "VISNINGSINDSTILLINGER",
+    "display_name_ph": "Hvordan du vil vises i lobbyer og rapporter",
+    "display_name_hint": "Vises i spectator-chats, party-lobbyer og spilrapporter.",
+    "kv_owner_name": "EJERNAVN",
+    "owner_name_ph": "f.eks. josh, kylie, blake...",
+    "owner_name_hint": "Styrer hvilke dæk der vises under “{mydecks}”. Skal matche mappenavnet i {path}.",
+    "btn_save": "GEM INDSTILLINGER",
+    "sync_synced": "Indstillinger synkroniseres til din konto — tilgængelige på alle enheder, du logger ind fra.",
+    "sync_local": "Indstillinger er kun gemt lokalt (log ind for at synkronisere på tværs af enheder)."
   }
 }

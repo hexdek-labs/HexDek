@@ -1853,5 +1853,21 @@
     "fetching": "> FETCHING RECENT GAMES",
     "empty": "> NO GAMES RECORDED YET — SHOWMATCH ENGINE OFFLINE.",
     "footer": "+ + + HEXDEK CORE READY · MIT-LICENSED · OPEN SOURCE + + +"
+  },
+  "usr": {
+    "title": "USER PROFILE",
+    "kv_auth_email": "AUTH EMAIL",
+    "not_signed_in": "— not signed in —",
+    "kv_uid": "UID",
+    "st_authenticated": "AUTHENTICATED",
+    "hd_prefs": "DISPLAY PREFERENCES",
+    "display_name_ph": "How you want to appear in lobbies and reports",
+    "display_name_hint": "Shown in spectator chats, party lobbies, and game reports.",
+    "kv_owner_name": "OWNER NAME",
+    "owner_name_ph": "e.g. josh, kylie, blake...",
+    "owner_name_hint": "Controls which decks appear under \"{mydecks}\". Match the folder name in {path}.",
+    "btn_save": "SAVE PREFERENCES",
+    "sync_synced": "Preferences sync to your account — available on every device you sign in from.",
+    "sync_local": "Preferences cached locally (sign in to sync across devices)."
   }
 }

@@ -1853,5 +1853,21 @@
     "fetching": "> 최근 대국 불러오는 중",
     "empty": "> 아직 기록된 대국이 없습니다 — 쇼매치 엔진이 오프라인입니다.",
     "footer": "+ + + HEXDEK 코어 준비 완료 · MIT 라이선스 · 오픈소스 + + +"
+  },
+  "usr": {
+    "title": "사용자 프로필",
+    "kv_auth_email": "로그인 이메일",
+    "not_signed_in": "— 로그인하지 않음 —",
+    "kv_uid": "사용자 ID",
+    "st_authenticated": "인증됨",
+    "hd_prefs": "표시 설정",
+    "display_name_ph": "로비와 리포트에 표시될 이름",
+    "display_name_hint": "관전 채팅, 파티 로비, 게임 리포트에 표시됩니다.",
+    "kv_owner_name": "소유자 이름",
+    "owner_name_ph": "예: josh, kylie, blake...",
+    "owner_name_hint": "“{mydecks}”에 표시될 덱을 결정합니다. {path} 의 폴더 이름과 일치시키세요.",
+    "btn_save": "설정 저장",
+    "sync_synced": "설정은 계정에 동기화되어 로그인한 모든 기기에서 사용할 수 있습니다.",
+    "sync_local": "설정이 이 기기에만 저장되었습니다 (기기 간 동기화를 위해 로그인하세요)."
   }
 }

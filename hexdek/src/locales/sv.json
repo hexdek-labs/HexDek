@@ -1853,5 +1853,21 @@
     "fetching": "> HÄMTAR SENASTE SPELEN",
     "empty": "> INGA SPEL REGISTRERADE ÄNNU — SHOWMATCH-MOTORN ÄR OFFLINE.",
     "footer": "+ + + HEXDEK-KÄRNA KLAR · MIT-LICENSIERAD · ÖPPEN KÄLLKOD + + +"
+  },
+  "usr": {
+    "title": "ANVÄNDARPROFIL",
+    "kv_auth_email": "INLOGGNINGS-E-POST",
+    "not_signed_in": "— inte inloggad —",
+    "kv_uid": "ANVÄNDAR-ID",
+    "st_authenticated": "INLOGGAD",
+    "hd_prefs": "VISNINGSINSTÄLLNINGAR",
+    "display_name_ph": "Hur du vill visas i lobbyer och rapporter",
+    "display_name_hint": "Visas i spectator-chattar, party-lobbyer och spelrapporter.",
+    "kv_owner_name": "ÄGARNAMN",
+    "owner_name_ph": "t.ex. josh, kylie, blake...",
+    "owner_name_hint": "Styr vilka lekar som visas under ”{mydecks}”. Måste matcha mappnamnet i {path}.",
+    "btn_save": "SPARA INSTÄLLNINGAR",
+    "sync_synced": "Inställningarna synkas till ditt konto — tillgängliga på varje enhet du loggar in från.",
+    "sync_local": "Inställningarna sparas bara lokalt (logga in för att synka mellan enheter)."
   }
 }

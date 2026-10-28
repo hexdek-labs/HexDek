@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Panel, Btn, KV } from '../components/chrome'
 import { useAuth } from '../context/AuthContext'
+import { useT } from '../i18n'
+import { fill } from '../components/fill'
 
 const inputStyle = {
   width: '100%', padding: '8px 10px', background: 'var(--bg-2)', border: '1px solid var(--rule-2)',
@@ -40,6 +42,7 @@ async function patchRemotePrefs(body) {
 }
 
 export default function Profile() {
+  const t = useT()
   const { user } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [owner, setOwner] = useState('')
@@ -94,54 +97,57 @@ export default function Profile() {
 
   return (
     <div style={{ padding: '20px 30px', maxWidth: 600, margin: '0 auto' }}>
-      <Panel code="USR.0" title="USER PROFILE">
+      <Panel code="USR.0" title={t('usr.title')}>
         <KV rows={[
-          ['AUTH EMAIL', user?.email || '— not signed in —'],
-          ['UID', user?.uid || '—'],
-          ['STATUS', user ? 'AUTHENTICATED' : 'GUEST'],
+          [t('usr.kv_auth_email'), user?.email || t('usr.not_signed_in')],
+          [t('usr.kv_uid'), user?.uid || '—'],
+          [t('spec.kv_status'), user ? t('usr.st_authenticated') : t('app.guest')],
         ]} />
       </Panel>
 
-      <Panel code="USR.1" title="DISPLAY PREFERENCES" style={{ marginTop: 16 }}>
+      <Panel code="USR.1" title={t('usr.hd_prefs')} style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           <div>
-            <div className="t-xs muted" style={{ marginBottom: 4 }}>DISPLAY NAME</div>
+            <div className="t-xs muted" style={{ marginBottom: 4 }}>{t('op.kv_display_name')}</div>
             <input
               type="text"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
-              placeholder="How you want to appear in lobbies and reports"
+              placeholder={t('usr.display_name_ph')}
               style={inputStyle}
             />
             <div className="t-xs muted-2" style={{ marginTop: 2 }}>
-              Shown in spectator chats, party lobbies, and game reports.
+              {t('usr.display_name_hint')}
             </div>
           </div>
 
           <div>
-            <div className="t-xs muted" style={{ marginBottom: 4 }}>OWNER NAME</div>
+            <div className="t-xs muted" style={{ marginBottom: 4 }}>{t('usr.kv_owner_name')}</div>
             <input
               type="text"
               value={owner}
               onChange={e => setOwner(e.target.value)}
-              placeholder="e.g. josh, kylie, blake..."
+              placeholder={t('usr.owner_name_ph')}
               style={inputStyle}
             />
             <div className="t-xs muted-2" style={{ marginTop: 2 }}>
-              Controls which decks appear under "My Decks". Match the folder name in <code>data/decks/</code>.
+              {fill(t('usr.owner_name_hint'), {
+                mydecks: t('nav.my_decks'),
+                path: <code>data/decks/</code>,
+              })}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Btn onClick={handleSave}>SAVE PREFERENCES</Btn>
-            {saved && <span className="t-xs" style={{ color: 'var(--ok)' }}>● SAVED</span>}
+            <Btn onClick={handleSave}>{t('usr.btn_save')}</Btn>
+            {saved && <span className="t-xs" style={{ color: 'var(--ok)' }}>● {t('rpl.saved')}</span>}
           </div>
 
           <div className="t-xs muted-2">
             {syncStatus === 'synced'
-              ? 'Preferences sync to your account — available on every device you sign in from.'
-              : 'Preferences cached locally (sign in to sync across devices).'}
+              ? t('usr.sync_synced')
+              : t('usr.sync_local')}
           </div>
         </div>
       </Panel>

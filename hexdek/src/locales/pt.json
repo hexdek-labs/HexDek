@@ -1853,5 +1853,21 @@
     "fetching": "> BUSCANDO PARTIDAS RECENTES",
     "empty": "> NENHUMA PARTIDA REGISTRADA AINDA — MOTOR DE COMBATES OFFLINE.",
     "footer": "+ + + NÚCLEO HEXDEK PRONTO · LICENCIADO MIT · CÓDIGO ABERTO + + +"
+  },
+  "usr": {
+    "title": "PERFIL DO USUÁRIO",
+    "kv_auth_email": "E-MAIL DE ACESSO",
+    "not_signed_in": "— não conectado —",
+    "kv_uid": "ID DO USUÁRIO",
+    "st_authenticated": "AUTENTICADO",
+    "hd_prefs": "PREFERÊNCIAS DE EXIBIÇÃO",
+    "display_name_ph": "Como você quer aparecer em lobbies e relatórios",
+    "display_name_hint": "Exibido nos chats de espectador, nos lobbies de grupo e nos relatórios de partida.",
+    "kv_owner_name": "NOME DO PROPRIETÁRIO",
+    "owner_name_ph": "ex. josh, kylie, blake...",
+    "owner_name_hint": "Controla quais decks aparecem em “{mydecks}”. Precisa coincidir com o nome da pasta em {path}.",
+    "btn_save": "SALVAR PREFERÊNCIAS",
+    "sync_synced": "As preferências sincronizam com sua conta — disponíveis em todos os dispositivos em que você entrar.",
+    "sync_local": "Preferências salvas apenas localmente (entre na conta para sincronizar entre dispositivos)."
   }
 }

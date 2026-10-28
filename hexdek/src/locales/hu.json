@@ -1853,5 +1853,21 @@
     "fetching": "> LEGUTÓBBI MECCSEK BETÖLTÉSE",
     "empty": "> MÉG NINCS RÖGZÍTETT MECCS — A MÉRKŐZÉSMOTOR OFFLINE.",
     "footer": "+ + + HEXDEK MAG KÉSZ · MIT-LICENC · NYÍLT FORRÁSKÓDÚ + + +"
+  },
+  "usr": {
+    "title": "FELHASZNÁLÓI PROFIL",
+    "kv_auth_email": "BEJELENTKEZÉSI E-MAIL",
+    "not_signed_in": "— nincs bejelentkezve —",
+    "kv_uid": "FELHASZNÁLÓ-AZONOSÍTÓ",
+    "st_authenticated": "BEJELENTKEZVE",
+    "hd_prefs": "MEGJELENÍTÉSI BEÁLLÍTÁSOK",
+    "display_name_ph": "Hogyan szeretnél megjelenni a lobbykban és a reportokban",
+    "display_name_hint": "Megjelenik a megtekintői chatekben, a party lobbykban és a játékreportokban.",
+    "kv_owner_name": "TULAJDONOS NEVE",
+    "owner_name_ph": "pl. josh, kylie, blake...",
+    "owner_name_hint": "Meghatározza, mely paklik jelennek meg a „{mydecks}” alatt. Egyeznie kell a mappanévvel itt: {path}.",
+    "btn_save": "BEÁLLÍTÁSOK MENTÉSE",
+    "sync_synced": "A beállítások a fiókodhoz szinkronizálódnak — minden eszközön elérhetők, ahol bejelentkezel.",
+    "sync_local": "A beállítások csak helyben vannak mentve (jelentkezz be az eszközök közti szinkronhoz)."
   }
 }

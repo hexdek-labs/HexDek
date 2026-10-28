@@ -1853,5 +1853,21 @@
     "fetching": "> POBIERANIE OSTATNICH GIER",
     "empty": "> JESZCZE NIE ZAREJESTROWANO ŻADNEJ GRY — SILNIK POTYCZEK JEST OFFLINE.",
     "footer": "+ + + RDZEŃ HEXDEK GOTOWY · LICENCJA MIT · OTWARTE ŹRÓDŁO + + +"
+  },
+  "usr": {
+    "title": "PROFIL UŻYTKOWNIKA",
+    "kv_auth_email": "E-MAIL DO LOGOWANIA",
+    "not_signed_in": "— niezalogowany —",
+    "kv_uid": "ID UŻYTKOWNIKA",
+    "st_authenticated": "ZALOGOWANY",
+    "hd_prefs": "USTAWIENIA WYŚWIETLANIA",
+    "display_name_ph": "Jak chcesz być widoczny w lobby i raportach",
+    "display_name_hint": "Wyświetlane na czatach obserwatora, w lobby grup i w raportach z gier.",
+    "kv_owner_name": "NAZWA WŁAŚCICIELA",
+    "owner_name_ph": "np. josh, kylie, blake...",
+    "owner_name_hint": "Decyduje, które talie pojawiają się w „{mydecks}”. Musi odpowiadać nazwie folderu w {path}.",
+    "btn_save": "ZAPISZ USTAWIENIA",
+    "sync_synced": "Ustawienia synchronizują się z Twoim kontem — dostępne na każdym urządzeniu, na którym się zalogujesz.",
+    "sync_local": "Ustawienia zapisane tylko lokalnie (zaloguj się, aby synchronizować między urządzeniami)."
   }
 }

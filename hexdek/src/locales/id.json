@@ -1853,5 +1853,21 @@
     "fetching": "> MENGAMBIL PERTANDINGAN TERBARU",
     "empty": "> BELUM ADA PERTANDINGAN TERCATAT — MESIN SHOWMATCH OFFLINE.",
     "footer": "+ + + INTI HEXDEK SIAP · BERLISENSI MIT · SUMBER TERBUKA + + +"
+  },
+  "usr": {
+    "title": "PROFIL PENGGUNA",
+    "kv_auth_email": "EMAIL MASUK",
+    "not_signed_in": "— belum masuk —",
+    "kv_uid": "ID PENGGUNA",
+    "st_authenticated": "TERAUTENTIKASI",
+    "hd_prefs": "PREFERENSI TAMPILAN",
+    "display_name_ph": "Bagaimana kamu ingin tampil di lobi dan laporan",
+    "display_name_hint": "Ditampilkan di obrolan penonton, lobi party, dan laporan pertandingan.",
+    "kv_owner_name": "NAMA PEMILIK",
+    "owner_name_ph": "mis. josh, kylie, blake...",
+    "owner_name_hint": "Menentukan dek mana yang muncul di “{mydecks}”. Harus sama dengan nama folder di {path}.",
+    "btn_save": "SIMPAN PREFERENSI",
+    "sync_synced": "Preferensi tersinkron ke akunmu — tersedia di setiap perangkat tempat kamu masuk.",
+    "sync_local": "Preferensi disimpan hanya secara lokal (masuk untuk sinkron antar perangkat)."
   }
 }

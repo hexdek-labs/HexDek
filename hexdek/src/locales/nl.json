@@ -1853,5 +1853,21 @@
     "fetching": "> RECENTE PARTIJEN OPHALEN",
     "empty": "> NOG GEEN PARTIJEN VASTGELEGD — SHOWMATCH-ENGINE OFFLINE.",
     "footer": "+ + + HEXDEK-KERN GEREED · MIT-GELICENSEERD · OPEN SOURCE + + +"
+  },
+  "usr": {
+    "title": "GEBRUIKERSPROFIEL",
+    "kv_auth_email": "INLOG-E-MAIL",
+    "not_signed_in": "— niet ingelogd —",
+    "kv_uid": "GEBRUIKERS-ID",
+    "st_authenticated": "INGELOGD",
+    "hd_prefs": "WEERGAVE-INSTELLINGEN",
+    "display_name_ph": "Hoe je wilt verschijnen in lobby’s en rapporten",
+    "display_name_hint": "Wordt weergegeven in spectator-chats, party-lobby’s en partijrapporten.",
+    "kv_owner_name": "EIGENAARSNAAM",
+    "owner_name_ph": "bijv. josh, kylie, blake...",
+    "owner_name_hint": "Bepaalt welke decks onder “{mydecks}” verschijnen. Moet overeenkomen met de mapnaam in {path}.",
+    "btn_save": "INSTELLINGEN OPSLAAN",
+    "sync_synced": "Instellingen worden gesynchroniseerd met je account — beschikbaar op elk apparaat waarop je inlogt.",
+    "sync_local": "Instellingen alleen lokaal opgeslagen (log in om te synchroniseren tussen apparaten)."
   }
 }

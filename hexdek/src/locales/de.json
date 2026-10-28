@@ -1853,5 +1853,21 @@
     "fetching": "> LETZTE PARTIEN WERDEN GELADEN",
     "empty": "> NOCH KEINE PARTIEN AUFGEZEICHNET — SHOWMATCH-ENGINE OFFLINE.",
     "footer": "+ + + HEXDEK-KERN BEREIT · MIT-LIZENZIERT · OPEN SOURCE + + +"
+  },
+  "usr": {
+    "title": "BENUTZERPROFIL",
+    "kv_auth_email": "ANMELDE-E-MAIL",
+    "not_signed_in": "— nicht angemeldet —",
+    "kv_uid": "BENUTZER-ID",
+    "st_authenticated": "ANGEMELDET",
+    "hd_prefs": "ANZEIGEEINSTELLUNGEN",
+    "display_name_ph": "Wie du in Lobbys und Berichten erscheinen willst",
+    "display_name_hint": "Wird in Spectator-Chats, Party-Lobbys und Spielberichten angezeigt.",
+    "kv_owner_name": "BESITZERNAME",
+    "owner_name_ph": "z. B. josh, kylie, blake...",
+    "owner_name_hint": "Bestimmt, welche Decks unter „{mydecks}“ erscheinen. Muss dem Ordnernamen in {path} entsprechen.",
+    "btn_save": "EINSTELLUNGEN SPEICHERN",
+    "sync_synced": "Einstellungen werden mit deinem Konto synchronisiert — auf jedem Gerät verfügbar, von dem du dich anmeldest.",
+    "sync_local": "Einstellungen nur lokal gespeichert (melde dich an, um geräteübergreifend zu synchronisieren)."
   }
 }
