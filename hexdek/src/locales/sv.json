@@ -1869,5 +1869,25 @@
     "btn_save": "SPARA INSTÄLLNINGAR",
     "sync_synced": "Inställningarna synkas till ditt konto — tillgängliga på varje enhet du loggar in från.",
     "sync_local": "Inställningarna sparas bara lokalt (logga in för att synka mellan enheter)."
+  },
+  "afb": {
+    "tag_stale": "FÖRÅLDRAD",
+    "gen_on_engine": "Den här analysen genererades {date} av motor {version}.",
+    "gen_on": "Den här analysen genererades {date}.",
+    "no_tracking": "Den här analysen är äldre än spårningen av motorversioner, så vi kan inte se vilken build som gjorde den.",
+    "current_is": "Den aktuella motorn är {version} — vissa slutsatser kan vara föråldrade.",
+    "newer_running": "En nyare motor körs nu — vissa slutsatser kan vara föråldrade.",
+    "tag_skipped": "KORT ÖVERHOPPADE",
+    "skipped_one": "{count} kort i den här leken finns ännu inte i vår kortdatabas, så analysen nedan ignorerar det: {cards}",
+    "skipped": "{count} kort i den här leken finns ännu inte i vår kortdatabas, så analysen nedan ignorerar dem: {cards}",
+    "tag_unsupported": "INTE SPELBART ÄN",
+    "unsupported_one": "Analysen nedan täcker det här kortet, men vår spelmotor har ännu inga regler för det — det gör alltså ingenting i simulerade partier och testresultaten undervärderar leken: {cards}",
+    "unsupported": "Analysen nedan täcker de här korten, men vår spelmotor har ännu inga regler för dem — de gör alltså ingenting i simulerade partier och testresultaten undervärderar leken: {cards}",
+    "btn_refresh": "UPPDATERA ANALYS",
+    "btn_refreshing": "UPPDATERAR…",
+    "btn_title": "Kör FREYA igen på den här leken med den aktuella motorn",
+    "err_rate": "För många uppdateringar, försök igen om en minut",
+    "err_failed": "Uppdateringen misslyckades — försök igen",
+    "err_slow": "Arbetar fortfarande — ladda om sidan om en stund"
   }
 }

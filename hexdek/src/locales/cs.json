@@ -1869,5 +1869,25 @@
     "btn_save": "ULOŽIT NASTAVENÍ",
     "sync_synced": "Nastavení se synchronizuje s tvým účtem — je dostupné na každém zařízení, kde se přihlásíš.",
     "sync_local": "Nastavení je uloženo jen lokálně (přihlas se pro synchronizaci mezi zařízeními)."
+  },
+  "afb": {
+    "tag_stale": "ZASTARALÉ",
+    "gen_on_engine": "Tato analýza byla vytvořena {date} enginem {version}.",
+    "gen_on": "Tato analýza byla vytvořena {date}.",
+    "no_tracking": "Tato analýza je starší než sledování verzí enginu, takže nelze určit, který build ji vytvořil.",
+    "current_is": "Aktuální engine je {version} — některé závěry už nemusí platit.",
+    "newer_running": "Nyní běží novější engine — některé závěry už nemusí platit.",
+    "tag_skipped": "PŘESKOČENÉ KARTY",
+    "skipped_one": "{count} karta v tomto balíčku zatím není v naší databázi karet, takže ji analýza níže ignoruje: {cards}",
+    "skipped": "{count} karet v tomto balíčku zatím není v naší databázi karet, takže je analýza níže ignoruje: {cards}",
+    "tag_unsupported": "ZATÍM NEHRATELNÉ",
+    "unsupported_one": "Analýza níže tuto kartu zahrnuje, ale náš herní engine pro ni zatím nemá pravidla — v simulovaných hrách tedy nic nedělá a výsledky testů balíček podhodnotí: {cards}",
+    "unsupported": "Analýza níže tyto karty zahrnuje, ale náš herní engine pro ně zatím nemá pravidla — v simulovaných hrách tedy nic nedělají a výsledky testů balíček podhodnotí: {cards}",
+    "btn_refresh": "OBNOVIT ANALÝZU",
+    "btn_refreshing": "OBNOVOVÁNÍ…",
+    "btn_title": "Spustit FREYA na tomto balíčku znovu s aktuálním enginem",
+    "err_rate": "Příliš mnoho obnovení, zkus to za minutu",
+    "err_failed": "Obnovení selhalo — zkus to znovu",
+    "err_slow": "Stále se pracuje — za chvíli načti stránku znovu"
   }
 }

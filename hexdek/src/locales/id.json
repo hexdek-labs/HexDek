@@ -1869,5 +1869,25 @@
     "btn_save": "SIMPAN PREFERENSI",
     "sync_synced": "Preferensi tersinkron ke akunmu — tersedia di setiap perangkat tempat kamu masuk.",
     "sync_local": "Preferensi disimpan hanya secara lokal (masuk untuk sinkron antar perangkat)."
+  },
+  "afb": {
+    "tag_stale": "KEDALUWARSA",
+    "gen_on_engine": "Analisis ini dibuat pada {date} oleh mesin {version}.",
+    "gen_on": "Analisis ini dibuat pada {date}.",
+    "no_tracking": "Analisis ini lebih tua daripada pelacakan versi mesin, jadi kami tidak tahu build mana yang membuatnya.",
+    "current_is": "Mesin saat ini adalah {version} — beberapa kesimpulan mungkin sudah usang.",
+    "newer_running": "Mesin yang lebih baru sedang berjalan — beberapa kesimpulan mungkin sudah usang.",
+    "tag_skipped": "KARTU DILEWATI",
+    "skipped_one": "{count} kartu di dek ini belum ada di basis data kartu kami, jadi analisis di bawah mengabaikannya: {cards}",
+    "skipped": "{count} kartu di dek ini belum ada di basis data kartu kami, jadi analisis di bawah mengabaikannya: {cards}",
+    "tag_unsupported": "BELUM BISA DIMAINKAN",
+    "unsupported_one": "Analisis di bawah mencakup kartu ini, tetapi mesin permainan kami belum punya aturan untuknya — jadi kartu itu tidak melakukan apa pun di pertandingan simulasi dan hasil uji akan meremehkan dek: {cards}",
+    "unsupported": "Analisis di bawah mencakup kartu-kartu ini, tetapi mesin permainan kami belum punya aturan untuknya — jadi kartu-kartu itu tidak melakukan apa pun di pertandingan simulasi dan hasil uji akan meremehkan dek: {cards}",
+    "btn_refresh": "MUAT ULANG ANALISIS",
+    "btn_refreshing": "MEMUAT ULANG…",
+    "btn_title": "Jalankan ulang FREYA pada dek ini dengan mesin saat ini",
+    "err_rate": "Terlalu banyak pemuatan ulang, coba lagi semenit lagi",
+    "err_failed": "Gagal memuat ulang — coba lagi",
+    "err_slow": "Masih diproses — muat ulang halaman sebentar lagi"
   }
 }

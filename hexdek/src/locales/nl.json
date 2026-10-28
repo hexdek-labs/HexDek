@@ -1869,5 +1869,25 @@
     "btn_save": "INSTELLINGEN OPSLAAN",
     "sync_synced": "Instellingen worden gesynchroniseerd met je account — beschikbaar op elk apparaat waarop je inlogt.",
     "sync_local": "Instellingen alleen lokaal opgeslagen (log in om te synchroniseren tussen apparaten)."
+  },
+  "afb": {
+    "tag_stale": "VEROUDERD",
+    "gen_on_engine": "Deze analyse is gegenereerd op {date} door engine {version}.",
+    "gen_on": "Deze analyse is gegenereerd op {date}.",
+    "no_tracking": "Deze analyse dateert van vóór het bijhouden van engineversies, dus we kunnen niet zien welke build hem heeft gemaakt.",
+    "current_is": "De huidige engine is {version} — sommige conclusies kunnen verouderd zijn.",
+    "newer_running": "Er draait nu een nieuwere engine — sommige conclusies kunnen verouderd zijn.",
+    "tag_skipped": "KAARTEN OVERGESLAGEN",
+    "skipped_one": "{count} kaart in dit deck staat nog niet in onze kaartdatabase, dus de analyse hieronder negeert hem: {cards}",
+    "skipped": "{count} kaarten in dit deck staan nog niet in onze kaartdatabase, dus de analyse hieronder negeert ze: {cards}",
+    "tag_unsupported": "NOG NIET SPEELBAAR",
+    "unsupported_one": "De analyse hieronder bevat deze kaart, maar onze spelengine heeft er nog geen regels voor — hij doet dus niets in gesimuleerde partijen en testresultaten onderschatten het deck: {cards}",
+    "unsupported": "De analyse hieronder bevat deze kaarten, maar onze spelengine heeft er nog geen regels voor — ze doen dus niets in gesimuleerde partijen en testresultaten onderschatten het deck: {cards}",
+    "btn_refresh": "ANALYSE VERVERSEN",
+    "btn_refreshing": "VERVERSEN…",
+    "btn_title": "FREYA opnieuw uitvoeren op dit deck met de huidige engine",
+    "err_rate": "Te veel verversingen, probeer het over een minuut opnieuw",
+    "err_failed": "Verversen mislukt — probeer het opnieuw",
+    "err_slow": "Nog bezig — laad de pagina zo opnieuw"
   }
 }

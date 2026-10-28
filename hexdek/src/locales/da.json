@@ -1869,5 +1869,25 @@
     "btn_save": "GEM INDSTILLINGER",
     "sync_synced": "Indstillinger synkroniseres til din konto — tilgængelige på alle enheder, du logger ind fra.",
     "sync_local": "Indstillinger er kun gemt lokalt (log ind for at synkronisere på tværs af enheder)."
+  },
+  "afb": {
+    "tag_stale": "FORÆLDET",
+    "gen_on_engine": "Denne analyse blev genereret den {date} af motor {version}.",
+    "gen_on": "Denne analyse blev genereret den {date}.",
+    "no_tracking": "Denne analyse er ældre end sporing af motorversioner, så vi kan ikke se hvilket build der lavede den.",
+    "current_is": "Den aktuelle motor er {version} — nogle konklusioner kan være forældede.",
+    "newer_running": "En nyere motor kører nu — nogle konklusioner kan være forældede.",
+    "tag_skipped": "KORT SPRUNGET OVER",
+    "skipped_one": "{count} kort i dette dæk er endnu ikke i vores kortdatabase, så analysen nedenfor ignorerer det: {cards}",
+    "skipped": "{count} kort i dette dæk er endnu ikke i vores kortdatabase, så analysen nedenfor ignorerer dem: {cards}",
+    "tag_unsupported": "KAN IKKE SPILLES ENDNU",
+    "unsupported_one": "Analysen nedenfor dækker dette kort, men vores spilmotor har endnu ingen regler for det — så det gør ingenting i simulerede spil, og testresultater undervurderer dækket: {cards}",
+    "unsupported": "Analysen nedenfor dækker disse kort, men vores spilmotor har endnu ingen regler for dem — så de gør ingenting i simulerede spil, og testresultater undervurderer dækket: {cards}",
+    "btn_refresh": "OPDATER ANALYSE",
+    "btn_refreshing": "OPDATERER…",
+    "btn_title": "Kør FREYA igen på dette dæk med den aktuelle motor",
+    "err_rate": "For mange opdateringer, prøv igen om et minut",
+    "err_failed": "Opdatering mislykkedes — prøv igen",
+    "err_slow": "Arbejder stadig — genindlæs siden om et øjeblik"
   }
 }

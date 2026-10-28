@@ -1869,5 +1869,25 @@
     "btn_save": "BEÁLLÍTÁSOK MENTÉSE",
     "sync_synced": "A beállítások a fiókodhoz szinkronizálódnak — minden eszközön elérhetők, ahol bejelentkezel.",
     "sync_local": "A beállítások csak helyben vannak mentve (jelentkezz be az eszközök közti szinkronhoz)."
+  },
+  "afb": {
+    "tag_stale": "ELAVULT",
+    "gen_on_engine": "Ez az elemzés {date} napján készült a(z) {version} motorral.",
+    "gen_on": "Ez az elemzés {date} napján készült.",
+    "no_tracking": "Ez az elemzés régebbi, mint a motorverziók követése, így nem tudjuk, melyik build készítette.",
+    "current_is": "A jelenlegi motor a(z) {version} — néhány következtetés elavult lehet.",
+    "newer_running": "Most újabb motor fut — néhány következtetés elavult lehet.",
+    "tag_skipped": "KIHAGYOTT LAPOK",
+    "skipped_one": "Ebben a pakliban {count} lap még nincs a lapadatbázisunkban, ezért az alábbi elemzés kihagyja: {cards}",
+    "skipped": "Ebben a pakliban {count} lap még nincs a lapadatbázisunkban, ezért az alábbi elemzés kihagyja őket: {cards}",
+    "tag_unsupported": "MÉG NEM JÁTSZHATÓ",
+    "unsupported_one": "Az alábbi elemzés tartalmazza ezt a lapot, de a játékmotorunknak még nincsenek rá szabályai — a szimulált játékokban nem csinál semmit, és a teszteredmények alulértékelik a paklit: {cards}",
+    "unsupported": "Az alábbi elemzés tartalmazza ezeket a lapokat, de a játékmotorunknak még nincsenek rájuk szabályai — a szimulált játékokban nem csinálnak semmit, és a teszteredmények alulértékelik a paklit: {cards}",
+    "btn_refresh": "ELEMZÉS FRISSÍTÉSE",
+    "btn_refreshing": "FRISSÍTÉS…",
+    "btn_title": "A FREYA újrafuttatása ezen a paklin a jelenlegi motorral",
+    "err_rate": "Túl sok frissítés, próbáld újra egy perc múlva",
+    "err_failed": "A frissítés nem sikerült — próbáld újra",
+    "err_slow": "Még dolgozik — tölts újra az oldalt egy pillanat múlva"
   }
 }

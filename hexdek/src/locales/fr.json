@@ -1869,5 +1869,25 @@
     "btn_save": "ENREGISTRER LES PRÉFÉRENCES",
     "sync_synced": "Les préférences sont synchronisées avec votre compte — disponibles sur chaque appareil où vous vous connectez.",
     "sync_local": "Préférences enregistrées localement uniquement (connectez-vous pour synchroniser entre appareils)."
+  },
+  "afb": {
+    "tag_stale": "OBSOLÈTE",
+    "gen_on_engine": "Cette analyse a été générée le {date} par le moteur {version}.",
+    "gen_on": "Cette analyse a été générée le {date}.",
+    "no_tracking": "Cette analyse est antérieure au suivi des versions du moteur : impossible de savoir quel build l’a produite.",
+    "current_is": "Le moteur actuel est {version} — certaines conclusions peuvent être obsolètes.",
+    "newer_running": "Un moteur plus récent tourne maintenant — certaines conclusions peuvent être obsolètes.",
+    "tag_skipped": "CARTES IGNORÉES",
+    "skipped_one": "{count} carte de ce deck n’est pas encore dans notre base de cartes, donc l’analyse ci-dessous l’ignore : {cards}",
+    "skipped": "{count} cartes de ce deck ne sont pas encore dans notre base de cartes, donc l’analyse ci-dessous les ignore : {cards}",
+    "tag_unsupported": "PAS ENCORE JOUABLE",
+    "unsupported_one": "L’analyse ci-dessous couvre cette carte, mais notre moteur de jeu n’a pas encore de règles pour elle — elle ne fait donc rien en partie simulée et les résultats sous-estiment le deck : {cards}",
+    "unsupported": "L’analyse ci-dessous couvre ces cartes, mais notre moteur de jeu n’a pas encore de règles pour elles — elles ne font donc rien en partie simulée et les résultats sous-estiment le deck : {cards}",
+    "btn_refresh": "ACTUALISER L’ANALYSE",
+    "btn_refreshing": "ACTUALISATION…",
+    "btn_title": "Relancer FREYA sur ce deck avec le moteur actuel",
+    "err_rate": "Trop d’actualisations, réessayez dans une minute",
+    "err_failed": "Échec de l’actualisation — réessayez",
+    "err_slow": "Toujours en cours — rechargez la page dans un instant"
   }
 }

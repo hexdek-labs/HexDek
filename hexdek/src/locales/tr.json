@@ -1869,5 +1869,25 @@
     "btn_save": "TERCİHLERİ KAYDET",
     "sync_synced": "Tercihler hesabınla eşitlenir — giriş yaptığın her cihazda kullanılabilir.",
     "sync_local": "Tercihler yalnızca yerel olarak kaydedildi (cihazlar arası eşitleme için giriş yap)."
+  },
+  "afb": {
+    "tag_stale": "GÜNCEL DEĞİL",
+    "gen_on_engine": "Bu analiz {date} tarihinde {version} motoruyla üretildi.",
+    "gen_on": "Bu analiz {date} tarihinde üretildi.",
+    "no_tracking": "Bu analiz motor sürüm takibinden daha eski, bu yüzden hangi derlemenin ürettiğini bilemiyoruz.",
+    "current_is": "Güncel motor {version} — bazı sonuçlar eskimiş olabilir.",
+    "newer_running": "Şu anda daha yeni bir motor çalışıyor — bazı sonuçlar eskimiş olabilir.",
+    "tag_skipped": "ATLANAN KARTLAR",
+    "skipped_one": "Bu destedeki {count} kart henüz kart veritabanımızda yok, bu yüzden aşağıdaki analiz onu yok sayıyor: {cards}",
+    "skipped": "Bu destedeki {count} kart henüz kart veritabanımızda yok, bu yüzden aşağıdaki analiz onları yok sayıyor: {cards}",
+    "tag_unsupported": "HENÜZ OYNANAMIYOR",
+    "unsupported_one": "Aşağıdaki analiz bu kartı kapsıyor, ancak oyun motorumuzun henüz onun için kuralları yok — simüle edilen oyunlarda hiçbir şey yapmıyor ve test sonuçları desteyi olduğundan zayıf gösteriyor: {cards}",
+    "unsupported": "Aşağıdaki analiz bu kartları kapsıyor, ancak oyun motorumuzun henüz onlar için kuralları yok — simüle edilen oyunlarda hiçbir şey yapmıyorlar ve test sonuçları desteyi olduğundan zayıf gösteriyor: {cards}",
+    "btn_refresh": "ANALİZİ YENİLE",
+    "btn_refreshing": "YENİLENİYOR…",
+    "btn_title": "FREYA’yı bu destede güncel motorla yeniden çalıştır",
+    "err_rate": "Çok fazla yenileme, bir dakika sonra tekrar dene",
+    "err_failed": "Yenileme başarısız — tekrar dene",
+    "err_slow": "Hâlâ çalışıyor — birazdan sayfayı yeniden yükle"
   }
 }

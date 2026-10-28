@@ -1869,5 +1869,25 @@
     "btn_save": "SAVE PREFERENCES",
     "sync_synced": "Preferences sync to your account — available on every device you sign in from.",
     "sync_local": "Preferences cached locally (sign in to sync across devices)."
+  },
+  "afb": {
+    "tag_stale": "OUT OF DATE",
+    "gen_on_engine": "This analysis was generated on {date} by engine {version}.",
+    "gen_on": "This analysis was generated on {date}.",
+    "no_tracking": "This analysis predates engine version tracking, so we can't tell which build produced it.",
+    "current_is": "The current engine is {version} — some conclusions may be out of date.",
+    "newer_running": "A newer engine is running now — some conclusions may be out of date.",
+    "tag_skipped": "CARDS SKIPPED",
+    "skipped_one": "{count} card in this deck isn't in our card database yet, so the analysis below ignores it: {cards}",
+    "skipped": "{count} cards in this deck aren't in our card database yet, so the analysis below ignores them: {cards}",
+    "tag_unsupported": "NOT PLAYABLE YET",
+    "unsupported_one": "The analysis below covers this card, but our game engine has no rules for it yet — so it does nothing in simulated games and test results will understate the deck: {cards}",
+    "unsupported": "The analysis below covers these cards, but our game engine has no rules for them yet — so they do nothing in simulated games and test results will understate the deck: {cards}",
+    "btn_refresh": "REFRESH ANALYSIS",
+    "btn_refreshing": "REFRESHING…",
+    "btn_title": "Re-run Freya on this deck with the current engine",
+    "err_rate": "Too many refreshes, try again in a minute",
+    "err_failed": "Refresh failed — try again",
+    "err_slow": "Still working — reload the page in a moment"
   }
 }

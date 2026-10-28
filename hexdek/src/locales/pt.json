@@ -1869,5 +1869,25 @@
     "btn_save": "SALVAR PREFERÊNCIAS",
     "sync_synced": "As preferências sincronizam com sua conta — disponíveis em todos os dispositivos em que você entrar.",
     "sync_local": "Preferências salvas apenas localmente (entre na conta para sincronizar entre dispositivos)."
+  },
+  "afb": {
+    "tag_stale": "DESATUALIZADA",
+    "gen_on_engine": "Esta análise foi gerada em {date} pelo motor {version}.",
+    "gen_on": "Esta análise foi gerada em {date}.",
+    "no_tracking": "Esta análise é anterior ao rastreamento de versões do motor, então não dá para saber qual build a produziu.",
+    "current_is": "O motor atual é {version} — algumas conclusões podem estar desatualizadas.",
+    "newer_running": "Um motor mais novo está rodando agora — algumas conclusões podem estar desatualizadas.",
+    "tag_skipped": "CARTAS IGNORADAS",
+    "skipped_one": "{count} carta deste deck ainda não está no nosso banco de cartas, então a análise abaixo a ignora: {cards}",
+    "skipped": "{count} cartas deste deck ainda não estão no nosso banco de cartas, então a análise abaixo as ignora: {cards}",
+    "tag_unsupported": "AINDA NÃO JOGÁVEL",
+    "unsupported_one": "A análise abaixo inclui esta carta, mas nosso motor de jogo ainda não tem regras para ela — então ela não faz nada em partidas simuladas e os resultados subestimam o deck: {cards}",
+    "unsupported": "A análise abaixo inclui estas cartas, mas nosso motor de jogo ainda não tem regras para elas — então elas não fazem nada em partidas simuladas e os resultados subestimam o deck: {cards}",
+    "btn_refresh": "ATUALIZAR ANÁLISE",
+    "btn_refreshing": "ATUALIZANDO…",
+    "btn_title": "Rodar a FREYA novamente neste deck com o motor atual",
+    "err_rate": "Atualizações demais, tente de novo em um minuto",
+    "err_failed": "Falha ao atualizar — tente de novo",
+    "err_slow": "Ainda processando — recarregue a página em instantes"
   }
 }

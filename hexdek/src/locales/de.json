@@ -1869,5 +1869,25 @@
     "btn_save": "EINSTELLUNGEN SPEICHERN",
     "sync_synced": "Einstellungen werden mit deinem Konto synchronisiert — auf jedem Gerät verfügbar, von dem du dich anmeldest.",
     "sync_local": "Einstellungen nur lokal gespeichert (melde dich an, um geräteübergreifend zu synchronisieren)."
+  },
+  "afb": {
+    "tag_stale": "VERALTET",
+    "gen_on_engine": "Diese Analyse wurde am {date} von Engine {version} erstellt.",
+    "gen_on": "Diese Analyse wurde am {date} erstellt.",
+    "no_tracking": "Diese Analyse ist älter als die Versionsverfolgung der Engine, daher lässt sich nicht sagen, welcher Build sie erstellt hat.",
+    "current_is": "Die aktuelle Engine ist {version} — einige Schlüsse können veraltet sein.",
+    "newer_running": "Es läuft jetzt eine neuere Engine — einige Schlüsse können veraltet sein.",
+    "tag_skipped": "KARTEN ÜBERSPRUNGEN",
+    "skipped_one": "{count} Karte in diesem Deck ist noch nicht in unserer Kartendatenbank, daher ignoriert die Analyse unten sie: {cards}",
+    "skipped": "{count} Karten in diesem Deck sind noch nicht in unserer Kartendatenbank, daher ignoriert die Analyse unten sie: {cards}",
+    "tag_unsupported": "NOCH NICHT SPIELBAR",
+    "unsupported_one": "Die Analyse unten erfasst diese Karte, aber unsere Spiel-Engine hat noch keine Regeln dafür — sie tut in simulierten Partien also nichts, und Testergebnisse unterschätzen das Deck: {cards}",
+    "unsupported": "Die Analyse unten erfasst diese Karten, aber unsere Spiel-Engine hat noch keine Regeln dafür — sie tun in simulierten Partien also nichts, und Testergebnisse unterschätzen das Deck: {cards}",
+    "btn_refresh": "ANALYSE AKTUALISIEREN",
+    "btn_refreshing": "WIRD AKTUALISIERT…",
+    "btn_title": "FREYA für dieses Deck mit der aktuellen Engine neu ausführen",
+    "err_rate": "Zu viele Aktualisierungen, versuch es in einer Minute erneut",
+    "err_failed": "Aktualisierung fehlgeschlagen — versuch es erneut",
+    "err_slow": "Läuft noch — lade die Seite gleich neu"
   }
 }

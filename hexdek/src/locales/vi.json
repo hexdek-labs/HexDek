@@ -1869,5 +1869,25 @@
     "btn_save": "LƯU TÙY CHỌN",
     "sync_synced": "Tùy chọn được đồng bộ với tài khoản của bạn — có sẵn trên mọi thiết bị bạn đăng nhập.",
     "sync_local": "Tùy chọn chỉ được lưu cục bộ (đăng nhập để đồng bộ giữa các thiết bị)."
+  },
+  "afb": {
+    "tag_stale": "ĐÃ CŨ",
+    "gen_on_engine": "Phân tích này được tạo ngày {date} bởi engine {version}.",
+    "gen_on": "Phân tích này được tạo ngày {date}.",
+    "no_tracking": "Phân tích này có trước khi theo dõi phiên bản engine, nên không rõ bản dựng nào đã tạo ra nó.",
+    "current_is": "Engine hiện tại là {version} — một số kết luận có thể đã lỗi thời.",
+    "newer_running": "Một engine mới hơn đang chạy — một số kết luận có thể đã lỗi thời.",
+    "tag_skipped": "THẺ BỊ BỎ QUA",
+    "skipped_one": "{count} thẻ trong bộ bài này chưa có trong cơ sở dữ liệu thẻ của chúng tôi, nên phân tích bên dưới bỏ qua nó: {cards}",
+    "skipped": "{count} thẻ trong bộ bài này chưa có trong cơ sở dữ liệu thẻ của chúng tôi, nên phân tích bên dưới bỏ qua chúng: {cards}",
+    "tag_unsupported": "CHƯA CHƠI ĐƯỢC",
+    "unsupported_one": "Phân tích bên dưới có tính thẻ này, nhưng engine của chúng tôi chưa có luật cho nó — nên nó không làm gì trong ván mô phỏng và kết quả thử nghiệm sẽ đánh giá thấp bộ bài: {cards}",
+    "unsupported": "Phân tích bên dưới có tính các thẻ này, nhưng engine của chúng tôi chưa có luật cho chúng — nên chúng không làm gì trong ván mô phỏng và kết quả thử nghiệm sẽ đánh giá thấp bộ bài: {cards}",
+    "btn_refresh": "LÀM MỚI PHÂN TÍCH",
+    "btn_refreshing": "ĐANG LÀM MỚI…",
+    "btn_title": "Chạy lại FREYA trên bộ bài này với engine hiện tại",
+    "err_rate": "Làm mới quá nhiều lần, thử lại sau một phút",
+    "err_failed": "Làm mới thất bại — thử lại",
+    "err_slow": "Vẫn đang xử lý — tải lại trang sau giây lát"
   }
 }

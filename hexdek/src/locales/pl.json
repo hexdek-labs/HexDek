@@ -1869,5 +1869,25 @@
     "btn_save": "ZAPISZ USTAWIENIA",
     "sync_synced": "Ustawienia synchronizują się z Twoim kontem — dostępne na każdym urządzeniu, na którym się zalogujesz.",
     "sync_local": "Ustawienia zapisane tylko lokalnie (zaloguj się, aby synchronizować między urządzeniami)."
+  },
+  "afb": {
+    "tag_stale": "NIEAKTUALNA",
+    "gen_on_engine": "Ta analiza została wygenerowana {date} przez silnik {version}.",
+    "gen_on": "Ta analiza została wygenerowana {date}.",
+    "no_tracking": "Ta analiza jest starsza niż śledzenie wersji silnika, więc nie wiadomo, który build ją wykonał.",
+    "current_is": "Aktualny silnik to {version} — część wniosków może być nieaktualna.",
+    "newer_running": "Działa teraz nowszy silnik — część wniosków może być nieaktualna.",
+    "tag_skipped": "POMINIĘTE KARTY",
+    "skipped_one": "{count} karta w tej talii nie ma jeszcze wpisu w naszej bazie kart, więc analiza poniżej ją pomija: {cards}",
+    "skipped": "{count} kart w tej talii nie ma jeszcze wpisu w naszej bazie kart, więc analiza poniżej je pomija: {cards}",
+    "tag_unsupported": "JESZCZE NIEGRYWALNE",
+    "unsupported_one": "Analiza poniżej obejmuje tę kartę, ale nasz silnik gry nie ma dla niej jeszcze zasad — w symulowanych grach nic nie robi, a wyniki testów zaniżają ocenę talii: {cards}",
+    "unsupported": "Analiza poniżej obejmuje te karty, ale nasz silnik gry nie ma dla nich jeszcze zasad — w symulowanych grach nic nie robią, a wyniki testów zaniżają ocenę talii: {cards}",
+    "btn_refresh": "ODŚWIEŻ ANALIZĘ",
+    "btn_refreshing": "ODŚWIEŻANIE…",
+    "btn_title": "Uruchom FREYA ponownie na tej talii z aktualnym silnikiem",
+    "err_rate": "Za dużo odświeżeń, spróbuj za minutę",
+    "err_failed": "Odświeżanie nie powiodło się — spróbuj ponownie",
+    "err_slow": "Wciąż trwa — przeładuj stronę za chwilę"
   }
 }

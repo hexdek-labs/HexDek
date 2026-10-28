@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Btn, Tag } from './chrome'
 import { api } from '../services/api'
+import { useT } from '../i18n'
+import { fill } from './fill'
 
 // AnalysisFreshnessBanner — tells the user when the Freya analysis they
 // are looking at was produced by an older engine build, and when cards
@@ -81,7 +83,10 @@ const noticeBase = {
 }
 
 export default function AnalysisFreshnessBanner({ analysis, deckId, onRefreshed }) {
+  const t = useT()
   const [busy, setBusy] = useState(false)
+  // ERROR SENTINEL, not prose: '' or a catalog path. All three messages were
+  // English written inside a catch / a post-poll branch and rendered raw.
   const [error, setError] = useState('')
   // Run token — bumped on unmount and whenever the banner is pointed at
   // a different deck, so an in-flight poll from the previous deck can't
@@ -139,9 +144,7 @@ export default function AnalysisFreshnessBanner({ analysis, deckId, onRefreshed 
       await api.runAnalysis(deckId)
     } catch (err) {
       if (alive(token)) {
-        setError(err?.status === 429
-          ? 'Too many refreshes, try again in a minute'
-          : 'Refresh failed — try again')
+        setError(err?.status === 429 ? 'afb.err_rate' : 'afb.err_failed')
         setBusy(false)
       }
       return
@@ -151,7 +154,7 @@ export default function AnalysisFreshnessBanner({ analysis, deckId, onRefreshed 
     if (fresh) {
       onRefreshed?.(fresh)
     } else {
-      setError('Still working — reload the page in a moment')
+      setError('afb.err_slow')
     }
     setBusy(false)
   }
@@ -160,36 +163,38 @@ export default function AnalysisFreshnessBanner({ analysis, deckId, onRefreshed 
     <div data-testid="analysis-freshness">
       {stale && (
         <div style={{ ...noticeBase, borderLeftColor: 'var(--warn)' }} role="status">
-          <Tag kind="warn" solid>OUT OF DATE</Tag>
+          <Tag kind="warn" solid>{t('afb.tag_stale')}</Tag>
           <span className="t-xs" style={{ flex: '1 1 260px', lineHeight: 1.5 }}>
             {generatedOn
-              ? <>This analysis was generated on <strong>{generatedOn}</strong>{producedBy ? <> by engine <strong>{producedBy}</strong></> : null}.{' '}</>
-              : <>This analysis predates engine version tracking, so we can't tell which build produced it.{' '}</>}
+              ? <>{producedBy
+                  ? fill(t('afb.gen_on_engine'), { date: <strong>{generatedOn}</strong>, version: <strong>{producedBy}</strong> })
+                  : fill(t('afb.gen_on'), { date: <strong>{generatedOn}</strong> })}{' '}</>
+              : <>{t('afb.no_tracking')}{' '}</>}
             {currentVersion
-              ? <>The current engine is <strong>{currentVersion}</strong> — some conclusions may be out of date.</>
-              : <>A newer engine is running now — some conclusions may be out of date.</>}
+              ? fill(t('afb.current_is'), { version: <strong>{currentVersion}</strong> })
+              : t('afb.newer_running')}
           </span>
         </div>
       )}
       {unresolved.length > 0 && (
         <div style={{ ...noticeBase, borderLeftColor: 'var(--danger)' }} role="note">
-          <Tag kind="bad" solid>CARDS SKIPPED</Tag>
+          <Tag kind="bad" solid>{t('afb.tag_skipped')}</Tag>
           <span className="t-xs" style={{ flex: '1 1 260px', lineHeight: 1.5 }}>
-            {unresolved.length} card{unresolved.length === 1 ? '' : 's'} in this deck aren't in
-            our card database yet, so the analysis below ignores them:{' '}
-            {cardNames(unresolved)}
+            {fill(
+              t(unresolved.length === 1 ? 'afb.skipped_one' : 'afb.skipped', { count: unresolved.length }),
+              { cards: cardNames(unresolved) },
+            )}
           </span>
         </div>
       )}
       {unsupported.length > 0 && (
         <div style={{ ...noticeBase, borderLeftColor: 'var(--warn)' }} role="note">
-          <Tag kind="warn" solid>NOT PLAYABLE YET</Tag>
+          <Tag kind="warn" solid>{t('afb.tag_unsupported')}</Tag>
           <span className="t-xs" style={{ flex: '1 1 260px', lineHeight: 1.5 }}>
-            The analysis below covers {unsupported.length === 1 ? 'this card' : 'these cards'},
-            but our game engine has no rules for {unsupported.length === 1 ? 'it' : 'them'} yet —
-            so {unsupported.length === 1 ? 'it does' : 'they do'} nothing in simulated games and
-            test results will understate the deck:{' '}
-            {cardNames(unsupported)}
+            {fill(
+              t(unsupported.length === 1 ? 'afb.unsupported_one' : 'afb.unsupported'),
+              { cards: cardNames(unsupported) },
+            )}
           </span>
         </div>
       )}
@@ -204,12 +209,12 @@ export default function AnalysisFreshnessBanner({ analysis, deckId, onRefreshed 
             arrow={null}
             disabled={busy}
             onClick={refresh}
-            title="Re-run Freya on this deck with the current engine"
+            title={t('afb.btn_title')}
           >
-            {busy ? 'REFRESHING…' : 'REFRESH ANALYSIS'}
+            {busy ? t('afb.btn_refreshing') : t('afb.btn_refresh')}
           </Btn>
           {error && (
-            <span className="t-xs" style={{ color: 'var(--danger)' }}>{error}</span>
+            <span className="t-xs" style={{ color: 'var(--danger)' }}>{t(error)}</span>
           )}
         </div>
       )}

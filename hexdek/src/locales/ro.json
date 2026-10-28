@@ -1869,5 +1869,25 @@
     "btn_save": "SALVEAZĂ PREFERINȚELE",
     "sync_synced": "Preferințele se sincronizează cu contul tău — disponibile pe orice dispozitiv de pe care te autentifici.",
     "sync_local": "Preferințe salvate doar local (autentifică-te pentru sincronizare între dispozitive)."
+  },
+  "afb": {
+    "tag_stale": "ÎNVECHITĂ",
+    "gen_on_engine": "Această analiză a fost generată pe {date} de motorul {version}.",
+    "gen_on": "Această analiză a fost generată pe {date}.",
+    "no_tracking": "Această analiză este anterioară urmăririi versiunilor motorului, așa că nu știm ce build a produs-o.",
+    "current_is": "Motorul actual este {version} — unele concluzii pot fi învechite.",
+    "newer_running": "Acum rulează un motor mai nou — unele concluzii pot fi învechite.",
+    "tag_skipped": "CĂRȚI OMISE",
+    "skipped_one": "{count} carte din acest pachet nu este încă în baza noastră de cărți, așa că analiza de mai jos o ignoră: {cards}",
+    "skipped": "{count} cărți din acest pachet nu sunt încă în baza noastră de cărți, așa că analiza de mai jos le ignoră: {cards}",
+    "tag_unsupported": "ÎNCĂ NEJUCABILĂ",
+    "unsupported_one": "Analiza de mai jos include această carte, dar motorul nostru de joc nu are încă reguli pentru ea — nu face nimic în partide simulate, iar rezultatele subevaluează pachetul: {cards}",
+    "unsupported": "Analiza de mai jos include aceste cărți, dar motorul nostru de joc nu are încă reguli pentru ele — nu fac nimic în partide simulate, iar rezultatele subevaluează pachetul: {cards}",
+    "btn_refresh": "REÎMPROSPĂTEAZĂ ANALIZA",
+    "btn_refreshing": "SE REÎMPROSPĂTEAZĂ…",
+    "btn_title": "Rulează FREYA din nou pe acest pachet cu motorul actual",
+    "err_rate": "Prea multe reîmprospătări, încearcă peste un minut",
+    "err_failed": "Reîmprospătarea a eșuat — încearcă din nou",
+    "err_slow": "Încă lucrează — reîncarcă pagina în scurt timp"
   }
 }

@@ -1869,5 +1869,25 @@
     "btn_save": "保存偏好",
     "sync_synced": "偏好会同步到你的账户 — 在你登录的每台设备上都可用。",
     "sync_local": "偏好仅保存在本地（登录后可在多设备间同步）。"
+  },
+  "afb": {
+    "tag_stale": "已过期",
+    "gen_on_engine": "本分析由引擎 {version} 于 {date} 生成。",
+    "gen_on": "本分析于 {date} 生成。",
+    "no_tracking": "本分析早于引擎版本追踪，因此无法判断是哪个构建生成的。",
+    "current_is": "当前引擎为 {version} — 部分结论可能已过期。",
+    "newer_running": "目前运行的是更新的引擎 — 部分结论可能已过期。",
+    "tag_skipped": "已跳过的牌",
+    "skipped_one": "此套牌中有 {count} 张牌尚未收录进我们的卡牌数据库，因此下方分析将其忽略：{cards}",
+    "skipped": "此套牌中有 {count} 张牌尚未收录进我们的卡牌数据库，因此下方分析将它们忽略：{cards}",
+    "tag_unsupported": "暂不可用于对局",
+    "unsupported_one": "下方分析包含这张牌，但我们的游戏引擎尚未实现它的规则 — 因此它在模拟对局中不起作用，测试结果会低估这套牌：{cards}",
+    "unsupported": "下方分析包含这些牌，但我们的游戏引擎尚未实现它们的规则 — 因此它们在模拟对局中不起作用，测试结果会低估这套牌：{cards}",
+    "btn_refresh": "刷新分析",
+    "btn_refreshing": "正在刷新…",
+    "btn_title": "用当前引擎重新对这套牌运行 FREYA",
+    "err_rate": "刷新过于频繁，请一分钟后再试",
+    "err_failed": "刷新失败 — 请重试",
+    "err_slow": "仍在处理 — 请稍后重新加载页面"
   }
 }
