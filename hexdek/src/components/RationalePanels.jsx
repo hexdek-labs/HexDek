@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Panel, Tag } from './chrome'
 import CardLink from './CardLink'
+import { useT } from '../i18n'
 
 // Shared brutalist row styling used by all three rationale panels.
 const rowBase = {
@@ -69,6 +70,7 @@ function Caret({ open }) {
 // public viewer who can't edit this deck), CUT renders as a passive
 // flag and the click is a no-op.
 export function ConsiderCuttingRationale({ cuts, onCut }) {
+  const t = useT()
   const [openIdx, setOpenIdx] = useState(null)
   const items = (cuts || []).filter(c => c && (c.name || typeof c === 'string'))
   if (items.length === 0) return null
@@ -76,11 +78,11 @@ export function ConsiderCuttingRationale({ cuts, onCut }) {
   return (
     <Panel
       code="04.QR"
-      title={`CONSIDER CUTTING / / ${items.length} CARDS`}
-      right={<Tag kind="warn">RATIONALE</Tag>}
+      title={t('rat.title_cuts', { count: items.length })}
+      right={<Tag kind="warn">{t('rat.tag_rationale')}</Tag>}
     >
       <div className="t-xs muted" style={{ marginBottom: 6 }}>
-        Each cut shows what was detected, why it's flagged, and what cutting it frees up.
+        {t('rat.intro_cuts')}
       </div>
       {items.map((c, i) => {
         // Tolerate both legacy string entries and structured objects so the
@@ -115,7 +117,7 @@ export function ConsiderCuttingRationale({ cuts, onCut }) {
                   type="button"
                   className="cut-action"
                   onClick={(e) => { e.stopPropagation(); onCut(name) }}
-                  title={`Open Workshop with ${name} removed`}
+                  title={t('rat.cut_title', { name })}
                   style={{
                     cursor: 'pointer',
                     background: 'transparent',
@@ -128,19 +130,19 @@ export function ConsiderCuttingRationale({ cuts, onCut }) {
                     fontFamily: 'inherit',
                   }}
                 >
-                  CUT ↗
+                  {t('rat.cut_action')}
                 </button>
               ) : (
-                <Tag kind="warn">CUT</Tag>
+                <Tag kind="warn">{t('rat.cut_flag')}</Tag>
               )}
             </div>
             {open && hasDetail && (
               <div style={detailGrid}>
-                <DetailRow label="Detected">{detected}</DetailRow>
-                <DetailRow label="Why">{whyCut}</DetailRow>
-                <DetailRow label="If cut">{effect}</DetailRow>
+                <DetailRow label={t('rat.lbl_detected')}>{detected}</DetailRow>
+                <DetailRow label={t('rat.lbl_why')}>{whyCut}</DetailRow>
+                <DetailRow label={t('rat.lbl_if_cut')}>{effect}</DetailRow>
                 {suggested && suggested.length > 0 && (
-                  <DetailRow label="Swap for">
+                  <DetailRow label={t('rat.lbl_swap_for')}>
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {suggested.map((s, si) => <li key={si}>{s}</li>)}
                     </ul>
@@ -162,7 +164,21 @@ export function ConsiderCuttingRationale({ cuts, onCut }) {
 const REDUNDANCY_KIND = { HIGH: 'ok', MEDIUM: null, LOW: 'warn' }
 const RECURSION_KIND = { infinite: 'ok', deep: 'ok', shallow: null, none: null }
 
+// Parallel catalog-PATH maps beside the colour maps above -- the shape
+// PublicProfile uses for RARITY_KEY beside RARITY_COLOR. These hold WHOLE
+// phrases rather than an adjective to be glued onto a noun: a magnitude
+// adjective has to agree with its noun's gender and number in most of the 25
+// (de HOHE REDUNDANZ), and the word order differs too.
+//
+// `crd.role_recursion` reads 'RECURSION' in English and is NOT reused here:
+// its translations are the GRAVEYARD-recursion card role (ja リアニメイト,
+// sv ÅTERVINNING, zh 回收), not this file's computer-science sense of a chain
+// that loops back on itself.
+const REDUNDANCY_KEY = { HIGH: 'rat.red_high', MEDIUM: 'rat.red_medium', LOW: 'rat.red_low' }
+const RECURSION_KEY = { infinite: 'rat.rec_infinite', deep: 'rat.rec_deep', shallow: 'rat.rec_shallow' }
+
 export function ValueEngineRationale({ chains }) {
+  const t = useT()
   const [openIdx, setOpenIdx] = useState(0) // first chain expanded by default
   const items = (chains || []).filter(Boolean)
   if (items.length === 0) return null
@@ -170,11 +186,11 @@ export function ValueEngineRationale({ chains }) {
   return (
     <Panel
       code="04.ER"
-      title={`VALUE ENGINES / / ${items.length} DETECTED`}
-      right={<Tag kind="ok">RATIONALE</Tag>}
+      title={t('rat.title_engines', { count: items.length })}
+      right={<Tag kind="ok">{t('rat.tag_rationale')}</Tag>}
     >
       <div className="t-xs muted" style={{ marginBottom: 6 }}>
-        Each engine is a multi-step resource pipeline detected from card flows.
+        {t('rat.intro_engines')}
       </div>
       {items.map((chain, i) => {
         const open = openIdx === i
@@ -186,27 +202,31 @@ export function ValueEngineRationale({ chains }) {
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Caret open={open} />
                 <span className="t-md" style={{ fontWeight: 700 }}>{chain.name}</span>
-                <span className="t-xs muted">{chain.depth} steps · {totalPieces} pieces</span>
+                <span className="t-xs muted">{t('rat.steps_pieces', { steps: chain.depth, pieces: totalPieces })}</span>
               </span>
               <span style={{ display: 'flex', gap: 4 }}>
                 {chain.redundancy && (
                   <Tag kind={REDUNDANCY_KIND[chain.redundancy] ?? null}>
-                    {chain.redundancy} REDUNDANCY
+                    {REDUNDANCY_KEY[chain.redundancy]
+                      ? t(REDUNDANCY_KEY[chain.redundancy])
+                      : `${chain.redundancy} REDUNDANCY`}
                   </Tag>
                 )}
                 {chain.recursion_depth && chain.recursion_depth !== 'none' && (
                   <Tag kind={RECURSION_KIND[chain.recursion_depth] ?? null}>
-                    {chain.recursion_depth.toUpperCase()} RECURSION
+                    {RECURSION_KEY[chain.recursion_depth]
+                      ? t(RECURSION_KEY[chain.recursion_depth])
+                      : `${chain.recursion_depth.toUpperCase()} RECURSION`}
                   </Tag>
                 )}
               </span>
             </div>
             {open && (
               <div style={detailGrid}>
-                <DetailRow label="Trigger">{rationale.trigger}</DetailRow>
-                <DetailRow label="How">{rationale.how_it_works}</DetailRow>
+                <DetailRow label={t('rat.lbl_trigger')}>{rationale.trigger}</DetailRow>
+                <DetailRow label={t('rat.lbl_how')}>{rationale.how_it_works}</DetailRow>
                 {rationale.key_pieces && rationale.key_pieces.length > 0 && (
-                  <DetailRow label="Key pieces">
+                  <DetailRow label={t('rat.lbl_key_pieces')}>
                     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
                       {rationale.key_pieces.map((kp, ki) => (
                         <CardLink key={ki} name={kp} className="t-xs" style={{ fontWeight: 700 }}>
@@ -229,6 +249,7 @@ export function ValueEngineRationale({ chains }) {
 }
 
 function ChainStepRow({ step, weakest }) {
+  const t = useT()
   const cards = step.cards || []
   return (
     <>
@@ -240,16 +261,16 @@ function ChainStepRow({ step, weakest }) {
           {step.from}→{step.to}{step.resource ? ` (${step.resource})` : ''}
         </span>
         <span style={{ marginLeft: 6 }}>
-          {cards.length === 0 ? <span className="muted">— none</span> :
+          {cards.length === 0 ? <span className="muted">{t('rat.none')}</span> :
             cards.slice(0, 8).map((c, ci) => (
               <span key={ci}>
                 {ci > 0 && <span className="muted-2">, </span>}
                 <CardLink name={c} className="t-xs" style={{ borderBottom: 'none' }}>{c}</CardLink>
               </span>
             ))}
-          {cards.length > 8 && <span className="muted-2"> +{cards.length - 8} more</span>}
+          {cards.length > 8 && <span className="muted-2"> {t('rat.more', { count: cards.length - 8 })}</span>}
         </span>
-        {weakest && <Tag kind="warn" style={{ marginLeft: 8 }}>WEAKEST LINK</Tag>}
+        {weakest && <Tag kind="warn" style={{ marginLeft: 8 }}>{t('rat.weakest_link')}</Tag>}
       </span>
     </>
   )
@@ -268,7 +289,20 @@ const WINLINE_KIND = {
   alt_wincon: 'bad',
 }
 
+// Catalog paths for the same six wire values. `finisher` and
+// `commander_damage` reuse existing standalone nouns rather than minting a
+// second word for each.
+const WINLINE_KEY = {
+  infinite: 'rat.wl_infinite',
+  determined: 'rat.wl_determined',
+  finisher: 'crd.role_finisher',
+  combat: 'rat.wl_combat',
+  commander_damage: 'rpt.wc_cmdr',
+  alt_wincon: 'rat.wl_alt',
+}
+
 export function WinConditionRationale({ winLines }) {
+  const t = useT()
   const [openIdx, setOpenIdx] = useState(0)
   const items = (winLines || []).filter(Boolean)
   if (items.length === 0) return null
@@ -276,11 +310,11 @@ export function WinConditionRationale({ winLines }) {
   return (
     <Panel
       code="04.WR"
-      title={`WIN CONDITIONS / / ${items.length} LINES`}
-      right={<Tag kind="ok">RATIONALE</Tag>}
+      title={t('rat.title_winlines', { count: items.length })}
+      right={<Tag kind="ok">{t('rat.tag_rationale')}</Tag>}
     >
       <div className="t-xs muted" style={{ marginBottom: 6 }}>
-        Each line shows the cards that form it, the conditions required, and how it resolves to a win.
+        {t('rat.intro_winlines')}
       </div>
       {items.map((wl, i) => {
         const open = openIdx === i
@@ -291,7 +325,9 @@ export function WinConditionRationale({ winLines }) {
             <div style={headerBase} onClick={() => setOpenIdx(open ? -1 : i)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                 <Caret open={open} />
-                <Tag kind={WINLINE_KIND[wl.type] ?? null} solid>{(wl.type || '').toUpperCase()}</Tag>
+                <Tag kind={WINLINE_KIND[wl.type] ?? null} solid>
+                  {WINLINE_KEY[wl.type] ? t(WINLINE_KEY[wl.type]) : (wl.type || '').toUpperCase()}
+                </Tag>
                 {/* min-width: 0 + flex: 1 lets the title actually shrink
                     inside the flex parent so text-overflow:ellipsis kicks
                     in instead of overflowing past the panel edge. */}
@@ -299,12 +335,14 @@ export function WinConditionRationale({ winLines }) {
                   {(wl.pieces || []).join(' + ')}
                 </span>
               </span>
-              {tutorCount > 0 && <Tag>{tutorCount} TUTOR PATH{tutorCount === 1 ? '' : 'S'}</Tag>}
+              {tutorCount > 0 && (
+                <Tag>{t(tutorCount === 1 ? 'rat.tutor_paths_one' : 'rat.tutor_paths', { count: tutorCount })}</Tag>
+              )}
             </div>
             {open && (
               <div style={detailGrid}>
                 {rationale.forms && rationale.forms.length > 0 && (
-                  <DetailRow label="Forms">
+                  <DetailRow label={t('rat.lbl_forms')}>
                     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
                       {rationale.forms.map((f, fi) => (
                         // Forms can be card names OR descriptive phrases (e.g.
@@ -318,21 +356,21 @@ export function WinConditionRationale({ winLines }) {
                   </DetailRow>
                 )}
                 {rationale.conditions && rationale.conditions.length > 0 && (
-                  <DetailRow label="Conditions">
+                  <DetailRow label={t('rat.lbl_conditions')}>
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {rationale.conditions.map((c, ci) => <li key={ci}>{c}</li>)}
                     </ul>
                   </DetailRow>
                 )}
                 {rationale.resolves && rationale.resolves.length > 0 && (
-                  <DetailRow label="Resolves">
+                  <DetailRow label={t('rat.lbl_resolves')}>
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {rationale.resolves.map((r, ri) => <li key={ri}>{r}</li>)}
                     </ul>
                   </DetailRow>
                 )}
                 {!rationale.resolves && wl.description && (
-                  <DetailRow label="Description">{wl.description}</DetailRow>
+                  <DetailRow label={t('rat.lbl_description')}>{wl.description}</DetailRow>
                 )}
               </div>
             )}
