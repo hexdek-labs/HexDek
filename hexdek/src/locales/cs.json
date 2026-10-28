@@ -1176,7 +1176,14 @@
     "gb_log_title": "ZÁZNAM HRY / / T1—T{turn}",
     "gb_threat": "HODNOCENÍ HROZEB",
     "gb_no_seats": "ŽÁDNÁ MÍSTA",
-    "gb_scale_mid": "STŘEDNÍ"
+    "gb_scale_mid": "STŘEDNÍ",
+    "ft_hand": "R{count}",
+    "ft_library": "K{count}",
+    "ft_graveyard": "H{count}",
+    "ft_battlefield": "B{count}",
+    "ft_hand_title_one": "{count} karta v ruce",
+    "ft_hand_title": "{count} karet v ruce",
+    "game_over_line": "KONEC HRY — {reason} — VÍTĚZ: {who}"
   },
   "tlm": {
     "status": "STAV",

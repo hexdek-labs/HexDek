@@ -1176,7 +1176,14 @@
     "gb_log_title": "JÁTÉKNAPLÓ / / T1—T{turn}",
     "gb_threat": "FENYEGETÉSELEMZÉS",
     "gb_no_seats": "NINCS HELY",
-    "gb_scale_mid": "KÖZEPES"
+    "gb_scale_mid": "KÖZEPES",
+    "ft_hand": "KÉ{count}",
+    "ft_library": "KÖ{count}",
+    "ft_graveyard": "T{count}",
+    "ft_battlefield": "CS{count}",
+    "ft_hand_title_one": "{count} lap a kézben",
+    "ft_hand_title": "{count} lap a kézben",
+    "game_over_line": "JÁTÉK VÉGE — {reason} — GYŐZTES: {who}"
   },
   "tlm": {
     "status": "ÁLLAPOT",

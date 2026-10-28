@@ -1176,7 +1176,14 @@
     "gb_log_title": "REGISTRO PARTITA / / T1—T{turn}",
     "gb_threat": "VALUTAZIONE MINACCE",
     "gb_no_seats": "NESSUN POSTO",
-    "gb_scale_mid": "MEDIO"
+    "gb_scale_mid": "MEDIO",
+    "ft_hand": "M{count}",
+    "ft_library": "G{count}",
+    "ft_graveyard": "C{count}",
+    "ft_battlefield": "CB{count}",
+    "ft_hand_title_one": "{count} carta in mano",
+    "ft_hand_title": "{count} carte in mano",
+    "game_over_line": "PARTITA FINITA — {reason} — VINCITORE: {who}"
   },
   "tlm": {
     "status": "STATO",

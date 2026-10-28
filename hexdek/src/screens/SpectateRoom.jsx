@@ -469,12 +469,12 @@ export default function SpectateRoom() {
                   </div>
                   <div className="seat-ft">
                     <span>
-                      H{s.hand_size}{' '}
+                      {t('spec.ft_hand', { count: s.hand_size })}{' '}
                       <span
                         className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
                         title={s.library_size <= 3 ? t('spec.mill_danger') : s.library_size <= 7 ? t('spec.low_library') : t('spec.cards_left', { count: s.library_size })}
-                      >L{s.library_size}</span>{' '}
-                      G{s.gy_size} B{perms.length}
+                      >{t('spec.ft_library', { count: s.library_size })}</span>{' '}
+                      {t('spec.ft_graveyard', { count: s.gy_size })} {t('spec.ft_battlefield', { count: perms.length })}
                       {s.mana_pool > 0 && (
                         <>
                           {' '}

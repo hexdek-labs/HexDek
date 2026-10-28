@@ -1176,7 +1176,14 @@
     "gb_log_title": "SPIELPROTOKOLL / / T1—T{turn}",
     "gb_threat": "BEDROHUNGSANALYSE",
     "gb_no_seats": "KEINE PLÄTZE",
-    "gb_scale_mid": "MITTEL"
+    "gb_scale_mid": "MITTEL",
+    "ft_hand": "H{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "F{count}",
+    "ft_battlefield": "S{count}",
+    "ft_hand_title_one": "{count} Karte auf der Hand",
+    "ft_hand_title": "{count} Karten auf der Hand",
+    "game_over_line": "SPIEL VORBEI — {reason} — SIEGER: {who}"
   },
   "tlm": {
     "status": "STATUS",

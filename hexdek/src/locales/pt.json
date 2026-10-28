@@ -1176,7 +1176,14 @@
     "gb_log_title": "REGISTO DE JOGO / / T1—T{turn}",
     "gb_threat": "AVALIAÇÃO DE AMEAÇAS",
     "gb_no_seats": "SEM LUGARES",
-    "gb_scale_mid": "MÉDIO"
+    "gb_scale_mid": "MÉDIO",
+    "ft_hand": "M{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "C{count}",
+    "ft_battlefield": "CB{count}",
+    "ft_hand_title_one": "{count} carta na mão",
+    "ft_hand_title": "{count} cartas na mão",
+    "game_over_line": "FIM DA PARTIDA — {reason} — VENCEDOR: {who}"
   },
   "tlm": {
     "status": "ESTADO",

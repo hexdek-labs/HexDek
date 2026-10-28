@@ -1176,7 +1176,14 @@
     "gb_log_title": "JOURNAL DE PARTIE / / T1—T{turn}",
     "gb_threat": "ÉVALUATION DES MENACES",
     "gb_no_seats": "AUCUN SIÈGE",
-    "gb_scale_mid": "MOYEN"
+    "gb_scale_mid": "MOYEN",
+    "ft_hand": "M{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "C{count}",
+    "ft_battlefield": "CB{count}",
+    "ft_hand_title_one": "{count} carte en main",
+    "ft_hand_title": "{count} cartes en main",
+    "game_over_line": "PARTIE TERMINÉE — {reason} — VAINQUEUR : {who}"
   },
   "tlm": {
     "status": "STATUT",

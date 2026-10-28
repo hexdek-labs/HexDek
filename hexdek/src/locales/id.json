@@ -1176,7 +1176,14 @@
     "gb_log_title": "LOG PERMAINAN / / T1—T{turn}",
     "gb_threat": "PENILAIAN ANCAMAN",
     "gb_no_seats": "TIDAK ADA KURSI",
-    "gb_scale_mid": "SEDANG"
+    "gb_scale_mid": "SEDANG",
+    "ft_hand": "T{count}",
+    "ft_library": "P{count}",
+    "ft_graveyard": "K{count}",
+    "ft_battlefield": "M{count}",
+    "ft_hand_title_one": "{count} kartu di tangan",
+    "ft_hand_title": "{count} kartu di tangan",
+    "game_over_line": "PERTANDINGAN SELESAI — {reason} — PEMENANG: {who}"
   },
   "tlm": {
     "status": "STATUS",

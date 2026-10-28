@@ -1176,7 +1176,14 @@
     "gb_log_title": "ЖУРНАЛ ИГРЫ / / T1—T{turn}",
     "gb_threat": "ОЦЕНКА УГРОЗ",
     "gb_no_seats": "НЕТ МЕСТ",
-    "gb_scale_mid": "СРЕДНЕ"
+    "gb_scale_mid": "СРЕДНЕ",
+    "ft_hand": "Р{count}",
+    "ft_library": "Б{count}",
+    "ft_graveyard": "К{count}",
+    "ft_battlefield": "П{count}",
+    "ft_hand_title_one": "{count} карта в руке",
+    "ft_hand_title": "{count} карт в руке",
+    "game_over_line": "ИГРА ЗАВЕРШЕНА — {reason} — ПОБЕДИТЕЛЬ: {who}"
   },
   "tlm": {
     "status": "СТАТУС",

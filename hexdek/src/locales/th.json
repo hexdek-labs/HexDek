@@ -1176,7 +1176,14 @@
     "gb_log_title": "บันทึกเกม / / T1—T{turn}",
     "gb_threat": "ประเมินภัยคุกคาม",
     "gb_no_seats": "ไม่มีที่นั่ง",
-    "gb_scale_mid": "กลาง"
+    "gb_scale_mid": "กลาง",
+    "ft_hand": "ม{count}",
+    "ft_library": "ค{count}",
+    "ft_graveyard": "สุ{count}",
+    "ft_battlefield": "สน{count}",
+    "ft_hand_title_one": "การ์ดในมือ {count} ใบ",
+    "ft_hand_title": "การ์ดในมือ {count} ใบ",
+    "game_over_line": "จบเกม — {reason} — ผู้ชนะ: {who}"
   },
   "tlm": {
     "status": "สถานะ",

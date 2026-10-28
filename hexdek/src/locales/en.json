@@ -1176,7 +1176,14 @@
     "gb_log_title": "GAME LOG / / T1—T{turn}",
     "gb_threat": "THREAT ASSESSMENT",
     "gb_no_seats": "NO SEATS",
-    "gb_scale_mid": "MID"
+    "gb_scale_mid": "MID",
+    "ft_hand": "H{count}",
+    "ft_library": "L{count}",
+    "ft_graveyard": "G{count}",
+    "ft_battlefield": "B{count}",
+    "ft_hand_title_one": "{count} card in hand",
+    "ft_hand_title": "{count} cards in hand",
+    "game_over_line": "GAME OVER — {reason} — WINNER: {who}"
   },
   "tlm": {
     "status": "STATUS",

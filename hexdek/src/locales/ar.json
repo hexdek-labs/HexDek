@@ -1176,7 +1176,14 @@
     "gb_log_title": "سجل المباراة / / T1—T{turn}",
     "gb_threat": "تقييم التهديد",
     "gb_no_seats": "لا مقاعد",
-    "gb_scale_mid": "متوسط"
+    "gb_scale_mid": "متوسط",
+    "ft_hand": "يد{count}",
+    "ft_library": "مك{count}",
+    "ft_graveyard": "مق{count}",
+    "ft_battlefield": "سا{count}",
+    "ft_hand_title_one": "{count} بطاقة في اليد",
+    "ft_hand_title": "{count} بطاقة في اليد",
+    "game_over_line": "انتهت المباراة — {reason} — الفائز: {who}"
   },
   "tlm": {
     "status": "الحالة",

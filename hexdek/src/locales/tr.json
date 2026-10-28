@@ -1176,7 +1176,14 @@
     "gb_log_title": "OYUN KAYDI / / T1—T{turn}",
     "gb_threat": "TEHDİT DEĞERLENDİRMESİ",
     "gb_no_seats": "KOLTUK YOK",
-    "gb_scale_mid": "ORTA"
+    "gb_scale_mid": "ORTA",
+    "ft_hand": "E{count}",
+    "ft_library": "K{count}",
+    "ft_graveyard": "M{count}",
+    "ft_battlefield": "S{count}",
+    "ft_hand_title_one": "elde {count} kart",
+    "ft_hand_title": "elde {count} kart",
+    "game_over_line": "OYUN BİTTİ — {reason} — KAZANAN: {who}"
   },
   "tlm": {
     "status": "DURUM",

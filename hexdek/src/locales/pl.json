@@ -1176,7 +1176,14 @@
     "gb_log_title": "DZIENNIK GRY / / T1—T{turn}",
     "gb_threat": "OCENA ZAGROŻEŃ",
     "gb_no_seats": "BRAK MIEJSC",
-    "gb_scale_mid": "ŚREDNI"
+    "gb_scale_mid": "ŚREDNI",
+    "ft_hand": "R{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "C{count}",
+    "ft_battlefield": "P{count}",
+    "ft_hand_title_one": "{count} karta w ręce",
+    "ft_hand_title": "{count} kart w ręce",
+    "game_over_line": "KONIEC GRY — {reason} — ZWYCIĘZCA: {who}"
   },
   "tlm": {
     "status": "STATUS",

@@ -1176,7 +1176,14 @@
     "gb_log_title": "JURNAL DE JOC / / T1—T{turn}",
     "gb_threat": "EVALUAREA AMENINȚĂRILOR",
     "gb_no_seats": "NICIUN LOC",
-    "gb_scale_mid": "MEDIU"
+    "gb_scale_mid": "MEDIU",
+    "ft_hand": "M{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "C{count}",
+    "ft_battlefield": "CL{count}",
+    "ft_hand_title_one": "{count} carte în mână",
+    "ft_hand_title": "{count} cărți în mână",
+    "game_over_line": "PARTIDĂ ÎNCHEIATĂ — {reason} — CÂȘTIGĂTOR: {who}"
   },
   "tlm": {
     "status": "STARE",

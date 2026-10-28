@@ -1176,7 +1176,14 @@
     "gb_log_title": "NHẬT KÝ VÁN / / T1—T{turn}",
     "gb_threat": "ĐÁNH GIÁ MỐI ĐE DỌA",
     "gb_no_seats": "KHÔNG CÓ CHỖ",
-    "gb_scale_mid": "TRUNG BÌNH"
+    "gb_scale_mid": "TRUNG BÌNH",
+    "ft_hand": "T{count}",
+    "ft_library": "TV{count}",
+    "ft_graveyard": "M{count}",
+    "ft_battlefield": "C{count}",
+    "ft_hand_title_one": "{count} thẻ trên tay",
+    "ft_hand_title": "{count} thẻ trên tay",
+    "game_over_line": "VÁN ĐẤU KẾT THÚC — {reason} — NGƯỜI THẮNG: {who}"
   },
   "tlm": {
     "status": "TRẠNG THÁI",

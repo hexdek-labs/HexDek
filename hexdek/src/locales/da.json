@@ -1176,7 +1176,14 @@
     "gb_log_title": "SPILLOG / / T1—T{turn}",
     "gb_threat": "TRUSSELSVURDERING",
     "gb_no_seats": "INGEN PLADSER",
-    "gb_scale_mid": "MIDT"
+    "gb_scale_mid": "MIDT",
+    "ft_hand": "H{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "K{count}",
+    "ft_battlefield": "S{count}",
+    "ft_hand_title_one": "{count} kort på hånden",
+    "ft_hand_title": "{count} kort på hånden",
+    "game_over_line": "SPILLET ER SLUT — {reason} — VINDER: {who}"
   },
   "tlm": {
     "status": "STATUS",

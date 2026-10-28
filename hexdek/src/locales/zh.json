@@ -1176,7 +1176,14 @@
     "gb_log_title": "对局日志 / / T1—T{turn}",
     "gb_threat": "威胁评估",
     "gb_no_seats": "无座位",
-    "gb_scale_mid": "中"
+    "gb_scale_mid": "中",
+    "ft_hand": "手{count}",
+    "ft_library": "库{count}",
+    "ft_graveyard": "坟{count}",
+    "ft_battlefield": "战{count}",
+    "ft_hand_title_one": "手牌 {count} 张",
+    "ft_hand_title": "手牌 {count} 张",
+    "game_over_line": "对局结束 — {reason} — 胜者: {who}"
   },
   "tlm": {
     "status": "状态",

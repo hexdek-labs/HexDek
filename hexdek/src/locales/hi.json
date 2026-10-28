@@ -1176,7 +1176,14 @@
     "gb_log_title": "खेल लॉग / / T1—T{turn}",
     "gb_threat": "खतरा आकलन",
     "gb_no_seats": "कोई सीट नहीं",
-    "gb_scale_mid": "मध्यम"
+    "gb_scale_mid": "मध्यम",
+    "ft_hand": "ह{count}",
+    "ft_library": "पु{count}",
+    "ft_graveyard": "क{count}",
+    "ft_battlefield": "यु{count}",
+    "ft_hand_title_one": "हाथ में {count} कार्ड",
+    "ft_hand_title": "हाथ में {count} कार्ड",
+    "game_over_line": "खेल समाप्त — {reason} — विजेता: {who}"
   },
   "tlm": {
     "status": "स्थिति",

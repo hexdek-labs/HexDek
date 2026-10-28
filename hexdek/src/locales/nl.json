@@ -1176,7 +1176,14 @@
     "gb_log_title": "SPELLOG / / T1—T{turn}",
     "gb_threat": "DREIGINGSANALYSE",
     "gb_no_seats": "GEEN PLAATSEN",
-    "gb_scale_mid": "MIDDEN"
+    "gb_scale_mid": "MIDDEN",
+    "ft_hand": "H{count}",
+    "ft_library": "B{count}",
+    "ft_graveyard": "K{count}",
+    "ft_battlefield": "S{count}",
+    "ft_hand_title_one": "{count} kaart in de hand",
+    "ft_hand_title": "{count} kaarten in de hand",
+    "game_over_line": "PARTIJ VOORBIJ — {reason} — WINNAAR: {who}"
   },
   "tlm": {
     "status": "STATUS",

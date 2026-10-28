@@ -1176,7 +1176,14 @@
     "gb_log_title": "ゲームログ / / T1—T{turn}",
     "gb_threat": "脅威評価",
     "gb_no_seats": "席なし",
-    "gb_scale_mid": "中"
+    "gb_scale_mid": "中",
+    "ft_hand": "手{count}",
+    "ft_library": "ラ{count}",
+    "ft_graveyard": "墓{count}",
+    "ft_battlefield": "戦{count}",
+    "ft_hand_title_one": "手札 {count} 枚",
+    "ft_hand_title": "手札 {count} 枚",
+    "game_over_line": "ゲーム終了 — {reason} — 勝者: {who}"
   },
   "tlm": {
     "status": "ステータス",

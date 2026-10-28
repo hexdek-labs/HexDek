@@ -899,7 +899,7 @@ export default function Spectator() {
       <Tape
         left={t('spec.tape_title')}
         mid={game.finished ? t('spec.tape_game_over') : t('spec.tape_live')}
-        right={`GAME ${game.game_id} / ${rt(game.turn)}`}
+        right={t('spec.sr_tape_right', { game: game.game_id, turn: rt(game.turn) })}
       />
 
       <div className="spectator-layout">
@@ -1098,7 +1098,9 @@ export default function Spectator() {
                     <span>
                       <span
                         className="hand-size-badge"
-                        title={`${s.hand_size} cards in hand`}
+                        title={s.hand_size === 1
+                          ? t('spec.ft_hand_title_one', { count: s.hand_size })
+                          : t('spec.ft_hand_title', { count: s.hand_size })}
                         style={{
                           display: 'inline-flex', alignItems: 'center',
                           gap: 2,
@@ -1117,8 +1119,8 @@ export default function Spectator() {
                       <span
                         className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
                         title={s.library_size <= 3 ? t('spec.mill_danger') : s.library_size <= 7 ? t('spec.low_library') : t('spec.cards_left', { count: s.library_size })}
-                      >L{s.library_size}</span>{' '}
-                      G{s.gy_size} B{perms.length}
+                      >{t('spec.ft_library', { count: s.library_size })}</span>{' '}
+                      {t('spec.ft_graveyard', { count: s.gy_size })} {t('spec.ft_battlefield', { count: perms.length })}
                       {/* Mana pool: prefer the new per-color pips when
                           ManaPoolByColor is populated; fall back to the
                           legacy single-int "◊N" rendering for snapshots
@@ -1184,7 +1186,12 @@ export default function Spectator() {
             {game.finished ? (
               <>
                 <span className="turn-bar-left">
-                  GAME OVER — {game.end_reason?.replace(/_/g, ' ')?.toUpperCase()} — WINNER: {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : 'DRAW'}
+                  {t('spec.game_over_line', {
+                    reason: game.end_reason?.replace(/_/g, ' ')?.toUpperCase() ?? '',
+                    who: game.winner >= 0
+                      ? seats[game.winner]?.commander?.toUpperCase()
+                      : t('spec.sr_draw'),
+                  })}
                 </span>
                 <span className="turn-bar-right" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span>{rt(game.turn)}</span>

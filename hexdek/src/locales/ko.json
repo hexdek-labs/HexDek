@@ -1176,7 +1176,14 @@
     "gb_log_title": "게임 로그 / / T1—T{turn}",
     "gb_threat": "위협 평가",
     "gb_no_seats": "자리 없음",
-    "gb_scale_mid": "중간"
+    "gb_scale_mid": "중간",
+    "ft_hand": "손{count}",
+    "ft_library": "라{count}",
+    "ft_graveyard": "무{count}",
+    "ft_battlefield": "전{count}",
+    "ft_hand_title_one": "손에 카드 {count}장",
+    "ft_hand_title": "손에 카드 {count}장",
+    "game_over_line": "게임 종료 — {reason} — 승자: {who}"
   },
   "tlm": {
     "status": "상태",
