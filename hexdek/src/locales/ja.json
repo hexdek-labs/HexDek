@@ -1712,5 +1712,32 @@
     "wl_determined": "確定",
     "wl_combat": "戦闘",
     "wl_alt": "特殊勝利"
+  },
+  "crs": {
+    "trait_aggression": "攻撃性",
+    "trait_combo_pat": "コンボ忍耐",
+    "trait_threat": "脅威",
+    "trait_greed": "貪欲",
+    "trait_politics": "政治",
+    "trait_drain": "ドレイン",
+    "trait_artifact": "アーティファクト",
+    "title": "CURSE / / 遺伝的個体群",
+    "tag_dna": "{count} DNA · 世代 {gen}",
+    "kv_generations": "世代数",
+    "kv_population": "個体数",
+    "kv_games_logged": "記録ゲーム数",
+    "kv_best_fitness": "最良適応度",
+    "kv_avg_fitness": "平均適応度",
+    "kv_top_games": "最良個体のゲーム数",
+    "hd_personality": "最良個体の性格 · {count} パラメータ",
+    "hd_overrides": "特性の上書き · オーナーロック",
+    "hd_fitness": "適応度 / 世代 · 直近 {count}",
+    "hd_dims": "評価次元の補正 · {count}",
+    "locks_note": "ロックされた特性は目標値の ±0.10 以内に固定されます。進化はすべての突然変異でロックを尊重します。",
+    "sparkline_note": "破線 = パー ({par}) · 緑の点はパー超え",
+    "tip_unlock": "ロック解除 — この特性を進化に探索させる",
+    "tip_lock": "ロック — この特性を目標値の近くに固定する",
+    "heat_cold": "コールド — 観測 {n}/{threshold} ゲーム。補正は {threshold} ゲームで有効化されます。",
+    "heat_note": "基準重みからの偏差率（最大 ±{pct}%）。緑 = 勝利を予測、赤 = 敗北を予測。"
   }
 }

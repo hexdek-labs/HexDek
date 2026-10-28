@@ -1712,5 +1712,32 @@
     "wl_determined": "BELİRLENMİŞ",
     "wl_combat": "SAVAŞ",
     "wl_alt": "ALT. KAZANÇ"
+  },
+  "crs": {
+    "trait_aggression": "SALDIRGANLIK",
+    "trait_combo_pat": "COMBO SABRI",
+    "trait_threat": "TEHDİT",
+    "trait_greed": "AÇGÖZLÜLÜK",
+    "trait_politics": "SİYASET",
+    "trait_drain": "EMME",
+    "trait_artifact": "ESER",
+    "title": "CURSE / / GENETİK POPÜLASYON",
+    "tag_dna": "{count} DNA · NESİL {gen}",
+    "kv_generations": "NESİLLER",
+    "kv_population": "POPÜLASYON",
+    "kv_games_logged": "KAYDEDİLEN OYUNLAR",
+    "kv_best_fitness": "EN İYİ UYGUNLUK",
+    "kv_avg_fitness": "ORTALAMA UYGUNLUK",
+    "kv_top_games": "EN İYİNİN OYUNLARI",
+    "hd_personality": "EN İYİ ÜYENİN KİŞİLİĞİ · {count} PARAMETRE",
+    "hd_overrides": "ÖZELLİK GEÇERSİZ KILMALARI · SAHİP KİLİTLERİ",
+    "hd_fitness": "UYGUNLUK / NESİL · SON {count}",
+    "hd_dims": "EVAL BOYUT DÜZELTMELERİ · {count}",
+    "locks_note": "KİLİTLİ ÖZELLİKLER HEDEFİN ±0.10 ARALIĞINDA TUTULUR. EVRİM HER MUTASYONDA KİLİTLERE UYAR.",
+    "sparkline_note": "KESİKLİ = PAR ({par}) · YEŞİL NOKTALAR PAR ÜSTÜ",
+    "tip_unlock": "Kilidi aç — evrimin bu özelliği keşfetmesine izin ver",
+    "tip_lock": "Kilitle — bu özelliği bir hedef değer çevresinde sabitle",
+    "heat_cold": "SOĞUK — {n}/{threshold} OYUN GÖZLENDİ. DÜZELTMELER {threshold} OYUNDA ETKİNLEŞİR.",
+    "heat_note": "TEMEL AĞIRLIKTAN YÜZDE SAPMA (MAKS ±{pct}%). YEŞİL = KAZANMA BELİRTİSİ, KIRMIZI = KAYBETME BELİRTİSİ."
   }
 }

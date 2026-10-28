@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINADO",
     "wl_combat": "COMBATE",
     "wl_alt": "VITÓRIA ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGRESSIVIDADE",
+    "trait_combo_pat": "PAC. COMBO",
+    "trait_threat": "AMEAÇA",
+    "trait_greed": "COBIÇA",
+    "trait_politics": "POLÍTICA",
+    "trait_drain": "DRENAGEM",
+    "trait_artifact": "ARTEFATO",
+    "title": "CURSE / / POPULAÇÃO GENÉTICA",
+    "tag_dna": "{count} DNA · GER {gen}",
+    "kv_generations": "GERAÇÕES",
+    "kv_population": "POPULAÇÃO",
+    "kv_games_logged": "PARTIDAS REGISTRADAS",
+    "kv_best_fitness": "MELHOR APTIDÃO",
+    "kv_avg_fitness": "APTIDÃO MÉDIA",
+    "kv_top_games": "PARTIDAS DO MELHOR",
+    "hd_personality": "PERSONALIDADE DO MELHOR MEMBRO · {count} PARÂMETROS",
+    "hd_overrides": "SUBSTITUIÇÕES DE TRAÇOS · TRAVAS DO PROPRIETÁRIO",
+    "hd_fitness": "APTIDÃO / GER · ÚLTIMAS {count}",
+    "hd_dims": "CORREÇÕES DAS DIMENSÕES DE EVAL · {count}",
+    "locks_note": "OS TRAÇOS TRAVADOS SÃO MANTIDOS DENTRO DE ±0.10 DO ALVO. A EVOLUÇÃO RESPEITA AS TRAVAS EM CADA MUTAÇÃO.",
+    "sparkline_note": "TRACEJADO = PAR ({par}) · PONTOS VERDES ACIMA DO PAR",
+    "tip_unlock": "Destravar — deixe a evolução explorar este traço",
+    "tip_lock": "Travar — fixe este traço em torno de um valor alvo",
+    "heat_cold": "FRIO — {n}/{threshold} PARTIDAS OBSERVADAS. AS CORREÇÕES ATIVAM EM {threshold}.",
+    "heat_note": "DESVIO PERCENTUAL DO PESO BASE (MÁX ±{pct}%). VERDE = PREVÊ VITÓRIA, VERMELHO = PREVÊ DERROTA."
   }
 }

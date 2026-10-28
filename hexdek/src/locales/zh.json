@@ -1712,5 +1712,32 @@
     "wl_determined": "确定",
     "wl_combat": "战斗",
     "wl_alt": "替代胜利"
+  },
+  "crs": {
+    "trait_aggression": "侵略性",
+    "trait_combo_pat": "连携耐心",
+    "trait_threat": "威胁",
+    "trait_greed": "贪婪",
+    "trait_politics": "政治",
+    "trait_drain": "汲取",
+    "trait_artifact": "神器",
+    "title": "CURSE / / 遗传种群",
+    "tag_dna": "{count} DNA · 第 {gen} 代",
+    "kv_generations": "代数",
+    "kv_population": "种群规模",
+    "kv_games_logged": "已记录对局",
+    "kv_best_fitness": "最佳适应度",
+    "kv_avg_fitness": "平均适应度",
+    "kv_top_games": "最优个体对局",
+    "hd_personality": "最优个体性格 · {count} 项参数",
+    "hd_overrides": "特性覆盖 · 拥有者锁定",
+    "hd_fitness": "适应度 / 代 · 最近 {count} 代",
+    "hd_dims": "评估维度校正 · {count}",
+    "locks_note": "锁定的特性会固定在目标值的 ±0.10 范围内。演化在每次突变时都会遵守锁定。",
+    "sparkline_note": "虚线 = 基准 ({par}) · 绿点高于基准",
+    "tip_unlock": "解锁 — 让演化自由探索该特性",
+    "tip_lock": "锁定 — 将该特性固定在目标值附近",
+    "heat_cold": "冷启动 — 已观测 {n}/{threshold} 局。校正在 {threshold} 局时启用。",
+    "heat_note": "相对基准权重的偏差百分比（最大 ±{pct}%）。绿色 = 预示胜利，红色 = 预示失败。"
   }
 }

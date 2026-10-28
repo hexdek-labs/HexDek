@@ -1712,5 +1712,32 @@
     "wl_determined": "AFGJORT",
     "wl_combat": "KAMP",
     "wl_alt": "ALT. SEJR"
+  },
+  "crs": {
+    "trait_aggression": "AGGRESSION",
+    "trait_combo_pat": "COMBO-TÅLM.",
+    "trait_threat": "TRUSSEL",
+    "trait_greed": "GRÅDIGHED",
+    "trait_politics": "POLITIK",
+    "trait_drain": "DRÆN",
+    "trait_artifact": "ARTEFAKT",
+    "title": "CURSE / / GENETISK POPULATION",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERATIONER",
+    "kv_population": "POPULATION",
+    "kv_games_logged": "LOGGEDE PARTIER",
+    "kv_best_fitness": "BEDSTE FITNESS",
+    "kv_avg_fitness": "GNS. FITNESS",
+    "kv_top_games": "TOPMEDLEMS PARTIER",
+    "hd_personality": "TOPMEDLEMMETS PERSONLIGHED · {count} PARAMETRE",
+    "hd_overrides": "TRÆK-TILSIDESÆTTELSER · EJERLÅSE",
+    "hd_fitness": "FITNESS / GEN · SENESTE {count}",
+    "hd_dims": "KORREKTIONER AF EVAL-DIMENSIONER · {count}",
+    "locks_note": "LÅSTE TRÆK HOLDES INDEN FOR ±0.10 AF MÅLET. EVOLUTION RESPEKTERER LÅSE VED HVER MUTATION.",
+    "sparkline_note": "STIPLET = PAR ({par}) · GRØNNE PUNKTER OVER PAR",
+    "tip_unlock": "Lås op — lad evolutionen udforske dette træk",
+    "tip_lock": "Lås — fasthold dette træk omkring en målværdi",
+    "heat_cold": "KOLD — {n}/{threshold} PARTIER OBSERVERET. KORREKTIONER AKTIVERES VED {threshold}.",
+    "heat_note": "PROCENTVIS AFVIGELSE FRA BASISVÆGT (MAKS ±{pct}%). GRØN = SEJRSFORUDSIGENDE, RØD = NEDERLAGSFORUDSIGENDE."
   }
 }

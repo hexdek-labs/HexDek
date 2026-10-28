@@ -1712,5 +1712,32 @@
     "wl_determined": "ELDÖNTÖTT",
     "wl_combat": "HARC",
     "wl_alt": "ALT. GYŐZELEM"
+  },
+  "crs": {
+    "trait_aggression": "AGRESSZIÓ",
+    "trait_combo_pat": "COMBO-TŰRÉS",
+    "trait_threat": "FENYEGETÉS",
+    "trait_greed": "KAPZSISÁG",
+    "trait_politics": "POLITIKA",
+    "trait_drain": "ELSZÍVÁS",
+    "trait_artifact": "MŰTÁRGY",
+    "title": "CURSE / / GENETIKUS POPULÁCIÓ",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERÁCIÓK",
+    "kv_population": "POPULÁCIÓ",
+    "kv_games_logged": "RÖGZÍTETT JÁTSZMÁK",
+    "kv_best_fitness": "LEGJOBB FITNESZ",
+    "kv_avg_fitness": "ÁTLAGOS FITNESZ",
+    "kv_top_games": "A LEGJOBB JÁTSZMÁI",
+    "hd_personality": "A LEGJOBB TAG SZEMÉLYISÉGE · {count} PARAMÉTER",
+    "hd_overrides": "VONÁS-FELÜLÍRÁSOK · TULAJDONOSI ZÁRAK",
+    "hd_fitness": "FITNESZ / GEN · UTOLSÓ {count}",
+    "hd_dims": "ÉRTÉKELÉSI DIMENZIÓK KORREKCIÓI · {count}",
+    "locks_note": "A ZÁROLT VONÁSOK A CÉLÉRTÉK ±0.10 KÖRNYEZETÉBEN MARADNAK. AZ EVOLÚCIÓ MINDEN MUTÁCIÓNÁL TISZTELETBEN TARTJA A ZÁRAKAT.",
+    "sparkline_note": "SZAGGATOTT = PAR ({par}) · ZÖLD PONTOK A PAR FELETT",
+    "tip_unlock": "Feloldás — hagyd, hogy az evolúció felfedezze ezt a vonást",
+    "tip_lock": "Zárolás — tartsd ezt a vonást egy célérték körül",
+    "heat_cold": "HIDEG — {n}/{threshold} MEGFIGYELT JÁTSZMA. A KORREKCIÓK {threshold} JÁTSZMÁNÁL AKTIVÁLÓDNAK.",
+    "heat_note": "SZÁZALÉKOS ELTÉRÉS AZ ALAPSÚLYTÓL (MAX ±{pct}%). ZÖLD = GYŐZELMET JELEZ, VÖRÖS = VERESÉGET JELEZ."
   }
 }

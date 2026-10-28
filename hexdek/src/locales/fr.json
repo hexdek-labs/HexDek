@@ -1712,5 +1712,32 @@
     "wl_determined": "DÉTERMINÉ",
     "wl_combat": "COMBAT",
     "wl_alt": "VICTOIRE ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGRESSIVITÉ",
+    "trait_combo_pat": "PAT. COMBO",
+    "trait_threat": "MENACE",
+    "trait_greed": "AVIDITÉ",
+    "trait_politics": "POLITIQUE",
+    "trait_drain": "DRAIN",
+    "trait_artifact": "ARTEFACT",
+    "title": "CURSE / / POPULATION GÉNÉTIQUE",
+    "tag_dna": "{count} DNA · GÉN {gen}",
+    "kv_generations": "GÉNÉRATIONS",
+    "kv_population": "POPULATION",
+    "kv_games_logged": "PARTIES ENREGISTRÉES",
+    "kv_best_fitness": "MEILLEURE APTITUDE",
+    "kv_avg_fitness": "APTITUDE MOYENNE",
+    "kv_top_games": "PARTIES DU MEILLEUR",
+    "hd_personality": "PERSONNALITÉ DU MEILLEUR MEMBRE · {count} PARAMÈTRES",
+    "hd_overrides": "SURCHARGES DE TRAITS · VERROUS DU PROPRIÉTAIRE",
+    "hd_fitness": "APTITUDE / GÉN · {count} DERNIÈRES",
+    "hd_dims": "CORRECTIONS DES DIMENSIONS D’ÉVAL · {count}",
+    "locks_note": "LES TRAITS VERROUILLÉS SONT MAINTENUS À ±0.10 DE LA CIBLE. L’ÉVOLUTION RESPECTE LES VERROUS À CHAQUE MUTATION.",
+    "sparkline_note": "POINTILLÉ = PAR ({par}) · POINTS VERTS AU-DESSUS DU PAR",
+    "tip_unlock": "Déverrouiller — laisser l’évolution explorer ce trait",
+    "tip_lock": "Verrouiller — maintenir ce trait autour d’une valeur cible",
+    "heat_cold": "FROID — {n}/{threshold} PARTIES OBSERVÉES. LES CORRECTIONS S’ACTIVENT À {threshold}.",
+    "heat_note": "ÉCART EN POURCENTAGE PAR RAPPORT AU POIDS DE BASE (±{pct}% MAX). VERT = PRÉDIT LA VICTOIRE, ROUGE = PRÉDIT LA DÉFAITE."
   }
 }

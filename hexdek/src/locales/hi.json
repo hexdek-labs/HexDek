@@ -1712,5 +1712,32 @@
     "wl_determined": "निर्धारित",
     "wl_combat": "युद्ध",
     "wl_alt": "वैकल्पिक जीत"
+  },
+  "crs": {
+    "trait_aggression": "आक्रामकता",
+    "trait_combo_pat": "कॉम्बो धैर्य",
+    "trait_threat": "ख़तरा",
+    "trait_greed": "लालच",
+    "trait_politics": "राजनीति",
+    "trait_drain": "ड्रेन",
+    "trait_artifact": "आर्टिफ़ैक्ट",
+    "title": "CURSE / / आनुवंशिक जनसंख्या",
+    "tag_dna": "{count} DNA · पीढ़ी {gen}",
+    "kv_generations": "पीढ़ियाँ",
+    "kv_population": "जनसंख्या",
+    "kv_games_logged": "दर्ज गेम",
+    "kv_best_fitness": "सर्वोत्तम फ़िटनेस",
+    "kv_avg_fitness": "औसत फ़िटनेस",
+    "kv_top_games": "शीर्ष के गेम",
+    "hd_personality": "शीर्ष सदस्य का व्यक्तित्व · {count} पैरामीटर",
+    "hd_overrides": "विशेषता अधिरोहण · स्वामी लॉक",
+    "hd_fitness": "फ़िटनेस / पीढ़ी · अंतिम {count}",
+    "hd_dims": "मूल्यांकन आयाम सुधार · {count}",
+    "locks_note": "लॉक की गई विशेषताएँ लक्ष्य के ±0.10 भीतर स्थिर रहती हैं। विकास हर उत्परिवर्तन में लॉक का सम्मान करता है।",
+    "sparkline_note": "डैश = पार ({par}) · हरे बिंदु पार से ऊपर",
+    "tip_unlock": "अनलॉक करें — विकास को यह विशेषता खोजने दें",
+    "tip_lock": "लॉक करें — इस विशेषता को लक्ष्य मान के आसपास बाँधें",
+    "heat_cold": "ठंडा — {n}/{threshold} गेम देखे गए। सुधार {threshold} पर सक्रिय होते हैं।",
+    "heat_note": "आधार भार से प्रतिशत विचलन (±{pct}% अधिकतम)। हरा = जीत-सूचक, लाल = हार-सूचक।"
   }
 }

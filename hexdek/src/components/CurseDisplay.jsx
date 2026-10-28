@@ -2,22 +2,37 @@ import { useState, useEffect } from 'react'
 import { Panel, KV, Tag } from './chrome'
 import GlossaryTerm from './GlossaryTerm'
 import { api } from '../services/api'
+import { useT } from '../i18n'
+
+// Three literals in this file used to MIRROR these values inline, which is a
+// lie waiting to happen once the maths moves -- and baking them into 25
+// catalogs would make it 25 lies. Named here, interpolated at the render site.
+const PAR = 1.0            // fitness par; the sparkline's dashed baseline
+const COLD_GAMES = 20      // observations required before corrections apply
+const DEV_SATURATE = 0.2   // deviation at which a heatmap cell saturates
 
 // 7 personality params, in radar-axis order. Order is the visual angle
 // around the chart, starting at 12 o'clock. Keys match the JSON shape
 // returned by /api/decks/:owner/:id/curse and the canonical key list in
 // hat.CurseTraitKeys (Go side).
+// `term` is a glossary id and stays. `labelKey` is a catalog PATH: a word
+// stored here would freeze in whatever locale was active when the module
+// first evaluated. The seven labels are a COORDINATED SET -- they render as
+// the axes of a radar chart and as a 90px grid column, and one is abbreviated
+// even in English -- so they are minted together rather than borrowed
+// piecemeal from other namespaces that are not under that width constraint.
 const TRAITS = [
-  { key: 'aggression',         label: 'AGGRESSION', term: 'curse_aggression' },
-  { key: 'combo_patience',     label: 'COMBO PAT.', term: 'curse_combo_patience' },
-  { key: 'threat_paranoia',    label: 'THREAT',     term: 'curse_threat_paranoia' },
-  { key: 'resource_greed',     label: 'GREED',      term: 'curse_greed' },
-  { key: 'political_memory',   label: 'POLITICS',   term: 'curse_politics' },
-  { key: 'drain_affinity',     label: 'DRAIN',      term: 'curse_drain' },
-  { key: 'artifact_affinity',  label: 'ARTIFACT',   term: 'curse_artifact' },
+  { key: 'aggression',         labelKey: 'crs.trait_aggression', term: 'curse_aggression' },
+  { key: 'combo_patience',     labelKey: 'crs.trait_combo_pat',  term: 'curse_combo_patience' },
+  { key: 'threat_paranoia',    labelKey: 'crs.trait_threat',     term: 'curse_threat_paranoia' },
+  { key: 'resource_greed',     labelKey: 'crs.trait_greed',      term: 'curse_greed' },
+  { key: 'political_memory',   labelKey: 'crs.trait_politics',   term: 'curse_politics' },
+  { key: 'drain_affinity',     labelKey: 'crs.trait_drain',      term: 'curse_drain' },
+  { key: 'artifact_affinity',  labelKey: 'crs.trait_artifact',   term: 'curse_artifact' },
 ]
 
 function RadarChart({ values, locked, size = 220 }) {
+  const t = useT()
   const cx = size / 2
   const cy = size / 2
   const r = size * 0.36
@@ -76,13 +91,13 @@ function RadarChart({ values, locked, size = 220 }) {
           />
         )
       })}
-      {TRAITS.map((t, i) => {
+      {TRAITS.map((tr, i) => {
         const [lx, ly] = axisPoint(i, 1.18)
         const anchor = Math.abs(lx - cx) < 4 ? 'middle' : lx < cx ? 'end' : 'start'
-        const isLocked = !!(locked && locked[t.key])
+        const isLocked = !!(locked && locked[tr.key])
         return (
           <text
-            key={t.key}
+            key={tr.key}
             x={lx}
             y={ly}
             textAnchor={anchor}
@@ -91,7 +106,7 @@ function RadarChart({ values, locked, size = 220 }) {
             fill={isLocked ? 'var(--warn)' : 'var(--ink-2)'}
             style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: isLocked ? 700 : 400 }}
           >
-            {isLocked ? '\u{1F512} ' : ''}{t.label}
+            {isLocked ? '\u{1F512} ' : ''}{t(tr.labelKey)}
           </text>
         )
       })}
@@ -105,6 +120,7 @@ function RadarChart({ values, locked, size = 220 }) {
 // Changes flow through onChange(nextConstraints) so the parent can PATCH
 // once and propagate the new map back through the tree.
 function TraitLockGrid({ values, constraints, onChange, busy }) {
+  const t = useT()
   const setConstraint = (key, val) => {
     const next = { ...(constraints || {}) }
     next[key] = Math.max(0, Math.min(1, val))
@@ -117,12 +133,12 @@ function TraitLockGrid({ values, constraints, onChange, busy }) {
   }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 4 }}>
-      {TRAITS.map((t, i) => {
-        const cur = constraints && Object.prototype.hasOwnProperty.call(constraints, t.key)
-        const target = cur ? constraints[t.key] : (values[i] ?? 0)
+      {TRAITS.map((tr, i) => {
+        const cur = constraints && Object.prototype.hasOwnProperty.call(constraints, tr.key)
+        const target = cur ? constraints[tr.key] : (values[i] ?? 0)
         return (
           <div
-            key={t.key}
+            key={tr.key}
             style={{
               display: 'grid',
               gridTemplateColumns: '90px 28px 1fr 42px',
@@ -134,13 +150,13 @@ function TraitLockGrid({ values, constraints, onChange, busy }) {
             }}
           >
             <div className="t-xs" style={{ fontWeight: 700, letterSpacing: '0.04em', color: cur ? 'var(--warn)' : 'var(--ink-2)' }}>
-              <GlossaryTerm term={t.term} compact>{t.label}</GlossaryTerm>
+              <GlossaryTerm term={tr.term} compact>{t(tr.labelKey)}</GlossaryTerm>
             </div>
             <button
               type="button"
               disabled={busy}
-              onClick={() => cur ? unlock(t.key) : setConstraint(t.key, values[i] ?? 0.5)}
-              title={cur ? 'Unlock — let evolution explore this trait' : 'Lock — pin this trait around a target value'}
+              onClick={() => cur ? unlock(tr.key) : setConstraint(tr.key, values[i] ?? 0.5)}
+              title={t(cur ? 'crs.tip_unlock' : 'crs.tip_lock')}
               style={{
                 background: 'transparent',
                 border: '1px solid var(--rule-2)',
@@ -161,7 +177,7 @@ function TraitLockGrid({ values, constraints, onChange, busy }) {
                 step="0.01"
                 value={target}
                 disabled={busy}
-                onChange={e => setConstraint(t.key, parseFloat(e.target.value))}
+                onChange={e => setConstraint(tr.key, parseFloat(e.target.value))}
                 style={{ width: '100%' }}
               />
             ) : (
@@ -184,7 +200,7 @@ function TraitLockGrid({ values, constraints, onChange, busy }) {
 function FitnessSparkline({ values, width = 320, height = 56 }) {
   if (!values || values.length === 0) return null
   const n = values.length
-  const max = Math.max(1.0, ...values)
+  const max = Math.max(PAR, ...values)
   const min = Math.min(0, ...values)
   const range = max - min || 1
   const xStep = n > 1 ? (width - 8) / (n - 1) : 0
@@ -193,7 +209,7 @@ function FitnessSparkline({ values, width = 320, height = 56 }) {
   const path = values
     .map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`)
     .join(' ')
-  const baselineY = y(1.0)
+  const baselineY = y(PAR)
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
@@ -203,7 +219,7 @@ function FitnessSparkline({ values, width = 320, height = 56 }) {
       <line x1="0" y1={baselineY} x2={width} y2={baselineY} stroke="var(--rule-2)" strokeDasharray="3 3" strokeWidth="1" />
       <path d={path} fill="none" stroke="var(--ok)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
       {values.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r="2" fill={v >= 1.0 ? 'var(--ok)' : 'var(--ink-2)'} vectorEffect="non-scaling-stroke" />
+        <circle key={i} cx={x(i)} cy={y(v)} r="2" fill={v >= PAR ? 'var(--ok)' : 'var(--ink-2)'} vectorEffect="non-scaling-stroke" />
       ))}
     </svg>
   )
@@ -214,8 +230,9 @@ function FitnessSparkline({ values, width = 320, height = 56 }) {
 // → red; ≈1 → neutral. Cold (no observations yet) renders muted with
 // "—" labels so the panel reads honestly until data accumulates.
 function DimHeatmap({ corrections, labels, n }) {
+  const t = useT()
   if (!corrections || corrections.length === 0) return null
-  const cold = !n || n < 20
+  const cold = !n || n < COLD_GAMES
   const cells = corrections.map((v, i) => ({
     label: labels?.[i] || `D${i}`,
     value: v,
@@ -232,7 +249,7 @@ function DimHeatmap({ corrections, labels, n }) {
         }}
       >
         {cells.map((c, i) => {
-          const intensity = Math.min(1, Math.abs(c.delta) / 0.2) // ±20% saturates
+          const intensity = Math.min(1, Math.abs(c.delta) / DEV_SATURATE)
           const colorVar = c.delta > 0 ? 'var(--ok)' : 'var(--danger)'
           const bg = cold
             ? 'transparent'
@@ -286,14 +303,15 @@ function DimHeatmap({ corrections, labels, n }) {
       </div>
       <div className="t-xs muted-2" style={{ marginTop: 4, lineHeight: 1.4 }}>
         {cold
-          ? `COLD — ${n || 0}/20 GAMES OBSERVED. CORRECTIONS ACTIVATE AT 20.`
-          : 'PERCENT DEVIATION FROM BASELINE WEIGHT (±20% MAX). GREEN = WIN-PREDICTIVE, RED = LOSS-PREDICTIVE.'}
+          ? t('crs.heat_cold', { n: n || 0, threshold: COLD_GAMES })
+          : t('crs.heat_note', { pct: Math.round(DEV_SATURATE * 100) })}
       </div>
     </div>
   )
 }
 
 export default function CurseDisplay({ curse, isOwner = false, deckId = null, onConstraintsChange }) {
+  const t = useT()
   // Hooks must run unconditionally; bail out via render branch below.
   const remoteConstraints = curse?.constraints || null
   const [constraints, setConstraints] = useState(remoteConstraints)
@@ -346,33 +364,33 @@ export default function CurseDisplay({ curse, isOwner = false, deckId = null, on
     return gens.map(g => bestByGen.get(g))
   })()
 
-  const topValues = TRAITS.map(t => top[t.key] ?? 0)
+  const topValues = TRAITS.map(tr => top[tr.key] ?? 0)
 
   return (
     <Panel
       code="04.AM"
-      title="CURSE / / GENETIC POPULATION"
-      right={<Tag solid>{pop.length} DNA · GEN {maxGen}</Tag>}
+      title={t('crs.title')}
+      right={<Tag solid>{t('crs.tag_dna', { count: pop.length, gen: maxGen })}</Tag>}
     >
       <KV rows={[
-        ['GENERATIONS', `${maxGen}`],
-        ['POPULATION', `${pop.length}`],
-        ['GAMES LOGGED', `${(curse.total_games ?? curse.game_count ?? 0).toLocaleString()}`],
-        ['BEST FITNESS', <span style={{ color: bestFitness >= 1.0 ? 'var(--ok)' : 'var(--warn)', fontWeight: 700 }}>{bestFitness.toFixed(2)}</span>],
-        ['AVG FITNESS', `${avgFitness.toFixed(2)}`],
-        ['TOP GAMES', `${top.games_played ?? 0}`],
+        [t('crs.kv_generations'), `${maxGen}`],
+        [t('crs.kv_population'), `${pop.length}`],
+        [t('crs.kv_games_logged'), `${(curse.total_games ?? curse.game_count ?? 0).toLocaleString()}`],
+        [t('crs.kv_best_fitness'), <span style={{ color: bestFitness >= PAR ? 'var(--ok)' : 'var(--warn)', fontWeight: 700 }}>{bestFitness.toFixed(2)}</span>],
+        [t('crs.kv_avg_fitness'), `${avgFitness.toFixed(2)}`],
+        [t('crs.kv_top_games'), `${top.games_played ?? 0}`],
       ]} />
 
       <div className="hr" style={{ margin: '12px 0' }} />
-      <div className="t-xs muted" style={{ marginBottom: 4 }}>TOP MEMBER PERSONALITY · 7 PARAMS</div>
+      <div className="t-xs muted" style={{ marginBottom: 4 }}>{t('crs.hd_personality', { count: TRAITS.length })}</div>
       <RadarChart values={topValues} locked={constraints} />
 
       {isOwner && (
         <>
           <div className="hr" style={{ margin: '12px 0' }} />
           <div className="t-xs muted" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-            <span>TRAIT OVERRIDES · OWNER LOCKS</span>
-            {busy && <span className="t-xs muted-2">SAVING…</span>}
+            <span>{t('crs.hd_overrides')}</span>
+            {busy && <span className="t-xs muted-2">{t('dka.saving_ell')}</span>}
           </div>
           <TraitLockGrid
             values={topValues}
@@ -380,22 +398,22 @@ export default function CurseDisplay({ curse, isOwner = false, deckId = null, on
             onChange={submitConstraints}
             busy={busy}
           />
-          {error && <div className="t-xs" style={{ color: 'var(--danger)', marginTop: 4 }}>ERROR: {error}</div>}
+          {error && <div className="t-xs" style={{ color: 'var(--danger)', marginTop: 4 }}>{t('frg.err_prefix', { error })}</div>}
           <div className="t-xs muted-2" style={{ marginTop: 4, lineHeight: 1.4 }}>
-            LOCKED TRAITS ARE PINNED WITHIN ±0.10 OF TARGET. EVOLUTION RESPECTS LOCKS ON EVERY MUTATION.
+            {t('crs.locks_note')}
           </div>
         </>
       )}
 
       <div className="hr" style={{ margin: '12px 0' }} />
-      <div className="t-xs muted" style={{ marginBottom: 4 }}>FITNESS / GEN · LAST {fitnessByGen.length}</div>
+      <div className="t-xs muted" style={{ marginBottom: 4 }}>{t('crs.hd_fitness', { count: fitnessByGen.length })}</div>
       <FitnessSparkline values={fitnessByGen} />
       <div className="t-xs muted-2" style={{ marginTop: 2 }}>
-        DASHED = PAR (1.00) · GREEN DOTS ABOVE PAR
+        {t('crs.sparkline_note', { par: PAR.toFixed(2) })}
       </div>
 
       <div className="hr" style={{ margin: '12px 0' }} />
-      <div className="t-xs muted" style={{ marginBottom: 6 }}>EVAL DIMENSION CORRECTIONS · 20</div>
+      <div className="t-xs muted" style={{ marginBottom: 6 }}>{t('crs.hd_dims', { count: (curse.dim_corrections || []).length })}</div>
       <DimHeatmap
         corrections={curse.dim_corrections}
         labels={curse.dim_labels}

@@ -1712,5 +1712,32 @@
     "wl_determined": "ĐÃ ĐỊNH",
     "wl_combat": "CHIẾN ĐẤU",
     "wl_alt": "THẮNG KIỂU KHÁC"
+  },
+  "crs": {
+    "trait_aggression": "HIẾU CHIẾN",
+    "trait_combo_pat": "KIÊN NHẪN COMBO",
+    "trait_threat": "ĐE DỌA",
+    "trait_greed": "THAM LAM",
+    "trait_politics": "CHÍNH TRỊ",
+    "trait_drain": "HÚT",
+    "trait_artifact": "VẬT PHẨM",
+    "title": "CURSE / / QUẦN THỂ DI TRUYỀN",
+    "tag_dna": "{count} DNA · THẾ HỆ {gen}",
+    "kv_generations": "SỐ THẾ HỆ",
+    "kv_population": "QUẦN THỂ",
+    "kv_games_logged": "TRẬN ĐÃ GHI",
+    "kv_best_fitness": "ĐỘ THÍCH NGHI TỐT NHẤT",
+    "kv_avg_fitness": "ĐỘ THÍCH NGHI TRUNG BÌNH",
+    "kv_top_games": "TRẬN CỦA CÁ THỂ TỐT NHẤT",
+    "hd_personality": "TÍNH CÁCH CÁ THỂ TỐT NHẤT · {count} THAM SỐ",
+    "hd_overrides": "GHI ĐÈ ĐẶC TÍNH · KHÓA CỦA CHỦ SỞ HỮU",
+    "hd_fitness": "ĐỘ THÍCH NGHI / THẾ HỆ · {count} GẦN NHẤT",
+    "hd_dims": "HIỆU CHỈNH CHIỀU ĐÁNH GIÁ · {count}",
+    "locks_note": "CÁC ĐẶC TÍNH BỊ KHÓA ĐƯỢC GIỮ TRONG ±0.10 QUANH MỤC TIÊU. TIẾN HÓA TÔN TRỌNG KHÓA Ở MỌI ĐỘT BIẾN.",
+    "sparkline_note": "ĐƯỜNG GẠCH = PAR ({par}) · ĐIỂM XANH TRÊN PAR",
+    "tip_unlock": "Mở khóa — để tiến hóa khám phá đặc tính này",
+    "tip_lock": "Khóa — ghim đặc tính này quanh một giá trị mục tiêu",
+    "heat_cold": "LẠNH — đã quan sát {n}/{threshold} trận. Hiệu chỉnh kích hoạt ở {threshold}.",
+    "heat_note": "ĐỘ LỆCH PHẦN TRĂM SO VỚI TRỌNG SỐ GỐC (TỐI ĐA ±{pct}%). XANH = DỰ BÁO THẮNG, ĐỎ = DỰ BÁO THUA."
   }
 }

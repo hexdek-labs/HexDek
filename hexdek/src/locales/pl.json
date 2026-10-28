@@ -1712,5 +1712,32 @@
     "wl_determined": "ZDETERMINOWANE",
     "wl_combat": "WALKA",
     "wl_alt": "ALT. ZWYCIĘSTWO"
+  },
+  "crs": {
+    "trait_aggression": "AGRESJA",
+    "trait_combo_pat": "CIERP. COMBO",
+    "trait_threat": "ZAGROŻENIE",
+    "trait_greed": "ZACHŁANNOŚĆ",
+    "trait_politics": "POLITYKA",
+    "trait_drain": "DRENAŻ",
+    "trait_artifact": "ARTEFAKT",
+    "title": "CURSE / / POPULACJA GENETYCZNA",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERACJE",
+    "kv_population": "POPULACJA",
+    "kv_games_logged": "ZAPISANE GRY",
+    "kv_best_fitness": "NAJLEPSZY FITNESS",
+    "kv_avg_fitness": "ŚREDNI FITNESS",
+    "kv_top_games": "GRY NAJLEPSZEGO",
+    "hd_personality": "OSOBOWOŚĆ NAJLEPSZEGO · {count} PARAMETRÓW",
+    "hd_overrides": "NADPISANIA CECH · BLOKADY WŁAŚCICIELA",
+    "hd_fitness": "FITNESS / GEN · OSTATNIE {count}",
+    "hd_dims": "KOREKTY WYMIARÓW OCENY · {count}",
+    "locks_note": "ZABLOKOWANE CECHY SĄ UTRZYMYWANE W ZAKRESIE ±0.10 OD CELU. EWOLUCJA RESPEKTUJE BLOKADY PRZY KAŻDEJ MUTACJI.",
+    "sparkline_note": "LINIA PRZERYWANA = PAR ({par}) · ZIELONE PUNKTY POWYŻEJ PAR",
+    "tip_unlock": "Odblokuj — pozwól ewolucji zbadać tę cechę",
+    "tip_lock": "Zablokuj — utrzymuj tę cechę blisko wartości docelowej",
+    "heat_cold": "ZIMNE — {n}/{threshold} ZAOBSERWOWANYCH GIER. KOREKTY AKTYWUJĄ SIĘ PRZY {threshold}.",
+    "heat_note": "PROCENTOWE ODCHYLENIE OD WAGI BAZOWEJ (MAKS ±{pct}%). ZIELONY = ZAPOWIADA WYGRANĄ, CZERWONY = ZAPOWIADA PRZEGRANĄ."
   }
 }

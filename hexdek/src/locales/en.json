@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINED",
     "wl_combat": "COMBAT",
     "wl_alt": "ALT WINCON"
+  },
+  "crs": {
+    "trait_aggression": "AGGRESSION",
+    "trait_combo_pat": "COMBO PAT.",
+    "trait_threat": "THREAT",
+    "trait_greed": "GREED",
+    "trait_politics": "POLITICS",
+    "trait_drain": "DRAIN",
+    "trait_artifact": "ARTIFACT",
+    "title": "CURSE / / GENETIC POPULATION",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERATIONS",
+    "kv_population": "POPULATION",
+    "kv_games_logged": "GAMES LOGGED",
+    "kv_best_fitness": "BEST FITNESS",
+    "kv_avg_fitness": "AVG FITNESS",
+    "kv_top_games": "TOP GAMES",
+    "hd_personality": "TOP MEMBER PERSONALITY · {count} PARAMS",
+    "hd_overrides": "TRAIT OVERRIDES · OWNER LOCKS",
+    "hd_fitness": "FITNESS / GEN · LAST {count}",
+    "hd_dims": "EVAL DIMENSION CORRECTIONS · {count}",
+    "locks_note": "LOCKED TRAITS ARE PINNED WITHIN ±0.10 OF TARGET. EVOLUTION RESPECTS LOCKS ON EVERY MUTATION.",
+    "sparkline_note": "DASHED = PAR ({par}) · GREEN DOTS ABOVE PAR",
+    "tip_unlock": "Unlock — let evolution explore this trait",
+    "tip_lock": "Lock — pin this trait around a target value",
+    "heat_cold": "COLD — {n}/{threshold} GAMES OBSERVED. CORRECTIONS ACTIVATE AT {threshold}.",
+    "heat_note": "PERCENT DEVIATION FROM BASELINE WEIGHT (±{pct}% MAX). GREEN = WIN-PREDICTIVE, RED = LOSS-PREDICTIVE."
   }
 }

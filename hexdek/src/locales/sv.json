@@ -1712,5 +1712,32 @@
     "wl_determined": "AVGJORD",
     "wl_combat": "STRID",
     "wl_alt": "ALT. VINST"
+  },
+  "crs": {
+    "trait_aggression": "AGGRESSION",
+    "trait_combo_pat": "COMBO-TÅLAM.",
+    "trait_threat": "HOT",
+    "trait_greed": "GIRIGHET",
+    "trait_politics": "POLITIK",
+    "trait_drain": "DRÄNERING",
+    "trait_artifact": "ARTEFAKT",
+    "title": "CURSE / / GENETISK POPULATION",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERATIONER",
+    "kv_population": "POPULATION",
+    "kv_games_logged": "LOGGADE PARTIER",
+    "kv_best_fitness": "BÄSTA FITNESS",
+    "kv_avg_fitness": "GENOMSNITTLIG FITNESS",
+    "kv_top_games": "BÄSTAS PARTIER",
+    "hd_personality": "BÄSTA MEDLEMMENS PERSONLIGHET · {count} PARAMETRAR",
+    "hd_overrides": "EGENSKAPSÖVERSTYRNINGAR · ÄGARLÅS",
+    "hd_fitness": "FITNESS / GEN · SENASTE {count}",
+    "hd_dims": "KORRIGERINGAR AV EVAL-DIMENSIONER · {count}",
+    "locks_note": "LÅSTA EGENSKAPER HÅLLS INOM ±0.10 FRÅN MÅLET. EVOLUTIONEN RESPEKTERAR LÅS VID VARJE MUTATION.",
+    "sparkline_note": "STRECKAD = PAR ({par}) · GRÖNA PUNKTER ÖVER PAR",
+    "tip_unlock": "Lås upp — låt evolutionen utforska denna egenskap",
+    "tip_lock": "Lås — håll denna egenskap kring ett målvärde",
+    "heat_cold": "KALL — {n}/{threshold} PARTIER OBSERVERADE. KORRIGERINGAR AKTIVERAS VID {threshold}.",
+    "heat_note": "PROCENTUELL AVVIKELSE FRÅN BASVIKTEN (MAX ±{pct}%). GRÖN = VINSTFÖRUTSÄGANDE, RÖD = FÖRLUSTFÖRUTSÄGANDE."
   }
 }

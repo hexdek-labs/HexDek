@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINADO",
     "wl_combat": "COMBATE",
     "wl_alt": "VICTORIA ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGRESIÓN",
+    "trait_combo_pat": "PAC. COMBO",
+    "trait_threat": "AMENAZA",
+    "trait_greed": "CODICIA",
+    "trait_politics": "POLÍTICA",
+    "trait_drain": "DRENAJE",
+    "trait_artifact": "ARTEFACTO",
+    "title": "CURSE / / POBLACIÓN GENÉTICA",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERACIONES",
+    "kv_population": "POBLACIÓN",
+    "kv_games_logged": "PARTIDAS REGISTRADAS",
+    "kv_best_fitness": "MEJOR APTITUD",
+    "kv_avg_fitness": "APTITUD MEDIA",
+    "kv_top_games": "PARTIDAS DEL MEJOR",
+    "hd_personality": "PERSONALIDAD DEL MEJOR MIEMBRO · {count} PARÁMETROS",
+    "hd_overrides": "ANULACIONES DE RASGOS · BLOQUEOS DEL PROPIETARIO",
+    "hd_fitness": "APTITUD / GEN · ÚLTIMAS {count}",
+    "hd_dims": "CORRECCIONES DE DIMENSIONES DE EVAL · {count}",
+    "locks_note": "LOS RASGOS BLOQUEADOS SE FIJAN DENTRO DE ±0.10 DEL OBJETIVO. LA EVOLUCIÓN RESPETA LOS BLOQUEOS EN CADA MUTACIÓN.",
+    "sparkline_note": "DISCONTINUA = PAR ({par}) · PUNTOS VERDES POR ENCIMA DEL PAR",
+    "tip_unlock": "Desbloquear — deja que la evolución explore este rasgo",
+    "tip_lock": "Bloquear — fija este rasgo en torno a un valor objetivo",
+    "heat_cold": "FRÍO — {n}/{threshold} PARTIDAS OBSERVADAS. LAS CORRECCIONES SE ACTIVAN A LAS {threshold}.",
+    "heat_note": "DESVIACIÓN PORCENTUAL DEL PESO BASE (MÁX ±{pct}%). VERDE = PREDICE VICTORIA, ROJO = PREDICE DERROTA."
   }
 }

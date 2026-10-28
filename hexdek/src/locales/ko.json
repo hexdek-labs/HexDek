@@ -1712,5 +1712,32 @@
     "wl_determined": "확정",
     "wl_combat": "전투",
     "wl_alt": "대체 승리"
+  },
+  "crs": {
+    "trait_aggression": "공격성",
+    "trait_combo_pat": "콤보 인내",
+    "trait_threat": "위협",
+    "trait_greed": "탐욕",
+    "trait_politics": "정치",
+    "trait_drain": "드레인",
+    "trait_artifact": "유물",
+    "title": "CURSE / / 유전 개체군",
+    "tag_dna": "{count} DNA · 세대 {gen}",
+    "kv_generations": "세대 수",
+    "kv_population": "개체 수",
+    "kv_games_logged": "기록된 게임",
+    "kv_best_fitness": "최고 적합도",
+    "kv_avg_fitness": "평균 적합도",
+    "kv_top_games": "최상위 개체 게임",
+    "hd_personality": "최상위 개체 성향 · {count}개 파라미터",
+    "hd_overrides": "특성 재정의 · 소유자 잠금",
+    "hd_fitness": "적합도 / 세대 · 최근 {count}",
+    "hd_dims": "평가 차원 보정 · {count}",
+    "locks_note": "잠긴 특성은 목표값 ±0.10 범위에 고정됩니다. 진화는 모든 변이에서 잠금을 존중합니다.",
+    "sparkline_note": "점선 = 기준 ({par}) · 녹색 점은 기준 초과",
+    "tip_unlock": "잠금 해제 — 진화가 이 특성을 탐색하게 합니다",
+    "tip_lock": "잠금 — 이 특성을 목표값 근처에 고정합니다",
+    "heat_cold": "콜드 — {n}/{threshold} 게임 관측. 보정은 {threshold} 게임에서 활성화됩니다.",
+    "heat_note": "기준 가중치 대비 편차 비율(최대 ±{pct}%). 녹색 = 승리 예측, 빨강 = 패배 예측."
   }
 }

@@ -1712,5 +1712,32 @@
     "wl_determined": "DITENTUKAN",
     "wl_combat": "TEMPUR",
     "wl_alt": "KEMENANGAN ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGRESI",
+    "trait_combo_pat": "SABAR COMBO",
+    "trait_threat": "ANCAMAN",
+    "trait_greed": "KETAMAKAN",
+    "trait_politics": "POLITIK",
+    "trait_drain": "KURAS",
+    "trait_artifact": "ARTEFAK",
+    "title": "CURSE / / POPULASI GENETIK",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERASI",
+    "kv_population": "POPULASI",
+    "kv_games_logged": "PERMAINAN TERCATAT",
+    "kv_best_fitness": "FITNESS TERBAIK",
+    "kv_avg_fitness": "FITNESS RATA-RATA",
+    "kv_top_games": "PERMAINAN TERATAS",
+    "hd_personality": "KEPRIBADIAN ANGGOTA TERATAS · {count} PARAMETER",
+    "hd_overrides": "PENIMPAAN SIFAT · KUNCI PEMILIK",
+    "hd_fitness": "FITNESS / GEN · {count} TERAKHIR",
+    "hd_dims": "KOREKSI DIMENSI EVAL · {count}",
+    "locks_note": "SIFAT YANG TERKUNCI DIPATOK DALAM ±0.10 DARI TARGET. EVOLUSI MENGHORMATI KUNCI PADA SETIAP MUTASI.",
+    "sparkline_note": "GARIS PUTUS = PAR ({par}) · TITIK HIJAU DI ATAS PAR",
+    "tip_unlock": "Buka kunci — biarkan evolusi menjelajahi sifat ini",
+    "tip_lock": "Kunci — patok sifat ini di sekitar nilai target",
+    "heat_cold": "DINGIN — {n}/{threshold} PERMAINAN TERAMATI. KOREKSI AKTIF PADA {threshold}.",
+    "heat_note": "DEVIASI PERSEN DARI BOBOT DASAR (MAKS ±{pct}%). HIJAU = PREDIKTIF MENANG, MERAH = PREDIKTIF KALAH."
   }
 }

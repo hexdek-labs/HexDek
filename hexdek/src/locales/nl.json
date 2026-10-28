@@ -1712,5 +1712,32 @@
     "wl_determined": "BEPAALD",
     "wl_combat": "GEVECHT",
     "wl_alt": "ALT. WINST"
+  },
+  "crs": {
+    "trait_aggression": "AGRESSIE",
+    "trait_combo_pat": "COMBO-GEDULD",
+    "trait_threat": "DREIGING",
+    "trait_greed": "HEBZUCHT",
+    "trait_politics": "POLITIEK",
+    "trait_drain": "DRAIN",
+    "trait_artifact": "ARTEFACT",
+    "title": "CURSE / / GENETISCHE POPULATIE",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERATIES",
+    "kv_population": "POPULATIE",
+    "kv_games_logged": "GELOGDE PARTIJEN",
+    "kv_best_fitness": "BESTE FITNESS",
+    "kv_avg_fitness": "GEM. FITNESS",
+    "kv_top_games": "PARTIJEN VAN DE BESTE",
+    "hd_personality": "PERSOONLIJKHEID VAN DE BESTE · {count} PARAMETERS",
+    "hd_overrides": "EIGENSCHAP-OVERRIDES · EIGENAARSLOTEN",
+    "hd_fitness": "FITNESS / GEN · LAATSTE {count}",
+    "hd_dims": "CORRECTIES VAN EVAL-DIMENSIES · {count}",
+    "locks_note": "VERGRENDELDE EIGENSCHAPPEN BLIJVEN BINNEN ±0.10 VAN HET DOEL. DE EVOLUTIE RESPECTEERT SLOTEN BIJ ELKE MUTATIE.",
+    "sparkline_note": "GESTIPPELD = PAR ({par}) · GROENE STIPPEN BOVEN PAR",
+    "tip_unlock": "Ontgrendelen — laat de evolutie deze eigenschap verkennen",
+    "tip_lock": "Vergrendelen — houd deze eigenschap rond een doelwaarde",
+    "heat_cold": "KOUD — {n}/{threshold} PARTIJEN WAARGENOMEN. CORRECTIES WORDEN ACTIEF BIJ {threshold}.",
+    "heat_note": "PROCENTUELE AFWIJKING VAN HET BASISGEWICHT (MAX ±{pct}%). GROEN = VOORSPELT WINST, ROOD = VOORSPELT VERLIES."
   }
 }

@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINIERT",
     "wl_combat": "KAMPF",
     "wl_alt": "ALT. SIEG"
+  },
+  "crs": {
+    "trait_aggression": "AGGRESSION",
+    "trait_combo_pat": "COMBO-GEDULD",
+    "trait_threat": "BEDROHUNG",
+    "trait_greed": "GIER",
+    "trait_politics": "POLITIK",
+    "trait_drain": "ABZUG",
+    "trait_artifact": "ARTEFAKT",
+    "title": "CURSE / / GENETISCHE POPULATION",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERATIONEN",
+    "kv_population": "POPULATION",
+    "kv_games_logged": "ERFASSTE PARTIEN",
+    "kv_best_fitness": "BESTE FITNESS",
+    "kv_avg_fitness": "DURCHSCHN. FITNESS",
+    "kv_top_games": "PARTIEN DES BESTEN",
+    "hd_personality": "PERSÖNLICHKEIT DES BESTEN · {count} PARAMETER",
+    "hd_overrides": "MERKMAL-ÜBERSCHREIBUNGEN · BESITZERSPERREN",
+    "hd_fitness": "FITNESS / GEN · LETZTE {count}",
+    "hd_dims": "KORREKTUREN DER EVAL-DIMENSIONEN · {count}",
+    "locks_note": "GESPERRTE MERKMALE WERDEN AUF ±0.10 UM DEN ZIELWERT GEHALTEN. DIE EVOLUTION ACHTET SPERREN BEI JEDER MUTATION.",
+    "sparkline_note": "GESTRICHELT = PAR ({par}) · GRÜNE PUNKTE ÜBER PAR",
+    "tip_unlock": "Entsperren — die Evolution dieses Merkmal erkunden lassen",
+    "tip_lock": "Sperren — dieses Merkmal um einen Zielwert halten",
+    "heat_cold": "KALT — {n}/{threshold} PARTIEN BEOBACHTET. KORREKTUREN AKTIVIEREN SICH BEI {threshold}.",
+    "heat_note": "PROZENTUALE ABWEICHUNG VOM BASISGEWICHT (MAX. ±{pct}%). GRÜN = SIEGVORHERSAGEND, ROT = NIEDERLAGEVORHERSAGEND."
   }
 }

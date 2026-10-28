@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINAT",
     "wl_combat": "LUPTĂ",
     "wl_alt": "VICTORIE ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGRESIVITATE",
+    "trait_combo_pat": "RĂBD. COMBO",
+    "trait_threat": "AMENINȚARE",
+    "trait_greed": "LĂCOMIE",
+    "trait_politics": "POLITICĂ",
+    "trait_drain": "DRENARE",
+    "trait_artifact": "ARTEFACT",
+    "title": "CURSE / / POPULAȚIE GENETICĂ",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERAȚII",
+    "kv_population": "POPULAȚIE",
+    "kv_games_logged": "JOCURI ÎNREGISTRATE",
+    "kv_best_fitness": "CEA MAI BUNĂ POTRIVIRE",
+    "kv_avg_fitness": "POTRIVIRE MEDIE",
+    "kv_top_games": "JOCURILE CELUI MAI BUN",
+    "hd_personality": "PERSONALITATEA CELUI MAI BUN · {count} PARAMETRI",
+    "hd_overrides": "SUPRASCRIERI DE TRĂSĂTURI · BLOCAJE ALE PROPRIETARULUI",
+    "hd_fitness": "POTRIVIRE / GEN · ULTIMELE {count}",
+    "hd_dims": "CORECȚII ALE DIMENSIUNILOR DE EVAL · {count}",
+    "locks_note": "TRĂSĂTURILE BLOCATE SUNT MENȚINUTE ÎN ±0.10 FAȚĂ DE ȚINTĂ. EVOLUȚIA RESPECTĂ BLOCAJELE LA FIECARE MUTAȚIE.",
+    "sparkline_note": "LINIE ÎNTRERUPTĂ = PAR ({par}) · PUNCTE VERZI PESTE PAR",
+    "tip_unlock": "Deblochează — lasă evoluția să exploreze această trăsătură",
+    "tip_lock": "Blochează — menține această trăsătură în jurul unei valori țintă",
+    "heat_cold": "RECE — {n}/{threshold} JOCURI OBSERVATE. CORECȚIILE SE ACTIVEAZĂ LA {threshold}.",
+    "heat_note": "ABATERE PROCENTUALĂ FAȚĂ DE GREUTATEA DE BAZĂ (MAX ±{pct}%). VERDE = PREZICE VICTORIA, ROȘU = PREZICE ÎNFRÂNGEREA."
   }
 }

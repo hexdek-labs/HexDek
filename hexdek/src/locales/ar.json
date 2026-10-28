@@ -1712,5 +1712,32 @@
     "wl_determined": "محسوم",
     "wl_combat": "قتال",
     "wl_alt": "فوز بديل"
+  },
+  "crs": {
+    "trait_aggression": "العدوانية",
+    "trait_combo_pat": "صبر الكومبو",
+    "trait_threat": "التهديد",
+    "trait_greed": "الطمع",
+    "trait_politics": "السياسة",
+    "trait_drain": "الاستنزاف",
+    "trait_artifact": "القطع",
+    "title": "CURSE / / التجمّع الوراثي",
+    "tag_dna": "{count} DNA · جيل {gen}",
+    "kv_generations": "الأجيال",
+    "kv_population": "حجم التجمّع",
+    "kv_games_logged": "المباريات المسجّلة",
+    "kv_best_fitness": "أفضل ملاءمة",
+    "kv_avg_fitness": "متوسط الملاءمة",
+    "kv_top_games": "مباريات الأفضل",
+    "hd_personality": "شخصية الفرد الأفضل · {count} معامل",
+    "hd_overrides": "تجاوزات السمات · أقفال المالك",
+    "hd_fitness": "الملاءمة / الجيل · آخر {count}",
+    "hd_dims": "تصحيحات أبعاد التقييم · {count}",
+    "locks_note": "السمات المقفلة تُثبَّت في حدود ±0.10 من الهدف. التطوّر يحترم الأقفال في كل تحوّل.",
+    "sparkline_note": "المتقطّع = المعيار ({par}) · النقاط الخضراء فوق المعيار",
+    "tip_unlock": "إلغاء القفل — اترك التطوّر يستكشف هذه السمة",
+    "tip_lock": "قفل — ثبّت هذه السمة حول قيمة هدف",
+    "heat_cold": "بارد — {n}/{threshold} مباراة مرصودة. التصحيحات تُنشَّط عند {threshold}.",
+    "heat_note": "نسبة الانحراف عن الوزن الأساسي (±{pct}% كحد أقصى). الأخضر = يتنبّأ بالفوز، الأحمر = يتنبّأ بالخسارة."
   }
 }

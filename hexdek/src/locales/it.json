@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINATO",
     "wl_combat": "COMBATTIMENTO",
     "wl_alt": "VITTORIA ALT."
+  },
+  "crs": {
+    "trait_aggression": "AGGRESSIVITÀ",
+    "trait_combo_pat": "PAZ. COMBO",
+    "trait_threat": "MINACCIA",
+    "trait_greed": "AVIDITÀ",
+    "trait_politics": "POLITICA",
+    "trait_drain": "PROSCIUGO",
+    "trait_artifact": "ARTEFATTO",
+    "title": "CURSE / / POPOLAZIONE GENETICA",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERAZIONI",
+    "kv_population": "POPOLAZIONE",
+    "kv_games_logged": "PARTITE REGISTRATE",
+    "kv_best_fitness": "MIGLIORE FITNESS",
+    "kv_avg_fitness": "FITNESS MEDIA",
+    "kv_top_games": "PARTITE DEL MIGLIORE",
+    "hd_personality": "PERSONALITÀ DEL MIGLIOR MEMBRO · {count} PARAMETRI",
+    "hd_overrides": "SOVRASCRITTURE DEI TRATTI · BLOCCHI DEL PROPRIETARIO",
+    "hd_fitness": "FITNESS / GEN · ULTIME {count}",
+    "hd_dims": "CORREZIONI DELLE DIMENSIONI DI EVAL · {count}",
+    "locks_note": "I TRATTI BLOCCATI SONO TENUTI ENTRO ±0.10 DAL BERSAGLIO. L’EVOLUZIONE RISPETTA I BLOCCHI A OGNI MUTAZIONE.",
+    "sparkline_note": "TRATTEGGIO = PAR ({par}) · PUNTI VERDI SOPRA IL PAR",
+    "tip_unlock": "Sblocca — lascia che l’evoluzione esplori questo tratto",
+    "tip_lock": "Blocca — tieni questo tratto intorno a un valore obiettivo",
+    "heat_cold": "FREDDO — {n}/{threshold} PARTITE OSSERVATE. LE CORREZIONI SI ATTIVANO A {threshold}.",
+    "heat_note": "DEVIAZIONE PERCENTUALE DAL PESO BASE (MAX ±{pct}%). VERDE = PREDICE LA VITTORIA, ROSSO = PREDICE LA SCONFITTA."
   }
 }

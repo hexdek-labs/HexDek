@@ -1712,5 +1712,32 @@
     "wl_determined": "DETERMINOVANÉ",
     "wl_combat": "BOJ",
     "wl_alt": "ALT. VÝHRA"
+  },
+  "crs": {
+    "trait_aggression": "AGRESE",
+    "trait_combo_pat": "TRPĚL. KOMBA",
+    "trait_threat": "HROZBA",
+    "trait_greed": "CHAMTIVOST",
+    "trait_politics": "POLITIKA",
+    "trait_drain": "ODSÁVÁNÍ",
+    "trait_artifact": "ARTEFAKTY",
+    "title": "CURSE / / GENETICKÁ POPULACE",
+    "tag_dna": "{count} DNA · GEN {gen}",
+    "kv_generations": "GENERACE",
+    "kv_population": "POPULACE",
+    "kv_games_logged": "ZAZNAMENANÉ HRY",
+    "kv_best_fitness": "NEJLEPŠÍ FITNESS",
+    "kv_avg_fitness": "PRŮMĚRNÁ FITNESS",
+    "kv_top_games": "HRY NEJLEPŠÍHO",
+    "hd_personality": "OSOBNOST NEJLEPŠÍHO ČLENA · {count} PARAMETRŮ",
+    "hd_overrides": "PŘEPISY VLASTNOSTÍ · ZÁMKY VLASTNÍKA",
+    "hd_fitness": "FITNESS / GEN · POSLEDNÍCH {count}",
+    "hd_dims": "KOREKCE DIMENZÍ HODNOCENÍ · {count}",
+    "locks_note": "ZAMČENÉ VLASTNOSTI JSOU DRŽENY DO ±0.10 OD CÍLE. EVOLUCE RESPEKTUJE ZÁMKY PŘI KAŽDÉ MUTACI.",
+    "sparkline_note": "ČÁRKOVANĚ = PAR ({par}) · ZELENÉ BODY NAD PAR",
+    "tip_unlock": "Odemknout — nech evoluci tuto vlastnost prozkoumat",
+    "tip_lock": "Zamknout — drž tuto vlastnost u cílové hodnoty",
+    "heat_cold": "CHLADNÉ — {n}/{threshold} SLEDOVANÝCH HER. KOREKCE SE AKTIVUJÍ PŘI {threshold}.",
+    "heat_note": "PROCENTNÍ ODCHYLKA OD ZÁKLADNÍ VÁHY (MAX ±{pct}%). ZELENÁ = PŘEDPOVÍDÁ VÝHRU, ČERVENÁ = PŘEDPOVÍDÁ PROHRU."
   }
 }
