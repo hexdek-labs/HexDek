@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD-inloggning kommer snart — använd e-post tills dess",
     "soon": "SNART",
     "prompt_note": "> INGET LÖSENORD. INGEN SPAM. ETT KLICK TILL DITT ARKIV."
+  },
+  "fb": {
+    "title": "RAPPORT: BUGG / FÖRSLAG",
+    "ok_title": "MOTTAGEN",
+    "ok_hd": "RAPPORT REGISTRERAD",
+    "ok_body": "Vi går igenom den och hör av oss om du lämnade kontaktuppgifter. Tack för att du gör HexDek bättre.",
+    "type_bug": "BUGG",
+    "type_suggestion": "FÖRSLAG",
+    "lbl_page": "VILKEN SIDA / SKÄRM",
+    "page_ph": "t.ex. {a}, {b}, {c}...",
+    "lbl_context": "SAMMANHANG — VAD GJORDE DU",
+    "context_ph": "Jag tittade på ett live-spel och klickade på en commander...",
+    "lbl_symptom_bug": "VAD HÄNDE (BUGGEN)",
+    "lbl_symptom_sug": "DITT FÖRSLAG",
+    "symptom_ph_bug": "Eval-kartan visade bara nollor fast spelet pågick...",
+    "symptom_ph_sug": "Det skulle vara grymt om topplistan visade segersvitor...",
+    "lbl_expected": "VAD BORDE HA HÄNT",
+    "expected_ph": "Eval-kartan borde visa utvärderingsvikterna uppdateras varje tur...",
+    "lbl_contact": "KONTAKT (FRIVILLIGT — FÖR UPPFÖLJNING)",
+    "contact_ph": "e-post eller Discord-användarnamn",
+    "contact_note": "Vi hör av oss när det är fixat",
+    "ctx_submit": "Skickar denna rapport till HexDeks inkorg. Vi hör av oss på kontakten ovan när den är löst.",
+    "btn_submit": "SKICKA RAPPORT",
+    "btn_submitting": "SKICKAR...",
+    "err_symptom": "Beskriv vad som hände",
+    "err_server": "Servern avvisade rapporten (fel {status}). Försök igen.",
+    "err_network": "Kunde inte nå servern. Kontrollera din anslutning och försök igen."
   }
 }

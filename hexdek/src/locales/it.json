@@ -1809,5 +1809,32 @@
     "discord_tip": "L’accesso con DISCORD arriva presto — per ora usa l’email",
     "soon": "PRESTO",
     "prompt_note": "> NESSUNA PASSWORD. NESSUNO SPAM. UN CLIC VERSO IL TUO ARCHIVIO."
+  },
+  "fb": {
+    "title": "SEGNALAZIONE BUG / SUGGERIMENTO",
+    "ok_title": "RICEVUTA",
+    "ok_hd": "SEGNALAZIONE REGISTRATA",
+    "ok_body": "La esamineremo e ti risponderemo se hai lasciato un contatto. Grazie per migliorare HexDek.",
+    "type_bug": "BUG",
+    "type_suggestion": "SUGGERIMENTO",
+    "lbl_page": "QUALE PAGINA / SCHERMATA",
+    "page_ph": "es. {a}, {b}, {c}...",
+    "lbl_context": "CONTESTO — COSA STAVI FACENDO",
+    "context_ph": "Stavo guardando una partita in diretta e ho cliccato su un comandante...",
+    "lbl_symptom_bug": "COSA È SUCCESSO (IL BUG)",
+    "lbl_symptom_sug": "IL TUO SUGGERIMENTO",
+    "symptom_ph_bug": "La mappa eval mostrava tutti zeri anche se la partita era in corso...",
+    "symptom_ph_sug": "Sarebbe bello se la classifica mostrasse le serie di vittorie...",
+    "lbl_expected": "COSA SAREBBE DOVUTO SUCCEDERE",
+    "expected_ph": "La mappa eval dovrebbe mostrare i pesi di valutazione aggiornati a ogni turno...",
+    "lbl_contact": "CONTATTI (OPZIONALE — PER LA RISPOSTA)",
+    "contact_ph": "email o nome utente Discord",
+    "contact_note": "Ti avviseremo quando sarà risolto",
+    "ctx_submit": "Invia questa segnalazione alla casella HexDek. Ti risponderemo ai contatti sopra una volta risolta.",
+    "btn_submit": "INVIA SEGNALAZIONE",
+    "btn_submitting": "INVIO...",
+    "err_symptom": "Descrivi cosa è successo",
+    "err_server": "Il server ha rifiutato la segnalazione (errore {status}). Riprova.",
+    "err_network": "Impossibile raggiungere il server. Controlla la connessione e riprova."
   }
 }

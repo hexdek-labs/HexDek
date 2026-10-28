@@ -1809,5 +1809,32 @@
     "discord_tip": "Đăng nhập bằng DISCORD sắp có — hãy dùng email trước",
     "soon": "SẮP CÓ",
     "prompt_note": "> KHÔNG MẬT KHẨU. KHÔNG SPAM. MỘT CÚ NHẤP TỚI KHO CỦA BẠN."
+  },
+  "fb": {
+    "title": "BÁO LỖI / GÓP Ý",
+    "ok_title": "ĐÃ NHẬN",
+    "ok_hd": "ĐÃ GHI NHẬN BÁO CÁO",
+    "ok_body": "Chúng tôi sẽ xem xét và phản hồi nếu bạn để lại thông tin liên hệ. Cảm ơn bạn đã giúp HexDek tốt hơn.",
+    "type_bug": "LỖI",
+    "type_suggestion": "GÓP Ý",
+    "lbl_page": "TRANG / MÀN HÌNH NÀO",
+    "page_ph": "ví dụ {a}, {b}, {c}...",
+    "lbl_context": "NGỮ CẢNH — BẠN ĐANG LÀM GÌ",
+    "context_ph": "Tôi đang xem một ván trực tiếp và bấm vào một tướng...",
+    "lbl_symptom_bug": "ĐÃ XẢY RA CHUYỆN GÌ (LỖI)",
+    "lbl_symptom_sug": "GÓP Ý CỦA BẠN",
+    "symptom_ph_bug": "Bản đồ eval hiển thị toàn số 0 dù ván đấu đang diễn ra...",
+    "symptom_ph_sug": "Sẽ rất hay nếu bảng xếp hạng hiển thị chuỗi thắng...",
+    "lbl_expected": "ĐIỀU GÌ LẼ RA PHẢI XẢY RA",
+    "expected_ph": "Bản đồ eval lẽ ra phải hiển thị trọng số đánh giá cập nhật mỗi lượt...",
+    "lbl_contact": "LIÊN HỆ (KHÔNG BẮT BUỘC — ĐỂ PHẢN HỒI)",
+    "contact_ph": "email hoặc tên người dùng Discord",
+    "contact_note": "Chúng tôi sẽ thông báo khi đã sửa",
+    "ctx_submit": "Gửi báo cáo này tới hộp thư HexDek. Chúng tôi sẽ phản hồi qua thông tin liên hệ ở trên khi xử lý xong.",
+    "btn_submit": "GỬI BÁO CÁO",
+    "btn_submitting": "ĐANG GỬI...",
+    "err_symptom": "Vui lòng mô tả chuyện đã xảy ra",
+    "err_server": "Máy chủ đã từ chối báo cáo (lỗi {status}). Vui lòng thử lại.",
+    "err_network": "Không thể kết nối máy chủ. Kiểm tra kết nối và thử lại."
   }
 }

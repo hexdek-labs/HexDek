@@ -1809,5 +1809,32 @@
     "discord_tip": "Autentificarea cu DISCORD vine curând — folosește e-mailul deocamdată",
     "soon": "CURÂND",
     "prompt_note": "> FĂRĂ PAROLĂ. FĂRĂ SPAM. UN CLIC PÂNĂ LA ARHIVA TA."
+  },
+  "fb": {
+    "title": "RAPORT EROARE / SUGESTIE",
+    "ok_title": "PRIMIT",
+    "ok_hd": "RAPORT ÎNREGISTRAT",
+    "ok_body": "Îl vom analiza și revenim dacă ai lăsat date de contact. Mulțumim că faci HexDek mai bun.",
+    "type_bug": "EROARE",
+    "type_suggestion": "SUGESTIE",
+    "lbl_page": "CE PAGINĂ / ECRAN",
+    "page_ph": "ex. {a}, {b}, {c}...",
+    "lbl_context": "CONTEXT — CE FĂCEAI",
+    "context_ph": "Urmăream un joc live și am dat clic pe un comandant...",
+    "lbl_symptom_bug": "CE S-A ÎNTÂMPLAT (EROAREA)",
+    "lbl_symptom_sug": "SUGESTIA TA",
+    "symptom_ph_bug": "Harta eval afișa numai zerouri deși jocul rula...",
+    "symptom_ph_sug": "Ar fi grozav dacă clasamentul ar afișa seriile de victorii...",
+    "lbl_expected": "CE AR FI TREBUIT SĂ SE ÎNTÂMPLE",
+    "expected_ph": "Harta eval ar trebui să afișeze ponderile de evaluare actualizate la fiecare tură...",
+    "lbl_contact": "CONTACT (OPȚIONAL — PENTRU RĂSPUNS)",
+    "contact_ph": "e-mail sau nume de utilizator Discord",
+    "contact_note": "Te anunțăm când este reparat",
+    "ctx_submit": "Trimite acest raport către inboxul HexDek. Vom reveni la contactul de mai sus când se rezolvă.",
+    "btn_submit": "TRIMITE RAPORTUL",
+    "btn_submitting": "SE TRIMITE...",
+    "err_symptom": "Descrie ce s-a întâmplat",
+    "err_server": "Serverul a respins raportul (eroare {status}). Încearcă din nou.",
+    "err_network": "Nu s-a putut contacta serverul. Verifică conexiunea și încearcă din nou."
   }
 }

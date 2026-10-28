@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD-Anmeldung kommt bald — nutze bis dahin E-Mail",
     "soon": "BALD",
     "prompt_note": "> KEIN PASSWORT. KEIN SPAM. EIN KLICK ZU DEINEM ARCHIV."
+  },
+  "fb": {
+    "title": "MELDUNG: FEHLER / VORSCHLAG",
+    "ok_title": "ERHALTEN",
+    "ok_hd": "MELDUNG ERFASST",
+    "ok_body": "Wir sehen uns das an und melden uns, wenn du Kontaktdaten hinterlassen hast. Danke, dass du HexDek besser machst.",
+    "type_bug": "FEHLER",
+    "type_suggestion": "VORSCHLAG",
+    "lbl_page": "WELCHE SEITE / ANSICHT",
+    "page_ph": "z. B. {a}, {b}, {c}...",
+    "lbl_context": "KONTEXT — WAS HAST DU GETAN",
+    "context_ph": "Ich habe ein laufendes Spiel verfolgt und auf einen Commander geklickt...",
+    "lbl_symptom_bug": "WAS IST PASSIERT (DER FEHLER)",
+    "lbl_symptom_sug": "DEIN VORSCHLAG",
+    "symptom_ph_bug": "Die Eval-Heatmap zeigte nur Nullen, obwohl das Spiel lief...",
+    "symptom_ph_sug": "Es wäre toll, wenn die Rangliste Siegesserien anzeigen würde...",
+    "lbl_expected": "WAS HÄTTE PASSIEREN SOLLEN",
+    "expected_ph": "Die Eval-Heatmap sollte die Eval-Gewichte jede Runde aktualisiert anzeigen...",
+    "lbl_contact": "KONTAKT (OPTIONAL — FÜR RÜCKMELDUNG)",
+    "contact_ph": "E-Mail oder Discord-Benutzername",
+    "contact_note": "Wir melden uns, sobald es behoben ist",
+    "ctx_submit": "Sendet diese Meldung an den HexDek-Posteingang. Sobald sie gelöst ist, melden wir uns über die Kontaktdaten oben.",
+    "btn_submit": "MELDUNG SENDEN",
+    "btn_submitting": "WIRD GESENDET...",
+    "err_symptom": "Bitte beschreibe, was passiert ist",
+    "err_server": "Der Server hat die Meldung abgelehnt (Fehler {status}). Bitte versuche es erneut.",
+    "err_network": "Server nicht erreichbar. Prüfe deine Verbindung und versuche es erneut."
   }
 }

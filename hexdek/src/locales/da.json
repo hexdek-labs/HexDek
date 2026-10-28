@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD-login kommer snart — brug e-mail indtil da",
     "soon": "SNART",
     "prompt_note": "> INGEN ADGANGSKODE. INGEN SPAM. ÉT KLIK TIL DIT ARKIV."
+  },
+  "fb": {
+    "title": "RAPPORT OM FEJL / FORSLAG",
+    "ok_title": "MODTAGET",
+    "ok_hd": "RAPPORT REGISTRERET",
+    "ok_body": "Vi gennemgår den og følger op, hvis du har efterladt kontaktinfo. Tak for at gøre HexDek bedre.",
+    "type_bug": "FEJL",
+    "type_suggestion": "FORSLAG",
+    "lbl_page": "HVILKEN SIDE / SKÆRM",
+    "page_ph": "f.eks. {a}, {b}, {c}...",
+    "lbl_context": "KONTEKST — HVAD LAVEDE DU",
+    "context_ph": "Jeg så et live spil og klikkede på en commander...",
+    "lbl_symptom_bug": "HVAD SKETE DER (FEJLEN)",
+    "lbl_symptom_sug": "DIT FORSLAG",
+    "symptom_ph_bug": "Eval-kortet viste kun nuller, selv om spillet kørte...",
+    "symptom_ph_sug": "Det ville være fedt, hvis ranglisten viste sejrsrækker...",
+    "lbl_expected": "HVAD BURDE DER VÆRE SKET",
+    "expected_ph": "Eval-kortet burde vise evalueringsvægtene opdatere hver tur...",
+    "lbl_contact": "KONTAKT (VALGFRIT — TIL OPFØLGNING)",
+    "contact_ph": "e-mail eller Discord-brugernavn",
+    "contact_note": "Vi giver dig besked, når den er rettet",
+    "ctx_submit": "Sender denne rapport til HexDeks indbakke. Vi følger op på kontaktinfoen ovenfor, når den er løst.",
+    "btn_submit": "SEND RAPPORT",
+    "btn_submitting": "SENDER...",
+    "err_symptom": "Beskriv venligst hvad der skete",
+    "err_server": "Serveren afviste rapporten (fejl {status}). Prøv venligst igen.",
+    "err_network": "Kunne ikke nå serveren. Tjek din forbindelse og prøv igen."
   }
 }

@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD ile giriş yakında — şimdilik e-posta kullan",
     "soon": "YAKINDA",
     "prompt_note": "> ŞİFRE YOK. SPAM YOK. ARŞİVİNE TEK TIK."
+  },
+  "fb": {
+    "title": "HATA / ÖNERİ BİLDİRİMİ",
+    "ok_title": "ALINDI",
+    "ok_hd": "BİLDİRİM KAYDEDİLDİ",
+    "ok_body": "İnceleyeceğiz ve iletişim bilgisi bıraktıysan haber vereceğiz. HexDek’i daha iyi yaptığın için teşekkürler.",
+    "type_bug": "HATA",
+    "type_suggestion": "ÖNERİ",
+    "lbl_page": "HANGİ SAYFA / EKRAN",
+    "page_ph": "örn. {a}, {b}, {c}...",
+    "lbl_context": "BAĞLAM — NE YAPIYORDUN",
+    "context_ph": "Canlı bir oyunu izliyordum ve bir komutana tıkladım...",
+    "lbl_symptom_bug": "NE OLDU (HATA)",
+    "lbl_symptom_sug": "ÖNERİN",
+    "symptom_ph_bug": "Oyun sürüyor olmasına rağmen eval ısı haritası hep sıfır gösterdi...",
+    "symptom_ph_sug": "Liderlik tablosu galibiyet serilerini gösterse harika olurdu...",
+    "lbl_expected": "NE OLMASI GEREKİRDİ",
+    "expected_ph": "Eval ısı haritası her turda güncellenen değerlendirme ağırlıklarını göstermeliydi...",
+    "lbl_contact": "İLETİŞİM (İSTEĞE BAĞLI — GERİ DÖNÜŞ İÇİN)",
+    "contact_ph": "e-posta veya Discord kullanıcı adı",
+    "contact_note": "Düzeltildiğinde haber vereceğiz",
+    "ctx_submit": "Bu bildirimi HexDek gelen kutusuna gönderir. Çözüldüğünde yukarıdaki iletişim bilgisinden haber vereceğiz.",
+    "btn_submit": "BİLDİRİMİ GÖNDER",
+    "btn_submitting": "GÖNDERİLİYOR...",
+    "err_symptom": "Lütfen ne olduğunu anlat",
+    "err_server": "Sunucu bildirimi reddetti (hata {status}). Lütfen tekrar dene.",
+    "err_network": "Sunucuya ulaşılamadı. Bağlantını kontrol et ve tekrar dene."
   }
 }

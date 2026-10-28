@@ -1809,5 +1809,32 @@
     "discord_tip": "La connexion DISCORD arrive bientôt — utilise l’e-mail en attendant",
     "soon": "BIENTÔT",
     "prompt_note": "> AUCUN MOT DE PASSE. AUCUN SPAM. UN CLIC VERS TON ARCHIVE."
+  },
+  "fb": {
+    "title": "SIGNALEMENT BUG / SUGGESTION",
+    "ok_title": "REÇU",
+    "ok_hd": "SIGNALEMENT ENREGISTRÉ",
+    "ok_body": "Nous allons l’examiner et revenir vers vous si vous avez laissé un contact. Merci d’améliorer HexDek.",
+    "type_bug": "BUG",
+    "type_suggestion": "SUGGESTION",
+    "lbl_page": "QUELLE PAGE / ÉCRAN",
+    "page_ph": "ex. {a}, {b}, {c}...",
+    "lbl_context": "CONTEXTE — QUE FAISIEZ-VOUS",
+    "context_ph": "Je regardais une partie en direct et j’ai cliqué sur un commandant...",
+    "lbl_symptom_bug": "CE QUI S’EST PASSÉ (LE BUG)",
+    "lbl_symptom_sug": "VOTRE SUGGESTION",
+    "symptom_ph_bug": "La carte eval n’affichait que des zéros alors que la partie tournait...",
+    "symptom_ph_sug": "Ce serait génial que le classement affiche les séries de victoires...",
+    "lbl_expected": "CE QUI AURAIT DÛ SE PASSER",
+    "expected_ph": "La carte eval devrait afficher les poids d’évaluation mis à jour à chaque tour...",
+    "lbl_contact": "CONTACT (OPTIONNEL — POUR LE SUIVI)",
+    "contact_ph": "e-mail ou pseudo Discord",
+    "contact_note": "Nous vous préviendrons dès que c’est corrigé",
+    "ctx_submit": "Envoie ce signalement à la boîte de réception HexDek. Nous répondrons au contact ci-dessus une fois résolu.",
+    "btn_submit": "ENVOYER LE SIGNALEMENT",
+    "btn_submitting": "ENVOI...",
+    "err_symptom": "Décrivez ce qui s’est passé",
+    "err_server": "Le serveur a refusé le signalement (erreur {status}). Veuillez réessayer.",
+    "err_network": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
   }
 }

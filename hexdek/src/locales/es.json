@@ -1809,5 +1809,32 @@
     "discord_tip": "El inicio de sesión con DISCORD llegará pronto — usa el correo por ahora",
     "soon": "PRONTO",
     "prompt_note": "> SIN CONTRASEÑA. SIN SPAM. UN CLIC HASTA TU ARCHIVO."
+  },
+  "fb": {
+    "title": "INFORME DE ERROR / SUGERENCIA",
+    "ok_title": "RECIBIDO",
+    "ok_hd": "INFORME REGISTRADO",
+    "ok_body": "Lo revisaremos y te responderemos si dejaste datos de contacto. Gracias por mejorar HexDek.",
+    "type_bug": "ERROR",
+    "type_suggestion": "SUGERENCIA",
+    "lbl_page": "QUÉ PÁGINA / PANTALLA",
+    "page_ph": "p. ej. {a}, {b}, {c}...",
+    "lbl_context": "CONTEXTO — QUÉ ESTABAS HACIENDO",
+    "context_ph": "Estaba viendo una partida en vivo y hice clic en un comandante...",
+    "lbl_symptom_bug": "QUÉ PASÓ (EL ERROR)",
+    "lbl_symptom_sug": "TU SUGERENCIA",
+    "symptom_ph_bug": "El mapa eval mostraba todo ceros aunque la partida estaba en curso...",
+    "symptom_ph_sug": "Estaría genial que la clasificación mostrara rachas de victorias...",
+    "lbl_expected": "QUÉ DEBERÍA HABER PASADO",
+    "expected_ph": "El mapa eval debería mostrar los pesos de evaluación actualizándose cada turno...",
+    "lbl_contact": "CONTACTO (OPCIONAL — PARA RESPUESTA)",
+    "contact_ph": "correo o usuario de Discord",
+    "contact_note": "Te avisaremos cuando esté arreglado",
+    "ctx_submit": "Envía este informe a la bandeja de HexDek. Te responderemos al contacto de arriba cuando se resuelva.",
+    "btn_submit": "ENVIAR INFORME",
+    "btn_submitting": "ENVIANDO...",
+    "err_symptom": "Describe qué pasó",
+    "err_server": "El servidor rechazó el informe (error {status}). Inténtalo de nuevo.",
+    "err_network": "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo."
   }
 }

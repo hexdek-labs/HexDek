@@ -1809,5 +1809,32 @@
     "discord_tip": "Logowanie przez DISCORD wkrótce — na razie użyj e-maila",
     "soon": "WKRÓTCE",
     "prompt_note": "> BEZ HASŁA. BEZ SPAMU. JEDNO KLIKNIĘCIE DO TWOJEGO ARCHIWUM."
+  },
+  "fb": {
+    "title": "ZGŁOSZENIE BŁĘDU / SUGESTII",
+    "ok_title": "ODEBRANO",
+    "ok_hd": "ZGŁOSZENIE ZAPISANE",
+    "ok_body": "Przejrzymy to i odpowiemy, jeśli zostawiłeś kontakt. Dzięki, że ulepszasz HexDek.",
+    "type_bug": "BŁĄD",
+    "type_suggestion": "SUGESTIA",
+    "lbl_page": "KTÓRA STRONA / EKRAN",
+    "page_ph": "np. {a}, {b}, {c}...",
+    "lbl_context": "KONTEKST — CO ROBIŁEŚ",
+    "context_ph": "Oglądałem grę na żywo i kliknąłem dowódcę...",
+    "lbl_symptom_bug": "CO SIĘ STAŁO (BŁĄD)",
+    "lbl_symptom_sug": "TWOJA SUGESTIA",
+    "symptom_ph_bug": "Mapa eval pokazywała wszędzie zera, choć gra trwała...",
+    "symptom_ph_sug": "Byłoby super, gdyby ranking pokazywał serie zwycięstw...",
+    "lbl_expected": "CO POWINNO SIĘ STAĆ",
+    "expected_ph": "Mapa eval powinna pokazywać wagi oceny aktualizowane w każdej turze...",
+    "lbl_contact": "KONTAKT (OPCJONALNIE — DO ODPOWIEDZI)",
+    "contact_ph": "e-mail lub nazwa użytkownika na Discordzie",
+    "contact_note": "Damy znać, gdy zostanie naprawione",
+    "ctx_submit": "Wysyła to zgłoszenie do skrzynki HexDek. Gdy sprawa zostanie rozwiązana, odpowiemy na kontakt powyżej.",
+    "btn_submit": "WYŚLIJ ZGŁOSZENIE",
+    "btn_submitting": "WYSYŁANIE...",
+    "err_symptom": "Opisz, co się stało",
+    "err_server": "Serwer odrzucił zgłoszenie (błąd {status}). Spróbuj ponownie.",
+    "err_network": "Nie udało się połączyć z serwerem. Sprawdź połączenie i spróbuj ponownie."
   }
 }

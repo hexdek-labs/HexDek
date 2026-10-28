@@ -1809,5 +1809,32 @@
     "discord_tip": "A DISCORD-bejelentkezés hamarosan jön — addig használd az e-mailt",
     "soon": "HAMAROSAN",
     "prompt_note": "> NINCS JELSZÓ. NINCS SPAM. EGY KATTINTÁS AZ ARCHÍVUMODHOZ."
+  },
+  "fb": {
+    "title": "HIBA / ÖTLET BEJELENTÉS",
+    "ok_title": "MEGKAPTUK",
+    "ok_hd": "BEJELENTÉS RÖGZÍTVE",
+    "ok_body": "Átnézzük, és jelentkezünk, ha megadtál elérhetőséget. Kösz, hogy jobbá teszed a HexDeket.",
+    "type_bug": "HIBA",
+    "type_suggestion": "ÖTLET",
+    "lbl_page": "MELYIK OLDAL / KÉPERNYŐ",
+    "page_ph": "pl. {a}, {b}, {c}...",
+    "lbl_context": "KÖRÜLMÉNYEK — MIT CSINÁLTÁL",
+    "context_ph": "Élő játékot néztem, és rákattintottam egy hadvezérre...",
+    "lbl_symptom_bug": "MI TÖRTÉNT (A HIBA)",
+    "lbl_symptom_sug": "AZ ÖTLETED",
+    "symptom_ph_bug": "Az eval hőtérkép csupa nullát mutatott, pedig a játék ment...",
+    "symptom_ph_sug": "Jó lenne, ha a ranglista mutatná a győzelmi sorozatokat...",
+    "lbl_expected": "MINEK KELLETT VOLNA TÖRTÉNNIE",
+    "expected_ph": "Az eval hőtérképnek körönként frissülő értékelő súlyokat kellett volna mutatnia...",
+    "lbl_contact": "KAPCSOLAT (NEM KÖTELEZŐ — VÁLASZHOZ)",
+    "contact_ph": "e-mail vagy Discord felhasználónév",
+    "contact_note": "Szólunk, ha javítva lett",
+    "ctx_submit": "Elküldi ezt a bejelentést a HexDek postafiókjába. Ha megoldódott, a fenti elérhetőségen jelentkezünk.",
+    "btn_submit": "BEJELENTÉS ELKÜLDÉSE",
+    "btn_submitting": "KÜLDÉS...",
+    "err_symptom": "Írd le, mi történt",
+    "err_server": "A szerver elutasította a bejelentést ({status} hiba). Próbáld újra.",
+    "err_network": "Nem sikerült elérni a szervert. Ellenőrizd a kapcsolatot, és próbáld újra."
   }
 }

@@ -1809,5 +1809,32 @@
     "discord_tip": "Masuk dengan DISCORD segera hadir — gunakan email dulu",
     "soon": "SEGERA",
     "prompt_note": "> TANPA SANDI. TANPA SPAM. SATU KLIK KE ARSIPMU."
+  },
+  "fb": {
+    "title": "LAPORAN BUG / SARAN",
+    "ok_title": "DITERIMA",
+    "ok_hd": "LAPORAN TERCATAT",
+    "ok_body": "Kami akan meninjaunya dan menghubungi kamu jika kamu meninggalkan kontak. Terima kasih sudah membuat HexDek lebih baik.",
+    "type_bug": "BUG",
+    "type_suggestion": "SARAN",
+    "lbl_page": "HALAMAN / LAYAR MANA",
+    "page_ph": "mis. {a}, {b}, {c}...",
+    "lbl_context": "KONTEKS — APA YANG KAMU LAKUKAN",
+    "context_ph": "Saya sedang menonton game live dan mengeklik seorang commander...",
+    "lbl_symptom_bug": "APA YANG TERJADI (BUG-NYA)",
+    "lbl_symptom_sug": "SARAN KAMU",
+    "symptom_ph_bug": "Peta eval menampilkan semua nol padahal game sedang berjalan...",
+    "symptom_ph_sug": "Akan keren kalau papan peringkat menampilkan rentetan kemenangan...",
+    "lbl_expected": "APA YANG SEHARUSNYA TERJADI",
+    "expected_ph": "Peta eval seharusnya menampilkan bobot evaluasi yang diperbarui setiap turn...",
+    "lbl_contact": "KONTAK (OPSIONAL — UNTUK TINDAK LANJUT)",
+    "contact_ph": "email atau nama pengguna Discord",
+    "contact_note": "Kami akan memberi tahu kamu saat sudah diperbaiki",
+    "ctx_submit": "Mengirim laporan ini ke kotak masuk HexDek. Kami akan menghubungi kontak di atas setelah selesai.",
+    "btn_submit": "KIRIM LAPORAN",
+    "btn_submitting": "MENGIRIM...",
+    "err_symptom": "Tolong jelaskan apa yang terjadi",
+    "err_server": "Server menolak laporan (galat {status}). Silakan coba lagi.",
+    "err_network": "Tidak dapat menghubungi server. Periksa koneksi kamu dan coba lagi."
   }
 }

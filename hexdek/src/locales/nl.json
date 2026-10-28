@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD-aanmelding komt binnenkort — gebruik tot dan e-mail",
     "soon": "BINNENKORT",
     "prompt_note": "> GEEN WACHTWOORD. GEEN SPAM. ÉÉN KLIK NAAR JE ARCHIEF."
+  },
+  "fb": {
+    "title": "MELDING FOUT / SUGGESTIE",
+    "ok_title": "ONTVANGEN",
+    "ok_hd": "MELDING VASTGELEGD",
+    "ok_body": "We bekijken het en nemen contact op als je contactgegevens hebt achtergelaten. Bedankt dat je HexDek beter maakt.",
+    "type_bug": "BUG",
+    "type_suggestion": "SUGGESTIE",
+    "lbl_page": "WELKE PAGINA / SCHERM",
+    "page_ph": "bijv. {a}, {b}, {c}...",
+    "lbl_context": "CONTEXT — WAT WAS JE AAN HET DOEN",
+    "context_ph": "Ik keek naar een live partij en klikte op een commander...",
+    "lbl_symptom_bug": "WAT GEBEURDE ER (DE BUG)",
+    "lbl_symptom_sug": "JOUW SUGGESTIE",
+    "symptom_ph_bug": "De eval-heatmap toonde alleen nullen terwijl de game liep...",
+    "symptom_ph_sug": "Het zou gaaf zijn als de ranglijst winstreeks zou tonen...",
+    "lbl_expected": "WAT HAD ER MOETEN GEBEUREN",
+    "expected_ph": "De eval-heatmap zou de evaluatiegewichten elke beurt bijgewerkt moeten tonen...",
+    "lbl_contact": "CONTACT (OPTIONEEL — VOOR OPVOLGING)",
+    "contact_ph": "e-mail of Discord-gebruikersnaam",
+    "contact_note": "We laten je weten wanneer het gefixt is",
+    "ctx_submit": "Stuurt deze melding naar de HexDek-inbox. We nemen contact op via de gegevens hierboven zodra het is opgelost.",
+    "btn_submit": "MELDING VERSTUREN",
+    "btn_submitting": "VERSTUREN...",
+    "err_symptom": "Beschrijf wat er gebeurde",
+    "err_server": "De server weigerde de melding (fout {status}). Probeer het opnieuw.",
+    "err_network": "Kon de server niet bereiken. Controleer je verbinding en probeer het opnieuw."
   }
 }

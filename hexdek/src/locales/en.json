@@ -1809,5 +1809,32 @@
     "discord_tip": "Discord OAuth coming soon — use email for now",
     "soon": "SOON",
     "prompt_note": "> NO PASSWORD. NO SPAM. ONE CLICK TO YOUR ARCHIVE."
+  },
+  "fb": {
+    "title": "BUG / SUGGESTION REPORT",
+    "ok_title": "RECEIVED",
+    "ok_hd": "REPORT LOGGED",
+    "ok_body": "We'll review this and follow up if you left contact info. Thanks for making HexDek better.",
+    "type_bug": "BUG",
+    "type_suggestion": "SUGGESTION",
+    "lbl_page": "WHICH PAGE / SCREEN",
+    "page_ph": "e.g. {a}, {b}, {c}...",
+    "lbl_context": "CONTEXT — WHAT WERE YOU DOING",
+    "context_ph": "I was watching a live game and clicked on a commander...",
+    "lbl_symptom_bug": "WHAT HAPPENED (THE BUG)",
+    "lbl_symptom_sug": "YOUR SUGGESTION",
+    "symptom_ph_bug": "The eval heatmap showed all zeros even though the game was running...",
+    "symptom_ph_sug": "It would be cool if the leaderboard showed win streaks...",
+    "lbl_expected": "WHAT SHOULD HAVE HAPPENED",
+    "expected_ph": "The eval heatmap should show the eval weights updating each turn...",
+    "lbl_contact": "CONTACT (OPTIONAL — FOR FOLLOWUP)",
+    "contact_ph": "email or Discord username",
+    "contact_note": "We'll let you know when it's fixed",
+    "ctx_submit": "Sends this report to the HexDek inbox. We'll follow up at the contact info above when it's resolved.",
+    "btn_submit": "SUBMIT REPORT",
+    "btn_submitting": "SUBMITTING...",
+    "err_symptom": "Please describe what happened",
+    "err_server": "The server rejected the report (error {status}). Please try again.",
+    "err_network": "Could not reach the server. Check your connection and try again."
   }
 }

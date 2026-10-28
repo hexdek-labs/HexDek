@@ -1809,5 +1809,32 @@
     "discord_tip": "Přihlášení přes DISCORD se připravuje — zatím použij e-mail",
     "soon": "BRZY",
     "prompt_note": "> ŽÁDNÉ HESLO. ŽÁDNÝ SPAM. JEDNO KLIKNUTÍ DO TVÉHO ARCHIVU."
+  },
+  "fb": {
+    "title": "HLÁŠENÍ CHYBY / NÁVRHU",
+    "ok_title": "PŘIJATO",
+    "ok_hd": "HLÁŠENÍ ZAZNAMENÁNO",
+    "ok_body": "Projdeme to a ozveme se, pokud jste nechali kontakt. Díky, že zlepšujete HexDek.",
+    "type_bug": "CHYBA",
+    "type_suggestion": "NÁVRH",
+    "lbl_page": "KTERÁ STRÁNKA / OBRAZOVKA",
+    "page_ph": "např. {a}, {b}, {c}...",
+    "lbl_context": "KONTEXT — CO JSTE DĚLALI",
+    "context_ph": "Sledoval jsem živou hru a klikl na velitele...",
+    "lbl_symptom_bug": "CO SE STALO (CHYBA)",
+    "lbl_symptom_sug": "VÁŠ NÁVRH",
+    "symptom_ph_bug": "Eval mapa zobrazovala všude nuly, přestože hra běžela...",
+    "symptom_ph_sug": "Bylo by super, kdyby žebříček zobrazoval série výher...",
+    "lbl_expected": "CO SE MĚLO STÁT",
+    "expected_ph": "Eval mapa měla zobrazovat váhy hodnocení aktualizované každé kolo...",
+    "lbl_contact": "KONTAKT (NEPOVINNÉ — PRO ODPOVĚĎ)",
+    "contact_ph": "e-mail nebo uživatelské jméno na Discordu",
+    "contact_note": "Dáme vám vědět, až to bude opravené",
+    "ctx_submit": "Odešle toto hlášení do schránky HexDek. Až to vyřešíme, ozveme se na kontakt výše.",
+    "btn_submit": "ODESLAT HLÁŠENÍ",
+    "btn_submitting": "ODESÍLÁNÍ...",
+    "err_symptom": "Popište prosím, co se stalo",
+    "err_server": "Server hlášení odmítl (chyba {status}). Zkuste to prosím znovu.",
+    "err_network": "Nepodařilo se spojit se serverem. Zkontrolujte připojení a zkuste to znovu."
   }
 }

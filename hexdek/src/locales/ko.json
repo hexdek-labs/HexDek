@@ -1809,5 +1809,32 @@
     "discord_tip": "DISCORD 로그인은 곧 지원됩니다 — 지금은 이메일을 사용하세요",
     "soon": "곧",
     "prompt_note": "> 비밀번호 없음. 스팸 없음. 한 번의 클릭으로 내 아카이브로."
+  },
+  "fb": {
+    "title": "버그 / 제안 신고",
+    "ok_title": "접수됨",
+    "ok_hd": "신고가 기록되었습니다",
+    "ok_body": "검토 후 연락처를 남기셨다면 알려드리겠습니다. HexDek을 더 좋게 만들어 주셔서 감사합니다.",
+    "type_bug": "버그",
+    "type_suggestion": "제안",
+    "lbl_page": "어느 페이지 / 화면",
+    "page_ph": "예: {a}, {b}, {c}...",
+    "lbl_context": "상황 — 무엇을 하고 있었나요",
+    "context_ph": "라이브 게임을 관전하다가 사령관을 클릭했습니다...",
+    "lbl_symptom_bug": "무슨 일이 있었나요 (버그)",
+    "lbl_symptom_sug": "당신의 제안",
+    "symptom_ph_bug": "게임이 진행 중인데도 평가 히트맵이 모두 0으로 표시되었습니다...",
+    "symptom_ph_sug": "순위표에 연승 기록이 표시되면 좋겠습니다...",
+    "lbl_expected": "어떻게 되어야 했나요",
+    "expected_ph": "평가 히트맵은 매 턴 갱신되는 평가 가중치를 보여줘야 합니다...",
+    "lbl_contact": "연락처 (선택 — 후속 연락용)",
+    "contact_ph": "이메일 또는 Discord 사용자명",
+    "contact_note": "수정되면 알려드리겠습니다",
+    "ctx_submit": "이 신고를 HexDek 수신함으로 보냅니다. 해결되면 위 연락처로 알려드리겠습니다.",
+    "btn_submit": "신고 보내기",
+    "btn_submitting": "보내는 중...",
+    "err_symptom": "무슨 일이 있었는지 적어주세요",
+    "err_server": "서버가 신고를 거부했습니다 (오류 {status}). 다시 시도해 주세요.",
+    "err_network": "서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도해 주세요."
   }
 }
