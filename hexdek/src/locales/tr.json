@@ -1836,5 +1836,22 @@
     "err_symptom": "Lütfen ne olduğunu anlat",
     "err_server": "Sunucu bildirimi reddetti (hata {status}). Lütfen tekrar dene.",
     "err_network": "Sunucuya ulaşılamadı. Bağlantını kontrol et ve tekrar dene."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER ZEKASI",
+    "hero_eyebrow": "HX-001 / / AÇIK KAYNAK / / KENDİ MAKİNENDE ÇALIŞIR",
+    "hero_blurb": "MTG COMMANDER ZEKA PLATFORMU. AI DESTEKLİ MAÇLAR, FREYA DÜZEYİNDE DESTE ANALİZİ VE KURALLARDA YETKİN BİR OYUN MOTORUYLA ÇALIŞAN BİR SIRALAMA.",
+    "cta_import": "DESTENİ İÇE AKTAR",
+    "f_analysis_title": "DESTE ANALİZİ",
+    "f_analysis_desc": "FREYA arketipi, kazanma hatlarını, mana tabanını, comboları ve her kartın rolünü puanlar.",
+    "f_analysis_cta": "DESTELERE GÖZ AT",
+    "f_engine_title": "OYUN MOTORU",
+    "f_engine_desc": "Dört oyunculu AI maçlarını canlı yürüten açık kaynak MTG Commander kural motoru.",
+    "f_rank_desc": "Binlerce showmatch maçı üzerinden HexELO puanları + kazanma oranı istatistikleri.",
+    "f_rank_cta": "SIRALAMAYI GÖR",
+    "panel_recent": "SON ETKİNLİK / / CANLI DÖKÜMHANE",
+    "fetching": "> SON MAÇLAR GETİRİLİYOR",
+    "empty": "> HENÜZ KAYITLI MAÇ YOK — GÖSTERİ MAÇI MOTORU ÇEVRİMDIŞI.",
+    "footer": "+ + + HEXDEK ÇEKİRDEĞİ HAZIR · MIT LİSANSLI · AÇIK KAYNAK + + +"
   }
 }

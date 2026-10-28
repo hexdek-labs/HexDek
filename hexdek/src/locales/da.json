@@ -1836,5 +1836,22 @@
     "err_symptom": "Beskriv venligst hvad der skete",
     "err_server": "Serveren afviste rapporten (fejl {status}). Prøv venligst igen.",
     "err_network": "Kunne ikke nå serveren. Tjek din forbindelse og prøv igen."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER-INTELLIGENS",
+    "hero_eyebrow": "HX-001 / / OPEN SOURCE / / KØRER PÅ DIN EGEN MASKINE",
+    "hero_blurb": "MTG COMMANDER-INTELLIGENSPLATFORM. AI-DREVNE KAMPE, DÆKANALYSE I FREYA-KLASSE OG EN RANGLISTE DREVET AF EN REGELAUTORITATIV SPILMOTOR.",
+    "cta_import": "IMPORTÉR DIT DÆK",
+    "f_analysis_title": "DÆKANALYSE",
+    "f_analysis_desc": "FREYA bedømmer arketype, vinderlinjer, manabase, comboer og hvert korts rolle.",
+    "f_analysis_cta": "SE DÆK",
+    "f_engine_title": "SPILMOTOR",
+    "f_engine_desc": "Open source MTG Commander-regelmotor, der kører AI-kampe med fire spillere live.",
+    "f_rank_desc": "HexELO-ratings + winrate-statistik over tusindvis af showmatch-spil.",
+    "f_rank_cta": "SE RANGLISTEN",
+    "panel_recent": "SENESTE AKTIVITET / / LIVE-SMEDJE",
+    "fetching": "> HENTER SENESTE SPIL",
+    "empty": "> INGEN SPIL REGISTRERET ENDNU — SHOWMATCH-MOTOREN ER OFFLINE.",
+    "footer": "+ + + HEXDEK-KERNE KLAR · MIT-LICENSERET · OPEN SOURCE + + +"
   }
 }

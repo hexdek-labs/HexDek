@@ -1836,5 +1836,22 @@
     "err_symptom": "Írd le, mi történt",
     "err_server": "A szerver elutasította a bejelentést ({status} hiba). Próbáld újra.",
     "err_network": "Nem sikerült elérni a szervert. Ellenőrizd a kapcsolatot, és próbáld újra."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER INTELLIGENCIA",
+    "hero_eyebrow": "HX-001 / / NYÍLT FORRÁSKÓDÚ / / A TE GÉPEDEN FUT",
+    "hero_blurb": "MTG COMMANDER INTELLIGENCIA PLATFORM. AI-VEZÉRELT MECCSEK, FREYA-SZINTŰ PAKLIELEMZÉS ÉS EGY RANGLISTA, AMIT SZABÁLYHITELES JÁTÉKMOTOR HAJT.",
+    "cta_import": "PAKLID IMPORTÁLÁSA",
+    "f_analysis_title": "PAKLIELEMZÉS",
+    "f_analysis_desc": "A FREYA pontozza az archetípust, a győzelmi vonalakat, a manabázist, a combókat és minden lap szerepét.",
+    "f_analysis_cta": "PAKLIK BÖNGÉSZÉSE",
+    "f_engine_title": "JÁTÉKMOTOR",
+    "f_engine_desc": "Nyílt forráskódú MTG Commander szabálymotor, amely élőben futtat négyszemélyes AI meccseket.",
+    "f_rank_desc": "HexELO értékelések + győzelmi arány statisztikák több ezer showmatch meccsből.",
+    "f_rank_cta": "RANGLISTA MEGTEKINTÉSE",
+    "panel_recent": "LEGUTÓBBI AKTIVITÁS / / ÉLŐ MŰHELY",
+    "fetching": "> LEGUTÓBBI MECCSEK BETÖLTÉSE",
+    "empty": "> MÉG NINCS RÖGZÍTETT MECCS — A MÉRKŐZÉSMOTOR OFFLINE.",
+    "footer": "+ + + HEXDEK MAG KÉSZ · MIT-LICENC · NYÍLT FORRÁSKÓDÚ + + +"
   }
 }

@@ -1836,5 +1836,22 @@
     "err_symptom": "Décrivez ce qui s’est passé",
     "err_server": "Le serveur a refusé le signalement (erreur {status}). Veuillez réessayer.",
     "err_network": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · INTELLIGENCE COMMANDER",
+    "hero_eyebrow": "HX-001 / / OPEN SOURCE / / TOURNE SUR VOTRE MACHINE",
+    "hero_blurb": "PLATEFORME D'INTELLIGENCE MTG COMMANDER. PARTIES PILOTÉES PAR L'IA, ANALYSE DE DECK DE NIVEAU FREYA ET UN CLASSEMENT PROPULSÉ PAR UN MOTEUR DE JEU QUI FAIT AUTORITÉ SUR LES RÈGLES.",
+    "cta_import": "IMPORTER VOTRE DECK",
+    "f_analysis_title": "ANALYSE DE DECK",
+    "f_analysis_desc": "FREYA note l’archétype, les lignes de victoire, la base de mana, les combos et le rôle de chaque carte.",
+    "f_analysis_cta": "PARCOURIR LES DECKS",
+    "f_engine_title": "MOTEUR DE JEU",
+    "f_engine_desc": "Moteur de règles MTG Commander open source qui fait tourner en direct des parties d’IA à quatre.",
+    "f_rank_desc": "Classements HexELO + statistiques de victoires sur des milliers de parties showmatch.",
+    "f_rank_cta": "VOIR LE CLASSEMENT",
+    "panel_recent": "ACTIVITÉ RÉCENTE / / FORGE EN DIRECT",
+    "fetching": "> RÉCUPÉRATION DES PARTIES RÉCENTES",
+    "empty": "> AUCUNE PARTIE ENREGISTRÉE POUR L’INSTANT — MOTEUR DE COMBATS HORS LIGNE.",
+    "footer": "+ + + CŒUR HEXDEK PRÊT · SOUS LICENCE MIT · OPEN SOURCE + + +"
   }
 }

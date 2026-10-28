@@ -1836,5 +1836,22 @@
     "err_symptom": "Descrivi cosa è successo",
     "err_server": "Il server ha rifiutato la segnalazione (errore {status}). Riprova.",
     "err_network": "Impossibile raggiungere il server. Controlla la connessione e riprova."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · INTELLIGENZA COMMANDER",
+    "hero_eyebrow": "HX-001 / / OPEN SOURCE / / GIRA SULLA TUA MACCHINA",
+    "hero_blurb": "PIATTAFORMA DI INTELLIGENZA MTG COMMANDER. PARTITE GUIDATE DALL’IA, ANALISI DEI DECK DI LIVELLO FREYA E UNA CLASSIFICA MOSSA DA UN MOTORE DI GIOCO AUTOREVOLE SULLE REGOLE.",
+    "cta_import": "IMPORTA IL TUO DECK",
+    "f_analysis_title": "ANALISI DEL DECK",
+    "f_analysis_desc": "FREYA valuta archetipo, linee di vittoria, base di mana, combo e il ruolo di ogni carta.",
+    "f_analysis_cta": "SFOGLIA I DECK",
+    "f_engine_title": "MOTORE DI GIOCO",
+    "f_engine_desc": "Motore di regole MTG Commander open source che gioca dal vivo partite IA a quattro.",
+    "f_rank_desc": "Valutazioni HexELO + statistiche di vittoria su migliaia di partite showmatch.",
+    "f_rank_cta": "VEDI LA CLASSIFICA",
+    "panel_recent": "ATTIVITÀ RECENTE / / FORGIA LIVE",
+    "fetching": "> RECUPERO DELLE PARTITE RECENTI",
+    "empty": "> NESSUNA PARTITA REGISTRATA ANCORA — MOTORE DEGLI SCONTRI OFFLINE.",
+    "footer": "+ + + NUCLEO HEXDEK PRONTO · LICENZA MIT · OPEN SOURCE + + +"
   }
 }

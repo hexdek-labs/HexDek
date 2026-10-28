@@ -1836,5 +1836,22 @@
     "err_symptom": "Please describe what happened",
     "err_server": "The server rejected the report (error {status}). Please try again.",
     "err_network": "Could not reach the server. Check your connection and try again."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER INTELLIGENCE",
+    "hero_eyebrow": "HX-001 / / OPEN-SOURCE / / RUNS ON YOUR MACHINE",
+    "hero_blurb": "MTG COMMANDER INTELLIGENCE PLATFORM. AI-DRIVEN MATCHES, FREYA-GRADE DECK ANALYSIS, AND A LEADERBOARD POWERED BY A RULES-AUTHORITATIVE GAME ENGINE.",
+    "cta_import": "IMPORT YOUR DECK",
+    "f_analysis_title": "DECK ANALYSIS",
+    "f_analysis_desc": "Freya scores archetype, win lines, mana base, combos, and roles per card.",
+    "f_analysis_cta": "BROWSE DECKS",
+    "f_engine_title": "GAME ENGINE",
+    "f_engine_desc": "Open-source MTG Commander rules engine running 4-player AI matches live.",
+    "f_rank_desc": "HexELO ratings + win-rate stats over thousands of showmatch games.",
+    "f_rank_cta": "SEE RANKINGS",
+    "panel_recent": "RECENT ACTIVITY / / LIVE FORGE",
+    "fetching": "> FETCHING RECENT GAMES",
+    "empty": "> NO GAMES RECORDED YET — SHOWMATCH ENGINE OFFLINE.",
+    "footer": "+ + + HEXDEK CORE READY · MIT-LICENSED · OPEN SOURCE + + +"
   }
 }

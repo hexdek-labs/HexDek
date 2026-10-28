@@ -1836,5 +1836,22 @@
     "err_symptom": "请描述发生了什么",
     "err_server": "服务器拒绝了该反馈（错误 {status}）。请重试。",
     "err_network": "无法连接服务器。请检查网络后重试。"
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · 指挥官智能",
+    "hero_eyebrow": "HX-001 / / 开源 / / 就在你自己的机器上运行",
+    "hero_blurb": "MTG 指挥官智能平台。由 AI 驱动的对局、FREYA 级别的套牌分析，以及由规则权威游戏引擎支撑的排行榜。",
+    "cta_import": "导入你的套牌",
+    "f_analysis_title": "套牌分析",
+    "f_analysis_desc": "FREYA 会评估原型、取胜路线、法术力基础、连锁组合以及每张牌的角色。",
+    "f_analysis_cta": "浏览套牌",
+    "f_engine_title": "游戏引擎",
+    "f_engine_desc": "开源的 MTG 指挥官规则引擎，实时运行四人 AI 对局。",
+    "f_rank_desc": "基于数千场表演赛的 HexELO 评分与胜率统计。",
+    "f_rank_cta": "查看排行榜",
+    "panel_recent": "最近动态 / / 实时锻造",
+    "fetching": "> 正在获取最近对局",
+    "empty": "> 暂无对局记录 — 表演赛引擎离线。",
+    "footer": "+ + + HEXDEK 核心就绪 · MIT 许可 · 开源 + + +"
   }
 }

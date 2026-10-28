@@ -1836,5 +1836,22 @@
     "err_symptom": "Bitte beschreibe, was passiert ist",
     "err_server": "Der Server hat die Meldung abgelehnt (Fehler {status}). Bitte versuche es erneut.",
     "err_network": "Server nicht erreichbar. Prüfe deine Verbindung und versuche es erneut."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER-INTELLIGENZ",
+    "hero_eyebrow": "HX-001 / / OPEN SOURCE / / LÄUFT AUF DEINEM RECHNER",
+    "hero_blurb": "MTG-COMMANDER-INTELLIGENZPLATTFORM. KI-GESTEUERTE PARTIEN, DECKANALYSE IN FREYA-QUALITÄT UND EINE RANGLISTE, ANGETRIEBEN VON EINER REGELAUTORITATIVEN SPIEL-ENGINE.",
+    "cta_import": "DEIN DECK IMPORTIEREN",
+    "f_analysis_title": "DECKANALYSE",
+    "f_analysis_desc": "FREYA bewertet Archetyp, Siegeslinien, Manabasis, Combos und die Rolle jeder Karte.",
+    "f_analysis_cta": "DECKS DURCHSEHEN",
+    "f_engine_title": "SPIEL-ENGINE",
+    "f_engine_desc": "Open-Source-Regel-Engine für MTG Commander, die KI-Partien mit vier Spielern live austrägt.",
+    "f_rank_desc": "HexELO-Wertungen + Winrate-Statistiken über tausende Showmatch-Partien.",
+    "f_rank_cta": "RANGLISTE ANSEHEN",
+    "panel_recent": "LETZTE AKTIVITÄT / / LIVE-SCHMIEDE",
+    "fetching": "> LETZTE PARTIEN WERDEN GELADEN",
+    "empty": "> NOCH KEINE PARTIEN AUFGEZEICHNET — SHOWMATCH-ENGINE OFFLINE.",
+    "footer": "+ + + HEXDEK-KERN BEREIT · MIT-LIZENZIERT · OPEN SOURCE + + +"
   }
 }

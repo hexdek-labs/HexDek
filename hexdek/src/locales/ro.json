@@ -1836,5 +1836,22 @@
     "err_symptom": "Descrie ce s-a întâmplat",
     "err_server": "Serverul a respins raportul (eroare {status}). Încearcă din nou.",
     "err_network": "Nu s-a putut contacta serverul. Verifică conexiunea și încearcă din nou."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · INTELIGENȚĂ COMMANDER",
+    "hero_eyebrow": "HX-001 / / SURSĂ DESCHISĂ / / RULEAZĂ PE MAȘINA TA",
+    "hero_blurb": "PLATFORMĂ DE INTELIGENȚĂ MTG COMMANDER. MECIURI CONDUSE DE AI, ANALIZĂ DE PACHET LA NIVEL FREYA ȘI UN CLASAMENT PUS ÎN MIȘCARE DE UN MOTOR DE JOC CU AUTORITATE ÎN REGULI.",
+    "cta_import": "IMPORTĂ PACHETUL TĂU",
+    "f_analysis_title": "ANALIZĂ DE PACHET",
+    "f_analysis_desc": "FREYA punctează arhetipul, liniile de victorie, baza de mana, combo-urile și rolul fiecărei cărți.",
+    "f_analysis_cta": "RĂSFOIEȘTE PACHETELE",
+    "f_engine_title": "MOTOR DE JOC",
+    "f_engine_desc": "Motor de reguli MTG Commander cu sursă deschisă care rulează live meciuri AI în patru.",
+    "f_rank_desc": "Ratinguri HexELO + statistici de winrate din mii de meciuri showmatch.",
+    "f_rank_cta": "VEZI CLASAMENTUL",
+    "panel_recent": "ACTIVITATE RECENTĂ / / FORJA LIVE",
+    "fetching": "> SE PRELUAU MECIURILE RECENTE",
+    "empty": "> NICIUN MECI ÎNREGISTRAT ÎNCĂ — MOTORUL DE CONFRUNTĂRI ESTE OFFLINE.",
+    "footer": "+ + + NUCLEUL HEXDEK ESTE GATA · LICENȚĂ MIT · SURSĂ DESCHISĂ + + +"
   }
 }

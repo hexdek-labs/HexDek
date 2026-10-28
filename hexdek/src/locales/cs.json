@@ -1836,5 +1836,22 @@
     "err_symptom": "Popište prosím, co se stalo",
     "err_server": "Server hlášení odmítl (chyba {status}). Zkuste to prosím znovu.",
     "err_network": "Nepodařilo se spojit se serverem. Zkontrolujte připojení a zkuste to znovu."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER INTELIGENCE",
+    "hero_eyebrow": "HX-001 / / OTEVŘENÝ ZDROJ / / BĚŽÍ NA TVÉM STROJI",
+    "hero_blurb": "PLATFORMA MTG COMMANDER INTELIGENCE. ZÁPASY ŘÍZENÉ AI, ANALÝZA BALÍČKŮ V KVALITĚ FREYA A ŽEBŘÍČEK POHÁNĚNÝ PRAVIDLOVĚ AUTORITATIVNÍM HERNÍM ENGINEM.",
+    "cta_import": "IMPORTUJ SVŮJ BALÍČEK",
+    "f_analysis_title": "ANALÝZA BALÍČKU",
+    "f_analysis_desc": "FREYA hodnotí archetyp, výherní linie, manovou bázi, comba a roli každé karty.",
+    "f_analysis_cta": "PROHLÉDNOUT BALÍČKY",
+    "f_engine_title": "HERNÍ ENGINE",
+    "f_engine_desc": "Open-source pravidlový engine MTG Commander, který živě pohání AI zápasy čtyř hráčů.",
+    "f_rank_desc": "Hodnocení HexELO a statistiky výher z tisíců showmatch zápasů.",
+    "f_rank_cta": "ZOBRAZIT ŽEBŘÍČEK",
+    "panel_recent": "NEDÁVNÁ AKTIVITA / / ŽIVÁ KOVÁRNA",
+    "fetching": "> NAČÍTÁNÍ NEDÁVNÝCH HER",
+    "empty": "> ZATÍM NEBYLY ZAZNAMENÁNY ŽÁDNÉ HRY — ENGINE STŘETNUTÍ JE OFFLINE.",
+    "footer": "+ + + JÁDRO HEXDEK PŘIPRAVENO · LICENCE MIT · OTEVŘENÝ ZDROJ + + +"
   }
 }

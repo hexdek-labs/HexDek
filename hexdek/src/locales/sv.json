@@ -1836,5 +1836,22 @@
     "err_symptom": "Beskriv vad som hände",
     "err_server": "Servern avvisade rapporten (fel {status}). Försök igen.",
     "err_network": "Kunde inte nå servern. Kontrollera din anslutning och försök igen."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER-INTELLIGENS",
+    "hero_eyebrow": "HX-001 / / ÖPPEN KÄLLKOD / / KÖRS PÅ DIN EGEN MASKIN",
+    "hero_blurb": "MTG COMMANDER-INTELLIGENSPLATTFORM. AI-DRIVNA MATCHER, LEKANALYS I FREYA-KLASS OCH EN RANKNING DRIVEN AV EN REGELAUKTORITATIV SPELMOTOR.",
+    "cta_import": "IMPORTERA DIN LEK",
+    "f_analysis_title": "LEKANALYS",
+    "f_analysis_desc": "FREYA bedömer arketyp, vinstlinjer, manabas, combon och varje korts roll.",
+    "f_analysis_cta": "BLÄDDRA I LEKAR",
+    "f_engine_title": "SPELMOTOR",
+    "f_engine_desc": "Regelmotor för MTG Commander med öppen källkod som kör AI-matcher för fyra spelare live.",
+    "f_rank_desc": "HexELO-ratingar + winrate-statistik över tusentals showmatch-spel.",
+    "f_rank_cta": "SE RANKNINGEN",
+    "panel_recent": "SENASTE AKTIVITET / / LIVE-SMEDJA",
+    "fetching": "> HÄMTAR SENASTE SPELEN",
+    "empty": "> INGA SPEL REGISTRERADE ÄNNU — SHOWMATCH-MOTORN ÄR OFFLINE.",
+    "footer": "+ + + HEXDEK-KÄRNA KLAR · MIT-LICENSIERAD · ÖPPEN KÄLLKOD + + +"
   }
 }

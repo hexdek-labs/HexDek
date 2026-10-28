@@ -1836,5 +1836,22 @@
     "err_symptom": "Beschrijf wat er gebeurde",
     "err_server": "De server weigerde de melding (fout {status}). Probeer het opnieuw.",
     "err_network": "Kon de server niet bereiken. Controleer je verbinding en probeer het opnieuw."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · COMMANDER-INTELLIGENTIE",
+    "hero_eyebrow": "HX-001 / / OPEN SOURCE / / DRAAIT OP JOUW MACHINE",
+    "hero_blurb": "MTG COMMANDER-INTELLIGENTIEPLATFORM. AI-GESTUURDE PARTIJEN, DECKANALYSE OP FREYA-NIVEAU EN EEN RANGLIJST AANGEDREVEN DOOR EEN REGELAUTORITATIEVE SPELENGINE.",
+    "cta_import": "JOUW DECK IMPORTEREN",
+    "f_analysis_title": "DECKANALYSE",
+    "f_analysis_desc": "FREYA beoordeelt archetype, winlijnen, manabasis, combo’s en de rol van elke kaart.",
+    "f_analysis_cta": "DECKS BEKIJKEN",
+    "f_engine_title": "SPELENGINE",
+    "f_engine_desc": "Open-source MTG Commander-regelengine die live AI-partijen met vier spelers speelt.",
+    "f_rank_desc": "HexELO-ratings + winrate-statistieken over duizenden showmatch-partijen.",
+    "f_rank_cta": "RANGLIJST BEKIJKEN",
+    "panel_recent": "RECENTE ACTIVITEIT / / LIVE SMIDSE",
+    "fetching": "> RECENTE PARTIJEN OPHALEN",
+    "empty": "> NOG GEEN PARTIJEN VASTGELEGD — SHOWMATCH-ENGINE OFFLINE.",
+    "footer": "+ + + HEXDEK-KERN GEREED · MIT-GELICENSEERD · OPEN SOURCE + + +"
   }
 }

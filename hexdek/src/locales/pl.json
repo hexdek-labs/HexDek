@@ -1836,5 +1836,22 @@
     "err_symptom": "Opisz, co się stało",
     "err_server": "Serwer odrzucił zgłoszenie (błąd {status}). Spróbuj ponownie.",
     "err_network": "Nie udało się połączyć z serwerem. Sprawdź połączenie i spróbuj ponownie."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · INTELIGENCJA COMMANDER",
+    "hero_eyebrow": "HX-001 / / OTWARTE ŹRÓDŁO / / DZIAŁA NA TWOJEJ MASZYNIE",
+    "hero_blurb": "PLATFORMA INTELIGENCJI MTG COMMANDER. MECZE PROWADZONE PRZEZ AI, ANALIZA TALII KLASY FREYA I RANKING NAPĘDZANY SILNIKIEM GRY AUTORYTATYWNYM W ZASADACH.",
+    "cta_import": "IMPORTUJ SWOJĄ TALIĘ",
+    "f_analysis_title": "ANALIZA TALII",
+    "f_analysis_desc": "FREYA ocenia archetyp, linie zwycięstwa, bazę many, comba i rolę każdej karty.",
+    "f_analysis_cta": "PRZEGLĄDAJ TALIE",
+    "f_engine_title": "SILNIK GRY",
+    "f_engine_desc": "Otwartoźródłowy silnik zasad MTG Commander prowadzący na żywo mecze AI dla czterech graczy.",
+    "f_rank_desc": "Oceny HexELO + statystyki winrate z tysięcy meczów showmatch.",
+    "f_rank_cta": "ZOBACZ RANKING",
+    "panel_recent": "OSTATNIA AKTYWNOŚĆ / / KUŹNIA NA ŻYWO",
+    "fetching": "> POBIERANIE OSTATNICH GIER",
+    "empty": "> JESZCZE NIE ZAREJESTROWANO ŻADNEJ GRY — SILNIK POTYCZEK JEST OFFLINE.",
+    "footer": "+ + + RDZEŃ HEXDEK GOTOWY · LICENCJA MIT · OTWARTE ŹRÓDŁO + + +"
   }
 }

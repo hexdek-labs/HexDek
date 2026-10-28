@@ -1836,5 +1836,22 @@
     "err_symptom": "Describe qué pasó",
     "err_server": "El servidor rechazó el informe (error {status}). Inténtalo de nuevo.",
     "err_network": "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · INTELIGENCIA COMMANDER",
+    "hero_eyebrow": "HX-001 / / CÓDIGO ABIERTO / / CORRE EN TU MÁQUINA",
+    "hero_blurb": "PLATAFORMA DE INTELIGENCIA MTG COMMANDER. PARTIDAS DIRIGIDAS POR IA, ANÁLISIS DE DECKS DE NIVEL FREYA Y UNA CLASIFICACIÓN IMPULSADA POR UN MOTOR DE JUEGO CON AUTORIDAD EN LAS REGLAS.",
+    "cta_import": "IMPORTAR TU DECK",
+    "f_analysis_title": "ANÁLISIS DE DECK",
+    "f_analysis_desc": "FREYA puntúa arquetipo, líneas de victoria, base de maná, combos y el rol de cada carta.",
+    "f_analysis_cta": "EXPLORAR DECKS",
+    "f_engine_title": "MOTOR DE JUEGO",
+    "f_engine_desc": "Motor de reglas de MTG Commander de código abierto que juega partidas de IA a cuatro en directo.",
+    "f_rank_desc": "Ratings HexELO + estadísticas de victorias sobre miles de partidas showmatch.",
+    "f_rank_cta": "VER LA CLASIFICACIÓN",
+    "panel_recent": "ACTIVIDAD RECIENTE / / FORJA EN VIVO",
+    "fetching": "> OBTENIENDO PARTIDAS RECIENTES",
+    "empty": "> AÚN NO HAY PARTIDAS REGISTRADAS — MOTOR DE COMBATES DESCONECTADO.",
+    "footer": "+ + + NÚCLEO HEXDEK LISTO · LICENCIA MIT · CÓDIGO ABIERTO + + +"
   }
 }

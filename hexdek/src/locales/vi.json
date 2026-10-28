@@ -1836,5 +1836,22 @@
     "err_symptom": "Vui lòng mô tả chuyện đã xảy ra",
     "err_server": "Máy chủ đã từ chối báo cáo (lỗi {status}). Vui lòng thử lại.",
     "err_network": "Không thể kết nối máy chủ. Kiểm tra kết nối và thử lại."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · TRÍ TUỆ COMMANDER",
+    "hero_eyebrow": "HX-001 / / MÃ NGUỒN MỞ / / CHẠY NGAY TRÊN MÁY BẠN",
+    "hero_blurb": "NỀN TẢNG TRÍ TUỆ MTG COMMANDER. CÁC VÁN ĐẤU DO AI ĐIỀU KHIỂN, PHÂN TÍCH BỘ BÀI TẦM FREYA VÀ BẢNG XẾP HẠNG ĐƯỢC VẬN HÀNH BỞI MỘT ENGINE GAME CHUẨN LUẬT.",
+    "cta_import": "NHẬP BỘ BÀI CỦA BẠN",
+    "f_analysis_title": "PHÂN TÍCH BỘ BÀI",
+    "f_analysis_desc": "FREYA chấm điểm archetype, hướng thắng, nền mana, combo và vai trò của từng thẻ.",
+    "f_analysis_cta": "XEM CÁC BỘ BÀI",
+    "f_engine_title": "ENGINE GAME",
+    "f_engine_desc": "Engine luật MTG Commander mã nguồn mở, chạy trực tiếp các ván đấu AI bốn người.",
+    "f_rank_desc": "Điểm HexELO + thống kê tỉ lệ thắng qua hàng nghìn ván showmatch.",
+    "f_rank_cta": "XEM XẾP HẠNG",
+    "panel_recent": "HOẠT ĐỘNG GẦN ĐÂY / / LÒ RÈN TRỰC TIẾP",
+    "fetching": "> ĐANG TẢI CÁC VÁN GẦN ĐÂY",
+    "empty": "> CHƯA GHI NHẬN VÁN NÀO — ĐỘNG CƠ ĐẤU THỬ ĐANG OFFLINE.",
+    "footer": "+ + + LÕI HEXDEK ĐÃ SẴN SÀNG · GIẤY PHÉP MIT · MÃ NGUỒN MỞ + + +"
   }
 }

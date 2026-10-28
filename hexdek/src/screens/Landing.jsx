@@ -13,27 +13,32 @@ import { relativeAge, formatAge } from '../lib/relativeAge'
 // (The spec mentioned --fg; the corresponding token here is --ink. Used
 // throughout the chrome components.)
 
+// Catalog PATHS, not English. `titleKey` on the third card borrows the nav's
+// own label: the nav calls that destination RANKINGS while this card called it
+// LEADERBOARD, and the nav wins. `ctaKey` on the second borrows
+// dka.spectate_live, whose 24 translations already read "watch live" — only
+// English says SPECTATE LIVE, which is what nav.spectate says too.
 const FEATURES = [
   {
     icon: '◈',
-    title: 'DECK ANALYSIS',
-    desc: 'Freya scores archetype, win lines, mana base, combos, and roles per card.',
+    titleKey: 'lnd.f_analysis_title',
+    descKey: 'lnd.f_analysis_desc',
     to: '/decks',
-    cta: 'BROWSE DECKS',
+    ctaKey: 'lnd.f_analysis_cta',
   },
   {
     icon: '⌬',
-    title: 'GAME ENGINE',
-    desc: 'Open-source MTG Commander rules engine running 4-player AI matches live.',
+    titleKey: 'lnd.f_engine_title',
+    descKey: 'lnd.f_engine_desc',
     to: '/spectate',
-    cta: 'WATCH LIVE',
+    ctaKey: 'dka.spectate_live',
   },
   {
     icon: '☷',
-    title: 'LEADERBOARD',
-    desc: 'HexELO ratings + win-rate stats over thousands of showmatch games.',
+    titleKey: 'nav.leaderboard',
+    descKey: 'lnd.f_rank_desc',
     to: '/leaderboard',
-    cta: 'SEE RANKINGS',
+    ctaKey: 'lnd.f_rank_cta',
   },
 ]
 
@@ -50,8 +55,8 @@ export default function Landing() {
   return (
     <>
       <Tape
-        left="LANDING / / DOC HX-001"
-        mid="HEXDEK · COMMANDER INTELLIGENCE"
+        left={t('splash.tape_left')}
+        mid={t('lnd.tape_mid')}
         right="REV C.25"
       />
 
@@ -71,7 +76,7 @@ export default function Landing() {
         }}>
           <div>
             <div className="t-xs muted" style={{ letterSpacing: '0.16em', marginBottom: 10 }}>
-              HX-001 / / OPEN-SOURCE / / RUNS ON YOUR MACHINE
+              {t('lnd.hero_eyebrow')}
             </div>
             <h1 style={{
               margin: 0,
@@ -92,9 +97,7 @@ export default function Landing() {
               fontSize: 14,
               color: 'var(--ink-2)',
             }}>
-              MTG COMMANDER INTELLIGENCE PLATFORM. AI-DRIVEN MATCHES, FREYA-GRADE
-              DECK ANALYSIS, AND A LEADERBOARD POWERED BY A RULES-AUTHORITATIVE
-              GAME ENGINE.
+              {t('lnd.hero_blurb')}
             </div>
           </div>
 
@@ -132,7 +135,7 @@ export default function Landing() {
             marginBottom: 32,
           }}
         >
-          <span>IMPORT YOUR DECK</span>
+          <span>{t('lnd.cta_import')}</span>
           <span style={{ fontSize: 22 }}>↗</span>
         </button>
 
@@ -140,7 +143,7 @@ export default function Landing() {
         <div className="grid col-3 gap-3" style={{ marginBottom: 32 }}>
           {FEATURES.map(f => (
             <Link
-              key={f.title}
+              key={f.to}
               to={f.to}
               className="panel"
               style={{
@@ -155,14 +158,14 @@ export default function Landing() {
                 fontSize: 36, lineHeight: 1, color: 'var(--accent)',
                 fontWeight: 400,
               }} aria-hidden="true">{f.icon}</div>
-              <div className="t-xl" style={{ fontWeight: 800, letterSpacing: '-0.01em' }}>{f.title}</div>
-              <div className="t-md muted" style={{ flex: 1, lineHeight: 1.5 }}>{f.desc}</div>
+              <div className="t-xl" style={{ fontWeight: 800, letterSpacing: '-0.01em' }}>{t(f.titleKey)}</div>
+              <div className="t-md muted" style={{ flex: 1, lineHeight: 1.5 }}>{t(f.descKey)}</div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 paddingTop: 6, borderTop: '1px dashed var(--rule-2)', marginTop: 4,
               }}>
                 <span className="t-xs" style={{ fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.10em' }}>
-                  {f.cta}
+                  {t(f.ctaKey)}
                 </span>
                 <span style={{ color: 'var(--accent)' }}>↗</span>
               </div>
@@ -173,16 +176,16 @@ export default function Landing() {
         {/* RECENT ACTIVITY — last 5 games from /api/games */}
         <Panel
           code="LND.A"
-          title="RECENT ACTIVITY / / LIVE FORGE"
+          title={t('lnd.panel_recent')}
           right={<Tag solid kind={games && games.length > 0 ? 'ok' : null}>{games?.length ?? 0}</Tag>}
         >
           {gamesLoading ? (
             <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-              &gt; FETCHING RECENT GAMES<span className="blink">_</span>
+              {t('lnd.fetching')}<span className="blink">_</span>
             </div>
           ) : !games || games.length === 0 ? (
             <div className="t-md muted" style={{ padding: '14px 0', textAlign: 'center' }}>
-              &gt; NO GAMES RECORDED YET — SHOWMATCH ENGINE OFFLINE.
+              {t('lnd.empty')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -216,7 +219,7 @@ export default function Landing() {
           )}
           <div style={{ marginTop: 12, textAlign: 'right' }}>
             <Link to="/spectate" style={{ textDecoration: 'none' }}>
-              <Btn ghost arrow="↗" sm>WATCH LIVE</Btn>
+              <Btn ghost arrow="↗" sm>{t('dka.spectate_live')}</Btn>
             </Link>
           </div>
         </Panel>
@@ -225,7 +228,7 @@ export default function Landing() {
         <div className="t-xs muted-2" style={{
           marginTop: 28, textAlign: 'center', letterSpacing: '0.12em',
         }}>
-          + + + HEXDEK CORE READY · MIT-LICENSED · OPEN SOURCE + + +
+          {t('lnd.footer')}
         </div>
       </div>
     </>

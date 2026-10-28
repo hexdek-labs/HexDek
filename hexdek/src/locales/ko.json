@@ -1836,5 +1836,22 @@
     "err_symptom": "무슨 일이 있었는지 적어주세요",
     "err_server": "서버가 신고를 거부했습니다 (오류 {status}). 다시 시도해 주세요.",
     "err_network": "서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도해 주세요."
+  },
+  "lnd": {
+    "tape_mid": "HEXDEK · 커맨더 인텔리전스",
+    "hero_eyebrow": "HX-001 / / 오픈소스 / / 당신의 기기에서 직접 돌아갑니다",
+    "hero_blurb": "MTG 커맨더 인텔리전스 플랫폼. AI가 주도하는 대국, FREYA급 덱 분석, 그리고 규칙에 충실한 게임 엔진이 구동하는 순위.",
+    "cta_import": "내 덱 가져오기",
+    "f_analysis_title": "덱 분석",
+    "f_analysis_desc": "FREYA가 아키타입, 승리 루트, 마나 베이스, 콤보, 카드별 역할을 평가합니다.",
+    "f_analysis_cta": "덱 둘러보기",
+    "f_engine_title": "게임 엔진",
+    "f_engine_desc": "오픈소스 MTG 커맨더 규칙 엔진이 4인 AI 대국을 실시간으로 진행합니다.",
+    "f_rank_desc": "수천 번의 쇼매치에 걸친 HexELO 레이팅과 승률 통계.",
+    "f_rank_cta": "순위 보기",
+    "panel_recent": "최근 활동 / / 라이브 포지",
+    "fetching": "> 최근 대국 불러오는 중",
+    "empty": "> 아직 기록된 대국이 없습니다 — 쇼매치 엔진이 오프라인입니다.",
+    "footer": "+ + + HEXDEK 코어 준비 완료 · MIT 라이선스 · 오픈소스 + + +"
   }
 }
