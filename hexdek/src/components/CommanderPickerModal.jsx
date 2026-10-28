@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { useModalKeyboard } from '../hooks/useModalKeyboard'
 import { cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
 
 // CommanderPickerModal — resolves a deck's commander before Freya runs.
 //
@@ -42,6 +43,7 @@ function isLegendaryCreature(card) {
 }
 
 export default function CommanderPickerModal({ deck, deckId, candidates, saving = false, mode = 'gate', onCancel, onConfirm }) {
+  const t = useT()
   const manual = mode === 'manual'
   const panelRef = useModalKeyboard({ onClose: onCancel, trapFocus: false })
   const inputRef = useRef(null)
@@ -142,30 +144,25 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
         onMouseDown={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Select commander"
+        aria-label={t('dka.cp_aria_dialog')}
         style={{ width: 'min(560px, 94vw)' }}
       >
         <div className="export-modal__hd">
-          <span>{manual ? 'SET COMMANDER' : 'SELECT COMMANDER'} / / {(deckId || '?').toUpperCase()}</span>
+          <span>{manual ? t('dka.set_commander') : t('dka.cp_hd_select')} / / {deckId || '?'}</span>
           <button
             type="button"
             className="export-modal__close"
             onClick={onCancel}
             disabled={saving}
-            aria-label="Close commander picker"
+            aria-label={t('dka.cp_aria_close')}
             style={{ background: 'transparent', border: '1px solid var(--rule-2)', color: 'inherit', font: 'inherit', cursor: saving ? 'not-allowed' : 'pointer' }}
-          >ESC</button>
+          >{t('dka.esc')}</button>
         </div>
 
         <div style={{ padding: '14px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
           <div className="t-xs muted" style={{ lineHeight: 1.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {manual ? (
-              <>&gt; CHOOSE THIS DECK'S COMMANDER FROM ITS LEGENDARY CREATURES. SAVING RE-RUNS FREYA.</>
-            ) : (
-              <>&gt; THIS DECK'S COMMANDER COULDN'T BE RESOLVED. PIN IT BELOW AND FREYA WILL
-              ANALYZE THE DECK — NO MORE LIMBO.</>
-            )}
-            <br />&gt; PICK A DETECTED LEGENDARY CREATURE, OR TYPE TO SEARCH ALL {total} CARDS.
+            {manual ? t('dka.cp_intro_manual') : t('dka.cp_intro_gate')}
+            <br />{t(total === 1 ? 'dka.cp_hint_one' : 'dka.cp_hint', { count: total })}
           </div>
 
           {/* Combobox */}
@@ -178,7 +175,16 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
               disabled={saving}
               onChange={e => { setQuery(e.target.value); setSelected('') }}
               onKeyDown={onKeyDown}
-              placeholder={detected.length ? `${detected[0].label.toUpperCase()}${detected.length > 1 ? ` +${detected.length - 1} MORE` : ''} — OR TYPE TO SEARCH` : 'TYPE TO SEARCH ALL CARDS'}
+              placeholder={
+                detected.length === 0
+                  ? t('dka.cp_ph_empty')
+                  : detected.length === 1
+                    ? t('dka.cp_ph_detected', { name: detected[0].label.toUpperCase() })
+                    : t(detected.length === 2 ? 'dka.cp_ph_more_one' : 'dka.cp_ph_more', {
+                        name: detected[0].label.toUpperCase(),
+                        count: detected.length - 1,
+                      })
+              }
               spellCheck={false}
               role="combobox"
               aria-expanded="true"
@@ -189,7 +195,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             <div
               ref={listRef}
               role="listbox"
-              aria-label="Commander candidates"
+              aria-label={t('dka.cp_aria_list')}
               style={{
                 marginTop: 6,
                 border: '1px solid var(--rule-2)',
@@ -200,12 +206,12 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             >
               {visible.length === 0 && (
                 <div className="t-xs muted" style={{ padding: '12px 10px', textAlign: 'center' }}>
-                  NO CARDS MATCH "{query.trim().toUpperCase()}"
+                  {t('dka.cp_no_match', { query: query.trim() })}
                 </div>
               )}
               {!q && detected.length > 0 && (
                 <div className="t-xs muted-2" style={{ padding: '5px 10px', letterSpacing: '0.1em', borderBottom: '1px solid var(--rule)' }}>
-                  DETECTED — LEGENDARY CREATURES
+                  {t('dka.cp_group_detected')}
                 </div>
               )}
               {visible.map((opt, i) => {
@@ -253,7 +259,9 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             onClick={confirm}
             disabled={!resolved || saving}
           >
-            {saving ? (manual ? 'SETTING + ANALYZING…' : 'PINNING + ANALYZING…') : 'SET COMMANDER + ANALYZE'}
+            {saving
+              ? (manual ? t('dka.cp_btn_setting') : t('dka.cp_btn_pinning'))
+              : t('dka.cp_btn_confirm')}
             <span className="arr">↗</span>
           </button>
           <button
@@ -262,7 +270,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             onClick={onCancel}
             disabled={saving}
           >
-            {manual ? 'CLOSE' : 'NOT NOW'}
+            {manual ? t('common.close') : t('dka.cp_btn_not_now')}
           </button>
         </div>
       </div>
