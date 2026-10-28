@@ -1739,5 +1739,22 @@
     "tip_lock": "Zablokuj — utrzymuj tę cechę blisko wartości docelowej",
     "heat_cold": "ZIMNE — {n}/{threshold} ZAOBSERWOWANYCH GIER. KOREKTY AKTYWUJĄ SIĘ PRZY {threshold}.",
     "heat_note": "PROCENTOWE ODCHYLENIE OD WAGI BAZOWEJ (MAKS ±{pct}%). ZIELONY = ZAPOWIADA WYGRANĄ, CZERWONY = ZAPOWIADA PRZEGRANĄ."
+  },
+  "fnd": {
+    "tape_left": "ZNAJOMI / / {owner}",
+    "tape_connections": "{count} POŁĄCZEŃ",
+    "tape_no_owner": "ZNAJOMI / / BRAK WŁAŚCICIELA",
+    "tape_set_name": "USTAW NAZWĘ WYŚWIETLANĄ",
+    "no_owner_body": "> ZALOGUJ SIĘ LUB NAJPIERW USTAW HEXDEK_OWNER.",
+    "find_players": "ZNAJDŹ GRACZY",
+    "n_hits": "{count} WYNIKÓW",
+    "search_ph": "SZUKAJ GRACZY PO NAZWIE...",
+    "no_match": "> BRAK PASUJĄCYCH GRACZY.",
+    "my_friends": "MOI ZNAJOMI / / {count}",
+    "loading": "> ŁADOWANIE",
+    "no_friends": "> JESZCZE BRAK ZNAJOMYCH. POSZUKAJ POWYŻEJ, ABY KOGOŚ DODAĆ.",
+    "you": "(TY)",
+    "is_friend": "ZNAJOMY",
+    "add_friend": "DODAJ ZNAJOMEGO"
   }
 }

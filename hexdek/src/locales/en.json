@@ -1739,5 +1739,22 @@
     "tip_lock": "Lock — pin this trait around a target value",
     "heat_cold": "COLD — {n}/{threshold} GAMES OBSERVED. CORRECTIONS ACTIVATE AT {threshold}.",
     "heat_note": "PERCENT DEVIATION FROM BASELINE WEIGHT (±{pct}% MAX). GREEN = WIN-PREDICTIVE, RED = LOSS-PREDICTIVE."
+  },
+  "fnd": {
+    "tape_left": "FRIENDS / / {owner}",
+    "tape_connections": "{count} CONNECTIONS",
+    "tape_no_owner": "FRIENDS / / NO OWNER",
+    "tape_set_name": "SET A DISPLAY NAME",
+    "no_owner_body": "> SIGN IN OR SET HEXDEK_OWNER FIRST.",
+    "find_players": "FIND PLAYERS",
+    "n_hits": "{count} HITS",
+    "search_ph": "SEARCH PLAYERS BY NAME...",
+    "no_match": "> NO PLAYERS MATCHED.",
+    "my_friends": "MY FRIENDS / / {count}",
+    "loading": "> LOADING",
+    "no_friends": "> NO FRIENDS ADDED YET. SEARCH ABOVE TO ADD ONE.",
+    "you": "(YOU)",
+    "is_friend": "FRIEND",
+    "add_friend": "ADD FRIEND"
   }
 }

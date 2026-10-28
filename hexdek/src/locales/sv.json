@@ -1739,5 +1739,22 @@
     "tip_lock": "Lås — håll denna egenskap kring ett målvärde",
     "heat_cold": "KALL — {n}/{threshold} PARTIER OBSERVERADE. KORRIGERINGAR AKTIVERAS VID {threshold}.",
     "heat_note": "PROCENTUELL AVVIKELSE FRÅN BASVIKTEN (MAX ±{pct}%). GRÖN = VINSTFÖRUTSÄGANDE, RÖD = FÖRLUSTFÖRUTSÄGANDE."
+  },
+  "fnd": {
+    "tape_left": "VÄNNER / / {owner}",
+    "tape_connections": "{count} KOPPLINGAR",
+    "tape_no_owner": "VÄNNER / / INGEN ÄGARE",
+    "tape_set_name": "ANGE ETT VISNINGSNAMN",
+    "no_owner_body": "> LOGGA IN ELLER ANGE HEXDEK_OWNER FÖRST.",
+    "find_players": "HITTA SPELARE",
+    "n_hits": "{count} TRÄFFAR",
+    "search_ph": "SÖK SPELARE PÅ NAMN...",
+    "no_match": "> INGA SPELARE MATCHADE.",
+    "my_friends": "MINA VÄNNER / / {count}",
+    "loading": "> LADDAR",
+    "no_friends": "> INGA VÄNNER TILLAGDA ÄN. SÖK OVAN FÖR ATT LÄGGA TILL NÅGON.",
+    "you": "(DU)",
+    "is_friend": "VÄN",
+    "add_friend": "LÄGG TILL VÄN"
   }
 }

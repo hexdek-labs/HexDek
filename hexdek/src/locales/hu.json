@@ -1739,5 +1739,22 @@
     "tip_lock": "Zárolás — tartsd ezt a vonást egy célérték körül",
     "heat_cold": "HIDEG — {n}/{threshold} MEGFIGYELT JÁTSZMA. A KORREKCIÓK {threshold} JÁTSZMÁNÁL AKTIVÁLÓDNAK.",
     "heat_note": "SZÁZALÉKOS ELTÉRÉS AZ ALAPSÚLYTÓL (MAX ±{pct}%). ZÖLD = GYŐZELMET JELEZ, VÖRÖS = VERESÉGET JELEZ."
+  },
+  "fnd": {
+    "tape_left": "BARÁTOK / / {owner}",
+    "tape_connections": "{count} KAPCSOLAT",
+    "tape_no_owner": "BARÁTOK / / NINCS TULAJDONOS",
+    "tape_set_name": "ÁLLÍTS BE MEGJELENÍTETT NEVET",
+    "no_owner_body": "> JELENTKEZZ BE, VAGY ÁLLÍTSD BE ELŐBB A HEXDEK_OWNER-T.",
+    "find_players": "JÁTÉKOSOK KERESÉSE",
+    "n_hits": "{count} TALÁLAT",
+    "search_ph": "JÁTÉKOSOK KERESÉSE NÉV SZERINT...",
+    "no_match": "> NINCS TALÁLAT JÁTÉKOSRA.",
+    "my_friends": "BARÁTAIM / / {count}",
+    "loading": "> BETÖLTÉS",
+    "no_friends": "> MÉG NINCS BARÁT. KERESS FENTEBB, HOGY HOZZÁADJ EGYET.",
+    "you": "(TE)",
+    "is_friend": "BARÁT",
+    "add_friend": "BARÁT HOZZÁADÁSA"
   }
 }

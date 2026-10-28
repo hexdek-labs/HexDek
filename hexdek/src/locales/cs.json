@@ -1739,5 +1739,22 @@
     "tip_lock": "Zamknout — drž tuto vlastnost u cílové hodnoty",
     "heat_cold": "CHLADNÉ — {n}/{threshold} SLEDOVANÝCH HER. KOREKCE SE AKTIVUJÍ PŘI {threshold}.",
     "heat_note": "PROCENTNÍ ODCHYLKA OD ZÁKLADNÍ VÁHY (MAX ±{pct}%). ZELENÁ = PŘEDPOVÍDÁ VÝHRU, ČERVENÁ = PŘEDPOVÍDÁ PROHRU."
+  },
+  "fnd": {
+    "tape_left": "PŘÁTELÉ / / {owner}",
+    "tape_connections": "{count} SPOJENÍ",
+    "tape_no_owner": "PŘÁTELÉ / / BEZ VLASTNÍKA",
+    "tape_set_name": "NASTAV ZOBRAZOVANÉ JMÉNO",
+    "no_owner_body": "> NEJPRVE SE PŘIHLAS NEBO NASTAV HEXDEK_OWNER.",
+    "find_players": "NAJÍT HRÁČE",
+    "n_hits": "{count} NÁLEZŮ",
+    "search_ph": "HLEDAT HRÁČE PODLE JMÉNA...",
+    "no_match": "> ŽÁDNÍ HRÁČI NEODPOVÍDAJÍ.",
+    "my_friends": "MOJI PŘÁTELÉ / / {count}",
+    "loading": "> NAČÍTÁNÍ",
+    "no_friends": "> ZATÍM ŽÁDNÍ PŘÁTELÉ. VYHLEDEJ VÝŠE A PŘIDEJ NĚKOHO.",
+    "you": "(TY)",
+    "is_friend": "PŘÍTEL",
+    "add_friend": "PŘIDAT PŘÍTELE"
   }
 }

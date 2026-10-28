@@ -1739,5 +1739,22 @@
     "tip_lock": "Kunci — patok sifat ini di sekitar nilai target",
     "heat_cold": "DINGIN — {n}/{threshold} PERMAINAN TERAMATI. KOREKSI AKTIF PADA {threshold}.",
     "heat_note": "DEVIASI PERSEN DARI BOBOT DASAR (MAKS ±{pct}%). HIJAU = PREDIKTIF MENANG, MERAH = PREDIKTIF KALAH."
+  },
+  "fnd": {
+    "tape_left": "TEMAN / / {owner}",
+    "tape_connections": "{count} KONEKSI",
+    "tape_no_owner": "TEMAN / / TANPA PEMILIK",
+    "tape_set_name": "ATUR NAMA TAMPILAN",
+    "no_owner_body": "> MASUK ATAU ATUR HEXDEK_OWNER TERLEBIH DAHULU.",
+    "find_players": "CARI PEMAIN",
+    "n_hits": "{count} HASIL",
+    "search_ph": "CARI PEMAIN BERDASARKAN NAMA...",
+    "no_match": "> TIDAK ADA PEMAIN YANG COCOK.",
+    "my_friends": "TEMAN SAYA / / {count}",
+    "loading": "> MEMUAT",
+    "no_friends": "> BELUM ADA TEMAN. CARI DI ATAS UNTUK MENAMBAHKAN.",
+    "you": "(ANDA)",
+    "is_friend": "TEMAN",
+    "add_friend": "TAMBAH TEMAN"
   }
 }

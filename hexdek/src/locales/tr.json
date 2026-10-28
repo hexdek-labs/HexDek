@@ -1739,5 +1739,22 @@
     "tip_lock": "Kilitle — bu özelliği bir hedef değer çevresinde sabitle",
     "heat_cold": "SOĞUK — {n}/{threshold} OYUN GÖZLENDİ. DÜZELTMELER {threshold} OYUNDA ETKİNLEŞİR.",
     "heat_note": "TEMEL AĞIRLIKTAN YÜZDE SAPMA (MAKS ±{pct}%). YEŞİL = KAZANMA BELİRTİSİ, KIRMIZI = KAYBETME BELİRTİSİ."
+  },
+  "fnd": {
+    "tape_left": "ARKADAŞLAR / / {owner}",
+    "tape_connections": "{count} BAĞLANTI",
+    "tape_no_owner": "ARKADAŞLAR / / SAHİP YOK",
+    "tape_set_name": "BİR GÖRÜNEN AD BELİRLE",
+    "no_owner_body": "> ÖNCE GİRİŞ YAP VEYA HEXDEK_OWNER BELİRLE.",
+    "find_players": "OYUNCU BUL",
+    "n_hits": "{count} SONUÇ",
+    "search_ph": "OYUNCULARI ADA GÖRE ARA...",
+    "no_match": "> EŞLEŞEN OYUNCU YOK.",
+    "my_friends": "ARKADAŞLARIM / / {count}",
+    "loading": "> YÜKLENİYOR",
+    "no_friends": "> HENÜZ ARKADAŞ EKLENMEDİ. BİRİNİ EKLEMEK İÇİN YUKARIDA ARA.",
+    "you": "(SEN)",
+    "is_friend": "ARKADAŞ",
+    "add_friend": "ARKADAŞ EKLE"
   }
 }

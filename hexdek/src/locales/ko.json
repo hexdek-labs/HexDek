@@ -1739,5 +1739,22 @@
     "tip_lock": "잠금 — 이 특성을 목표값 근처에 고정합니다",
     "heat_cold": "콜드 — {n}/{threshold} 게임 관측. 보정은 {threshold} 게임에서 활성화됩니다.",
     "heat_note": "기준 가중치 대비 편차 비율(최대 ±{pct}%). 녹색 = 승리 예측, 빨강 = 패배 예측."
+  },
+  "fnd": {
+    "tape_left": "친구 / / {owner}",
+    "tape_connections": "연결 {count}개",
+    "tape_no_owner": "친구 / / 소유자 없음",
+    "tape_set_name": "표시 이름을 설정하세요",
+    "no_owner_body": "> 먼저 로그인하거나 HEXDEK_OWNER를 설정하세요.",
+    "find_players": "플레이어 찾기",
+    "n_hits": "{count}건",
+    "search_ph": "이름으로 플레이어 검색...",
+    "no_match": "> 일치하는 플레이어가 없습니다.",
+    "my_friends": "내 친구 / / {count}",
+    "loading": "> 불러오는 중",
+    "no_friends": "> 아직 추가한 친구가 없습니다. 위에서 검색해 추가하세요.",
+    "you": "(나)",
+    "is_friend": "친구",
+    "add_friend": "친구 추가"
   }
 }

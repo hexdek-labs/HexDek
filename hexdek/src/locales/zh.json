@@ -1739,5 +1739,22 @@
     "tip_lock": "锁定 — 将该特性固定在目标值附近",
     "heat_cold": "冷启动 — 已观测 {n}/{threshold} 局。校正在 {threshold} 局时启用。",
     "heat_note": "相对基准权重的偏差百分比（最大 ±{pct}%）。绿色 = 预示胜利，红色 = 预示失败。"
+  },
+  "fnd": {
+    "tape_left": "好友 / / {owner}",
+    "tape_connections": "{count} 个连接",
+    "tape_no_owner": "好友 / / 无所有者",
+    "tape_set_name": "请设置显示名称",
+    "no_owner_body": "> 请先登录或设置 HEXDEK_OWNER。",
+    "find_players": "查找玩家",
+    "n_hits": "{count} 条结果",
+    "search_ph": "按名称搜索玩家...",
+    "no_match": "> 没有匹配的玩家。",
+    "my_friends": "我的好友 / / {count}",
+    "loading": "> 加载中",
+    "no_friends": "> 还没有添加好友。在上方搜索以添加。",
+    "you": "(你)",
+    "is_friend": "好友",
+    "add_friend": "添加好友"
   }
 }

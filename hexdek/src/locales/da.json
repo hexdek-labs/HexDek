@@ -1739,5 +1739,22 @@
     "tip_lock": "Lås — fasthold dette træk omkring en målværdi",
     "heat_cold": "KOLD — {n}/{threshold} PARTIER OBSERVERET. KORREKTIONER AKTIVERES VED {threshold}.",
     "heat_note": "PROCENTVIS AFVIGELSE FRA BASISVÆGT (MAKS ±{pct}%). GRØN = SEJRSFORUDSIGENDE, RØD = NEDERLAGSFORUDSIGENDE."
+  },
+  "fnd": {
+    "tape_left": "VENNER / / {owner}",
+    "tape_connections": "{count} FORBINDELSER",
+    "tape_no_owner": "VENNER / / INGEN EJER",
+    "tape_set_name": "ANGIV ET VISNINGSNAVN",
+    "no_owner_body": "> LOG IND ELLER ANGIV HEXDEK_OWNER FØRST.",
+    "find_players": "FIND SPILLERE",
+    "n_hits": "{count} HIT",
+    "search_ph": "SØG SPILLERE PÅ NAVN...",
+    "no_match": "> INGEN SPILLERE MATCHEDE.",
+    "my_friends": "MINE VENNER / / {count}",
+    "loading": "> INDLÆSER",
+    "no_friends": "> INGEN VENNER TILFØJET ENDNU. SØG OVENFOR FOR AT TILFØJE EN.",
+    "you": "(DIG)",
+    "is_friend": "VEN",
+    "add_friend": "TILFØJ VEN"
   }
 }

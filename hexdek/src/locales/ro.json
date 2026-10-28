@@ -1739,5 +1739,22 @@
     "tip_lock": "Blochează — menține această trăsătură în jurul unei valori țintă",
     "heat_cold": "RECE — {n}/{threshold} JOCURI OBSERVATE. CORECȚIILE SE ACTIVEAZĂ LA {threshold}.",
     "heat_note": "ABATERE PROCENTUALĂ FAȚĂ DE GREUTATEA DE BAZĂ (MAX ±{pct}%). VERDE = PREZICE VICTORIA, ROȘU = PREZICE ÎNFRÂNGEREA."
+  },
+  "fnd": {
+    "tape_left": "PRIETENI / / {owner}",
+    "tape_connections": "{count} CONEXIUNI",
+    "tape_no_owner": "PRIETENI / / FĂRĂ PROPRIETAR",
+    "tape_set_name": "SETEAZĂ UN NUME AFIȘAT",
+    "no_owner_body": "> AUTENTIFICĂ-TE SAU SETEAZĂ MAI ÎNTÂI HEXDEK_OWNER.",
+    "find_players": "GĂSEȘTE JUCĂTORI",
+    "n_hits": "{count} REZULTATE",
+    "search_ph": "CAUTĂ JUCĂTORI DUPĂ NUME...",
+    "no_match": "> NICIUN JUCĂTOR GĂSIT.",
+    "my_friends": "PRIETENII MEI / / {count}",
+    "loading": "> SE ÎNCARCĂ",
+    "no_friends": "> ÎNCĂ NICIUN PRIETEN ADĂUGAT. CAUTĂ MAI SUS PENTRU A ADĂUGA UNUL.",
+    "you": "(TU)",
+    "is_friend": "PRIETEN",
+    "add_friend": "ADAUGĂ PRIETEN"
   }
 }

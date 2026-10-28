@@ -1739,5 +1739,22 @@
     "tip_lock": "Travar — fixe este traço em torno de um valor alvo",
     "heat_cold": "FRIO — {n}/{threshold} PARTIDAS OBSERVADAS. AS CORREÇÕES ATIVAM EM {threshold}.",
     "heat_note": "DESVIO PERCENTUAL DO PESO BASE (MÁX ±{pct}%). VERDE = PREVÊ VITÓRIA, VERMELHO = PREVÊ DERROTA."
+  },
+  "fnd": {
+    "tape_left": "AMIGOS / / {owner}",
+    "tape_connections": "{count} CONEXÕES",
+    "tape_no_owner": "AMIGOS / / SEM PROPRIETÁRIO",
+    "tape_set_name": "DEFINA UM NOME DE EXIBIÇÃO",
+    "no_owner_body": "> ENTRE OU DEFINA HEXDEK_OWNER PRIMEIRO.",
+    "find_players": "ENCONTRAR JOGADORES",
+    "n_hits": "{count} RESULTADOS",
+    "search_ph": "BUSCAR JOGADORES POR NOME...",
+    "no_match": "> NENHUM JOGADOR CORRESPONDE.",
+    "my_friends": "MEUS AMIGOS / / {count}",
+    "loading": "> CARREGANDO",
+    "no_friends": "> AINDA SEM AMIGOS ADICIONADOS. BUSQUE ACIMA PARA ADICIONAR ALGUÉM.",
+    "you": "(VOCÊ)",
+    "is_friend": "AMIGO",
+    "add_friend": "ADICIONAR AMIGO"
   }
 }

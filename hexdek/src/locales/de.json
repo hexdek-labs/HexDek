@@ -1739,5 +1739,22 @@
     "tip_lock": "Sperren — dieses Merkmal um einen Zielwert halten",
     "heat_cold": "KALT — {n}/{threshold} PARTIEN BEOBACHTET. KORREKTUREN AKTIVIEREN SICH BEI {threshold}.",
     "heat_note": "PROZENTUALE ABWEICHUNG VOM BASISGEWICHT (MAX. ±{pct}%). GRÜN = SIEGVORHERSAGEND, ROT = NIEDERLAGEVORHERSAGEND."
+  },
+  "fnd": {
+    "tape_left": "FREUNDE / / {owner}",
+    "tape_connections": "{count} VERBINDUNGEN",
+    "tape_no_owner": "FREUNDE / / KEIN BESITZER",
+    "tape_set_name": "ANZEIGENAMEN FESTLEGEN",
+    "no_owner_body": "> MELDE DICH AN ODER SETZE ZUERST HEXDEK_OWNER.",
+    "find_players": "SPIELER FINDEN",
+    "n_hits": "{count} TREFFER",
+    "search_ph": "SPIELER NACH NAME SUCHEN...",
+    "no_match": "> KEINE SPIELER GEFUNDEN.",
+    "my_friends": "MEINE FREUNDE / / {count}",
+    "loading": "> LÄDT",
+    "no_friends": "> NOCH KEINE FREUNDE. SUCHE OBEN, UM EINEN HINZUZUFÜGEN.",
+    "you": "(DU)",
+    "is_friend": "FREUND",
+    "add_friend": "FREUND HINZUFÜGEN"
   }
 }

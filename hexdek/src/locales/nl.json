@@ -1739,5 +1739,22 @@
     "tip_lock": "Vergrendelen — houd deze eigenschap rond een doelwaarde",
     "heat_cold": "KOUD — {n}/{threshold} PARTIJEN WAARGENOMEN. CORRECTIES WORDEN ACTIEF BIJ {threshold}.",
     "heat_note": "PROCENTUELE AFWIJKING VAN HET BASISGEWICHT (MAX ±{pct}%). GROEN = VOORSPELT WINST, ROOD = VOORSPELT VERLIES."
+  },
+  "fnd": {
+    "tape_left": "VRIENDEN / / {owner}",
+    "tape_connections": "{count} CONNECTIES",
+    "tape_no_owner": "VRIENDEN / / GEEN EIGENAAR",
+    "tape_set_name": "STEL EEN WEERGAVENAAM IN",
+    "no_owner_body": "> MELD JE AAN OF STEL EERST HEXDEK_OWNER IN.",
+    "find_players": "SPELERS ZOEKEN",
+    "n_hits": "{count} RESULTATEN",
+    "search_ph": "ZOEK SPELERS OP NAAM...",
+    "no_match": "> GEEN SPELERS GEVONDEN.",
+    "my_friends": "MIJN VRIENDEN / / {count}",
+    "loading": "> LADEN",
+    "no_friends": "> NOG GEEN VRIENDEN TOEGEVOEGD. ZOEK HIERBOVEN OM IEMAND TOE TE VOEGEN.",
+    "you": "(JIJ)",
+    "is_friend": "VRIEND",
+    "add_friend": "VRIEND TOEVOEGEN"
   }
 }

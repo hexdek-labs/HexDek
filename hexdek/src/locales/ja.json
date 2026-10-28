@@ -1739,5 +1739,22 @@
     "tip_lock": "ロック — この特性を目標値の近くに固定する",
     "heat_cold": "コールド — 観測 {n}/{threshold} ゲーム。補正は {threshold} ゲームで有効化されます。",
     "heat_note": "基準重みからの偏差率（最大 ±{pct}%）。緑 = 勝利を予測、赤 = 敗北を予測。"
+  },
+  "fnd": {
+    "tape_left": "フレンド / / {owner}",
+    "tape_connections": "{count} 件のつながり",
+    "tape_no_owner": "フレンド / / 所有者なし",
+    "tape_set_name": "表示名を設定してください",
+    "no_owner_body": "> まずサインインするか HEXDEK_OWNER を設定してください。",
+    "find_players": "プレイヤーを探す",
+    "n_hits": "{count} 件",
+    "search_ph": "名前でプレイヤーを検索...",
+    "no_match": "> 該当するプレイヤーがいません。",
+    "my_friends": "マイフレンド / / {count}",
+    "loading": "> 読み込み中",
+    "no_friends": "> まだフレンドがいません。上で検索して追加してください。",
+    "you": "(あなた)",
+    "is_friend": "フレンド",
+    "add_friend": "フレンド追加"
   }
 }

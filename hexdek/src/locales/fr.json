@@ -1739,5 +1739,22 @@
     "tip_lock": "Verrouiller — maintenir ce trait autour d’une valeur cible",
     "heat_cold": "FROID — {n}/{threshold} PARTIES OBSERVÉES. LES CORRECTIONS S’ACTIVENT À {threshold}.",
     "heat_note": "ÉCART EN POURCENTAGE PAR RAPPORT AU POIDS DE BASE (±{pct}% MAX). VERT = PRÉDIT LA VICTOIRE, ROUGE = PRÉDIT LA DÉFAITE."
+  },
+  "fnd": {
+    "tape_left": "AMIS / / {owner}",
+    "tape_connections": "{count} CONNEXIONS",
+    "tape_no_owner": "AMIS / / AUCUN PROPRIÉTAIRE",
+    "tape_set_name": "DÉFINIS UN NOM AFFICHÉ",
+    "no_owner_body": "> CONNECTE-TOI OU DÉFINIS D’ABORD HEXDEK_OWNER.",
+    "find_players": "TROUVER DES JOUEURS",
+    "n_hits": "{count} RÉSULTATS",
+    "search_ph": "RECHERCHER DES JOUEURS PAR NOM...",
+    "no_match": "> AUCUN JOUEUR TROUVÉ.",
+    "my_friends": "MES AMIS / / {count}",
+    "loading": "> CHARGEMENT",
+    "no_friends": "> AUCUN AMI AJOUTÉ POUR L’INSTANT. CHERCHE CI-DESSUS POUR EN AJOUTER UN.",
+    "you": "(TOI)",
+    "is_friend": "AMI",
+    "add_friend": "AJOUTER UN AMI"
   }
 }

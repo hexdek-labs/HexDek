@@ -1739,5 +1739,22 @@
     "tip_lock": "Khóa — ghim đặc tính này quanh một giá trị mục tiêu",
     "heat_cold": "LẠNH — đã quan sát {n}/{threshold} trận. Hiệu chỉnh kích hoạt ở {threshold}.",
     "heat_note": "ĐỘ LỆCH PHẦN TRĂM SO VỚI TRỌNG SỐ GỐC (TỐI ĐA ±{pct}%). XANH = DỰ BÁO THẮNG, ĐỎ = DỰ BÁO THUA."
+  },
+  "fnd": {
+    "tape_left": "BẠN BÈ / / {owner}",
+    "tape_connections": "{count} KẾT NỐI",
+    "tape_no_owner": "BẠN BÈ / / KHÔNG CÓ CHỦ",
+    "tape_set_name": "ĐẶT TÊN HIỂN THỊ",
+    "no_owner_body": "> HÃY ĐĂNG NHẬP HOẶC ĐẶT HEXDEK_OWNER TRƯỚC.",
+    "find_players": "TÌM NGƯỜI CHƠI",
+    "n_hits": "{count} KẾT QUẢ",
+    "search_ph": "TÌM NGƯỜI CHƠI THEO TÊN...",
+    "no_match": "> KHÔNG CÓ NGƯỜI CHƠI PHÙ HỢP.",
+    "my_friends": "BẠN BÈ CỦA TÔI / / {count}",
+    "loading": "> ĐANG TẢI",
+    "no_friends": "> CHƯA THÊM BẠN NÀO. TÌM Ở TRÊN ĐỂ THÊM MỘT NGƯỜI.",
+    "you": "(BẠN)",
+    "is_friend": "BẠN BÈ",
+    "add_friend": "THÊM BẠN"
   }
 }

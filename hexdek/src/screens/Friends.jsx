@@ -6,6 +6,14 @@ import { useAuth } from '../context/AuthContext'
 import { useArtContrast } from '../hooks/useArtContrast'
 import { countryFlagEmoji } from '../lib/flag'
 import { toast } from '../components/Toast'
+import { useT } from '../i18n'
+
+// Names the `q.length < 2` search gate. RESIDUAL MIRROR, FLAGGED: the reused
+// `search.min_chars` bakes "2+" into its value in all 25 locales, so this
+// constant and that string can still drift. Re-wording a SHARED key across 25
+// for a second surface (the universal search) is a wording decision, so the
+// constant makes the drift greppable rather than silent.
+const MIN_QUERY = 2
 
 // Friends — /friends. Lightweight pub model: see who you've added,
 // peek at their decks and ELO via PublicProfile, search for new
@@ -34,6 +42,7 @@ function deriveOwner(user) {
 }
 
 function FriendTile({ owner, onUnfriend, onOpen, country }) {
+  const t = useT()
   const cached = COVER_CACHE.get(owner)
   const [cover, setCover] = useState(cached || null)
 
@@ -101,7 +110,7 @@ function FriendTile({ owner, onUnfriend, onOpen, country }) {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onUnfriend(owner) }}
-          title={`Unfriend ${owner.toUpperCase()}`}
+          title={t('dka.unfriend_title', { name: owner.toUpperCase() })}
           style={{
             position: 'absolute', top: 6, right: 6,
             background: 'rgba(0,0,0,0.65)', color: 'var(--ink)',
@@ -137,14 +146,19 @@ function FriendTile({ owner, onUnfriend, onOpen, country }) {
         fontSize: 10,
         letterSpacing: '0.06em',
       }}>
-        <span className="muted">{cover ? `${cover.deckCount} DECKS` : 'LOADING…'}</span>
-        <span style={{ color: 'var(--accent)' }}>OPEN ↗</span>
+        <span className="muted">
+          {cover
+            ? t(cover.deckCount === 1 ? 'deckpower.decks_one' : 'deckpower.decks', { count: cover.deckCount })
+            : t('dka.loading_ell')}
+        </span>
+        <span style={{ color: 'var(--accent)' }}>{t('dash.open')} ↗</span>
       </div>
     </div>
   )
 }
 
 function SearchHit({ slug, isFriend, isSelf, country, onAdd, navigate }) {
+  const t = useT()
   const flag = countryFlagEmoji(country)
   return (
     <div style={{
@@ -161,20 +175,21 @@ function SearchHit({ slug, isFriend, isSelf, country, onAdd, navigate }) {
       >
         {flag && <span style={{ fontSize: 14, lineHeight: 1 }}>{flag}</span>}
         {slug.toUpperCase()}
-        {isSelf && <span className="t-xs muted" style={{ marginLeft: 4 }}>(YOU)</span>}
+        {isSelf && <span className="t-xs muted" style={{ marginLeft: 4 }}>{t('fnd.you')}</span>}
       </span>
       {isSelf ? (
         <span className="t-xs muted">—</span>
       ) : isFriend ? (
-        <Tag solid kind="ok">FRIEND ✓</Tag>
+        <Tag solid kind="ok">{t('fnd.is_friend')} ✓</Tag>
       ) : (
-        <Btn sm arrow="+" onClick={() => onAdd(slug)}>ADD FRIEND</Btn>
+        <Btn sm arrow="+" onClick={() => onAdd(slug)}>{t('fnd.add_friend')}</Btn>
       )}
     </div>
   )
 }
 
 export default function Friends() {
+  const t = useT()
   const { user } = useAuth()
   const navigate = useNavigate()
   const userOwner = useMemo(() => deriveOwner(user), [user])
@@ -222,10 +237,10 @@ export default function Friends() {
   // Debounced player search.
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) { setResults([]); return }
+    if (q.length < MIN_QUERY) { setResults([]); return }
     let alive = true
     setSearching(true)
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api.search(q, 12)
         .then(r => {
           if (!alive) return
@@ -235,7 +250,7 @@ export default function Friends() {
         .catch(() => { if (alive) setResults([]) })
         .finally(() => { if (alive) setSearching(false) })
     }, 250)
-    return () => { alive = false; clearTimeout(t) }
+    return () => { alive = false; clearTimeout(timer) }
   }, [query])
 
   const friendsSet = useMemo(() => new Set(friends.map(f => f.toLowerCase())), [friends])
@@ -245,9 +260,9 @@ export default function Friends() {
     api.addFriend(target, userOwner)
       .then(() => {
         setFriends(prev => prev.includes(target) ? prev : [...prev, target])
-        toast.success(`ADDED ${target.toUpperCase()}`)
+        toast.success(t('dka.t_friend_added', { name: target.toUpperCase() }))
       })
-      .catch(() => toast.error('ADD FAILED'))
+      .catch(() => toast.error(t('dka.t_add_friend_failed')))
   }
 
   const handleUnfriend = (target) => {
@@ -255,9 +270,9 @@ export default function Friends() {
     api.removeFriend(target, userOwner)
       .then(() => {
         setFriends(prev => prev.filter(f => f !== target))
-        toast.info(`REMOVED ${target.toUpperCase()}`)
+        toast.info(t('dka.t_unfriended', { name: target.toUpperCase() }))
       })
-      .catch(() => toast.error('REMOVE FAILED'))
+      .catch(() => toast.error(t('dka.t_unfriend_failed')))
   }
 
   const openProfile = (owner) => navigate(`/profile/${owner}`)
@@ -265,9 +280,9 @@ export default function Friends() {
   if (!userOwner) {
     return (
       <>
-        <Tape left="FRIENDS / / NO OWNER" mid="SET A DISPLAY NAME" right="DOC HX-510" />
+        <Tape left={t('fnd.tape_no_owner')} mid={t('fnd.tape_set_name')} right="DOC HX-510" />
         <div style={{ padding: 36, textAlign: 'center' }}>
-          <div className="t-md muted">&gt; SIGN IN OR SET HEXDEK_OWNER FIRST.</div>
+          <div className="t-md muted">{t('fnd.no_owner_body')}</div>
         </div>
       </>
     )
@@ -276,8 +291,8 @@ export default function Friends() {
   return (
     <>
       <Tape
-        left={`FRIENDS / / ${userOwner.toUpperCase()}`}
-        mid={loading ? 'LOADING' : `${friends.length} CONNECTIONS`}
+        left={t('fnd.tape_left', { owner: userOwner.toUpperCase() })}
+        mid={loading ? t('common.loading') : t('fnd.tape_connections', { count: friends.length })}
         right="DOC HX-510"
       />
 
@@ -285,15 +300,15 @@ export default function Friends() {
         {/* Find players */}
         <Panel
           code="FR.0"
-          title="FIND PLAYERS"
-          right={<span className="t-xs muted">{searching ? 'SEARCHING…' : `${results.length} HITS`}</span>}
+          title={t('fnd.find_players')}
+          right={<span className="t-xs muted">{searching ? t('dka.searching') : t('fnd.n_hits', { count: results.length })}</span>}
         >
           <div className="panel" style={{ padding: 0, marginBottom: 8, borderStyle: query ? 'solid' : 'dashed' }}>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="SEARCH PLAYERS BY NAME..."
+              placeholder={t('fnd.search_ph')}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -308,13 +323,13 @@ export default function Friends() {
               }}
             />
           </div>
-          {query.trim().length < 2 ? (
+          {query.trim().length < MIN_QUERY ? (
             <div className="t-xs muted" style={{ padding: '6px 0' }}>
-              &gt; TYPE 2+ CHARACTERS TO SEARCH
+              &gt; {t('search.min_chars')}
             </div>
           ) : results.length === 0 && !searching ? (
             <div className="t-xs muted" style={{ padding: '6px 0' }}>
-              &gt; NO PLAYERS MATCHED.
+              {t('fnd.no_match')}
             </div>
           ) : (
             <div>
@@ -336,15 +351,15 @@ export default function Friends() {
         {/* Friend list */}
         <Panel
           code="FR.1"
-          title={`MY FRIENDS / / ${friends.length}`}
+          title={t('fnd.my_friends', { count: friends.length })}
         >
           {loading ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; LOADING<span className="blink">_</span>
+              {t('fnd.loading')}<span className="blink">_</span>
             </div>
           ) : friends.length === 0 ? (
             <div className="t-md muted" style={{ textAlign: 'center', padding: 18 }}>
-              &gt; NO FRIENDS ADDED YET. SEARCH ABOVE TO ADD ONE.
+              {t('fnd.no_friends')}
             </div>
           ) : (
             <div style={{
