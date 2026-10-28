@@ -987,7 +987,13 @@
     "res_loss": "敗北",
     "res_draw": "引き分け",
     "vs_label": "対",
-    "untitled_deck": "デッキ"
+    "untitled_deck": "デッキ",
+    "arch_disagree": "同意しない",
+    "arch_reset": "リセット",
+    "arch_reset_title": "フィードバックを取り消します（これも学習シグナルに記録されます）",
+    "arch_tip_corrected": "あなたはこれを {value} に修正しました。FREYA は当初 {tags} と判定していました。",
+    "arch_tip_confirmed": "FREYA のアーキタイプ判定を承認しました。",
+    "arch_tip_default": "FREYA 解析によるシステム付与タグ。承認または異議を出すと FREYA の学習シグナルに反映されます。"
   },
   "spec": {
     "tape_title": "観戦 / / フィッシュタンク",

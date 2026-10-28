@@ -987,7 +987,13 @@
     "res_loss": "DÉFAITE",
     "res_draw": "ÉGALITÉ",
     "vs_label": "contre",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "PAS D’ACCORD",
+    "arch_reset": "RÉINITIALISER",
+    "arch_reset_title": "Retirer votre retour (également consigné dans le signal d’entraînement)",
+    "arch_tip_corrected": "Vous avez corrigé en {value}. FREYA avait d’abord indiqué {tags}.",
+    "arch_tip_confirmed": "Vous avez confirmé l’archétype déterminé par FREYA.",
+    "arch_tip_default": "Tags attribués par le système depuis l’analyse FREYA. Confirmez ou contestez pour alimenter le signal d’entraînement de FREYA."
   },
   "spec": {
     "tape_title": "SPECTATEUR / / AQUARIUM",

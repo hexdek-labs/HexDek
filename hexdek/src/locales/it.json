@@ -987,7 +987,13 @@
     "res_loss": "SCONFITTA",
     "res_draw": "PAREGGIO",
     "vs_label": "contro",
-    "untitled_deck": "MAZZO"
+    "untitled_deck": "MAZZO",
+    "arch_disagree": "NON SONO D’ACCORDO",
+    "arch_reset": "REIMPOSTA",
+    "arch_reset_title": "Ritira il tuo riscontro (viene registrato anche nel segnale di addestramento)",
+    "arch_tip_corrected": "L’hai corretto in {value}. FREYA inizialmente indicava {tags}.",
+    "arch_tip_confirmed": "Hai confermato l’archetipo indicato da FREYA.",
+    "arch_tip_default": "Tag assegnati dal sistema dall’analisi FREYA. Conferma o dissenti per alimentare il segnale di addestramento di FREYA."
   },
   "spec": {
     "tape_title": "SPETTATORE / / ACQUARIO",

@@ -987,7 +987,13 @@
     "res_loss": "FÖRLUST",
     "res_draw": "OAVGJORT",
     "vs_label": "mot",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "HÅLLER INTE MED",
+    "arch_reset": "ÅTERSTÄLL",
+    "arch_reset_title": "Dra tillbaka din återkoppling (loggas också till träningssignalen)",
+    "arch_tip_corrected": "Du rättade det till {value}. FREYA sa ursprungligen {tags}.",
+    "arch_tip_confirmed": "Du bekräftade FREYAs arketypbedömning.",
+    "arch_tip_default": "Systemsatta taggar från FREYA-analysen. Bekräfta eller håll inte med för att mata FREYAs träningssignal."
   },
   "spec": {
     "tape_title": "ÅSKÅDARE / / FISKTANK",

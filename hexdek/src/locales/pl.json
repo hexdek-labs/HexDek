@@ -987,7 +987,13 @@
     "res_loss": "PRZEGRANA",
     "res_draw": "REMIS",
     "vs_label": "przeciw",
-    "untitled_deck": "TALIA"
+    "untitled_deck": "TALIA",
+    "arch_disagree": "NIE ZGADZAM SIĘ",
+    "arch_reset": "RESETUJ",
+    "arch_reset_title": "Wycofaj swoją opinię (też trafia do sygnału treningowego)",
+    "arch_tip_corrected": "Poprawiłeś to na {value}. FREYA pierwotnie wskazała {tags}.",
+    "arch_tip_confirmed": "Potwierdziłeś archetyp wskazany przez FREYA.",
+    "arch_tip_default": "Tagi przypisane przez system z analizy FREYA. Potwierdź lub zgłoś sprzeciw, aby zasilić sygnał treningowy FREYA."
   },
   "spec": {
     "tape_title": "WIDZ / / AKWARIUM",

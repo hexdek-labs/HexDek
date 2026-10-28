@@ -987,7 +987,13 @@
     "res_loss": "VERESÉG",
     "res_draw": "DÖNTETLEN",
     "vs_label": "ellen:",
-    "untitled_deck": "PAKLI"
+    "untitled_deck": "PAKLI",
+    "arch_disagree": "NEM EGYEZEM",
+    "arch_reset": "VISSZAÁLLÍTÁS",
+    "arch_reset_title": "A visszajelzésed visszavonása (ez is bekerül a tanító jelbe)",
+    "arch_tip_corrected": "Ezt {value} értékre javítottad. A FREYA eredetileg ezt mondta: {tags}.",
+    "arch_tip_confirmed": "Megerősítetted a FREYA archetípus-becslését.",
+    "arch_tip_default": "A rendszer által adott címkék a FREYA-elemzésből. Erősítsd meg vagy jelezd a kifogásod, hogy a FREYA tanító jelébe kerüljön."
   },
   "spec": {
     "tape_title": "NÉZŐ / / AKVÁRIUM",

@@ -987,7 +987,13 @@
     "res_loss": "خسارة",
     "res_draw": "تعادل",
     "vs_label": "ضد",
-    "untitled_deck": "ديك"
+    "untitled_deck": "ديك",
+    "arch_disagree": "لا أوافق",
+    "arch_reset": "إعادة تعيين",
+    "arch_reset_title": "اسحب ملاحظتك (يُسجَّل هذا أيضًا في إشارة التدريب)",
+    "arch_tip_corrected": "صحّحت هذا إلى {value}. كانت FREYA قد قالت {tags}.",
+    "arch_tip_confirmed": "لقد أكّدت تصنيف FREYA للنمط.",
+    "arch_tip_default": "وسوم يعيّنها النظام من تحليل FREYA. أكّد أو اعترض لتغذية إشارة تدريب FREYA."
   },
   "spec": {
     "tape_title": "المتفرج / / الحوض",

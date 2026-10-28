@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Tag, Btn } from './chrome'
 import { api } from '../services/api'
+import { useT } from '../i18n'
 
 // Canonical Freya archetype list (mirror of cmd/hexdek-freya/archetypes.go).
 // The frontend hard-codes the suggestions so the disagree dropdown stays
@@ -30,6 +31,7 @@ const FREYA_ARCHETYPES = [
 // archetype names. Picking one POSTs `correct` with that value;
 // closing without picking is a no-op.
 export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
+  const t = useT()
   const [picking, setPicking] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -41,8 +43,8 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
   const isConfirmed = feedback === 'confirmed'
   const correction = !isConfirmed && feedback !== '' ? feedback : ''
 
-  const stripArchetype = (t) =>
-    t.startsWith('archetype:') ? t.slice('archetype:'.length) : t
+  const stripArchetype = (raw) =>
+    raw.startsWith('archetype:') ? raw.slice('archetype:'.length) : raw
 
   const post = async (action, archetype) => {
     if (!owner || !id) return
@@ -61,11 +63,17 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
     }
   }
 
+  // A `title` attribute is a plain string, so t() vars are right here and
+  // fill() is not. {value} and {tags} are stays-English canonical archetype
+  // names riding in as values.
   const tip = correction
-    ? `You corrected this to ${correction}. Freya originally said ${systemTags.map(stripArchetype).join(', ')}.`
+    ? t('dka.arch_tip_corrected', {
+        value: correction,
+        tags: systemTags.map(stripArchetype).join(', '),
+      })
     : isConfirmed
-      ? `You confirmed Freya's archetype call.`
-      : `System-assigned tags from Freya analysis. Confirm or disagree to feed back into Freya's training signal.`
+      ? t('dka.arch_tip_confirmed')
+      : t('dka.arch_tip_default')
 
   return (
     <div
@@ -76,15 +84,15 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
       <span className="muted-2" style={{ fontSize: 9, letterSpacing: '0.1em', marginRight: 4 }}>
         FREYA
       </span>
-      {systemTags.map(t => {
-        const label = stripArchetype(t)
+      {systemTags.map(tag => {
+        const label = stripArchetype(tag)
         // When the user has corrected, strikethrough the original.
         const style = correction
           ? { textDecoration: 'line-through', opacity: 0.6 }
           : undefined
         return (
-          <Tag key={t} kind="info" solid style={style}>
-            {label.toUpperCase()}
+          <Tag key={tag} kind="info" solid style={style}>
+            {label}
           </Tag>
         )
       })}
@@ -95,10 +103,10 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
         <>
           <span className="muted-2" style={{ fontSize: 9, marginLeft: 6 }}>→</span>
           <span className="muted-2" style={{ fontSize: 9, letterSpacing: '0.1em', marginRight: 4 }}>
-            YOU
+            {t('spec.gb_you')}
           </span>
           <Tag kind="warn" solid data-testid="archetype-correction">
-            {correction.toUpperCase()}
+            {correction}
           </Tag>
         </>
       )}
@@ -113,7 +121,7 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
                 onClick={() => post('confirm')}
                 data-testid="archetype-confirm"
               >
-                ✓ CONFIRM
+                ✓ {t('common.confirm')}
               </Btn>
               <Btn
                 sm
@@ -123,7 +131,7 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
                 onClick={() => setPicking(p => !p)}
                 data-testid="archetype-disagree"
               >
-                ✗ DISAGREE
+                ✗ {t('dka.arch_disagree')}
               </Btn>
             </>
           )}
@@ -135,9 +143,9 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
               disabled={busy}
               onClick={() => post('clear')}
               data-testid="archetype-reset"
-              title="Retract your feedback (also logged to the training signal)"
+              title={t('dka.arch_reset_title')}
             >
-              RESET
+              {t('dka.arch_reset')}
             </Btn>
           )}
         </span>
@@ -162,7 +170,7 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
               className="btn btn--sm btn--ghost"
               style={{ fontSize: 9 }}
             >
-              {a.toUpperCase()}
+              {a}
             </button>
           ))}
           <button
@@ -172,7 +180,7 @@ export default function ArchetypeChipRow({ deck, isOwner, onFeedbackChange }) {
             className="btn btn--sm btn--ghost"
             style={{ fontSize: 9, opacity: 0.6 }}
           >
-            CANCEL
+            {t('common.cancel')}
           </button>
         </div>
       )}

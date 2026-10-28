@@ -987,7 +987,13 @@
     "res_loss": "负",
     "res_draw": "平",
     "vs_label": "对阵",
-    "untitled_deck": "套牌"
+    "untitled_deck": "套牌",
+    "arch_disagree": "不同意",
+    "arch_reset": "重置",
+    "arch_reset_title": "撤回你的反馈（这同样会记入训练信号）",
+    "arch_tip_corrected": "你已将其更正为 {value}。FREYA 最初判定为 {tags}。",
+    "arch_tip_confirmed": "你已确认 FREYA 的原型判定。",
+    "arch_tip_default": "来自 FREYA 分析的系统标签。确认或提出不同意见，即可反馈到 FREYA 的训练信号。"
   },
   "spec": {
     "tape_title": "观战 / / 鱼缸",

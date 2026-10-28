@@ -987,7 +987,13 @@
     "res_loss": "ÎNFRÂNGERE",
     "res_draw": "EGALITATE",
     "vs_label": "contra",
-    "untitled_deck": "PACHET"
+    "untitled_deck": "PACHET",
+    "arch_disagree": "NU SUNT DE ACORD",
+    "arch_reset": "RESETEAZĂ",
+    "arch_reset_title": "Retrage feedbackul tău (se înregistrează și în semnalul de antrenare)",
+    "arch_tip_corrected": "Ai corectat în {value}. FREYA spusese inițial {tags}.",
+    "arch_tip_confirmed": "Ai confirmat arhetipul stabilit de FREYA.",
+    "arch_tip_default": "Etichete atribuite de sistem din analiza FREYA. Confirmă sau contestă pentru a alimenta semnalul de antrenare al FREYA."
   },
   "spec": {
     "tape_title": "SPECTATOR / / ACVARIU",

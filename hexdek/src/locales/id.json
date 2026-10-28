@@ -987,7 +987,13 @@
     "res_loss": "KALAH",
     "res_draw": "SERI",
     "vs_label": "lawan",
-    "untitled_deck": "DEK"
+    "untitled_deck": "DEK",
+    "arch_disagree": "TIDAK SETUJU",
+    "arch_reset": "SETEL ULANG",
+    "arch_reset_title": "Tarik kembali masukanmu (juga dicatat ke sinyal pelatihan)",
+    "arch_tip_corrected": "Kamu mengoreksinya menjadi {value}. FREYA awalnya menyebut {tags}.",
+    "arch_tip_confirmed": "Kamu mengonfirmasi penilaian arketipe dari FREYA.",
+    "arch_tip_default": "Tag yang ditetapkan sistem dari analisis FREYA. Konfirmasi atau tidak setuju untuk mengisi sinyal pelatihan FREYA."
   },
   "spec": {
     "tape_title": "PENONTON / / AKUARIUM",

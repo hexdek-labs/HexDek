@@ -987,7 +987,13 @@
     "res_loss": "LOSS",
     "res_draw": "DRAW",
     "vs_label": "vs",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "DISAGREE",
+    "arch_reset": "RESET",
+    "arch_reset_title": "Retract your feedback (also logged to the training signal)",
+    "arch_tip_corrected": "You corrected this to {value}. Freya originally said {tags}.",
+    "arch_tip_confirmed": "You confirmed Freya's archetype call.",
+    "arch_tip_default": "System-assigned tags from Freya analysis. Confirm or disagree to feed back into Freya's training signal."
   },
   "spec": {
     "tape_title": "SPECTATOR / / FISHTANK",

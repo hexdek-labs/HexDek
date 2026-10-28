@@ -987,7 +987,13 @@
     "res_loss": "패",
     "res_draw": "무",
     "vs_label": "vs",
-    "untitled_deck": "덱"
+    "untitled_deck": "덱",
+    "arch_disagree": "동의하지 않음",
+    "arch_reset": "초기화",
+    "arch_reset_title": "피드백을 철회합니다 (이 또한 학습 신호에 기록됩니다)",
+    "arch_tip_corrected": "이것을 {value}(으)로 수정했습니다. FREYA는 원래 {tags}(으)로 판정했습니다.",
+    "arch_tip_confirmed": "FREYA의 아키타입 판정을 확인했습니다.",
+    "arch_tip_default": "FREYA 분석으로 시스템이 부여한 태그입니다. 확인하거나 이견을 제시하면 FREYA의 학습 신호에 반영됩니다."
   },
   "spec": {
     "tape_title": "관전 / / 피시탱크",

@@ -987,7 +987,13 @@
     "res_loss": "แพ้",
     "res_draw": "เสมอ",
     "vs_label": "ปะทะ",
-    "untitled_deck": "เด็ค"
+    "untitled_deck": "เด็ค",
+    "arch_disagree": "ไม่เห็นด้วย",
+    "arch_reset": "รีเซ็ต",
+    "arch_reset_title": "ถอนความเห็นของคุณ (จะถูกบันทึกในสัญญาณฝึกสอนด้วย)",
+    "arch_tip_corrected": "คุณแก้เป็น {value} แล้ว เดิม FREYA ระบุว่า {tags}",
+    "arch_tip_confirmed": "คุณยืนยันการระบุอาร์คีไทป์ของ FREYA แล้ว",
+    "arch_tip_default": "แท็กที่ระบบกำหนดจากการวิเคราะห์ของ FREYA ยืนยันหรือไม่เห็นด้วยเพื่อป้อนเข้าสัญญาณฝึกสอนของ FREYA"
   },
   "spec": {
     "tape_title": "ผู้ชม / / ตู้ปลา",

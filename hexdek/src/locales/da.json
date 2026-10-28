@@ -987,7 +987,13 @@
     "res_loss": "NEDERLAG",
     "res_draw": "UAFGJORT",
     "vs_label": "mod",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "UENIG",
+    "arch_reset": "NULSTIL",
+    "arch_reset_title": "Træk din feedback tilbage (logges også til træningssignalet)",
+    "arch_tip_corrected": "Du rettede det til {value}. FREYA sagde oprindeligt {tags}.",
+    "arch_tip_confirmed": "Du bekræftede FREYAs arketypevurdering.",
+    "arch_tip_default": "Systemtildelte tags fra FREYA-analysen. Bekræft eller vær uenig for at føde FREYAs træningssignal."
   },
   "spec": {
     "tape_title": "TILSKUER / / FISKETANK",

@@ -987,7 +987,13 @@
     "res_loss": "DERROTA",
     "res_draw": "EMPATE",
     "vs_label": "contra",
-    "untitled_deck": "MAZO"
+    "untitled_deck": "MAZO",
+    "arch_disagree": "NO ESTOY DE ACUERDO",
+    "arch_reset": "RESTABLECER",
+    "arch_reset_title": "Retirar tu valoración (también se registra en la señal de entrenamiento)",
+    "arch_tip_corrected": "Lo corregiste a {value}. FREYA decía originalmente {tags}.",
+    "arch_tip_confirmed": "Confirmaste el arquetipo que asignó FREYA.",
+    "arch_tip_default": "Etiquetas asignadas por el sistema a partir del análisis de FREYA. Confirma o discrepa para alimentar la señal de entrenamiento de FREYA."
   },
   "spec": {
     "tape_title": "ESPECTADOR / / PECERA",

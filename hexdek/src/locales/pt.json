@@ -987,7 +987,13 @@
     "res_loss": "DERROTA",
     "res_draw": "EMPATE",
     "vs_label": "contra",
-    "untitled_deck": "BARALHO"
+    "untitled_deck": "BARALHO",
+    "arch_disagree": "NÃO CONCORDO",
+    "arch_reset": "REDEFINIR",
+    "arch_reset_title": "Retirar seu retorno (também é registrado no sinal de treinamento)",
+    "arch_tip_corrected": "Você corrigiu para {value}. A FREYA dizia originalmente {tags}.",
+    "arch_tip_confirmed": "Você confirmou o arquétipo apontado pela FREYA.",
+    "arch_tip_default": "Tags atribuídas pelo sistema a partir da análise da FREYA. Confirme ou discorde para alimentar o sinal de treinamento da FREYA."
   },
   "spec": {
     "tape_title": "ESPETADOR / / AQUÁRIO",

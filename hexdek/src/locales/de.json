@@ -987,7 +987,13 @@
     "res_loss": "NIEDERLAGE",
     "res_draw": "UNENTSCHIEDEN",
     "vs_label": "gegen",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "WIDERSPRECHEN",
+    "arch_reset": "ZURÜCKSETZEN",
+    "arch_reset_title": "Dein Feedback zurückziehen (wird ebenfalls im Trainingssignal protokolliert)",
+    "arch_tip_corrected": "Du hast das zu {value} korrigiert. FREYA sagte ursprünglich {tags}.",
+    "arch_tip_confirmed": "Du hast FREYAs Archetyp-Einschätzung bestätigt.",
+    "arch_tip_default": "Systemseitig vergebene Tags aus der FREYA-Analyse. Bestätige oder widersprich, um FREYAs Trainingssignal zu speisen."
   },
   "spec": {
     "tape_title": "ZUSCHAUER / / FISHTANK",

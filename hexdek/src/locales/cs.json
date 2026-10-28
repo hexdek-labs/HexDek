@@ -987,7 +987,13 @@
     "res_loss": "PROHRA",
     "res_draw": "REMÍZA",
     "vs_label": "proti",
-    "untitled_deck": "BALÍČEK"
+    "untitled_deck": "BALÍČEK",
+    "arch_disagree": "NESOUHLASÍM",
+    "arch_reset": "RESETOVAT",
+    "arch_reset_title": "Odvolat tvou zpětnou vazbu (také se zaznamená do trénovacího signálu)",
+    "arch_tip_corrected": "Opravil jsi to na {value}. FREYA původně uvedla {tags}.",
+    "arch_tip_confirmed": "Potvrdil jsi archetyp, který určila FREYA.",
+    "arch_tip_default": "Značky přiřazené systémem z analýzy FREYA. Potvrď nebo nesouhlas a pošli to zpět do trénovacího signálu FREYA."
   },
   "spec": {
     "tape_title": "DIVÁK / / AKVÁRIUM",

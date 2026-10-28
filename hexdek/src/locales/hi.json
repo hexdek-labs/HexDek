@@ -987,7 +987,13 @@
     "res_loss": "हार",
     "res_draw": "ड्रॉ",
     "vs_label": "बनाम",
-    "untitled_deck": "डेक"
+    "untitled_deck": "डेक",
+    "arch_disagree": "असहमत",
+    "arch_reset": "रीसेट",
+    "arch_reset_title": "अपनी प्रतिक्रिया वापस लें (यह भी ट्रेनिंग सिग्नल में दर्ज होता है)",
+    "arch_tip_corrected": "आपने इसे {value} में सुधारा। FREYA ने पहले {tags} कहा था।",
+    "arch_tip_confirmed": "आपने FREYA के आर्कीटाइप आंकलन की पुष्टि की।",
+    "arch_tip_default": "FREYA विश्लेषण से सिस्टम द्वारा दिए गए टैग। FREYA के ट्रेनिंग सिग्नल में योगदान के लिए पुष्टि करें या असहमति जताएँ।"
   },
   "spec": {
     "tape_title": "दर्शक / / फिशटैंक",

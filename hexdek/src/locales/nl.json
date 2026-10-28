@@ -987,7 +987,13 @@
     "res_loss": "VERLIES",
     "res_draw": "GELIJKSPEL",
     "vs_label": "tegen",
-    "untitled_deck": "DECK"
+    "untitled_deck": "DECK",
+    "arch_disagree": "ONEENS",
+    "arch_reset": "OPNIEUW INSTELLEN",
+    "arch_reset_title": "Trek je feedback in (wordt ook gelogd naar het trainingssignaal)",
+    "arch_tip_corrected": "Je hebt dit gecorrigeerd naar {value}. FREYA zei oorspronkelijk {tags}.",
+    "arch_tip_confirmed": "Je hebt FREYA’s archetype-inschatting bevestigd.",
+    "arch_tip_default": "Systeemtags uit de FREYA-analyse. Bevestig of wees het oneens om FREYA’s trainingssignaal te voeden."
   },
   "spec": {
     "tape_title": "TOESCHOUWER / / FISHTANK",

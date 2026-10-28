@@ -987,7 +987,13 @@
     "res_loss": "MAĞLUBİYET",
     "res_draw": "BERABERLİK",
     "vs_label": "karşı",
-    "untitled_deck": "DESTE"
+    "untitled_deck": "DESTE",
+    "arch_disagree": "KATILMIYORUM",
+    "arch_reset": "SIFIRLA",
+    "arch_reset_title": "Geri bildirimini geri çek (bu da eğitim sinyaline kaydedilir)",
+    "arch_tip_corrected": "Bunu {value} olarak düzelttin. FREYA başlangıçta {tags} demişti.",
+    "arch_tip_confirmed": "FREYA’nın arketip değerlendirmesini onayladın.",
+    "arch_tip_default": "FREYA analizinden sistemin atadığı etiketler. FREYA’nın eğitim sinyalini beslemek için onayla ya da katılmadığını belirt."
   },
   "spec": {
     "tape_title": "İZLEYİCİ / / AKVARYUM",

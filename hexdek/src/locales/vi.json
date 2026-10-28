@@ -987,7 +987,13 @@
     "res_loss": "THUA",
     "res_draw": "HÒA",
     "vs_label": "đấu",
-    "untitled_deck": "BỘ BÀI"
+    "untitled_deck": "BỘ BÀI",
+    "arch_disagree": "KHÔNG ĐỒNG Ý",
+    "arch_reset": "ĐẶT LẠI",
+    "arch_reset_title": "Rút lại phản hồi của bạn (cũng được ghi vào tín hiệu huấn luyện)",
+    "arch_tip_corrected": "Bạn đã sửa thành {value}. FREYA ban đầu cho là {tags}.",
+    "arch_tip_confirmed": "Bạn đã xác nhận đánh giá archetype của FREYA.",
+    "arch_tip_default": "Thẻ do hệ thống gán từ phân tích của FREYA. Xác nhận hoặc không đồng ý để đưa vào tín hiệu huấn luyện của FREYA."
   },
   "spec": {
     "tape_title": "KHÁN GIẢ / / BỂ CÁ",
