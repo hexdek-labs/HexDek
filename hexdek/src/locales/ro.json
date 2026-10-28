@@ -1756,5 +1756,32 @@
     "you": "(TU)",
     "is_friend": "PRIETEN",
     "add_friend": "ADAUGĂ PRIETEN"
+  },
+  "auth": {
+    "tape_mid": "LINK MAGIC",
+    "tape_right": "FĂRĂ PAROLĂ",
+    "panel_title": "AUTENTIFICARE OPERATOR",
+    "intro_1": "> INTRODU E-MAILUL PENTRU A PRIMI UN LINK MAGIC.",
+    "intro_2": "> FĂRĂ PAROLĂ. FĂRĂ SPAM.",
+    "intro_3": "> UN CLIC ȘI AI INTRAT.",
+    "email_label": "ADRESĂ DE E-MAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "SE TRIMITE...",
+    "btn_send": "TRIMITE LINKUL MAGIC",
+    "btn_back": "ÎNAPOI",
+    "btn_resend": "RETRIMITE",
+    "link_sent": "LINK TRIMIS.",
+    "check_inbox": "> VERIFICĂ-ȚI INBOXUL PENTRU LINKUL MAGIC.",
+    "sent_to": "> TRIMIS LA:",
+    "expires_in": "> LINKUL EXPIRĂ ÎN {hours} ORE.",
+    "expires_in_one": "> LINKUL EXPIRĂ ÎN {hours} ORĂ.",
+    "kv_awaiting": "ÎN AȘTEPTAREA CONFIRMĂRII",
+    "kv_method": "METODĂ",
+    "kv_method_value": "LINK PRIN E-MAIL (FĂRĂ PAROLĂ)",
+    "kv_expires": "EXPIRĂ",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINKUL A EȘUAT ÎN ALT TAB. ÎNCEARCĂ DIN NOU.",
+    "err_invalid_email": "FORMAT DE E-MAIL INVALID.",
+    "err_unreachable": "SERVICIUL DE AUTENTIFICARE NU RĂSPUNDE. ÎNCEARCĂ DIN NOU."
   }
 }

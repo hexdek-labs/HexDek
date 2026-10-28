@@ -1756,5 +1756,32 @@
     "you": "(TE)",
     "is_friend": "BARÁT",
     "add_friend": "BARÁT HOZZÁADÁSA"
+  },
+  "auth": {
+    "tape_mid": "MÁGIKUS LINK",
+    "tape_right": "JELSZÓ NÉLKÜL",
+    "panel_title": "OPERÁTOR-HITELESÍTÉS",
+    "intro_1": "> ADD MEG AZ E-MAILED, ÉS KÜLDÜNK EGY MÁGIKUS LINKET.",
+    "intro_2": "> NINCS JELSZÓ. NINCS SPAM.",
+    "intro_3": "> EGY KATTINTÁS, ÉS BENT VAGY.",
+    "email_label": "E-MAIL-CÍM",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "KÜLDÉS...",
+    "btn_send": "MÁGIKUS LINK KÜLDÉSE",
+    "btn_back": "VISSZA",
+    "btn_resend": "ÚJRAKÜLDÉS",
+    "link_sent": "LINK ELKÜLDVE.",
+    "check_inbox": "> NÉZD MEG A POSTAFIÓKODAT A MÁGIKUS LINKÉRT.",
+    "sent_to": "> ELKÜLDVE IDE:",
+    "expires_in": "> A LINK {hours} ÓRA MÚLVA LEJÁR.",
+    "expires_in_one": "> A LINK {hours} ÓRA MÚLVA LEJÁR.",
+    "kv_awaiting": "MEGERŐSÍTÉSRE VÁR",
+    "kv_method": "MÓDSZER",
+    "kv_method_value": "E-MAIL LINK (JELSZÓ NÉLKÜL)",
+    "kv_expires": "LEJÁR",
+    "kv_expires_value": "{minutes} PERC",
+    "err_link_failed": "A LINK EGY MÁSIK LAPON HIBÁRA FUTOTT. PRÓBÁLD ÚJRA.",
+    "err_invalid_email": "ÉRVÉNYTELEN E-MAIL FORMÁTUM.",
+    "err_unreachable": "A HITELESÍTŐ SZOLGÁLTATÁS NEM ÉRHETŐ EL. PRÓBÁLD ÚJRA."
   }
 }

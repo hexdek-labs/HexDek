@@ -1756,5 +1756,32 @@
     "you": "(你)",
     "is_friend": "好友",
     "add_friend": "添加好友"
+  },
+  "auth": {
+    "tape_mid": "魔法链接",
+    "tape_right": "免密码",
+    "panel_title": "操作员身份验证",
+    "intro_1": "> 输入邮箱即可收到魔法链接。",
+    "intro_2": "> 无需密码。没有垃圾邮件。",
+    "intro_3": "> 一键即可进入。",
+    "email_label": "邮箱地址",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "发送中...",
+    "btn_send": "发送魔法链接",
+    "btn_back": "返回",
+    "btn_resend": "重新发送",
+    "link_sent": "链接已发送。",
+    "check_inbox": "> 请在收件箱中查收魔法链接。",
+    "sent_to": "> 已发送至:",
+    "expires_in": "> 链接将在 {hours} 小时后失效。",
+    "expires_in_one": "> 链接将在 {hours} 小时后失效。",
+    "kv_awaiting": "等待确认",
+    "kv_method": "方式",
+    "kv_method_value": "邮箱链接（免密码）",
+    "kv_expires": "失效时间",
+    "kv_expires_value": "{minutes} 分钟",
+    "err_link_failed": "链接在另一个标签页中失败。请重试。",
+    "err_invalid_email": "邮箱格式无效。",
+    "err_unreachable": "无法连接身份验证服务。请重试。"
   }
 }

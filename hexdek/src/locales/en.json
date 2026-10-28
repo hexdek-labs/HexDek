@@ -1756,5 +1756,32 @@
     "you": "(YOU)",
     "is_friend": "FRIEND",
     "add_friend": "ADD FRIEND"
+  },
+  "auth": {
+    "tape_mid": "MAGIC LINK",
+    "tape_right": "PASSWORDLESS",
+    "panel_title": "OPERATOR AUTHENTICATION",
+    "intro_1": "> ENTER YOUR EMAIL TO RECEIVE A MAGIC LINK.",
+    "intro_2": "> NO PASSWORD REQUIRED. NO SPAM.",
+    "intro_3": "> ONE CLICK. YOU'RE IN.",
+    "email_label": "EMAIL ADDRESS",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "TRANSMITTING...",
+    "btn_send": "SEND MAGIC LINK",
+    "btn_back": "BACK",
+    "btn_resend": "RESEND",
+    "link_sent": "LINK SENT.",
+    "check_inbox": "> CHECK YOUR INBOX FOR THE MAGIC LINK.",
+    "sent_to": "> SENT TO:",
+    "expires_in": "> LINK EXPIRES IN {hours} HOURS.",
+    "expires_in_one": "> LINK EXPIRES IN {hours} HOUR.",
+    "kv_awaiting": "AWAITING CONFIRMATION",
+    "kv_method": "METHOD",
+    "kv_method_value": "EMAIL LINK (PASSWORDLESS)",
+    "kv_expires": "EXPIRES",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINK FAILED IN OTHER TAB. TRY AGAIN.",
+    "err_invalid_email": "INVALID EMAIL FORMAT.",
+    "err_unreachable": "AUTH SERVICE UNREACHABLE. TRY AGAIN."
   }
 }

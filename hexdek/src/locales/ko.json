@@ -1756,5 +1756,32 @@
     "you": "(나)",
     "is_friend": "친구",
     "add_friend": "친구 추가"
+  },
+  "auth": {
+    "tape_mid": "매직 링크",
+    "tape_right": "비밀번호 없음",
+    "panel_title": "오퍼레이터 인증",
+    "intro_1": "> 이메일을 입력하면 매직 링크를 보내드립니다.",
+    "intro_2": "> 비밀번호 없음. 스팸 없음.",
+    "intro_3": "> 한 번의 클릭으로 끝.",
+    "email_label": "이메일 주소",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "전송 중...",
+    "btn_send": "매직 링크 보내기",
+    "btn_back": "뒤로",
+    "btn_resend": "다시 보내기",
+    "link_sent": "링크를 보냈습니다.",
+    "check_inbox": "> 받은 편지함에서 매직 링크를 확인하세요.",
+    "sent_to": "> 보낸 곳:",
+    "expires_in": "> 링크는 {hours}시간 후 만료됩니다.",
+    "expires_in_one": "> 링크는 {hours}시간 후 만료됩니다.",
+    "kv_awaiting": "확인 대기 중",
+    "kv_method": "방식",
+    "kv_method_value": "이메일 링크(비밀번호 없음)",
+    "kv_expires": "만료",
+    "kv_expires_value": "{minutes}분",
+    "err_link_failed": "다른 탭에서 링크가 실패했습니다. 다시 시도하세요.",
+    "err_invalid_email": "이메일 형식이 올바르지 않습니다.",
+    "err_unreachable": "인증 서비스에 연결할 수 없습니다. 다시 시도하세요."
   }
 }

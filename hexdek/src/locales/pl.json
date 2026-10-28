@@ -1756,5 +1756,32 @@
     "you": "(TY)",
     "is_friend": "ZNAJOMY",
     "add_friend": "DODAJ ZNAJOMEGO"
+  },
+  "auth": {
+    "tape_mid": "MAGICZNY LINK",
+    "tape_right": "BEZ HASŁA",
+    "panel_title": "UWIERZYTELNIANIE OPERATORA",
+    "intro_1": "> PODAJ E-MAIL, ABY OTRZYMAĆ MAGICZNY LINK.",
+    "intro_2": "> BEZ HASŁA. BEZ SPAMU.",
+    "intro_3": "> JEDNO KLIKNIĘCIE I JESTEŚ W ŚRODKU.",
+    "email_label": "ADRES E-MAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "WYSYŁANIE...",
+    "btn_send": "WYŚLIJ MAGICZNY LINK",
+    "btn_back": "WRÓĆ",
+    "btn_resend": "WYŚLIJ PONOWNIE",
+    "link_sent": "LINK WYSŁANY.",
+    "check_inbox": "> SPRAWDŹ SKRZYNKĘ W POSZUKIWANIU MAGICZNEGO LINKU.",
+    "sent_to": "> WYSŁANO DO:",
+    "expires_in": "> LINK WYGAŚNIE ZA {hours} GODZIN.",
+    "expires_in_one": "> LINK WYGAŚNIE ZA {hours} GODZINĘ.",
+    "kv_awaiting": "OCZEKUJE NA POTWIERDZENIE",
+    "kv_method": "METODA",
+    "kv_method_value": "LINK E-MAIL (BEZ HASŁA)",
+    "kv_expires": "WYGASA",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINK NIE ZADZIAŁAŁ W INNEJ KARCIE. SPRÓBUJ PONOWNIE.",
+    "err_invalid_email": "NIEPRAWIDŁOWY FORMAT E-MAILA.",
+    "err_unreachable": "USŁUGA UWIERZYTELNIANIA NIEDOSTĘPNA. SPRÓBUJ PONOWNIE."
   }
 }

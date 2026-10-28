@@ -1756,5 +1756,32 @@
     "you": "(DU)",
     "is_friend": "FREUND",
     "add_friend": "FREUND HINZUFÜGEN"
+  },
+  "auth": {
+    "tape_mid": "MAGISCHER LINK",
+    "tape_right": "OHNE PASSWORT",
+    "panel_title": "OPERATOR-AUTHENTIFIZIERUNG",
+    "intro_1": "> GIB DEINE E-MAIL EIN, UM EINEN MAGISCHEN LINK ZU ERHALTEN.",
+    "intro_2": "> KEIN PASSWORT. KEIN SPAM.",
+    "intro_3": "> EIN KLICK UND DU BIST DRIN.",
+    "email_label": "E-MAIL-ADRESSE",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "ÜBERTRAGUNG...",
+    "btn_send": "MAGISCHEN LINK SENDEN",
+    "btn_back": "ZURÜCK",
+    "btn_resend": "ERNEUT SENDEN",
+    "link_sent": "LINK GESENDET.",
+    "check_inbox": "> SCHAU IN DEINEM POSTFACH NACH DEM MAGISCHEN LINK.",
+    "sent_to": "> GESENDET AN:",
+    "expires_in": "> DER LINK LÄUFT IN {hours} STUNDEN AB.",
+    "expires_in_one": "> DER LINK LÄUFT IN {hours} STUNDE AB.",
+    "kv_awaiting": "WARTET AUF BESTÄTIGUNG",
+    "kv_method": "METHODE",
+    "kv_method_value": "E-MAIL-LINK (OHNE PASSWORT)",
+    "kv_expires": "LÄUFT AB",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINK IM ANDEREN TAB FEHLGESCHLAGEN. VERSUCHE ES ERNEUT.",
+    "err_invalid_email": "UNGÜLTIGES E-MAIL-FORMAT.",
+    "err_unreachable": "AUTH-DIENST NICHT ERREICHBAR. VERSUCHE ES ERNEUT."
   }
 }

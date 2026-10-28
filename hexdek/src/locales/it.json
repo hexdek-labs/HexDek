@@ -1756,5 +1756,32 @@
     "you": "(TU)",
     "is_friend": "AMICO",
     "add_friend": "AGGIUNGI AMICO"
+  },
+  "auth": {
+    "tape_mid": "LINK MAGICO",
+    "tape_right": "SENZA PASSWORD",
+    "panel_title": "AUTENTICAZIONE OPERATORE",
+    "intro_1": "> INSERISCI LA TUA EMAIL PER RICEVERE UN LINK MAGICO.",
+    "intro_2": "> NESSUNA PASSWORD. NESSUNO SPAM.",
+    "intro_3": "> UN CLIC E SEI DENTRO.",
+    "email_label": "INDIRIZZO EMAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "INVIO...",
+    "btn_send": "INVIA LINK MAGICO",
+    "btn_back": "INDIETRO",
+    "btn_resend": "RINVIA",
+    "link_sent": "LINK INVIATO.",
+    "check_inbox": "> CONTROLLA LA POSTA IN ARRIVO PER IL LINK MAGICO.",
+    "sent_to": "> INVIATO A:",
+    "expires_in": "> IL LINK SCADE TRA {hours} ORE.",
+    "expires_in_one": "> IL LINK SCADE TRA {hours} ORA.",
+    "kv_awaiting": "IN ATTESA DI CONFERMA",
+    "kv_method": "METODO",
+    "kv_method_value": "LINK VIA EMAIL (SENZA PASSWORD)",
+    "kv_expires": "SCADE",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINK FALLITO IN UN ALTRA SCHEDA. RIPROVA.",
+    "err_invalid_email": "FORMATO EMAIL NON VALIDO.",
+    "err_unreachable": "SERVIZIO DI AUTENTICAZIONE NON RAGGIUNGIBILE. RIPROVA."
   }
 }

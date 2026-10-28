@@ -1756,5 +1756,32 @@
     "you": "(DIG)",
     "is_friend": "VEN",
     "add_friend": "TILFØJ VEN"
+  },
+  "auth": {
+    "tape_mid": "MAGISK LINK",
+    "tape_right": "UDEN ADGANGSKODE",
+    "panel_title": "OPERATØRGODKENDELSE",
+    "intro_1": "> INDTAST DIN E-MAIL FOR AT FÅ ET MAGISK LINK.",
+    "intro_2": "> INGEN ADGANGSKODE. INGEN SPAM.",
+    "intro_3": "> ÉT KLIK, OG DU ER INDE.",
+    "email_label": "E-MAILADRESSE",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "SENDER...",
+    "btn_send": "SEND MAGISK LINK",
+    "btn_back": "TILBAGE",
+    "btn_resend": "SEND IGEN",
+    "link_sent": "LINK SENDT.",
+    "check_inbox": "> TJEK DIN INDBAKKE FOR DET MAGISKE LINK.",
+    "sent_to": "> SENDT TIL:",
+    "expires_in": "> LINKET UDLØBER OM {hours} TIMER.",
+    "expires_in_one": "> LINKET UDLØBER OM {hours} TIME.",
+    "kv_awaiting": "AFVENTER BEKRÆFTELSE",
+    "kv_method": "METODE",
+    "kv_method_value": "E-MAILLINK (UDEN ADGANGSKODE)",
+    "kv_expires": "UDLØBER",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINKET FEJLEDE I EN ANDEN FANE. PRØV IGEN.",
+    "err_invalid_email": "UGYLDIGT E-MAILFORMAT.",
+    "err_unreachable": "GODKENDELSESTJENESTEN KAN IKKE NÅS. PRØV IGEN."
   }
 }

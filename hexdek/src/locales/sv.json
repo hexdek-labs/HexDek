@@ -1756,5 +1756,32 @@
     "you": "(DU)",
     "is_friend": "VÄN",
     "add_friend": "LÄGG TILL VÄN"
+  },
+  "auth": {
+    "tape_mid": "MAGISK LÄNK",
+    "tape_right": "UTAN LÖSENORD",
+    "panel_title": "OPERATÖRSAUTENTISERING",
+    "intro_1": "> ANGE DIN E-POST FÖR ATT FÅ EN MAGISK LÄNK.",
+    "intro_2": "> INGET LÖSENORD. INGEN SPAM.",
+    "intro_3": "> ETT KLICK OCH DU ÄR INNE.",
+    "email_label": "E-POSTADRESS",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "SKICKAR...",
+    "btn_send": "SKICKA MAGISK LÄNK",
+    "btn_back": "TILLBAKA",
+    "btn_resend": "SKICKA IGEN",
+    "link_sent": "LÄNK SKICKAD.",
+    "check_inbox": "> KOLLA INKORGEN EFTER DEN MAGISKA LÄNKEN.",
+    "sent_to": "> SKICKAD TILL:",
+    "expires_in": "> LÄNKEN GÅR UT OM {hours} TIMMAR.",
+    "expires_in_one": "> LÄNKEN GÅR UT OM {hours} TIMME.",
+    "kv_awaiting": "VÄNTAR PÅ BEKRÄFTELSE",
+    "kv_method": "METOD",
+    "kv_method_value": "E-POSTLÄNK (UTAN LÖSENORD)",
+    "kv_expires": "GÅR UT",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LÄNKEN MISSLYCKADES I EN ANNAN FLIK. FÖRSÖK IGEN.",
+    "err_invalid_email": "OGILTIGT E-POSTFORMAT.",
+    "err_unreachable": "AUTENTISERINGSTJÄNSTEN GÅR INTE ATT NÅ. FÖRSÖK IGEN."
   }
 }

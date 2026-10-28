@@ -1756,5 +1756,32 @@
     "you": "(VOCÊ)",
     "is_friend": "AMIGO",
     "add_friend": "ADICIONAR AMIGO"
+  },
+  "auth": {
+    "tape_mid": "LINK MÁGICO",
+    "tape_right": "SEM SENHA",
+    "panel_title": "AUTENTICAÇÃO DO OPERADOR",
+    "intro_1": "> INFORME SEU E-MAIL PARA RECEBER UM LINK MÁGICO.",
+    "intro_2": "> SEM SENHA. SEM SPAM.",
+    "intro_3": "> UM CLIQUE E VOCÊ ESTÁ DENTRO.",
+    "email_label": "ENDEREÇO DE E-MAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "ENVIANDO...",
+    "btn_send": "ENVIAR LINK MÁGICO",
+    "btn_back": "VOLTAR",
+    "btn_resend": "REENVIAR",
+    "link_sent": "LINK ENVIADO.",
+    "check_inbox": "> VERIFIQUE SUA CAIXA DE ENTRADA PARA O LINK MÁGICO.",
+    "sent_to": "> ENVIADO PARA:",
+    "expires_in": "> O LINK EXPIRA EM {hours} HORAS.",
+    "expires_in_one": "> O LINK EXPIRA EM {hours} HORA.",
+    "kv_awaiting": "AGUARDANDO CONFIRMAÇÃO",
+    "kv_method": "MÉTODO",
+    "kv_method_value": "LINK POR E-MAIL (SEM SENHA)",
+    "kv_expires": "EXPIRA",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "O LINK FALHOU EM OUTRA ABA. TENTE DE NOVO.",
+    "err_invalid_email": "FORMATO DE E-MAIL INVÁLIDO.",
+    "err_unreachable": "SERVIÇO DE AUTENTICAÇÃO INACESSÍVEL. TENTE DE NOVO."
   }
 }

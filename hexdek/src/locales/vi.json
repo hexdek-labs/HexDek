@@ -1756,5 +1756,32 @@
     "you": "(BẠN)",
     "is_friend": "BẠN BÈ",
     "add_friend": "THÊM BẠN"
+  },
+  "auth": {
+    "tape_mid": "LIÊN KẾT MA THUẬT",
+    "tape_right": "KHÔNG CẦN MẬT KHẨU",
+    "panel_title": "XÁC THỰC NGƯỜI VẬN HÀNH",
+    "intro_1": "> NHẬP EMAIL CỦA BẠN ĐỂ NHẬN LIÊN KẾT MA THUẬT.",
+    "intro_2": "> KHÔNG MẬT KHẨU. KHÔNG SPAM.",
+    "intro_3": "> MỘT CÚ NHẤP LÀ XONG.",
+    "email_label": "ĐỊA CHỈ EMAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "ĐANG GỬI...",
+    "btn_send": "GỬI LIÊN KẾT MA THUẬT",
+    "btn_back": "QUAY LẠI",
+    "btn_resend": "GỬI LẠI",
+    "link_sent": "ĐÃ GỬI LIÊN KẾT.",
+    "check_inbox": "> KIỂM TRA HỘP THƯ ĐỂ TÌM LIÊN KẾT MA THUẬT.",
+    "sent_to": "> ĐÃ GỬI TỚI:",
+    "expires_in": "> LIÊN KẾT HẾT HẠN SAU {hours} GIỜ.",
+    "expires_in_one": "> LIÊN KẾT HẾT HẠN SAU {hours} GIỜ.",
+    "kv_awaiting": "ĐANG CHỜ XÁC NHẬN",
+    "kv_method": "PHƯƠNG THỨC",
+    "kv_method_value": "LIÊN KẾT QUA EMAIL (KHÔNG MẬT KHẨU)",
+    "kv_expires": "HẾT HẠN",
+    "kv_expires_value": "{minutes} PHÚT",
+    "err_link_failed": "LIÊN KẾT THẤT BẠI Ở TAB KHÁC. THỬ LẠI.",
+    "err_invalid_email": "ĐỊNH DẠNG EMAIL KHÔNG HỢP LỆ.",
+    "err_unreachable": "KHÔNG KẾT NỐI ĐƯỢC DỊCH VỤ XÁC THỰC. THỬ LẠI."
   }
 }

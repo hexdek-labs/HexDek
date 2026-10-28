@@ -1756,5 +1756,32 @@
     "you": "(TOI)",
     "is_friend": "AMI",
     "add_friend": "AJOUTER UN AMI"
+  },
+  "auth": {
+    "tape_mid": "LIEN MAGIQUE",
+    "tape_right": "SANS MOT DE PASSE",
+    "panel_title": "AUTHENTIFICATION OPÉRATEUR",
+    "intro_1": "> SAISIS TON E-MAIL POUR RECEVOIR UN LIEN MAGIQUE.",
+    "intro_2": "> AUCUN MOT DE PASSE. AUCUN SPAM.",
+    "intro_3": "> UN CLIC ET C’EST FAIT.",
+    "email_label": "ADRESSE E-MAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "TRANSMISSION...",
+    "btn_send": "ENVOYER LE LIEN MAGIQUE",
+    "btn_back": "RETOUR",
+    "btn_resend": "RENVOYER",
+    "link_sent": "LIEN ENVOYÉ.",
+    "check_inbox": "> CONSULTE TA BOÎTE DE RÉCEPTION POUR LE LIEN MAGIQUE.",
+    "sent_to": "> ENVOYÉ À :",
+    "expires_in": "> LE LIEN EXPIRE DANS {hours} HEURES.",
+    "expires_in_one": "> LE LIEN EXPIRE DANS {hours} HEURE.",
+    "kv_awaiting": "EN ATTENTE DE CONFIRMATION",
+    "kv_method": "MÉTHODE",
+    "kv_method_value": "LIEN PAR E-MAIL (SANS MOT DE PASSE)",
+    "kv_expires": "EXPIRE",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "ÉCHEC DU LIEN DANS UN AUTRE ONGLET. RÉESSAIE.",
+    "err_invalid_email": "FORMAT D’E-MAIL INVALIDE.",
+    "err_unreachable": "SERVICE D’AUTHENTIFICATION INJOIGNABLE. RÉESSAIE."
   }
 }

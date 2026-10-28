@@ -1756,5 +1756,32 @@
     "you": "(TÚ)",
     "is_friend": "AMIGO",
     "add_friend": "AÑADIR AMIGO"
+  },
+  "auth": {
+    "tape_mid": "ENLACE MÁGICO",
+    "tape_right": "SIN CONTRASEÑA",
+    "panel_title": "AUTENTICACIÓN DE OPERADOR",
+    "intro_1": "> INTRODUCE TU CORREO PARA RECIBIR UN ENLACE MÁGICO.",
+    "intro_2": "> SIN CONTRASEÑA. SIN SPAM.",
+    "intro_3": "> UN CLIC Y YA ESTÁS DENTRO.",
+    "email_label": "DIRECCIÓN DE CORREO",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "ENVIANDO...",
+    "btn_send": "ENVIAR ENLACE MÁGICO",
+    "btn_back": "VOLVER",
+    "btn_resend": "REENVIAR",
+    "link_sent": "ENLACE ENVIADO.",
+    "check_inbox": "> REVISA TU BANDEJA DE ENTRADA PARA EL ENLACE MÁGICO.",
+    "sent_to": "> ENVIADO A:",
+    "expires_in": "> EL ENLACE CADUCA EN {hours} HORAS.",
+    "expires_in_one": "> EL ENLACE CADUCA EN {hours} HORA.",
+    "kv_awaiting": "ESPERANDO CONFIRMACIÓN",
+    "kv_method": "MÉTODO",
+    "kv_method_value": "ENLACE POR CORREO (SIN CONTRASEÑA)",
+    "kv_expires": "CADUCA",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "EL ENLACE FALLÓ EN OTRA PESTAÑA. INTÉNTALO DE NUEVO.",
+    "err_invalid_email": "FORMATO DE CORREO NO VÁLIDO.",
+    "err_unreachable": "SERVICIO DE AUTENTICACIÓN INACCESIBLE. INTÉNTALO DE NUEVO."
   }
 }

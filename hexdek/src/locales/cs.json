@@ -1756,5 +1756,32 @@
     "you": "(TY)",
     "is_friend": "PŘÍTEL",
     "add_friend": "PŘIDAT PŘÍTELE"
+  },
+  "auth": {
+    "tape_mid": "MAGICKÝ ODKAZ",
+    "tape_right": "BEZ HESLA",
+    "panel_title": "OVĚŘENÍ OPERÁTORA",
+    "intro_1": "> ZADEJ E-MAIL A POŠLEME TI MAGICKÝ ODKAZ.",
+    "intro_2": "> ŽÁDNÉ HESLO. ŽÁDNÝ SPAM.",
+    "intro_3": "> JEDNO KLIKNUTÍ A JSI UVNITŘ.",
+    "email_label": "E-MAILOVÁ ADRESA",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "ODESÍLÁM...",
+    "btn_send": "POSLAT MAGICKÝ ODKAZ",
+    "btn_back": "ZPĚT",
+    "btn_resend": "POSLAT ZNOVU",
+    "link_sent": "ODKAZ ODESLÁN.",
+    "check_inbox": "> ZKONTROLUJ SCHRÁNKU, NAJDEŠ TAM MAGICKÝ ODKAZ.",
+    "sent_to": "> ODESLÁNO NA:",
+    "expires_in": "> ODKAZ VYPRŠÍ ZA {hours} HODIN.",
+    "expires_in_one": "> ODKAZ VYPRŠÍ ZA {hours} HODINU.",
+    "kv_awaiting": "ČEKÁ NA POTVRZENÍ",
+    "kv_method": "METODA",
+    "kv_method_value": "ODKAZ E-MAILEM (BEZ HESLA)",
+    "kv_expires": "VYPRŠÍ",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "ODKAZ SELHAL V JINÉ KARTĚ. ZKUS TO ZNOVU.",
+    "err_invalid_email": "NEPLATNÝ FORMÁT E-MAILU.",
+    "err_unreachable": "SLUŽBA OVĚŘENÍ NEDOSTUPNÁ. ZKUS TO ZNOVU."
   }
 }

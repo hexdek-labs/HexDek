@@ -1756,5 +1756,32 @@
     "you": "(JIJ)",
     "is_friend": "VRIEND",
     "add_friend": "VRIEND TOEVOEGEN"
+  },
+  "auth": {
+    "tape_mid": "MAGISCHE LINK",
+    "tape_right": "ZONDER WACHTWOORD",
+    "panel_title": "OPERATORVERIFICATIE",
+    "intro_1": "> VUL JE E-MAIL IN OM EEN MAGISCHE LINK TE ONTVANGEN.",
+    "intro_2": "> GEEN WACHTWOORD. GEEN SPAM.",
+    "intro_3": "> ÉÉN KLIK EN JE BENT BINNEN.",
+    "email_label": "E-MAILADRES",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "VERZENDEN...",
+    "btn_send": "MAGISCHE LINK VERSTUREN",
+    "btn_back": "TERUG",
+    "btn_resend": "OPNIEUW VERSTUREN",
+    "link_sent": "LINK VERSTUURD.",
+    "check_inbox": "> CHECK JE INBOX VOOR DE MAGISCHE LINK.",
+    "sent_to": "> VERSTUURD NAAR:",
+    "expires_in": "> DE LINK VERLOOPT OVER {hours} UUR.",
+    "expires_in_one": "> DE LINK VERLOOPT OVER {hours} UUR.",
+    "kv_awaiting": "WACHT OP BEVESTIGING",
+    "kv_method": "METHODE",
+    "kv_method_value": "E-MAILLINK (ZONDER WACHTWOORD)",
+    "kv_expires": "VERLOOPT",
+    "kv_expires_value": "{minutes} MIN",
+    "err_link_failed": "LINK MISLUKT IN ANDER TABBLAD. PROBEER HET OPNIEUW.",
+    "err_invalid_email": "ONGELDIG E-MAILFORMAAT.",
+    "err_unreachable": "AUTHENTICATIEDIENST NIET BEREIKBAAR. PROBEER HET OPNIEUW."
   }
 }

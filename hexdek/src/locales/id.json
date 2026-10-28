@@ -1756,5 +1756,32 @@
     "you": "(ANDA)",
     "is_friend": "TEMAN",
     "add_friend": "TAMBAH TEMAN"
+  },
+  "auth": {
+    "tape_mid": "TAUTAN AJAIB",
+    "tape_right": "TANPA SANDI",
+    "panel_title": "OTENTIKASI OPERATOR",
+    "intro_1": "> MASUKKAN EMAILMU UNTUK MENERIMA TAUTAN AJAIB.",
+    "intro_2": "> TANPA SANDI. TANPA SPAM.",
+    "intro_3": "> SATU KLIK, KAMU MASUK.",
+    "email_label": "ALAMAT EMAIL",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "MENGIRIM...",
+    "btn_send": "KIRIM TAUTAN AJAIB",
+    "btn_back": "KEMBALI",
+    "btn_resend": "KIRIM ULANG",
+    "link_sent": "TAUTAN TERKIRIM.",
+    "check_inbox": "> CEK KOTAK MASUKMU UNTUK TAUTAN AJAIB.",
+    "sent_to": "> DIKIRIM KE:",
+    "expires_in": "> TAUTAN KEDALUWARSA DALAM {hours} JAM.",
+    "expires_in_one": "> TAUTAN KEDALUWARSA DALAM {hours} JAM.",
+    "kv_awaiting": "MENUNGGU KONFIRMASI",
+    "kv_method": "METODE",
+    "kv_method_value": "TAUTAN EMAIL (TANPA SANDI)",
+    "kv_expires": "KEDALUWARSA",
+    "kv_expires_value": "{minutes} MNT",
+    "err_link_failed": "TAUTAN GAGAL DI TAB LAIN. COBA LAGI.",
+    "err_invalid_email": "FORMAT EMAIL TIDAK VALID.",
+    "err_unreachable": "LAYANAN OTENTIKASI TIDAK TERJANGKAU. COBA LAGI."
   }
 }

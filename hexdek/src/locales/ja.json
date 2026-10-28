@@ -1756,5 +1756,32 @@
     "you": "(あなた)",
     "is_friend": "フレンド",
     "add_friend": "フレンド追加"
+  },
+  "auth": {
+    "tape_mid": "マジックリンク",
+    "tape_right": "パスワード不要",
+    "panel_title": "オペレーター認証",
+    "intro_1": "> メールアドレスを入力するとマジックリンクが届きます。",
+    "intro_2": "> パスワード不要。スパムもありません。",
+    "intro_3": "> ワンクリックで完了です。",
+    "email_label": "メールアドレス",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "送信中...",
+    "btn_send": "マジックリンクを送信",
+    "btn_back": "戻る",
+    "btn_resend": "再送信",
+    "link_sent": "リンクを送信しました。",
+    "check_inbox": "> 受信トレイでマジックリンクをご確認ください。",
+    "sent_to": "> 送信先:",
+    "expires_in": "> リンクは {hours} 時間で失効します。",
+    "expires_in_one": "> リンクは {hours} 時間で失効します。",
+    "kv_awaiting": "確認待ち",
+    "kv_method": "方式",
+    "kv_method_value": "メールリンク（パスワード不要）",
+    "kv_expires": "有効期限",
+    "kv_expires_value": "{minutes} 分",
+    "err_link_failed": "別のタブでリンクが失敗しました。もう一度お試しください。",
+    "err_invalid_email": "メールアドレスの形式が正しくありません。",
+    "err_unreachable": "認証サービスに接続できません。もう一度お試しください。"
   }
 }

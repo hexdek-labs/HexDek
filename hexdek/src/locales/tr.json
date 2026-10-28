@@ -1756,5 +1756,32 @@
     "you": "(SEN)",
     "is_friend": "ARKADAŞ",
     "add_friend": "ARKADAŞ EKLE"
+  },
+  "auth": {
+    "tape_mid": "SİHİRLİ BAĞLANTI",
+    "tape_right": "ŞİFRESİZ",
+    "panel_title": "OPERATÖR KİMLİK DOĞRULAMA",
+    "intro_1": "> SİHİRLİ BAĞLANTI ALMAK İÇİN E-POSTANI GİR.",
+    "intro_2": "> ŞİFRE YOK. SPAM YOK.",
+    "intro_3": "> TEK TIKLA İÇERİDESİN.",
+    "email_label": "E-POSTA ADRESİ",
+    "email_ph": "OPERATOR@DOMAIN.COM",
+    "btn_sending": "GÖNDERİLİYOR...",
+    "btn_send": "SİHİRLİ BAĞLANTI GÖNDER",
+    "btn_back": "GERİ",
+    "btn_resend": "TEKRAR GÖNDER",
+    "link_sent": "BAĞLANTI GÖNDERİLDİ.",
+    "check_inbox": "> SİHİRLİ BAĞLANTI İÇİN GELEN KUTUNA BAK.",
+    "sent_to": "> GÖNDERİLDİ:",
+    "expires_in": "> BAĞLANTI {hours} SAAT İÇİNDE SONA ERER.",
+    "expires_in_one": "> BAĞLANTI {hours} SAAT İÇİNDE SONA ERER.",
+    "kv_awaiting": "ONAY BEKLENİYOR",
+    "kv_method": "YÖNTEM",
+    "kv_method_value": "E-POSTA BAĞLANTISI (ŞİFRESİZ)",
+    "kv_expires": "SONA ERER",
+    "kv_expires_value": "{minutes} DK",
+    "err_link_failed": "BAĞLANTI DİĞER SEKMEDE BAŞARISIZ OLDU. TEKRAR DENE.",
+    "err_invalid_email": "GEÇERSİZ E-POSTA BİÇİMİ.",
+    "err_unreachable": "KİMLİK DOĞRULAMA SERVİSİNE ULAŞILAMIYOR. TEKRAR DENE."
   }
 }
