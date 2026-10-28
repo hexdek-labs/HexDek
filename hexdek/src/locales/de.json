@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "KOMMANDEUR SETZEN + ANALYSE",
     "cp_btn_setting": "WIRD GESETZT + ANALYSIERT…",
     "cp_btn_pinning": "WIRD FESTGELEGT + ANALYSIERT…",
-    "cp_btn_not_now": "JETZT NICHT"
+    "cp_btn_not_now": "JETZT NICHT",
+    "mu_title_loading": "DUELLE / / LÄDT",
+    "mu_title_offline": "DUELLE / / OFFLINE",
+    "mu_title_empty": "DUELLE / / KEINE HISTORIE",
+    "mu_title_one": "DUELLE / / {count} GEGNER",
+    "mu_title": "DUELLE / / {count} GEGNER",
+    "mu_fetching": "> WIRD GELADEN",
+    "mu_unavailable": "> DUELL-HISTORIE NICHT VERFÜGBAR.",
+    "mu_no_games": "> NOCH KEINE AUFGEZEICHNETEN PARTIEN. SPIELE EIN PAAR SHOWMATCHES, UM DAS LEDGER ZU FÜLLEN.",
+    "mu_games_one": "{count} PARTIE",
+    "mu_games": "{count} PARTIEN",
+    "mu_best": "BESTE DUELLE",
+    "mu_worst": "SCHLECHTESTE DUELLE",
+    "mu_min_games_one": "MIN. {count} PARTIE",
+    "mu_min_games": "MIN. {count} PARTIEN",
+    "mu_col_g": "P",
+    "mu_col_w": "S",
+    "mu_col_l": "N",
+    "mu_top": "TOP {count}",
+    "mu_bottom": "LETZTE {count}"
   },
   "spec": {
     "tape_title": "ZUSCHAUER / / FISHTANK",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ERHALTEN",
     "no_catalog": "> KEIN ERFOLGSKATALOG VERFÜGBAR.",
     "badge_tip_earned": "{name} — {desc}\nErhalten {date}",
-    "badge_tip_locked": "{name} — {desc} (gesperrt)"
+    "badge_tip_locked": "{name} — {desc} (gesperrt)",
+    "draws_suffix": "{count}U"
   },
   "cr": {
     "title": "CREDITS",

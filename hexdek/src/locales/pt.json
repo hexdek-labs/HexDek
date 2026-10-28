@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "DEFINIR COMANDANTE + ANALISAR",
     "cp_btn_setting": "DEFININDO + ANALISANDO…",
     "cp_btn_pinning": "FIXANDO + ANALISANDO…",
-    "cp_btn_not_now": "AGORA NÃO"
+    "cp_btn_not_now": "AGORA NÃO",
+    "mu_title_loading": "CONFRONTOS / / CARREGANDO",
+    "mu_title_offline": "CONFRONTOS / / OFFLINE",
+    "mu_title_empty": "CONFRONTOS / / SEM HISTÓRICO",
+    "mu_title_one": "CONFRONTOS / / {count} ADVERSÁRIO",
+    "mu_title": "CONFRONTOS / / {count} ADVERSÁRIOS",
+    "mu_fetching": "> BUSCANDO",
+    "mu_unavailable": "> HISTÓRICO DE CONFRONTOS INDISPONÍVEL.",
+    "mu_no_games": "> NENHUMA PARTIDA REGISTRADA AINDA. JOGUE ALGUNS SHOWMATCHES PARA INICIAR O REGISTRO.",
+    "mu_games_one": "{count} PARTIDA",
+    "mu_games": "{count} PARTIDAS",
+    "mu_best": "MELHORES CONFRONTOS",
+    "mu_worst": "PIORES CONFRONTOS",
+    "mu_min_games_one": "MÍN. {count} PARTIDA",
+    "mu_min_games": "MÍN. {count} PARTIDAS",
+    "mu_col_g": "P",
+    "mu_col_w": "V",
+    "mu_col_l": "D",
+    "mu_top": "MELHORES {count}",
+    "mu_bottom": "ÚLTIMOS {count}"
   },
   "spec": {
     "tape_title": "ESPETADOR / / AQUÁRIO",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OBTIDAS",
     "no_catalog": "> NENHUM CATÁLOGO DE CONQUISTAS DISPONÍVEL.",
     "badge_tip_earned": "{name} — {desc}\nObtida {date}",
-    "badge_tip_locked": "{name} — {desc} (bloqueada)"
+    "badge_tip_locked": "{name} — {desc} (bloqueada)",
+    "draws_suffix": "{count}E"
   },
   "cr": {
     "title": "CRÉDITOS",

@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "تعيين القائد + تحليل",
     "cp_btn_setting": "جارٍ التعيين + التحليل…",
     "cp_btn_pinning": "جارٍ التثبيت + التحليل…",
-    "cp_btn_not_now": "ليس الآن"
+    "cp_btn_not_now": "ليس الآن",
+    "mu_title_loading": "المواجهات / / جارٍ التحميل",
+    "mu_title_offline": "المواجهات / / غير متصل",
+    "mu_title_empty": "المواجهات / / لا يوجد سجل",
+    "mu_title_one": "المواجهات / / {count} خصم",
+    "mu_title": "المواجهات / / {count} خصم",
+    "mu_fetching": "> جارٍ الجلب",
+    "mu_unavailable": "> سجل المواجهات غير متاح.",
+    "mu_no_games": "> لا مباريات مسجّلة بعد. العب بعض مباريات العرض لبدء السجل.",
+    "mu_games_one": "{count} مباراة",
+    "mu_games": "{count} مباراة",
+    "mu_best": "أفضل المواجهات",
+    "mu_worst": "أسوأ المواجهات",
+    "mu_min_games_one": "الحد الأدنى {count} مباراة",
+    "mu_min_games": "الحد الأدنى {count} مباريات",
+    "mu_col_g": "مباريات",
+    "mu_col_w": "فوز",
+    "mu_col_l": "خسارة",
+    "mu_top": "أفضل {count}",
+    "mu_bottom": "أدنى {count}"
   },
   "spec": {
     "tape_title": "المتفرج / / الحوض",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} مكتسب",
     "no_catalog": "> لا يوجد فهرس إنجازات متاح.",
     "badge_tip_earned": "{name} — {desc}\nمكتسب {date}",
-    "badge_tip_locked": "{name} — {desc} (مقفل)"
+    "badge_tip_locked": "{name} — {desc} (مقفل)",
+    "draws_suffix": "{count} تعادل"
   },
   "cr": {
     "title": "الأرصدة",

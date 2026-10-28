@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "사령관 지정 + 분석",
     "cp_btn_setting": "지정 + 분석 중…",
     "cp_btn_pinning": "고정 + 분석 중…",
-    "cp_btn_not_now": "나중에"
+    "cp_btn_not_now": "나중에",
+    "mu_title_loading": "상대 전적 / / 불러오는 중",
+    "mu_title_offline": "상대 전적 / / 오프라인",
+    "mu_title_empty": "상대 전적 / / 기록 없음",
+    "mu_title_one": "상대 전적 / / 상대 {count}명",
+    "mu_title": "상대 전적 / / 상대 {count}명",
+    "mu_fetching": "> 불러오는 중",
+    "mu_unavailable": "> 상대 전적 기록을 가져올 수 없습니다.",
+    "mu_no_games": "> 아직 기록된 대국이 없습니다. 쇼매치를 몇 번 치러 기록을 시작하세요.",
+    "mu_games_one": "{count}전",
+    "mu_games": "{count}전",
+    "mu_best": "유리한 상대",
+    "mu_worst": "불리한 상대",
+    "mu_min_games_one": "최소 {count}전",
+    "mu_min_games": "최소 {count}전",
+    "mu_col_g": "전",
+    "mu_col_w": "승",
+    "mu_col_l": "패",
+    "mu_top": "상위 {count}",
+    "mu_bottom": "하위 {count}"
   },
   "spec": {
     "tape_title": "관전 / / 피시탱크",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} 획득",
     "no_catalog": "> 사용 가능한 업적 카탈로그가 없습니다.",
     "badge_tip_earned": "{name} — {desc}\n{date} 획득",
-    "badge_tip_locked": "{name} — {desc} (잠김)"
+    "badge_tip_locked": "{name} — {desc} (잠김)",
+    "draws_suffix": "{count}무"
   },
   "cr": {
     "title": "크레딧",

@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "ПРИЗНАЧИТИ КОМАНДИРА + АНАЛІЗ",
     "cp_btn_setting": "ПРИЗНАЧЕННЯ + АНАЛІЗ…",
     "cp_btn_pinning": "ЗАКРІПЛЕННЯ + АНАЛІЗ…",
-    "cp_btn_not_now": "НЕ ЗАРАЗ"
+    "cp_btn_not_now": "НЕ ЗАРАЗ",
+    "mu_title_loading": "ПРОТИСТОЯННЯ / / ЗАВАНТАЖЕННЯ",
+    "mu_title_offline": "ПРОТИСТОЯННЯ / / ОФЛАЙН",
+    "mu_title_empty": "ПРОТИСТОЯННЯ / / НЕМАЄ ІСТОРІЇ",
+    "mu_title_one": "ПРОТИСТОЯННЯ / / {count} СУПЕРНИК",
+    "mu_title": "ПРОТИСТОЯННЯ / / {count} СУПЕРНИКІВ",
+    "mu_fetching": "> ЗАВАНТАЖЕННЯ",
+    "mu_unavailable": "> ІСТОРІЯ ПРОТИСТОЯНЬ НЕДОСТУПНА.",
+    "mu_no_games": "> ПАРТІЙ ЩЕ НЕ ЗАПИСАНО. ПРОВЕДІТЬ КІЛЬКА ПОКАЗОВИХ МАТЧІВ, ЩОБ ЗАПОВНИТИ ЖУРНАЛ.",
+    "mu_games_one": "{count} ПАРТІЯ",
+    "mu_games": "{count} ПАРТІЙ",
+    "mu_best": "НАЙКРАЩІ ПРОТИСТОЯННЯ",
+    "mu_worst": "НАЙГІРШІ ПРОТИСТОЯННЯ",
+    "mu_min_games_one": "МІН. {count} ПАРТІЯ",
+    "mu_min_games": "МІН. {count} ПАРТІЙ",
+    "mu_col_g": "І",
+    "mu_col_w": "П",
+    "mu_col_l": "Пр",
+    "mu_top": "ТОП {count}",
+    "mu_bottom": "ОСТАННІ {count}"
   },
   "spec": {
     "tape_title": "ГЛЯДАЧ / / АКВАРІУМ",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ОТРИМАНО",
     "no_catalog": "> КАТАЛОГ ДОСЯГНЕНЬ НЕДОСТУПНИЙ.",
     "badge_tip_earned": "{name} — {desc}\nОтримано {date}",
-    "badge_tip_locked": "{name} — {desc} (заблоковано)"
+    "badge_tip_locked": "{name} — {desc} (заблоковано)",
+    "draws_suffix": "{count}Н"
   },
   "cr": {
     "title": "КРЕДИТИ",

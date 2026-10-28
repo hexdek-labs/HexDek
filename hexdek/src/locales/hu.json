@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "HADVEZÉR BEÁLLÍTÁSA + ELEMZÉS",
     "cp_btn_setting": "BEÁLLÍTÁS + ELEMZÉS…",
     "cp_btn_pinning": "RÖGZÍTÉS + ELEMZÉS…",
-    "cp_btn_not_now": "MOST NEM"
+    "cp_btn_not_now": "MOST NEM",
+    "mu_title_loading": "PÁROSÍTÁSOK / / BETÖLTÉS",
+    "mu_title_offline": "PÁROSÍTÁSOK / / OFFLINE",
+    "mu_title_empty": "PÁROSÍTÁSOK / / NINCS ELŐZMÉNY",
+    "mu_title_one": "PÁROSÍTÁSOK / / {count} ELLENFÉL",
+    "mu_title": "PÁROSÍTÁSOK / / {count} ELLENFÉL",
+    "mu_fetching": "> BETÖLTÉS",
+    "mu_unavailable": "> A PÁROSÍTÁSI ELŐZMÉNY NEM ÉRHETŐ EL.",
+    "mu_no_games": "> MÉG NINCS RÖGZÍTETT MECCS. JÁTSSZ PÁR SHOWMATCHOT A FŐKÖNYV ELINDÍTÁSÁHOZ.",
+    "mu_games_one": "{count} MECCS",
+    "mu_games": "{count} MECCS",
+    "mu_best": "LEGJOBB PÁROSÍTÁSOK",
+    "mu_worst": "LEGROSSZABB PÁROSÍTÁSOK",
+    "mu_min_games_one": "MIN. {count} MECCS",
+    "mu_min_games": "MIN. {count} MECCS",
+    "mu_col_g": "M",
+    "mu_col_w": "GY",
+    "mu_col_l": "V",
+    "mu_top": "LEGJOBB {count}",
+    "mu_bottom": "UTOLSÓ {count}"
   },
   "spec": {
     "tape_title": "NÉZŐ / / AKVÁRIUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} MEGSZEREZVE",
     "no_catalog": "> NINCS ELÉRHETŐ EREDMÉNYKATALÓGUS.",
     "badge_tip_earned": "{name} — {desc}\nMegszerezve: {date}",
-    "badge_tip_locked": "{name} — {desc} (zárolt)"
+    "badge_tip_locked": "{name} — {desc} (zárolt)",
+    "draws_suffix": "{count}D"
   },
   "cr": {
     "title": "KREDITEK",

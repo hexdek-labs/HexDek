@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "SETEAZĂ COMANDANTUL + ANALIZEAZĂ",
     "cp_btn_setting": "SE SETEAZĂ + SE ANALIZEAZĂ…",
     "cp_btn_pinning": "SE FIXEAZĂ + SE ANALIZEAZĂ…",
-    "cp_btn_not_now": "NU ACUM"
+    "cp_btn_not_now": "NU ACUM",
+    "mu_title_loading": "CONFRUNTĂRI / / SE ÎNCARCĂ",
+    "mu_title_offline": "CONFRUNTĂRI / / OFFLINE",
+    "mu_title_empty": "CONFRUNTĂRI / / FĂRĂ ISTORIC",
+    "mu_title_one": "CONFRUNTĂRI / / {count} ADVERSAR",
+    "mu_title": "CONFRUNTĂRI / / {count} ADVERSARI",
+    "mu_fetching": "> SE PRELUA",
+    "mu_unavailable": "> ISTORICUL CONFRUNTĂRILOR NU ESTE DISPONIBIL.",
+    "mu_no_games": "> NICIO PARTIDĂ ÎNREGISTRATĂ ÎNCĂ. JOACĂ CÂTEVA SHOWMATCH-URI PENTRU A PORNI REGISTRUL.",
+    "mu_games_one": "{count} PARTIDĂ",
+    "mu_games": "{count} PARTIDE",
+    "mu_best": "CELE MAI BUNE CONFRUNTĂRI",
+    "mu_worst": "CELE MAI SLABE CONFRUNTĂRI",
+    "mu_min_games_one": "MIN. {count} PARTIDĂ",
+    "mu_min_games": "MIN. {count} PARTIDE",
+    "mu_col_g": "M",
+    "mu_col_w": "V",
+    "mu_col_l": "Î",
+    "mu_top": "PRIMELE {count}",
+    "mu_bottom": "ULTIMELE {count}"
   },
   "spec": {
     "tape_title": "SPECTATOR / / ACVARIU",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OBȚINUTE",
     "no_catalog": "> NU EXISTĂ CATALOG DE REALIZĂRI DISPONIBIL.",
     "badge_tip_earned": "{name} — {desc}\nObținut {date}",
-    "badge_tip_locked": "{name} — {desc} (blocat)"
+    "badge_tip_locked": "{name} — {desc} (blocat)",
+    "draws_suffix": "{count}E"
   },
   "cr": {
     "title": "CREDITE",

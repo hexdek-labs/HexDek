@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "DÉFINIR LE COMMANDANT + ANALYSER",
     "cp_btn_setting": "DÉFINITION + ANALYSE…",
     "cp_btn_pinning": "FIXATION + ANALYSE…",
-    "cp_btn_not_now": "PAS MAINTENANT"
+    "cp_btn_not_now": "PAS MAINTENANT",
+    "mu_title_loading": "AFFRONTEMENTS / / CHARGEMENT",
+    "mu_title_offline": "AFFRONTEMENTS / / HORS LIGNE",
+    "mu_title_empty": "AFFRONTEMENTS / / AUCUN HISTORIQUE",
+    "mu_title_one": "AFFRONTEMENTS / / {count} ADVERSAIRE",
+    "mu_title": "AFFRONTEMENTS / / {count} ADVERSAIRES",
+    "mu_fetching": "> RÉCUPÉRATION",
+    "mu_unavailable": "> HISTORIQUE DES AFFRONTEMENTS INDISPONIBLE.",
+    "mu_no_games": "> AUCUNE PARTIE ENREGISTRÉE POUR L’INSTANT. JOUEZ QUELQUES SHOWMATCHES POUR AMORCER LE REGISTRE.",
+    "mu_games_one": "{count} PARTIE",
+    "mu_games": "{count} PARTIES",
+    "mu_best": "MEILLEURS AFFRONTEMENTS",
+    "mu_worst": "PIRES AFFRONTEMENTS",
+    "mu_min_games_one": "MIN. {count} PARTIE",
+    "mu_min_games": "MIN. {count} PARTIES",
+    "mu_col_g": "P",
+    "mu_col_w": "V",
+    "mu_col_l": "D",
+    "mu_top": "MEILLEURS {count}",
+    "mu_bottom": "DERNIERS {count}"
   },
   "spec": {
     "tape_title": "SPECTATEUR / / AQUARIUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OBTENUS",
     "no_catalog": "> AUCUN CATALOGUE DE SUCCÈS DISPONIBLE.",
     "badge_tip_earned": "{name} — {desc}\nObtenu le {date}",
-    "badge_tip_locked": "{name} — {desc} (verrouillé)"
+    "badge_tip_locked": "{name} — {desc} (verrouillé)",
+    "draws_suffix": "{count}É"
   },
   "cr": {
     "title": "CRÉDITS",

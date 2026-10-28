@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "NASTAVIT VELITELE + ANALÝZA",
     "cp_btn_setting": "NASTAVUJI + ANALYZUJI…",
     "cp_btn_pinning": "PŘIPÍNÁM + ANALYZUJI…",
-    "cp_btn_not_now": "TEĎ NE"
+    "cp_btn_not_now": "TEĎ NE",
+    "mu_title_loading": "STŘETNUTÍ / / NAČÍTÁNÍ",
+    "mu_title_offline": "STŘETNUTÍ / / OFFLINE",
+    "mu_title_empty": "STŘETNUTÍ / / ŽÁDNÁ HISTORIE",
+    "mu_title_one": "STŘETNUTÍ / / {count} PROTIVNÍK",
+    "mu_title": "STŘETNUTÍ / / {count} PROTIVNÍKŮ",
+    "mu_fetching": "> NAČÍTÁNÍ",
+    "mu_unavailable": "> HISTORIE STŘETNUTÍ NENÍ DOSTUPNÁ.",
+    "mu_no_games": "> ZATÍM ŽÁDNÉ ZAZNAMENANÉ HRY. ODEHRAJ PÁR SHOWMATCHŮ A ZALOŽ LEDGER.",
+    "mu_games_one": "{count} HRA",
+    "mu_games": "{count} HER",
+    "mu_best": "NEJLEPŠÍ STŘETNUTÍ",
+    "mu_worst": "NEJHORŠÍ STŘETNUTÍ",
+    "mu_min_games_one": "MIN. {count} HRA",
+    "mu_min_games": "MIN. {count} HER",
+    "mu_col_g": "H",
+    "mu_col_w": "V",
+    "mu_col_l": "P",
+    "mu_top": "NEJLEPŠÍCH {count}",
+    "mu_bottom": "POSLEDNÍCH {count}"
   },
   "spec": {
     "tape_title": "DIVÁK / / AKVÁRIUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ZÍSKÁNO",
     "no_catalog": "> ŽÁDNÝ KATALOG ÚSPĚCHŮ NENÍ K DISPOZICI.",
     "badge_tip_earned": "{name} — {desc}\nZískáno {date}",
-    "badge_tip_locked": "{name} — {desc} (zamčeno)"
+    "badge_tip_locked": "{name} — {desc} (zamčeno)",
+    "draws_suffix": "{count}R"
   },
   "cr": {
     "title": "KREDITY",

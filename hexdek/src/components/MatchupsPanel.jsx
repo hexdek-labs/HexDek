@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Panel, Tag } from './chrome'
 import { API_BASE, cardArtUrl } from '../services/api'
+import { useT } from '../i18n'
 
 // MatchupsPanel — head-to-head record per opposing commander for a
 // single deck. Backed by GET /api/decks/{owner}/{id}/matchups (returns
@@ -110,6 +111,7 @@ function OpponentArt({ commander }) {
 }
 
 function MatchupRow({ row, dense }) {
+  const t = useT()
   return (
     <div style={{
       display: 'grid',
@@ -130,7 +132,9 @@ function MatchupRow({ row, dense }) {
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 100 }}>
           <span className="t-xs muted" style={{ minWidth: 38, textAlign: 'right' }}>
             {row.wins}-{row.losses}
-            {row.draws > 0 && <span className="muted-2"> ({row.draws}D)</span>}
+            {row.draws > 0 && (
+              <span className="muted-2"> ({t('op.draws_suffix', { count: row.draws })})</span>
+            )}
           </span>
           <span style={{ flex: 1, minWidth: 60 }}>
             <WinRateBar winRate={row.win_rate} />
@@ -170,6 +174,7 @@ function MatchupRow({ row, dense }) {
 }
 
 export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
+  const t = useT()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState(false)
   const narrow = useIsNarrow()
@@ -212,9 +217,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
 
   if (rows === null) {
     return (
-      <Panel code={code} title="MATCHUPS / / LOADING">
+      <Panel code={code} title={t('dka.mu_title_loading')}>
         <div className="t-md muted" style={{ textAlign: 'center', padding: 12 }}>
-          &gt; FETCHING<span className="blink">_</span>
+          {t('dka.mu_fetching')}<span className="blink">_</span>
         </div>
       </Panel>
     )
@@ -222,9 +227,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
 
   if (error) {
     return (
-      <Panel code={code} title="MATCHUPS / / OFFLINE">
+      <Panel code={code} title={t('dka.mu_title_offline')}>
         <div className="t-xs muted" style={{ textAlign: 'center', padding: 12 }}>
-          &gt; MATCHUP HISTORY UNAVAILABLE.
+          {t('dka.mu_unavailable')}
         </div>
       </Panel>
     )
@@ -232,9 +237,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
 
   if (rows.length === 0) {
     return (
-      <Panel code={code} title="MATCHUPS / / NO HISTORY">
+      <Panel code={code} title={t('dka.mu_title_empty')}>
         <div className="t-xs muted" style={{ textAlign: 'center', padding: 12 }}>
-          &gt; NO RECORDED GAMES YET. PLAY A FEW SHOWMATCHES TO SEED THE LEDGER.
+          {t('dka.mu_no_games')}
         </div>
       </Panel>
     )
@@ -243,8 +248,11 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
   return (
     <Panel
       code={code}
-      title={`MATCHUPS / / ${rows.length} OPPONENTS`}
-      right={<Tag solid>{rows.reduce((s, r) => s + r.games, 0)} GAMES</Tag>}
+      title={t(rows.length === 1 ? 'dka.mu_title_one' : 'dka.mu_title', { count: rows.length })}
+      right={<Tag solid>{(() => {
+        const g = rows.reduce((s, r) => s + r.games, 0)
+        return t(g === 1 ? 'dka.mu_games_one' : 'dka.mu_games', { count: g })
+      })()}</Tag>}
     >
       {/* Best */}
       {best.length > 0 && (
@@ -255,9 +263,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
             marginBottom: 4, paddingBottom: 3,
             borderBottom: '1px dashed color-mix(in srgb, var(--ok) 35%, var(--rule-2))',
           }}>
-            BEST MATCHUPS
+            {t('dka.mu_best')}
             <span className="muted-2" style={{ fontWeight: 400, marginLeft: 6 }}>
-              MIN {MIN_GAMES_FOR_RANKING} GAMES
+              {t(MIN_GAMES_FOR_RANKING === 1 ? 'dka.mu_min_games_one' : 'dka.mu_min_games', { count: MIN_GAMES_FOR_RANKING })}
             </span>
           </div>
           {best.map((r) => <MatchupRow key={`b-${r.opponent_commander}`} row={r} dense />)}
@@ -273,9 +281,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
             marginBottom: 4, paddingBottom: 3,
             borderBottom: '1px dashed color-mix(in srgb, var(--danger) 35%, var(--rule-2))',
           }}>
-            WORST MATCHUPS
+            {t('dka.mu_worst')}
             <span className="muted-2" style={{ fontWeight: 400, marginLeft: 6 }}>
-              MIN {MIN_GAMES_FOR_RANKING} GAMES
+              {t(MIN_GAMES_FOR_RANKING === 1 ? 'dka.mu_min_games_one' : 'dka.mu_min_games', { count: MIN_GAMES_FOR_RANKING })}
             </span>
           </div>
           {worst.map((r) => <MatchupRow key={`w-${r.opponent_commander}`} row={r} dense />)}
@@ -301,11 +309,11 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
               fontWeight: 700,
             }}>
               <span></span>
-              <span>OPPONENT</span>
-              <span style={{ textAlign: 'right' }}>G</span>
-              <span style={{ textAlign: 'right' }}>W</span>
-              <span style={{ textAlign: 'right' }}>L</span>
-              <span style={{ textAlign: 'right' }}>WIN %</span>
+              <span>{t('op.col_opponent')}</span>
+              <span style={{ textAlign: 'right' }}>{t('dka.mu_col_g')}</span>
+              <span style={{ textAlign: 'right' }}>{t('dka.mu_col_w')}</span>
+              <span style={{ textAlign: 'right' }}>{t('dka.mu_col_l')}</span>
+              <span style={{ textAlign: 'right' }}>{t('tlm.th_winpct')}</span>
             </div>
           )}
           {topFive.length > 0 && (
@@ -315,9 +323,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
                 color: 'var(--ok)', textTransform: 'uppercase',
                 padding: '6px 0 3px',
               }}>
-                TOP {topFive.length}
+                {t('dka.mu_top', { count: topFive.length })}
                 <span className="muted-2" style={{ fontWeight: 400, marginLeft: 6 }}>
-                  MIN {MIN_GAMES_FOR_RANKING} GAMES
+                  {t(MIN_GAMES_FOR_RANKING === 1 ? 'dka.mu_min_games_one' : 'dka.mu_min_games', { count: MIN_GAMES_FOR_RANKING })}
                 </span>
               </div>
               {topFive.map((r) => <MatchupRow key={`t-${r.opponent_commander}`} row={r} dense={narrow} />)}
@@ -332,9 +340,9 @@ export default function MatchupsPanel({ owner, id, code = '04.MU' }) {
                 color: 'var(--danger)', textTransform: 'uppercase',
                 padding: '8px 0 3px',
               }}>
-                BOTTOM {bottomFive.length}
+                {t('dka.mu_bottom', { count: bottomFive.length })}
                 <span className="muted-2" style={{ fontWeight: 400, marginLeft: 6 }}>
-                  MIN {MIN_GAMES_FOR_RANKING} GAMES
+                  {t(MIN_GAMES_FOR_RANKING === 1 ? 'dka.mu_min_games_one' : 'dka.mu_min_games', { count: MIN_GAMES_FOR_RANKING })}
                 </span>
               </div>
               {bottomFive.map((r) => <MatchupRow key={`bot-${r.opponent_commander}`} row={r} dense={narrow} />)}

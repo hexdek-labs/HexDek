@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "DEFINIR COMANDANTE + ANALIZAR",
     "cp_btn_setting": "DEFINIENDO + ANALIZANDO…",
     "cp_btn_pinning": "FIJANDO + ANALIZANDO…",
-    "cp_btn_not_now": "AHORA NO"
+    "cp_btn_not_now": "AHORA NO",
+    "mu_title_loading": "EMPAREJAMIENTOS / / CARGANDO",
+    "mu_title_offline": "EMPAREJAMIENTOS / / SIN CONEXIÓN",
+    "mu_title_empty": "EMPAREJAMIENTOS / / SIN HISTORIAL",
+    "mu_title_one": "EMPAREJAMIENTOS / / {count} RIVAL",
+    "mu_title": "EMPAREJAMIENTOS / / {count} RIVALES",
+    "mu_fetching": "> OBTENIENDO",
+    "mu_unavailable": "> HISTORIAL DE EMPAREJAMIENTOS NO DISPONIBLE.",
+    "mu_no_games": "> AÚN NO HAY PARTIDAS REGISTRADAS. JUEGA ALGUNOS SHOWMATCHES PARA EMPEZAR EL REGISTRO.",
+    "mu_games_one": "{count} PARTIDA",
+    "mu_games": "{count} PARTIDAS",
+    "mu_best": "MEJORES EMPAREJAMIENTOS",
+    "mu_worst": "PEORES EMPAREJAMIENTOS",
+    "mu_min_games_one": "MÍN. {count} PARTIDA",
+    "mu_min_games": "MÍN. {count} PARTIDAS",
+    "mu_col_g": "P",
+    "mu_col_w": "V",
+    "mu_col_l": "D",
+    "mu_top": "MEJORES {count}",
+    "mu_bottom": "ÚLTIMOS {count}"
   },
   "spec": {
     "tape_title": "ESPECTADOR / / PECERA",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OBTENIDOS",
     "no_catalog": "> NO HAY CATÁLOGO DE LOGROS DISPONIBLE.",
     "badge_tip_earned": "{name} — {desc}\nObtenido {date}",
-    "badge_tip_locked": "{name} — {desc} (bloqueado)"
+    "badge_tip_locked": "{name} — {desc} (bloqueado)",
+    "draws_suffix": "{count}E"
   },
   "cr": {
     "title": "CRÉDITOS",

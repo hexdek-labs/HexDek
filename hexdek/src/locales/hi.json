@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "कमांडर सेट करें + विश्लेषण",
     "cp_btn_setting": "सेट हो रहा है + विश्लेषण…",
     "cp_btn_pinning": "पिन हो रहा है + विश्लेषण…",
-    "cp_btn_not_now": "अभी नहीं"
+    "cp_btn_not_now": "अभी नहीं",
+    "mu_title_loading": "भिड़ंत / / लोड हो रहा है",
+    "mu_title_offline": "भिड़ंत / / ऑफ़लाइन",
+    "mu_title_empty": "भिड़ंत / / कोई इतिहास नहीं",
+    "mu_title_one": "भिड़ंत / / {count} प्रतिद्वंद्वी",
+    "mu_title": "भिड़ंत / / {count} प्रतिद्वंद्वी",
+    "mu_fetching": "> लाया जा रहा है",
+    "mu_unavailable": "> भिड़ंत इतिहास उपलब्ध नहीं है।",
+    "mu_no_games": "> अभी कोई दर्ज गेम नहीं। लेजर शुरू करने के लिए कुछ शोमैच खेलें।",
+    "mu_games_one": "{count} गेम",
+    "mu_games": "{count} गेम",
+    "mu_best": "सर्वश्रेष्ठ भिड़ंत",
+    "mu_worst": "सबसे खराब भिड़ंत",
+    "mu_min_games_one": "न्यूनतम {count} गेम",
+    "mu_min_games": "न्यूनतम {count} गेम",
+    "mu_col_g": "गेम",
+    "mu_col_w": "जीत",
+    "mu_col_l": "हार",
+    "mu_top": "शीर्ष {count}",
+    "mu_bottom": "निचले {count}"
   },
   "spec": {
     "tape_title": "दर्शक / / फिशटैंक",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} अर्जित",
     "no_catalog": "> कोई उपलब्धि सूची उपलब्ध नहीं है।",
     "badge_tip_earned": "{name} — {desc}\n{date} को अर्जित",
-    "badge_tip_locked": "{name} — {desc} (लॉक)"
+    "badge_tip_locked": "{name} — {desc} (लॉक)",
+    "draws_suffix": "{count} बराबरी"
   },
   "cr": {
     "title": "क्रेडिट",

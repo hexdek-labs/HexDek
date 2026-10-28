@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "USTAW DOWÓDCĘ + ANALIZUJ",
     "cp_btn_setting": "USTAWIANIE + ANALIZA…",
     "cp_btn_pinning": "PRZYPINANIE + ANALIZA…",
-    "cp_btn_not_now": "NIE TERAZ"
+    "cp_btn_not_now": "NIE TERAZ",
+    "mu_title_loading": "POJEDYNKI / / ŁADOWANIE",
+    "mu_title_offline": "POJEDYNKI / / OFFLINE",
+    "mu_title_empty": "POJEDYNKI / / BRAK HISTORII",
+    "mu_title_one": "POJEDYNKI / / {count} PRZECIWNIK",
+    "mu_title": "POJEDYNKI / / {count} PRZECIWNIKÓW",
+    "mu_fetching": "> POBIERANIE",
+    "mu_unavailable": "> HISTORIA POJEDYNKÓW NIEDOSTĘPNA.",
+    "mu_no_games": "> JESZCZE NIE ZAREJESTROWANO GIER. ROZEGRAJ KILKA SHOWMATCHÓW, ABY ZAŁOŻYĆ REJESTR.",
+    "mu_games_one": "{count} GRA",
+    "mu_games": "{count} GIER",
+    "mu_best": "NAJLEPSZE POJEDYNKI",
+    "mu_worst": "NAJGORSZE POJEDYNKI",
+    "mu_min_games_one": "MIN. {count} GRA",
+    "mu_min_games": "MIN. {count} GIER",
+    "mu_col_g": "G",
+    "mu_col_w": "Z",
+    "mu_col_l": "P",
+    "mu_top": "NAJLEPSZE {count}",
+    "mu_bottom": "OSTATNIE {count}"
   },
   "spec": {
     "tape_title": "WIDZ / / AKWARIUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ZDOBYTYCH",
     "no_catalog": "> BRAK DOSTĘPNEGO KATALOGU OSIĄGNIĘĆ.",
     "badge_tip_earned": "{name} — {desc}\nZdobyto {date}",
-    "badge_tip_locked": "{name} — {desc} (zablokowane)"
+    "badge_tip_locked": "{name} — {desc} (zablokowane)",
+    "draws_suffix": "{count}R"
   },
   "cr": {
     "title": "KREDYTY",

@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "ĐẶT CHỈ HUY + PHÂN TÍCH",
     "cp_btn_setting": "ĐANG ĐẶT + PHÂN TÍCH…",
     "cp_btn_pinning": "ĐANG GHIM + PHÂN TÍCH…",
-    "cp_btn_not_now": "ĐỂ SAU"
+    "cp_btn_not_now": "ĐỂ SAU",
+    "mu_title_loading": "ĐỐI ĐẦU / / ĐANG TẢI",
+    "mu_title_offline": "ĐỐI ĐẦU / / OFFLINE",
+    "mu_title_empty": "ĐỐI ĐẦU / / CHƯA CÓ LỊCH SỬ",
+    "mu_title_one": "ĐỐI ĐẦU / / {count} ĐỐI THỦ",
+    "mu_title": "ĐỐI ĐẦU / / {count} ĐỐI THỦ",
+    "mu_fetching": "> ĐANG TẢI",
+    "mu_unavailable": "> KHÔNG CÓ LỊCH SỬ ĐỐI ĐẦU.",
+    "mu_no_games": "> CHƯA GHI NHẬN VÁN NÀO. CHƠI VÀI VÁN SHOWMATCH ĐỂ BẮT ĐẦU SỔ GHI.",
+    "mu_games_one": "{count} VÁN",
+    "mu_games": "{count} VÁN",
+    "mu_best": "ĐỐI ĐẦU TỐT NHẤT",
+    "mu_worst": "ĐỐI ĐẦU TỆ NHẤT",
+    "mu_min_games_one": "TỐI THIỂU {count} VÁN",
+    "mu_min_games": "TỐI THIỂU {count} VÁN",
+    "mu_col_g": "TR",
+    "mu_col_w": "T",
+    "mu_col_l": "B",
+    "mu_top": "ĐẦU {count}",
+    "mu_bottom": "CUỐI {count}"
   },
   "spec": {
     "tape_title": "KHÁN GIẢ / / BỂ CÁ",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ĐÃ ĐẠT",
     "no_catalog": "> KHÔNG CÓ DANH MỤC THÀNH TỰU.",
     "badge_tip_earned": "{name} — {desc}\nĐạt được {date}",
-    "badge_tip_locked": "{name} — {desc} (đã khóa)"
+    "badge_tip_locked": "{name} — {desc} (đã khóa)",
+    "draws_suffix": "{count}H"
   },
   "cr": {
     "title": "TÍN DỤNG",

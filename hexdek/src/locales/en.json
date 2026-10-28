@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "SET COMMANDER + ANALYZE",
     "cp_btn_setting": "SETTING + ANALYZING…",
     "cp_btn_pinning": "PINNING + ANALYZING…",
-    "cp_btn_not_now": "NOT NOW"
+    "cp_btn_not_now": "NOT NOW",
+    "mu_title_loading": "MATCHUPS / / LOADING",
+    "mu_title_offline": "MATCHUPS / / OFFLINE",
+    "mu_title_empty": "MATCHUPS / / NO HISTORY",
+    "mu_title_one": "MATCHUPS / / {count} OPPONENT",
+    "mu_title": "MATCHUPS / / {count} OPPONENTS",
+    "mu_fetching": "> FETCHING",
+    "mu_unavailable": "> MATCHUP HISTORY UNAVAILABLE.",
+    "mu_no_games": "> NO RECORDED GAMES YET. PLAY A FEW SHOWMATCHES TO SEED THE LEDGER.",
+    "mu_games_one": "{count} GAME",
+    "mu_games": "{count} GAMES",
+    "mu_best": "BEST MATCHUPS",
+    "mu_worst": "WORST MATCHUPS",
+    "mu_min_games_one": "MIN {count} GAME",
+    "mu_min_games": "MIN {count} GAMES",
+    "mu_col_g": "G",
+    "mu_col_w": "W",
+    "mu_col_l": "L",
+    "mu_top": "TOP {count}",
+    "mu_bottom": "BOTTOM {count}"
   },
   "spec": {
     "tape_title": "SPECTATOR / / FISHTANK",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} EARNED",
     "no_catalog": "> NO ACHIEVEMENT CATALOG AVAILABLE.",
     "badge_tip_earned": "{name} — {desc}\nEarned {date}",
-    "badge_tip_locked": "{name} — {desc} (locked)"
+    "badge_tip_locked": "{name} — {desc} (locked)",
+    "draws_suffix": "{count}D"
   },
   "cr": {
     "title": "CREDITS",

@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "VÄLJ BEFÄLHAVARE + ANALYSERA",
     "cp_btn_setting": "VÄLJER + ANALYSERAR…",
     "cp_btn_pinning": "FÄSTER + ANALYSERAR…",
-    "cp_btn_not_now": "INTE NU"
+    "cp_btn_not_now": "INTE NU",
+    "mu_title_loading": "MÖTEN / / LADDAR",
+    "mu_title_offline": "MÖTEN / / OFFLINE",
+    "mu_title_empty": "MÖTEN / / INGEN HISTORIK",
+    "mu_title_one": "MÖTEN / / {count} MOTSTÅNDARE",
+    "mu_title": "MÖTEN / / {count} MOTSTÅNDARE",
+    "mu_fetching": "> HÄMTAR",
+    "mu_unavailable": "> MÖTESHISTORIK ÄR INTE TILLGÄNGLIG.",
+    "mu_no_games": "> INGA REGISTRERADE SPEL ÄNNU. SPELA NÅGRA SHOWMATCHER FÖR ATT STARTA LOGGBOKEN.",
+    "mu_games_one": "{count} MATCH",
+    "mu_games": "{count} MATCHER",
+    "mu_best": "BÄSTA MÖTEN",
+    "mu_worst": "SÄMSTA MÖTEN",
+    "mu_min_games_one": "MIN. {count} MATCH",
+    "mu_min_games": "MIN. {count} MATCHER",
+    "mu_col_g": "M",
+    "mu_col_w": "V",
+    "mu_col_l": "F",
+    "mu_top": "TOPP {count}",
+    "mu_bottom": "SISTA {count}"
   },
   "spec": {
     "tape_title": "ÅSKÅDARE / / FISKTANK",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} UPPNÅDDA",
     "no_catalog": "> INGEN PRESTATIONSKATALOG TILLGÄNGLIG.",
     "badge_tip_earned": "{name} — {desc}\nUppnådd {date}",
-    "badge_tip_locked": "{name} — {desc} (låst)"
+    "badge_tip_locked": "{name} — {desc} (låst)",
+    "draws_suffix": "{count}O"
   },
   "cr": {
     "title": "KREDITER",

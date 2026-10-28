@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "ΟΡΙΣΜΟΣ ΔΙΟΙΚΗΤΗ + ΑΝΑΛΥΣΗ",
     "cp_btn_setting": "ΟΡΙΣΜΟΣ + ΑΝΑΛΥΣΗ…",
     "cp_btn_pinning": "ΚΑΡΦΙΤΣΩΜΑ + ΑΝΑΛΥΣΗ…",
-    "cp_btn_not_now": "ΟΧΙ ΤΩΡΑ"
+    "cp_btn_not_now": "ΟΧΙ ΤΩΡΑ",
+    "mu_title_loading": "ΑΝΑΜΕΤΡΗΣΕΙΣ / / ΦΟΡΤΩΣΗ",
+    "mu_title_offline": "ΑΝΑΜΕΤΡΗΣΕΙΣ / / ΕΚΤΟΣ",
+    "mu_title_empty": "ΑΝΑΜΕΤΡΗΣΕΙΣ / / ΚΑΜΙΑ ΙΣΤΟΡΙΑ",
+    "mu_title_one": "ΑΝΑΜΕΤΡΗΣΕΙΣ / / {count} ΑΝΤΙΠΑΛΟΣ",
+    "mu_title": "ΑΝΑΜΕΤΡΗΣΕΙΣ / / {count} ΑΝΤΙΠΑΛΟΙ",
+    "mu_fetching": "> ΑΝΑΚΤΗΣΗ",
+    "mu_unavailable": "> ΤΟ ΙΣΤΟΡΙΚΟ ΑΝΑΜΕΤΡΗΣΕΩΝ ΔΕΝ ΕΙΝΑΙ ΔΙΑΘΕΣΙΜΟ.",
+    "mu_no_games": "> ΔΕΝ ΕΧΟΥΝ ΚΑΤΑΓΡΑΦΕΙ ΠΑΙΧΝΙΔΙΑ ΑΚΟΜΑ. ΠΑΙΞΕ ΜΕΡΙΚΑ SHOWMATCH ΓΙΑ ΝΑ ΞΕΚΙΝΗΣΕΙ ΤΟ ΜΗΤΡΩΟ.",
+    "mu_games_one": "{count} ΠΑΙΧΝΙΔΙ",
+    "mu_games": "{count} ΠΑΙΧΝΙΔΙΑ",
+    "mu_best": "ΚΑΛΥΤΕΡΕΣ ΑΝΑΜΕΤΡΗΣΕΙΣ",
+    "mu_worst": "ΧΕΙΡΟΤΕΡΕΣ ΑΝΑΜΕΤΡΗΣΕΙΣ",
+    "mu_min_games_one": "ΤΟΥΛ. {count} ΠΑΙΧΝΙΔΙ",
+    "mu_min_games": "ΤΟΥΛ. {count} ΠΑΙΧΝΙΔΙΑ",
+    "mu_col_g": "Π",
+    "mu_col_w": "Ν",
+    "mu_col_l": "Η",
+    "mu_top": "ΚΟΡΥΦΑΙΕΣ {count}",
+    "mu_bottom": "ΤΕΛΕΥΤΑΙΕΣ {count}"
   },
   "spec": {
     "tape_title": "ΘΕΑΤΗΣ / / ΕΝΥΔΡΕΙΟ",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ΚΕΡΔΙΣΜΕΝΑ",
     "no_catalog": "> ΔΕΝ ΥΠΑΡΧΕΙ ΔΙΑΘΕΣΙΜΟΣ ΚΑΤΑΛΟΓΟΣ ΕΠΙΤΕΥΓΜΑΤΩΝ.",
     "badge_tip_earned": "{name} — {desc}\nΚερδίστηκε {date}",
-    "badge_tip_locked": "{name} — {desc} (κλειδωμένο)"
+    "badge_tip_locked": "{name} — {desc} (κλειδωμένο)",
+    "draws_suffix": "{count}Ι"
   },
   "cr": {
     "title": "ΜΟΝΑΔΕΣ",

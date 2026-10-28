@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "VÆLG KOMMANDØR + ANALYSÉR",
     "cp_btn_setting": "VÆLGER + ANALYSERER…",
     "cp_btn_pinning": "FASTGØR + ANALYSERER…",
-    "cp_btn_not_now": "IKKE NU"
+    "cp_btn_not_now": "IKKE NU",
+    "mu_title_loading": "MATCHUPS / / INDLÆSER",
+    "mu_title_offline": "MATCHUPS / / OFFLINE",
+    "mu_title_empty": "MATCHUPS / / INGEN HISTORIK",
+    "mu_title_one": "MATCHUPS / / {count} MODSTANDER",
+    "mu_title": "MATCHUPS / / {count} MODSTANDERE",
+    "mu_fetching": "> HENTER",
+    "mu_unavailable": "> MATCHUP-HISTORIK ER UTILGÆNGELIG.",
+    "mu_no_games": "> INGEN REGISTREREDE SPIL ENDNU. SPIL ET PAR SHOWMATCHES FOR AT STARTE LEDGEREN.",
+    "mu_games_one": "{count} KAMP",
+    "mu_games": "{count} KAMPE",
+    "mu_best": "BEDSTE MATCHUPS",
+    "mu_worst": "VÆRSTE MATCHUPS",
+    "mu_min_games_one": "MIN. {count} KAMP",
+    "mu_min_games": "MIN. {count} KAMPE",
+    "mu_col_g": "K",
+    "mu_col_w": "S",
+    "mu_col_l": "N",
+    "mu_top": "TOP {count}",
+    "mu_bottom": "BUND {count}"
   },
   "spec": {
     "tape_title": "TILSKUER / / FISKETANK",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OPNÅET",
     "no_catalog": "> INTET PRÆSTATIONSKATALOG TILGÆNGELIGT.",
     "badge_tip_earned": "{name} — {desc}\nOpnået {date}",
-    "badge_tip_locked": "{name} — {desc} (låst)"
+    "badge_tip_locked": "{name} — {desc} (låst)",
+    "draws_suffix": "{count}U"
   },
   "cr": {
     "title": "KREDITTER",

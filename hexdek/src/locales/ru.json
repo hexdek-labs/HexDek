@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "НАЗНАЧИТЬ КОМАНДИРА + АНАЛИЗ",
     "cp_btn_setting": "НАЗНАЧЕНИЕ + АНАЛИЗ…",
     "cp_btn_pinning": "ЗАКРЕПЛЕНИЕ + АНАЛИЗ…",
-    "cp_btn_not_now": "НЕ СЕЙЧАС"
+    "cp_btn_not_now": "НЕ СЕЙЧАС",
+    "mu_title_loading": "ПРОТИВОСТОЯНИЯ / / ЗАГРУЗКА",
+    "mu_title_offline": "ПРОТИВОСТОЯНИЯ / / ОФФЛАЙН",
+    "mu_title_empty": "ПРОТИВОСТОЯНИЯ / / НЕТ ИСТОРИИ",
+    "mu_title_one": "ПРОТИВОСТОЯНИЯ / / {count} СОПЕРНИК",
+    "mu_title": "ПРОТИВОСТОЯНИЯ / / {count} СОПЕРНИКОВ",
+    "mu_fetching": "> ЗАГРУЗКА",
+    "mu_unavailable": "> ИСТОРИЯ ПРОТИВОСТОЯНИЙ НЕДОСТУПНА.",
+    "mu_no_games": "> ПАРТИЙ ПОКА НЕ ЗАПИСАНО. ПРОВЕДИТЕ НЕСКОЛЬКО ПОКАЗАТЕЛЬНЫХ МАТЧЕЙ, ЧТОБЫ ЗАПОЛНИТЬ ЖУРНАЛ.",
+    "mu_games_one": "{count} ПАРТИЯ",
+    "mu_games": "{count} ПАРТИЙ",
+    "mu_best": "ЛУЧШИЕ ПРОТИВОСТОЯНИЯ",
+    "mu_worst": "ХУДШИЕ ПРОТИВОСТОЯНИЯ",
+    "mu_min_games_one": "МИН. {count} ПАРТИЯ",
+    "mu_min_games": "МИН. {count} ПАРТИЙ",
+    "mu_col_g": "И",
+    "mu_col_w": "П",
+    "mu_col_l": "Пр",
+    "mu_top": "ТОП {count}",
+    "mu_bottom": "ПОСЛЕДНИЕ {count}"
   },
   "spec": {
     "tape_title": "ЗРИТЕЛЬ / / АКВАРИУМ",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} ПОЛУЧЕНО",
     "no_catalog": "> КАТАЛОГ ДОСТИЖЕНИЙ НЕДОСТУПЕН.",
     "badge_tip_earned": "{name} — {desc}\nПолучено {date}",
-    "badge_tip_locked": "{name} — {desc} (заблокировано)"
+    "badge_tip_locked": "{name} — {desc} (заблокировано)",
+    "draws_suffix": "{count}Н"
   },
   "cr": {
     "title": "КРЕДИТЫ",

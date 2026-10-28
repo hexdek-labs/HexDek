@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "IMPOSTA COMANDANTE + ANALIZZA",
     "cp_btn_setting": "IMPOSTAZIONE + ANALISI…",
     "cp_btn_pinning": "FISSAGGIO + ANALISI…",
-    "cp_btn_not_now": "NON ORA"
+    "cp_btn_not_now": "NON ORA",
+    "mu_title_loading": "SCONTRI / / CARICAMENTO",
+    "mu_title_offline": "SCONTRI / / OFFLINE",
+    "mu_title_empty": "SCONTRI / / NESSUNO STORICO",
+    "mu_title_one": "SCONTRI / / {count} AVVERSARIO",
+    "mu_title": "SCONTRI / / {count} AVVERSARI",
+    "mu_fetching": "> RECUPERO",
+    "mu_unavailable": "> STORICO DEGLI SCONTRI NON DISPONIBILE.",
+    "mu_no_games": "> NESSUNA PARTITA REGISTRATA ANCORA. GIOCA QUALCHE SHOWMATCH PER AVVIARE IL REGISTRO.",
+    "mu_games_one": "{count} PARTITA",
+    "mu_games": "{count} PARTITE",
+    "mu_best": "SCONTRI MIGLIORI",
+    "mu_worst": "SCONTRI PEGGIORI",
+    "mu_min_games_one": "MIN. {count} PARTITA",
+    "mu_min_games": "MIN. {count} PARTITE",
+    "mu_col_g": "P",
+    "mu_col_w": "V",
+    "mu_col_l": "S",
+    "mu_top": "MIGLIORI {count}",
+    "mu_bottom": "ULTIMI {count}"
   },
   "spec": {
     "tape_title": "SPETTATORE / / ACQUARIO",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} OTTENUTI",
     "no_catalog": "> NESSUN CATALOGO OBIETTIVI DISPONIBILE.",
     "badge_tip_earned": "{name} — {desc}\nOttenuto il {date}",
-    "badge_tip_locked": "{name} — {desc} (bloccato)"
+    "badge_tip_locked": "{name} — {desc} (bloccato)",
+    "draws_suffix": "{count}P"
   },
   "cr": {
     "title": "CREDITI",

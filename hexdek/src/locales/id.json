@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "TETAPKAN KOMANDAN + ANALISIS",
     "cp_btn_setting": "MENETAPKAN + MENGANALISIS…",
     "cp_btn_pinning": "MENYEMATKAN + MENGANALISIS…",
-    "cp_btn_not_now": "NANTI SAJA"
+    "cp_btn_not_now": "NANTI SAJA",
+    "mu_title_loading": "PERTEMUAN / / MEMUAT",
+    "mu_title_offline": "PERTEMUAN / / OFFLINE",
+    "mu_title_empty": "PERTEMUAN / / TIDAK ADA RIWAYAT",
+    "mu_title_one": "PERTEMUAN / / {count} LAWAN",
+    "mu_title": "PERTEMUAN / / {count} LAWAN",
+    "mu_fetching": "> MENGAMBIL",
+    "mu_unavailable": "> RIWAYAT PERTEMUAN TIDAK TERSEDIA.",
+    "mu_no_games": "> BELUM ADA PERTANDINGAN TERCATAT. MAINKAN BEBERAPA SHOWMATCH UNTUK MENGISI BUKU BESAR.",
+    "mu_games_one": "{count} PERTANDINGAN",
+    "mu_games": "{count} PERTANDINGAN",
+    "mu_best": "PERTEMUAN TERBAIK",
+    "mu_worst": "PERTEMUAN TERBURUK",
+    "mu_min_games_one": "MIN. {count} PERTANDINGAN",
+    "mu_min_games": "MIN. {count} PERTANDINGAN",
+    "mu_col_g": "P",
+    "mu_col_w": "M",
+    "mu_col_l": "K",
+    "mu_top": "TERATAS {count}",
+    "mu_bottom": "TERBAWAH {count}"
   },
   "spec": {
     "tape_title": "PENONTON / / AKUARIUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} DIRAIH",
     "no_catalog": "> KATALOG PENCAPAIAN TIDAK TERSEDIA.",
     "badge_tip_earned": "{name} — {desc}\nDiraih {date}",
-    "badge_tip_locked": "{name} — {desc} (terkunci)"
+    "badge_tip_locked": "{name} — {desc} (terkunci)",
+    "draws_suffix": "{count}S"
   },
   "cr": {
     "title": "KREDIT",

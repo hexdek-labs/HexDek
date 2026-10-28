@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "COMMANDANT INSTELLEN + ANALYSEREN",
     "cp_btn_setting": "INSTELLEN + ANALYSEREN…",
     "cp_btn_pinning": "VASTZETTEN + ANALYSEREN…",
-    "cp_btn_not_now": "NU NIET"
+    "cp_btn_not_now": "NU NIET",
+    "mu_title_loading": "CONFRONTATIES / / LADEN",
+    "mu_title_offline": "CONFRONTATIES / / OFFLINE",
+    "mu_title_empty": "CONFRONTATIES / / GEEN HISTORIEK",
+    "mu_title_one": "CONFRONTATIES / / {count} TEGENSTANDER",
+    "mu_title": "CONFRONTATIES / / {count} TEGENSTANDERS",
+    "mu_fetching": "> OPHALEN",
+    "mu_unavailable": "> CONFRONTATIEHISTORIEK NIET BESCHIKBAAR.",
+    "mu_no_games": "> NOG GEEN VASTGELEGDE PARTIJEN. SPEEL EEN PAAR SHOWMATCHES OM HET GROOTBOEK TE VULLEN.",
+    "mu_games_one": "{count} PARTIJ",
+    "mu_games": "{count} PARTIJEN",
+    "mu_best": "BESTE CONFRONTATIES",
+    "mu_worst": "SLECHTSTE CONFRONTATIES",
+    "mu_min_games_one": "MIN. {count} PARTIJ",
+    "mu_min_games": "MIN. {count} PARTIJEN",
+    "mu_col_g": "P",
+    "mu_col_w": "W",
+    "mu_col_l": "V",
+    "mu_top": "TOP {count}",
+    "mu_bottom": "ONDERSTE {count}"
   },
   "spec": {
     "tape_title": "TOESCHOUWER / / FISHTANK",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} BEHAALD",
     "no_catalog": "> GEEN PRESTATIECATALOGUS BESCHIKBAAR.",
     "badge_tip_earned": "{name} — {desc}\nBehaald {date}",
-    "badge_tip_locked": "{name} — {desc} (vergrendeld)"
+    "badge_tip_locked": "{name} — {desc} (vergrendeld)",
+    "draws_suffix": "{count}G"
   },
   "cr": {
     "title": "CREDITS",

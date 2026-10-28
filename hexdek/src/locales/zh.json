@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "设定指挥官 + 分析",
     "cp_btn_setting": "正在设定 + 分析…",
     "cp_btn_pinning": "正在指定 + 分析…",
-    "cp_btn_not_now": "暂不"
+    "cp_btn_not_now": "暂不",
+    "mu_title_loading": "对阵 / / 加载中",
+    "mu_title_offline": "对阵 / / 离线",
+    "mu_title_empty": "对阵 / / 暂无记录",
+    "mu_title_one": "对阵 / / {count} 位对手",
+    "mu_title": "对阵 / / {count} 位对手",
+    "mu_fetching": "> 正在获取",
+    "mu_unavailable": "> 无法获取对阵记录。",
+    "mu_no_games": "> 暂无对局记录。先打几场表演赛来建立记录。",
+    "mu_games_one": "{count} 场",
+    "mu_games": "{count} 场",
+    "mu_best": "最优对阵",
+    "mu_worst": "最差对阵",
+    "mu_min_games_one": "至少 {count} 场",
+    "mu_min_games": "至少 {count} 场",
+    "mu_col_g": "场",
+    "mu_col_w": "胜",
+    "mu_col_l": "负",
+    "mu_top": "前 {count}",
+    "mu_bottom": "后 {count}"
   },
   "spec": {
     "tape_title": "观战 / / 鱼缸",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} 已获得",
     "no_catalog": "> 没有可用的成就目录。",
     "badge_tip_earned": "{name} — {desc}\n获得于 {date}",
-    "badge_tip_locked": "{name} — {desc}（未解锁）"
+    "badge_tip_locked": "{name} — {desc}（未解锁）",
+    "draws_suffix": "{count}平"
   },
   "cr": {
     "title": "积分",

@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "KOMUTAN AYARLA + ANALİZ ET",
     "cp_btn_setting": "AYARLANIYOR + ANALİZ EDİLİYOR…",
     "cp_btn_pinning": "SABİTLENİYOR + ANALİZ EDİLİYOR…",
-    "cp_btn_not_now": "ŞİMDİ DEĞİL"
+    "cp_btn_not_now": "ŞİMDİ DEĞİL",
+    "mu_title_loading": "EŞLEŞMELER / / YÜKLENİYOR",
+    "mu_title_offline": "EŞLEŞMELER / / ÇEVRİMDIŞI",
+    "mu_title_empty": "EŞLEŞMELER / / GEÇMİŞ YOK",
+    "mu_title_one": "EŞLEŞMELER / / {count} RAKİP",
+    "mu_title": "EŞLEŞMELER / / {count} RAKİP",
+    "mu_fetching": "> GETİRİLİYOR",
+    "mu_unavailable": "> EŞLEŞME GEÇMİŞİ KULLANILAMIYOR.",
+    "mu_no_games": "> HENÜZ KAYITLI MAÇ YOK. DEFTERİ BAŞLATMAK İÇİN BİRKAÇ GÖSTERİ MAÇI OYNA.",
+    "mu_games_one": "{count} MAÇ",
+    "mu_games": "{count} MAÇ",
+    "mu_best": "EN İYİ EŞLEŞMELER",
+    "mu_worst": "EN KÖTÜ EŞLEŞMELER",
+    "mu_min_games_one": "EN AZ {count} MAÇ",
+    "mu_min_games": "EN AZ {count} MAÇ",
+    "mu_col_g": "M",
+    "mu_col_w": "G",
+    "mu_col_l": "K",
+    "mu_top": "İLK {count}",
+    "mu_bottom": "SON {count}"
   },
   "spec": {
     "tape_title": "İZLEYİCİ / / AKVARYUM",
@@ -1442,7 +1461,8 @@
     "earned_count": "{earned} / {total} KAZANILDI",
     "no_catalog": "> KULLANILABİLİR BAŞARIM KATALOĞU YOK.",
     "badge_tip_earned": "{name} — {desc}\nKazanıldı {date}",
-    "badge_tip_locked": "{name} — {desc} (kilitli)"
+    "badge_tip_locked": "{name} — {desc} (kilitli)",
+    "draws_suffix": "{count}B"
   },
   "cr": {
     "title": "KREDİ",

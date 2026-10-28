@@ -1011,7 +1011,26 @@
     "cp_btn_confirm": "ตั้งผู้บัญชาการ + วิเคราะห์",
     "cp_btn_setting": "กำลังตั้งค่า + วิเคราะห์…",
     "cp_btn_pinning": "กำลังปักหมุด + วิเคราะห์…",
-    "cp_btn_not_now": "ไว้ก่อน"
+    "cp_btn_not_now": "ไว้ก่อน",
+    "mu_title_loading": "การเจอกัน / / กำลังโหลด",
+    "mu_title_offline": "การเจอกัน / / ออฟไลน์",
+    "mu_title_empty": "การเจอกัน / / ไม่มีประวัติ",
+    "mu_title_one": "การเจอกัน / / คู่แข่ง {count} ราย",
+    "mu_title": "การเจอกัน / / คู่แข่ง {count} ราย",
+    "mu_fetching": "> กำลังดึงข้อมูล",
+    "mu_unavailable": "> ไม่มีประวัติการเจอกัน",
+    "mu_no_games": "> ยังไม่มีเกมที่บันทึกไว้ เล่นโชว์แมตช์สักสองสามเกมเพื่อเริ่มบันทึก",
+    "mu_games_one": "{count} เกม",
+    "mu_games": "{count} เกม",
+    "mu_best": "เจอกันได้ดีที่สุด",
+    "mu_worst": "เจอกันแย่ที่สุด",
+    "mu_min_games_one": "ขั้นต่ำ {count} เกม",
+    "mu_min_games": "ขั้นต่ำ {count} เกม",
+    "mu_col_g": "เกม",
+    "mu_col_w": "ชนะ",
+    "mu_col_l": "แพ้",
+    "mu_top": "สูงสุด {count}",
+    "mu_bottom": "ต่ำสุด {count}"
   },
   "spec": {
     "tape_title": "ผู้ชม / / ตู้ปลา",
@@ -1442,7 +1461,8 @@
     "earned_count": "ได้รับ {earned} / {total}",
     "no_catalog": "> ไม่มีแคตตาล็อกความสำเร็จ",
     "badge_tip_earned": "{name} — {desc}\nได้รับเมื่อ {date}",
-    "badge_tip_locked": "{name} — {desc} (ล็อก)"
+    "badge_tip_locked": "{name} — {desc} (ล็อก)",
+    "draws_suffix": "เสมอ {count}"
   },
   "cr": {
     "title": "เครดิต",
